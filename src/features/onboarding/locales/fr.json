@@ -1,0 +1,16 @@
+{
+  "statusError": "Impossible de vérifier l'environnement",
+  "pythonMissing": {
+    "title": "Python 3.10+ requis",
+    "description": "Music Manager a besoin d'un Python récent pour son moteur de téléchargement et de bibliothèque. Installe-le avec Homebrew puis relance la vérification.",
+    "retry": "Re-vérifier"
+  },
+  "setup": {
+    "title": "Préparation de l'environnement",
+    "description": "L'app va créer un environnement Python isolé et y installer yt-dlp et beets. Cela ne touche pas au Python de ton système.",
+    "install": "Installer l'environnement",
+    "installing": "Installation en cours…",
+    "starting": "Démarrage…",
+    "failed": "L'installation a échoué"
+  }
+}

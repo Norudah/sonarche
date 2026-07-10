@@ -1,0 +1,15 @@
+{
+  "title": "Télécharger",
+  "subtitle": "Colle un lien YouTube : l'audio est récupéré en AAC natif, sans ré-encodage.",
+  "urlLabel": "Lien de la vidéo",
+  "download": "Télécharger",
+  "downloading": "Téléchargement…",
+  "downloadFailed": "Le téléchargement a échoué",
+  "unknownTitle": "Titre inconnu",
+  "unknownArtist": "Artiste inconnu",
+  "import": "Importer dans la bibliothèque",
+  "importing": "Import en cours…",
+  "imported": "Importé",
+  "importFailed": "L'import a échoué",
+  "goToLibrary": "Voir la bibliothèque →"
+}

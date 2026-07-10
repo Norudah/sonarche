@@ -1,0 +1,33 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+import commonEn from "@/app/locales/en.json";
+import commonFr from "@/app/locales/fr.json";
+import downloadEn from "@/features/download/locales/en.json";
+import downloadFr from "@/features/download/locales/fr.json";
+import libraryEn from "@/features/library/locales/en.json";
+import libraryFr from "@/features/library/locales/fr.json";
+import onboardingEn from "@/features/onboarding/locales/en.json";
+import onboardingFr from "@/features/onboarding/locales/fr.json";
+
+i18n.use(initReactI18next).init({
+  lng: "fr",
+  fallbackLng: "en",
+  interpolation: { escapeValue: false },
+  resources: {
+    fr: {
+      common: commonFr,
+      onboarding: onboardingFr,
+      download: downloadFr,
+      library: libraryFr,
+    },
+    en: {
+      common: commonEn,
+      onboarding: onboardingEn,
+      download: downloadEn,
+      library: libraryEn,
+    },
+  },
+});
+
+export default i18n;

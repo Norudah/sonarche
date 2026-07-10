@@ -1,0 +1,17 @@
+[package]
+name = "music-manager"
+version = "0.1.0"
+description = "Personal music library manager"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "process", "io-util", "sync", "time", "fs", "rt-multi-thread"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+url = "2"

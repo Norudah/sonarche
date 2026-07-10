@@ -1,0 +1,11 @@
+{
+  "title": "Library",
+  "trackCount_one": "{{count}} track",
+  "trackCount_other": "{{count}} tracks",
+  "refresh": "Refresh",
+  "loadFailed": "Unable to load the library",
+  "empty": "Your library is empty for now.",
+  "goToDownload": "Download a first track →",
+  "unknownTitle": "Unknown title",
+  "unknownArtist": "Unknown artist"
+}

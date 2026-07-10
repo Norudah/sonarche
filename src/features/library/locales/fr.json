@@ -1,0 +1,11 @@
+{
+  "title": "Bibliothèque",
+  "trackCount_one": "{{count}} titre",
+  "trackCount_other": "{{count}} titres",
+  "refresh": "Actualiser",
+  "loadFailed": "Impossible de charger la bibliothèque",
+  "empty": "Ta bibliothèque est vide pour l'instant.",
+  "goToDownload": "Télécharger un premier titre →",
+  "unknownTitle": "Titre inconnu",
+  "unknownArtist": "Artiste inconnu"
+}

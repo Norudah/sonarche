@@ -1,0 +1,15 @@
+{
+  "title": "Download",
+  "subtitle": "Paste a YouTube link: the audio is fetched as native AAC, no re-encoding.",
+  "urlLabel": "Video link",
+  "download": "Download",
+  "downloading": "Downloading…",
+  "downloadFailed": "Download failed",
+  "unknownTitle": "Unknown title",
+  "unknownArtist": "Unknown artist",
+  "import": "Import into library",
+  "importing": "Importing…",
+  "imported": "Imported",
+  "importFailed": "Import failed",
+  "goToLibrary": "Open the library →"
+}
