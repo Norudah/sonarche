@@ -10,4 +10,8 @@ generated from [Conventional Commits](https://www.conventionalcommits.org/) via 
 
 - Initialize project with architecture docs and Claude rules
 
+### Features
+
+- Bootstrap tauri desktop app with python sidecar poc
+
 
