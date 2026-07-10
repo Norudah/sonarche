@@ -1,0 +1,675 @@
+<style>
+  :root {
+    --ground: #F1F2F5;
+    --surface: #FFFFFF;
+    --surface-2: #E9EBF0;
+    --ink: #191C23;
+    --ink-soft: #545A69;
+    --ink-faint: #878D9C;
+    --line: #DBDEE6;
+    --accent: #A9761A;
+    --accent-bright: #C08A22;
+    --accent-soft: #F0E6CF;
+    --good: #1C7F69;
+    --good-soft: #DCEEE8;
+    --risk: #BE4E36;
+    --risk-soft: #F4E1DB;
+    --later: #55648A;
+    --later-soft: #E3E7F0;
+
+    --font-display: "Helvetica Neue", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-body: "Helvetica Neue", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+
+    --maxw: 940px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0F1218;
+      --surface: #161A22;
+      --surface-2: #1D232E;
+      --ink: #ECEEF3;
+      --ink-soft: #A4ABBA;
+      --ink-faint: #6A7281;
+      --line: #29303B;
+      --accent: #E6B457;
+      --accent-bright: #F1C877;
+      --accent-soft: #352C15;
+      --good: #43BC9D;
+      --good-soft: #12271F;
+      --risk: #E6735A;
+      --risk-soft: #2C1712;
+      --later: #8496BC;
+      --later-soft: #191F2C;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --ground: #F1F2F5; --surface: #FFFFFF; --surface-2: #E9EBF0;
+    --ink: #191C23; --ink-soft: #545A69; --ink-faint: #878D9C; --line: #DBDEE6;
+    --accent: #A9761A; --accent-bright: #C08A22; --accent-soft: #F0E6CF;
+    --good: #1C7F69; --good-soft: #DCEEE8; --risk: #BE4E36; --risk-soft: #F4E1DB;
+    --later: #55648A; --later-soft: #E3E7F0;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F1218; --surface: #161A22; --surface-2: #1D232E;
+    --ink: #ECEEF3; --ink-soft: #A4ABBA; --ink-faint: #6A7281; --line: #29303B;
+    --accent: #E6B457; --accent-bright: #F1C877; --accent-soft: #352C15;
+    --good: #43BC9D; --good-soft: #12271F; --risk: #E6735A; --risk-soft: #2C1712;
+    --later: #8496BC; --later-soft: #191F2C;
+  }
+
+  * { box-sizing: border-box; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+
+  .page {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(1.1rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 0.5rem;
+  }
+
+  /* HERO */
+  .hero { margin-bottom: 2.6rem; }
+  .verline { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+  .vpill {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.05em;
+    padding: 0.28rem 0.6rem; border-radius: 999px; font-weight: 600;
+  }
+  .vpill.now { background: var(--good); color: var(--ground); }
+  .vpill.prev { background: transparent; color: var(--ink-faint); border: 1px solid var(--line); }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 800; letter-spacing: -0.022em;
+    text-wrap: balance; font-size: clamp(2rem, 5.2vw, 3.05rem); line-height: 1.04; margin: 0 0 0.7rem;
+  }
+  .hero .lede { font-size: clamp(1rem, 2vw, 1.14rem); color: var(--ink-soft); max-width: 60ch; margin: 0 0 1.4rem; }
+  .wave { width: 100%; height: 46px; display: block; margin-bottom: 1.5rem; opacity: 0.9; }
+  .tagrow { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tag {
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.03em;
+    padding: 0.3rem 0.6rem; border-radius: 999px; background: var(--surface);
+    border: 1px solid var(--line); color: var(--ink-soft);
+  }
+  .tag b { color: var(--ink); font-weight: 600; }
+
+  /* CHANGELOG CALLOUT */
+  .changelog {
+    background: var(--good-soft); border: 1px solid var(--line); border-left: 3px solid var(--good);
+    border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 3.2rem;
+  }
+  .changelog h3 {
+    font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.11em;
+    color: var(--good); margin: 0 0 0.7rem;
+  }
+  .changelog ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.45rem; }
+  .changelog li { font-size: 0.9rem; padding-left: 1.5rem; position: relative; }
+  .changelog li::before { content: "→"; position: absolute; left: 0; color: var(--good); font-family: var(--font-mono); }
+  .changelog li b { font-weight: 600; }
+  .changelog .was { color: var(--ink-faint); }
+
+  /* SECTION */
+  section { margin-bottom: 3.4rem; }
+  .sec-head { margin-bottom: 1.4rem; }
+  .sec-head h2 {
+    font-family: var(--font-display); font-weight: 750; font-size: clamp(1.28rem, 3vw, 1.6rem);
+    letter-spacing: -0.015em; margin: 0.1rem 0 0.35rem; text-wrap: balance;
+  }
+  .sec-head p { margin: 0; color: var(--ink-soft); max-width: 62ch; font-size: 0.96rem; }
+
+  /* SCOPE */
+  .scope { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .scope-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.3rem; }
+  .scope-card.now { border-top: 3px solid var(--good); }
+  .scope-card.later { border-top: 3px solid var(--later); }
+  .scope-card h3 {
+    font-size: 0.78rem; font-family: var(--font-mono); text-transform: uppercase;
+    letter-spacing: 0.1em; margin: 0 0 0.8rem;
+  }
+  .scope-card.now h3 { color: var(--good); }
+  .scope-card.later h3 { color: var(--later); }
+  .scope-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
+  .scope-card li { position: relative; padding-left: 1.35rem; font-size: 0.93rem; color: var(--ink); }
+  .scope-card li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 7px; height: 7px; border-radius: 2px; }
+  .scope-card.now li::before { background: var(--good); }
+  .scope-card.later li::before { background: var(--later); opacity: 0.7; }
+  .scope-card li span { color: var(--ink-soft); }
+
+  /* ARCHITECTURE */
+  .arch { display: flex; flex-direction: column; gap: 0; }
+  .layer { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.05rem 1.2rem; position: relative; border-left: 3px solid var(--accent); }
+  .layer-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
+  .layer .role { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.13em; color: var(--ink-faint); }
+  .layer h3 { font-size: 1.02rem; margin: 0.25rem 0 0.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  .layer p { margin: 0.35rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .layer .stack { font-family: var(--font-mono); color: var(--accent); font-size: 0.8rem; white-space: nowrap; }
+  .connector { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.5rem 0; }
+  .connector .bar { width: 2px; height: 20px; background: var(--line); }
+  .connector .lbl {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--ink-soft);
+    background: var(--surface-2); border: 1px solid var(--line); padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap;
+  }
+  .attach { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+  .note { background: var(--surface-2); border: 1px dashed var(--line); border-radius: 12px; padding: 0.85rem 1rem; }
+  .note .role { font-family: var(--font-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-faint); display: block; margin-bottom: 0.3rem; }
+  .note strong { font-size: 0.92rem; }
+  .note p { margin: 0.25rem 0 0; font-size: 0.86rem; color: var(--ink-soft); }
+  .note code { font-family: var(--font-mono); font-size: 0.82em; color: var(--accent); }
+
+  /* PIPELINE */
+  .flow-scroll { overflow-x: auto; padding-bottom: 0.6rem; margin: 0 -4px; }
+  .flow { display: flex; align-items: stretch; min-width: min-content; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.85rem 0.95rem; width: 150px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 0.3rem; }
+  .step .n { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); font-weight: 600; letter-spacing: 0.05em; }
+  .step h4 { margin: 0; font-size: 0.87rem; font-weight: 700; letter-spacing: -0.01em; }
+  .step p { margin: 0; font-size: 0.77rem; color: var(--ink-soft); line-height: 1.45; }
+  .step .tool { font-family: var(--font-mono); font-size: 0.71rem; color: var(--ink-faint); margin-top: auto; padding-top: 0.35rem; }
+  .arrow { flex: 0 0 auto; display: flex; align-items: center; color: var(--accent); padding: 0 0.3rem; font-size: 1rem; }
+  .step.setup { border-color: var(--good); border-style: dashed; }
+  .step.setup .n { color: var(--good); }
+  .step.manual { border-style: dashed; background: var(--surface-2); }
+  .step.manual .n { color: var(--ink-faint); }
+
+  /* DECISIONS */
+  .decisions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .decision { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .decision .topic { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.11em; color: var(--accent); }
+  .decision .verdict { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.3; }
+  .decision .why { font-size: 0.88rem; color: var(--ink-soft); margin: 0; }
+  .decision .rej { font-size: 0.8rem; color: var(--ink-faint); font-family: var(--font-mono); border-top: 1px solid var(--line); padding-top: 0.5rem; margin-top: 0.1rem; }
+  .decision .rej b { color: var(--risk); font-weight: 600; }
+  .decision .rej b.ok { color: var(--good); }
+
+  /* PYTHON STRATEGY */
+  .py { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .py-col { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.25rem; }
+  .py-col h3 { font-size: 0.94rem; margin: 0 0 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+  .py-col .ph { font-family: var(--font-mono); font-size: 0.64rem; padding: 0.18rem 0.45rem; border-radius: 5px; letter-spacing: 0.04em; }
+  .py-col.first .ph { background: var(--good-soft); color: var(--good); }
+  .py-col.every .ph { background: var(--accent-soft); color: var(--accent); }
+  .py-col ol { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .py-col li { font-size: 0.87rem; color: var(--ink); }
+  .py-col li b { color: var(--ink); }
+  .py-col li span { color: var(--ink-soft); }
+  .py-col code { font-family: var(--font-mono); font-size: 0.82em; color: var(--accent); }
+  .py-rule {
+    margin-top: 1rem; background: var(--risk-soft); border: 1px solid var(--line); border-left: 3px solid var(--risk);
+    border-radius: 10px; padding: 0.8rem 1rem; font-size: 0.87rem; color: var(--ink);
+  }
+  .py-rule b { color: var(--risk); }
+
+  /* RISKS */
+  .risks { display: flex; flex-direction: column; gap: 0.75rem; }
+  .risk-row { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem 1rem; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.95rem 1.1rem; }
+  .sev { font-family: var(--font-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; padding: 0.28rem 0.55rem; border-radius: 999px; white-space: nowrap; align-self: start; }
+  .sev.high { background: var(--risk-soft); color: var(--risk); }
+  .sev.med { background: var(--accent-soft); color: var(--accent); }
+  .sev.mit { background: var(--good-soft); color: var(--good); }
+  .risk-row .body h4 { margin: 0 0 0.2rem; font-size: 0.94rem; font-weight: 700; }
+  .risk-row .body p { margin: 0; font-size: 0.87rem; color: var(--ink-soft); }
+  .risk-row .body .fix { color: var(--ink); }
+  .risk-row .body .fix b { color: var(--good); font-weight: 600; }
+
+  /* TRAJECTORY */
+  .ladder { display: flex; flex-direction: column; gap: 0; }
+  .rung { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.95rem 1.15rem; display: flex; gap: 1rem; align-items: baseline; }
+  .rung .idx { font-family: var(--font-mono); font-weight: 700; font-size: 0.82rem; color: var(--ground); width: 1.7rem; height: 1.7rem; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; align-self: center; }
+  .rung .txt h4 { margin: 0 0 0.15rem; font-size: 0.95rem; font-weight: 700; }
+  .rung .txt p { margin: 0; font-size: 0.86rem; color: var(--ink-soft); }
+  .rung.r0 { border-left: 3px solid var(--good); }
+  .rung.r1 { border-left: 3px solid var(--accent); }
+  .rung.r2 { border-left: 3px solid var(--later); }
+  .rung.r3 { border-left: 3px solid var(--later); }
+  .rung.r0 .idx { background: var(--good); }
+  .rung.r1 .idx { background: var(--accent); }
+  .rung.r2 .idx, .rung.r3 .idx { background: var(--later); }
+  .rung.r0 .txt h4 span { font-family: var(--font-mono); font-size: 0.64rem; color: var(--good); background: var(--good-soft); padding: 0.12rem 0.4rem; border-radius: 5px; margin-left: 0.5rem; letter-spacing: 0.04em; vertical-align: middle; }
+  .fall-lbl { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0 0.4rem 0.5rem; color: var(--ink-faint); font-family: var(--font-mono); font-size: 0.72rem; }
+
+  /* CHECKLIST */
+  .ready { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem 1.5rem; }
+  .ready h3 { margin: 0 0 1rem; font-size: 1rem; font-weight: 750; letter-spacing: -0.01em; }
+  .ready ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+  .ready li { position: relative; padding-left: 1.9rem; font-size: 0.92rem; }
+  .ready li::before {
+    content: ""; position: absolute; left: 0; top: 0.05em; width: 1.15rem; height: 1.15rem;
+    border-radius: 5px; border: 2px solid var(--accent); background: transparent;
+  }
+  .ready li b { font-weight: 650; }
+  .ready li span { color: var(--ink-soft); }
+  .gate {
+    margin-top: 1.3rem; padding-top: 1.1rem; border-top: 1px dashed var(--line);
+    font-size: 0.9rem; color: var(--ink-soft); display: flex; gap: 0.6rem; align-items: baseline;
+  }
+  .gate b { color: var(--accent); font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.03em; white-space: nowrap; }
+
+  /* HORIZON */
+  .horizon { background: var(--later-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.4rem; }
+  .horizon .role { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--later); display: block; margin-bottom: 0.5rem; }
+  .horizon p { margin: 0 0 0.7rem; color: var(--ink-soft); font-size: 0.92rem; max-width: 66ch; }
+  .horizon p:last-child { margin-bottom: 0; }
+  .horizon strong { color: var(--ink); }
+
+  /* FOOT */
+  .foot { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1.2rem; font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+  @media (max-width: 640px) {
+    .scope, .attach, .decisions, .py { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page">
+  <div class="wrap">
+    <h2 class="sr-only">Plan d'architecture arrêté (version 2) pour l'application de bureau de gestion musicale : périmètre MVP, architecture Tauri plus beets piloté par un Python local isolé dans un venv, stratégie Python détaillée, décisions, risques et trajectoire d'évolution, à confirmer avant de coder.</h2>
+
+    <header class="hero">
+      <div class="verline">
+        <span class="vpill now">Version 2 · décisions arrêtées</span>
+        <span class="vpill prev">succède à la v1 · exploration</span>
+      </div>
+      <p class="eyebrow">Plan à confirmer avant de coder</p>
+      <h1>Music Manager — plan arrêté</h1>
+      <p class="lede">Une app de bureau qui télécharge, tague proprement et range ta musique. Le moteur est <b>beets</b> ; le MVP s'appuie sur un <b>Python local isolé</b>. Voici le plan sur lequel on démarre.</p>
+      <svg class="wave" viewBox="0 0 940 46" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="tagrow">
+        <span class="tag"><b>Tauri</b> + React</span>
+        <span class="tag">Moteur <b>beets</b></span>
+        <span class="tag"><b>Python local</b> · venv isolé</span>
+        <span class="tag">Format <b>m4a / AAC</b></span>
+        <span class="tag"><b>+ plugin VGMdb</b> (OST jeux)</span>
+        <span class="tag">Coût API <b>0 €</b></span>
+      </div>
+    </header>
+
+    <div class="changelog">
+      <h3>◆ Ce qui a bougé depuis la v1</h3>
+      <ul>
+        <li><b>beets est confirmé</b> — <span class="was">(v1 : « pari beets vs moteur natif », indécis)</span>. On ne réinvente pas la roue.</li>
+        <li><b>MVP = Python requis en local</b>, isolé dans un venv — <span class="was">(v1 : Python embarqué dès le départ)</span>. Plus simple pour démarrer.</li>
+        <li><b>Le moteur natif est repoussé loin</b> — <span class="was">(v1 : envisagé comme plan A possible)</span>. Il reste un horizon, pas une option MVP.</li>
+        <li><b>Couverture OST jeux vidéo validée</b> — MusicBrainz + plugin <code>beets-vgmdb</code> pour les cas pointus (titres japonais, pochettes VGM).</li>
+      </ul>
+    </div>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">01 — Cadrage</p>
+        <h2>Ce qu'on construit, ce qu'on repousse</h2>
+        <p>Le MVP attaque la vraie douleur — métadonnées et pochettes — sans se fracasser sur le verrou iOS. L'étape « glisser vers Musique » reste manuelle et assumée.</p>
+      </div>
+      <div class="scope">
+        <div class="scope-card now">
+          <h3>◆ Dans le MVP</h3>
+          <ul>
+            <li>Téléchargement depuis YouTube <span>— avec réglage du parsing des titres</span></li>
+            <li>Onboarding qui détecte / guide l'install de <b>Python</b></li>
+            <li>Tagging auto + pochette carrée <span>— MusicBrainz + VGMdb</span></li>
+            <li>Écran de <b>validation manuelle</b> du match <span>— le cœur de valeur</span></li>
+            <li>Bibliothèque locale = <b>source de vérité</b> (base beets)</li>
+            <li>Import manuel dans Musique → sync iPhone</li>
+          </ul>
+        </div>
+        <div class="scope-card later">
+          <h3>◇ Repoussé plus tard</h3>
+          <ul>
+            <li>Python <b>embarqué</b> dans l'app <span>— packaging autonome</span></li>
+            <li>Serveur perso de streaming <span>— « Spotify maison »</span></li>
+            <li>App / client iPhone dédié</li>
+            <li>Moteur natif sans beets <span>— très long terme</span></li>
+            <li>Distribution grand public multi-OS soignée</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">02 — Architecture</p>
+        <h2>Trois couches, reliées sans réseau</h2>
+        <p>Une webview pour l'UI, un cœur natif Rust, et beets piloté via un Python local isolé. Aucun port ouvert : tout passe par des canaux privés entre process.</p>
+      </div>
+      <div class="arch">
+        <div class="layer">
+          <div class="layer-top">
+            <div><span class="role">Interface</span><h3>Webview — l'UI</h3></div>
+            <span class="stack">React</span>
+          </div>
+          <p>Là où vit ta valeur : l'UX du matching et la vue bibliothèque. Ce que tu sais déjà faire en dev web.</p>
+        </div>
+        <div class="connector"><span class="bar"></span><span class="lbl">IPC · invoke / emit</span><span class="bar"></span></div>
+        <div class="layer">
+          <div class="layer-top">
+            <div><span class="role">Backend natif</span><h3>Cœur Tauri</h3></div>
+            <span class="stack">Rust</span>
+          </div>
+          <p>Le « backend de bureau ». Orchestre le sidecar, relaie sa progression vers l'UI, lit la base pour afficher la lib.</p>
+        </div>
+        <div class="connector"><span class="bar"></span><span class="lbl">stdio · NDJSON</span><span class="bar"></span></div>
+        <div class="layer">
+          <div class="layer-top">
+            <div><span class="role">Sidecar · venv isolé</span><h3>beets + yt-dlp</h3></div>
+            <span class="stack">Python local</span>
+          </div>
+          <p>Tourne dans un environnement virtuel <b>que l'app possède</b>, jamais le Python global de l'user. Télécharge, identifie, tague, va chercher la pochette.</p>
+        </div>
+        <div class="attach">
+          <div class="note">
+            <span class="role">Lecture directe (Rust)</span>
+            <strong>Base SQLite de beets</strong>
+            <p>La vue « ma lib » lit cette base. On <code>lit</code>, on n'écrit jamais — beets en est propriétaire.</p>
+          </div>
+          <div class="note">
+            <span class="role">Binaires natifs · chemin absolu</span>
+            <strong>ffmpeg · fpcalc</strong>
+            <p>Embarqués par l'app, jamais appelés via le <code>PATH</code> système.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">03 — Parcours</p>
+        <h2>D'une URL à un morceau propre</h2>
+        <p>Une vraie séquence : le setup n'a lieu qu'une fois. Le seul point d'arrêt récurrent est la validation du match — le cœur de l'app.</p>
+      </div>
+      <div class="flow-scroll">
+        <div class="flow">
+          <div class="step setup">
+            <span class="n">00 · 1re fois</span>
+            <h4>Setup</h4>
+            <p>Détecte Python, crée le venv, installe beets.</p>
+            <span class="tool">onboarding</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">01</span>
+            <h4>Coller l'URL</h4>
+            <p>Récupère les infos sans télécharger.</p>
+            <span class="tool">yt-dlp -J</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">02</span>
+            <h4>Régler le titre</h4>
+            <p>Découper « Artiste – Titre », tes règles.</p>
+            <span class="tool">--parse-metadata</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">03</span>
+            <h4>Télécharger</h4>
+            <p>Flux AAC natif, sans réencodage.</p>
+            <span class="tool">yt-dlp -x m4a</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">04</span>
+            <h4>Valider le match</h4>
+            <p>Choisir parmi les candidats. Ton UI clé.</p>
+            <span class="tool">beets · MB · VGMdb</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">05</span>
+            <h4>Pochette carrée</h4>
+            <p>Vraie cover, incrustée dans les tags.</p>
+            <span class="tool">fetchart · embedart</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <span class="n">06</span>
+            <h4>Ranger la lib</h4>
+            <p>Renommé, classé, écrit en base.</p>
+            <span class="tool">SQLite beets</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step manual">
+            <span class="n">07 · manuel</span>
+            <h4>Vers Musique</h4>
+            <p>Glisser dans Musique → sync iPhone.</p>
+            <span class="tool">drag &amp; drop</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">04 — Décisions arrêtées</p>
+        <h2>Les choix, et le pourquoi</h2>
+        <p>Chaque arbitrage a une raison — et souvent une option écartée qui en dit autant.</p>
+      </div>
+      <div class="decisions">
+        <div class="decision">
+          <span class="topic">Moteur de tagging</span>
+          <span class="verdict">beets — confirmé</span>
+          <p class="why">Mûr depuis des années, écosystème de plugins. Le plugin <code>beets-vgmdb</code> couvre même les OST de jeux (titres japonais, pochettes VGM).</p>
+          <p class="rej">écarté (pour l'instant) · <b class="ok">moteur natif Rust</b> — trop de valeur à reconstruire</p>
+        </div>
+        <div class="decision">
+          <span class="topic">Exécution de beets</span>
+          <span class="verdict">Python local, venv isolé</span>
+          <p class="why">L'app crée son propre environnement et y installe beets. On dépend du Python de l'user juste pour amorcer — ensuite tout est à nous.</p>
+          <p class="rej">interdit · <b>pip install global</b> (casse le système · bloqué par PEP 668)</p>
+        </div>
+        <div class="decision">
+          <span class="topic">Format audio</span>
+          <span class="verdict">m4a / AAC natif</span>
+          <p class="why">La source YouTube est déjà lossy. On prend le flux AAC tel quel — zéro réencodage, lit partout dans l'écosystème Apple.</p>
+          <p class="rej">écarté · <b>MP3</b> (réflexe 2010) · <b>FLAC</b> (inutile ici)</p>
+        </div>
+        <div class="decision">
+          <span class="topic">Métadonnées</span>
+          <span class="verdict">Bases ouvertes, gratuites</span>
+          <p class="why">MusicBrainz, Cover Art Archive, AcoustID, VGMdb, iTunes. L'anti-Spotify : tu récupères les données, tu ne les loues pas.</p>
+          <p class="rej">coût total · <b class="ok">0 €</b> · une seule clé (AcoustID) optionnelle</p>
+        </div>
+        <div class="decision">
+          <span class="topic">Communication interne</span>
+          <span class="verdict">stdio · NDJSON (natif)</span>
+          <p class="why">Aucun port réseau ouvert, ressenti natif, surface d'attaque nulle. Un peu de protocole maison, que je porte.</p>
+          <p class="rej">écarté · <b>serveur HTTP local</b> (port qui traîne, à sécuriser)</p>
+        </div>
+        <div class="decision">
+          <span class="topic">Téléchargement</span>
+          <span class="verdict">Binaires officiels standalone</span>
+          <p class="why">yt-dlp et ffmpeg publient leurs propres binaires. Embarqués + auto-update de yt-dlp (il casse souvent quand YouTube change).</p>
+          <p class="rej">bonus · <b class="ok">mise à jour indépendante</b></p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">05 — Stratégie Python</p>
+        <h2>Comment on dépend d'un Python local sans que ça casse</h2>
+        <p>La clé : un environnement isolé que l'app possède, plus un contrôle de santé qui se répare tout seul. C'est ce qui transforme « fragile » en « auto-réparant ».</p>
+      </div>
+      <div class="py">
+        <div class="py-col first">
+          <h3>Au 1er lancement <span class="ph">ONBOARDING</span></h3>
+          <ol>
+            <li><b>Détecter</b> un Python compatible <span>(<code>python3</code>, <code>py -3</code>, emplacements connus)</span></li>
+            <li><b>Vérifier la version</b> <span>— sinon guider l'install (python.org / brew) puis re-scanner</span></li>
+            <li><b>Créer un venv isolé</b> <span>dans le dossier de l'app</span></li>
+            <li><b>Installer beets + plugins</b> <span>en versions figées (lockfile)</span></li>
+            <li><b>Embarquer</b> <code>fpcalc</code> &amp; <code>ffmpeg</code></li>
+          </ol>
+        </div>
+        <div class="py-col every">
+          <h3>À chaque lancement <span class="ph">HEALTH CHECK</span></h3>
+          <ol>
+            <li><b>Le venv tourne-t-il ?</b> <span>beets s'importe-t-il correctement ?</span></li>
+            <li>Si <b>cassé</b> <span>(Python déplacé ou mis à jour → venv orphelin)</span></li>
+            <li><b>Reconstruire le venv</b> automatiquement <span>— une panne mystérieuse devient 20 s de rebuild</span></li>
+            <li>Sinon, <b>démarrer normalement</b></li>
+          </ol>
+        </div>
+      </div>
+      <div class="py-rule">
+        <b>Règle ferme :</b> jamais d'install dans le Python de l'utilisateur. Toujours un venv que l'app possède — ça évite les conflits <em>et</em> le refus <code>externally-managed-environment</code> des Python modernes.
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">06 — Risques &amp; parades</p>
+        <h2>Où ça peut coincer — et le filet en face</h2>
+        <p>Le risque n'est pas « est-ce faisable » — c'est « à quel point c'est fluide à installer et à maintenir ». Chaque risque a sa parade.</p>
+      </div>
+      <div class="risks">
+        <div class="risk-row">
+          <span class="sev high">À surveiller</span>
+          <div class="body">
+            <h4>Trouver le bon Python (surtout Windows)</h4>
+            <p>PATH ambigu, stub Microsoft Store, <code>python</code> vs <code>python3</code>.</p>
+            <p class="fix">Parade · <b>sonder plusieurs candidats</b>, et laisser l'user pointer son Python à la main en secours.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <span class="sev high">« Ça marchait, puis non »</span>
+          <div class="body">
+            <h4>Venv cassé après une màj de Python</h4>
+            <p>Le venv référence l'interpréteur qui l'a créé ; s'il disparaît, le venv meurt.</p>
+            <p class="fix">Parade · <b>health check + reconstruction auto</b> à chaque lancement.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <span class="sev med">Récurrent</span>
+          <div class="body">
+            <h4>yt-dlp qui casse</h4>
+            <p>YouTube change ses signatures souvent.</p>
+            <p class="fix">Parade · <b>mécanisme d'auto-update</b> du binaire yt-dlp.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <span class="sev med">Cœur de valeur</span>
+          <div class="body">
+            <h4>Le matching interactif (stateful)</h4>
+            <p>« Voici les candidats » → l'user choisit → « applique ». La vraie UX à soigner.</p>
+            <p class="fix">Parade · <b>écran de validation</b> dédié + fallback tag manuel pour les compils de fan.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <span class="sev mit">Neutralisé</span>
+          <div class="body">
+            <h4>Packaging de Python</h4>
+            <p>Le risque n°1 de la v1 — <b>écarté du MVP</b> : on exige Python plutôt que de l'embarquer. À réactiver seulement le jour du packaging autonome.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">07 — Trajectoire</p>
+        <h2>Un chemin d'évolution, pas un cul-de-sac</h2>
+        <p>Le MVP et les étapes suivantes partagent la même architecture. On ne remplace qu'une brique à la fois — jamais tout.</p>
+      </div>
+      <div class="ladder">
+        <div class="rung r0">
+          <span class="idx">0</span>
+          <div class="txt">
+            <h4>Python requis en local <span>MVP · MAINTENANT</span></h4>
+            <p>L'app amorce le venv avec le Python de l'user. Simple, suffisant entre soi et des potes.</p>
+          </div>
+        </div>
+        <div class="fall-lbl">↓ même archi, on change juste QUI amorce le venv</div>
+        <div class="rung r1">
+          <span class="idx">1</span>
+          <div class="txt">
+            <h4>Python embarqué</h4>
+            <p>python-build-standalone + uv. Plus rien à installer côté user. Le reste du pipeline ne bouge pas.</p>
+          </div>
+        </div>
+        <div class="fall-lbl">↓ le jour où tu veux un vrai distribuable clean</div>
+        <div class="rung r2">
+          <span class="idx">2</span>
+          <div class="txt">
+            <h4>Moteur natif, sans beets</h4>
+            <p>Tagging en Rust contre MusicBrainz / AcoustID. Zéro Python. Gros chantier, très long terme.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <p class="eyebrow">08 — Prêt à coder</p>
+        <h2>Ce que fera la première version du code</h2>
+      </div>
+      <div class="ready">
+        <h3>Le MVP, concrètement</h3>
+        <ul>
+          <li><b>Squelette Tauri + React</b> <span>— la coquille desktop et l'UI de base</span></li>
+          <li><b>Onboarding Python</b> <span>— détection, guidage install, création du venv, install de beets</span></li>
+          <li><b>Sidecar Python ↔ Rust</b> <span>— le protocole stdio / NDJSON</span></li>
+          <li><b>Coller une URL → télécharger</b> <span>— yt-dlp en m4a, avec progression</span></li>
+          <li><b>Écran de validation du match</b> <span>— présenter les candidats, confirmer en un clic</span></li>
+          <li><b>Vue bibliothèque</b> <span>— lecture de la base beets</span></li>
+        </ul>
+        <div class="gate">
+          <b>PROCHAINE ÉTAPE</b>
+          <span>Tu lis ce plan. Si rien à ajuster, tu me dis explicitement « on code » — et seulement là on quitte la réflexion pour l'implémentation.</span>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-bottom:0;">
+      <div class="sec-head">
+        <p class="eyebrow">Horizon</p>
+        <h2>Le jour où le « transfert iPhone » disparaît</h2>
+      </div>
+      <div class="horizon">
+        <span class="role">◇ Vision long terme</span>
+        <p>Un serveur perso (<strong>Navidrome</strong> exposant l'API <strong>Subsonic</strong>) te donnerait accès à ta lib depuis des clients iPhone existants et matures (<strong>Amperfy</strong>…), <strong>avec cache offline</strong>. Tu ne transfères plus rien : tu streames.</p>
+        <p>Ça contourne totalement le verrou Apple — sans app custom, sans 99 $/an, sans Finder. Ce qui était « la cerise » deviendrait, à terme, le pilier. Mais d'abord : le MVP local ci-dessus.</p>
+      </div>
+    </section>
+
+    <div class="foot">
+      <span>Fiche de faisabilité · music-manager · v2</span>
+      <span>Plan à confirmer — rien n'est encore implémenté</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var svg = document.querySelector('.wave');
+    if (!svg) return;
+    var W = 940, H = 46, mid = H / 2, bars = 120, gap = W / bars;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < bars; i++) {
+      var t = i / bars;
+      var env = 0.35 + 0.65 * Math.pow(Math.sin(Math.PI * t), 0.6);
+      var s = Math.sin(t * 34) * 0.5 + Math.sin(t * 11 + 1.3) * 0.35 + Math.sin(t * 61 + 0.7) * 0.15;
+      var amp = Math.abs(s) * env;
+      var h = Math.max(1.5, amp * (mid - 3));
+      var x = i * gap + gap * 0.28;
+      var r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', x.toFixed(2));
+      r.setAttribute('y', (mid - h).toFixed(2));
+      r.setAttribute('width', (gap * 0.44).toFixed(2));
+      r.setAttribute('height', (h * 2).toFixed(2));
+      r.setAttribute('rx', '1');
+      r.setAttribute('fill', 'var(--accent)');
+      r.setAttribute('opacity', (0.28 + amp * 0.55).toFixed(2));
+      frag.appendChild(r);
+    }
+    svg.appendChild(frag);
+  })();
+</script>

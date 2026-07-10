@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+
+# Claude local settings (personal)
+.claude/settings.local.json
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Rust / Tauri
+target/
+src-tauri/target/
+
+# Python sidecar
+.venv/
+__pycache__/
+*.pyc
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
