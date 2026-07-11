@@ -78,16 +78,25 @@
 - Test high-risk business logic and observable behavior, not visuals or implementation details.
 - Colocate tests (`x.ts` + `x.test.ts`). Add a targeted regression test on bugfix.
 
+## Git Workflow
+
+- Branches: `main` (stable, tagged releases only) · `develop` (integration) · `feature/<name>` (opt-in for significant or parallel work).
+- Direct commits to `develop` are fine for small changes. Use a `feature/*` branch when a change is long-lived, risky, or involves parallel work.
+- Never commit directly to `main`. Merge `develop` → `main` only via PR when ready to release.
+- Hotfixes: branch from `main` as `hotfix/<name>`, merge back to both `main` and `develop`.
+
 ## Commits
 
 - Conventional Commits: `type(scope): subject` — imperative, English, no trailing period.
 - Types: feat, fix, refactor, perf, test, docs, build, ci, chore, revert.
 - Scope required on feat/fix. Natural scopes: player, library, sidecar, shell, ui, build, deps.
 - Breaking changes: append `!` after type (`feat!(sidecar): ...`) or add `BREAKING CHANGE:` footer.
-- Release commit: `chore(release): vX.Y.Z`.
+- The release commit (`chore(release): vX.Y.Z`) is generated automatically by release-please — never write it by hand.
 
 ## Versioning
 
 - SemVer. Pre-1.0 while the format/API are unstable.
-- Release: bump `version` in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, commit, then tag `vX.Y.Z` (annotated). Tag/push only when explicitly asked.
+- Releases are automated via release-please (GitHub Actions): merging `develop` → `main` triggers a Release PR that bumps all version files and generates `CHANGELOG.md`. Merging the Release PR creates the annotated tag and GitHub Release.
+- Version files kept in sync automatically: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`.
+- Never tag manually while release-please is active.
 - Backlog: GitHub Issues + Milestones (one milestone per upcoming version).
