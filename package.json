@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
-    "changelog": "git-cliff -o CHANGELOG.md",
-    "changelog:unreleased": "git-cliff --unreleased"
+    "tauri": "tauri"
   },
   "dependencies": {
     "@heroui/react": "^3.2.2",

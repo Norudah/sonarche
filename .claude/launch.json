@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vite",
+      "runtimeExecutable": "/Users/rpierucci/.nvm/versions/node/v24.14.1/bin/node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js"],
+      "port": 1420
+    }
+  ]
+}
