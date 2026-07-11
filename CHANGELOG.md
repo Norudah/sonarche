@@ -9,9 +9,11 @@ generated from [Conventional Commits](https://www.conventionalcommits.org/) via 
 ### Chore
 
 - Initialize project with architecture docs and Claude rules
+- Regenerate changelog
 
 ### Features
 
 - Bootstrap tauri desktop app with python sidecar poc
+- Add integrated audio player
 
 
