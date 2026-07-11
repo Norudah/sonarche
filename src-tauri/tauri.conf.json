@@ -23,7 +23,10 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$AUDIO/MusicManager/**", "$APPDATA/**"]
+        "scope": [
+          "$AUDIO/MusicManager/**",
+          "$APPDATA/**"
+        ]
       }
     }
   },
