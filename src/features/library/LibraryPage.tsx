@@ -6,11 +6,38 @@ import { paths } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { useLibrary } from "@/features/library/hooks";
 import { formatDuration } from "@/shared/lib/format";
+import { usePlayer } from "@/shared/player/PlayerContext";
 
 function TrackRow({ track }: { track: LibraryTrack }) {
   const { t } = useTranslation("library");
+  const { t: tPlayer } = useTranslation("player");
+  const { current, isPlaying, play } = usePlayer();
+  const isCurrent = current?.id === track.id;
+
   return (
-    <li className="flex items-center gap-4 rounded-xl px-3 py-2 transition-colors hover:bg-default/40">
+    <li
+      className={
+        "flex items-center gap-4 rounded-xl px-3 py-2 transition-colors hover:bg-default/40" +
+        (isCurrent ? " bg-accent/15" : "")
+      }
+    >
+      <Button
+        variant="secondary"
+        size="sm"
+        onPress={() =>
+          play({
+            id: track.id,
+            src: track.audioUrl,
+            title: track.title || t("unknownTitle"),
+            subtitle: track.artist || t("unknownArtist"),
+            artUrl: track.artUrl,
+            duration: track.length,
+          })
+        }
+        aria-label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
+      >
+        {isCurrent && isPlaying ? "⏸" : "▶"}
+      </Button>
       {track.artUrl ? (
         <img src={track.artUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
       ) : (

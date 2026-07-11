@@ -11,6 +11,7 @@ export interface LibraryTrack {
   bitrate: number | null;
   format: string;
   path: string;
+  audioUrl: string;
   artUrl: string | null;
 }
 
@@ -41,6 +42,7 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     bitrate: track.bitrate,
     format: track.format,
     path: track.path,
+    audioUrl: convertFileSrc(track.path),
     artUrl: track.art_path ? convertFileSrc(track.art_path) : null,
   }));
 }
