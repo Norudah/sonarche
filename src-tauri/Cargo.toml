@@ -1,7 +1,7 @@
 [package]
 name = "sonarche"
 version = "0.1.0"
-description = "Local music library manager"
+description = "Your music, from the stream into the ark."
 edition = "2021"
 
 [build-dependencies]
