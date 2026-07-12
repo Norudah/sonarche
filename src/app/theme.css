@@ -44,4 +44,17 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+
+  /* Now-playing equalizer — used by the player when audio is playing. */
+  --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
+
+  @keyframes sonarche-equalizer {
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
 }

@@ -1,5 +1,11 @@
 {
   "play": "Play",
   "pause": "Pause",
-  "seek": "Seek"
+  "previous": "Previous",
+  "next": "Next",
+  "seek": "Seek",
+  "volume": "Volume",
+  "mute": "Mute",
+  "unmute": "Unmute",
+  "nothingPlaying": "Nothing playing"
 }

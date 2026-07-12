@@ -1,5 +1,11 @@
 {
   "play": "Lecture",
   "pause": "Pause",
-  "seek": "Position de lecture"
+  "previous": "Précédent",
+  "next": "Suivant",
+  "seek": "Position de lecture",
+  "volume": "Volume",
+  "mute": "Couper le son",
+  "unmute": "Rétablir le son",
+  "nothingPlaying": "Aucune lecture"
 }
