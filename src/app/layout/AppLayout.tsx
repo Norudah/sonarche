@@ -16,7 +16,7 @@ function NavItem({ to, label }: { to: string; label: string }) {
           "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           isActive
             ? "bg-accent/15 text-accent"
-            : "text-muted-foreground hover:bg-default/40",
+            : "text-muted hover:bg-default/40",
         )
       }
     >
@@ -30,7 +30,7 @@ export function AppLayout() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-56 shrink-0 flex-col gap-6 border-r border-default/40 p-4">
+        <aside className="flex w-sidebar shrink-0 flex-col gap-6 border-r border-separator p-4">
           <div className="px-3 pt-2 text-base font-semibold tracking-tight">
             ♪ {t("appName")}
           </div>

@@ -1,0 +1,47 @@
+/**
+ * Sonarche design tokens — single source of truth for the visual identity.
+ *
+ * We sit on top of HeroUI v3's semantic token system (see @heroui/styles):
+ * HeroUI exposes every semantic color as a Tailwind utility (bg-surface,
+ * text-muted, bg-accent, bg-accent-soft, border-separator, ...) and computes
+ * hover/soft/radius/easing scales for us. This file ONLY overrides what makes
+ * the app feel like Sonarche and adds app-specific layout constants.
+ *
+ * Rules:
+ * - Never hardcode a hex/oklch color in a component. Use the semantic utility.
+ * - Theme switching works by overriding the RAW vars (--accent, ...) per theme
+ *   selector; HeroUI's @theme maps --color-accent: var(--accent) statically.
+ * - Light is the default (:root). A future settings toggle will set
+ *   data-theme="dark" on <html> — the dark block below is already wired.
+ */
+
+/* --- Brand colors (raw vars, swapped per theme) --------------------------- */
+
+:root,
+[data-theme="light"] {
+  /* Sonarche identity: indigo accent */
+  --accent: oklch(0.58 0.21 277);
+  --accent-foreground: var(--snow);
+  --focus: var(--accent);
+}
+
+[data-theme="dark"] {
+  /* Slightly lighter accent for contrast on dark surfaces */
+  --accent: oklch(0.66 0.2 277);
+  --accent-foreground: var(--snow);
+}
+
+/* --- App-level design tokens (theme-agnostic) ----------------------------- */
+
+@theme {
+  /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
+     Centralized so the shell layout never carries magic numbers. */
+  --spacing-sidebar: 15rem;
+  --spacing-topbar: 2.75rem;
+  --spacing-player: 5.5rem;
+
+  /* Typography */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
