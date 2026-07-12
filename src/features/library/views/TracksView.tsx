@@ -47,7 +47,7 @@ function TrackRow({ track }: { track: LibraryTrack }) {
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{track.title || t("unknownTitle")}</p>
-        <p className="truncate text-sm text-muted-foreground">
+        <p className="truncate text-sm text-muted">
           {track.artist || t("unknownArtist")}
           {track.album && ` — ${track.album}`}
           {track.year != null && ` (${track.year})`}
@@ -56,14 +56,14 @@ function TrackRow({ track }: { track: LibraryTrack }) {
       <Chip color="default" size="sm" variant="soft">
         {track.format}
       </Chip>
-      <span className="w-12 text-right text-sm tabular-nums text-muted-foreground">
+      <span className="w-12 text-right text-sm tabular-nums text-muted">
         {track.length != null ? formatDuration(track.length) : "—"}
       </span>
     </li>
   );
 }
 
-export function LibraryPage() {
+export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
 
@@ -71,9 +71,9 @@ export function LibraryPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("views.tracks")}</h1>
           {library.data && (
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-muted">
               {t("trackCount", { count: library.data.length })}
             </p>
           )}
@@ -106,7 +106,7 @@ export function LibraryPage() {
       {library.data && library.data.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <p className="text-4xl">♪</p>
-          <p className="text-muted-foreground">{t("empty")}</p>
+          <p className="text-muted">{t("empty")}</p>
           <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
             {t("goToDownload")}
           </Link>

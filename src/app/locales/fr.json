@@ -1,7 +1,8 @@
 {
-  "appName": "Music Manager",
+  "appName": "Sonarche",
   "nav": {
-    "download": "Télécharger",
-    "library": "Bibliothèque"
+    "home": "Accueil",
+    "download": "Explorer",
+    "library": "Arche"
   }
 }

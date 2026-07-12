@@ -1,5 +1,12 @@
 {
-  "title": "Bibliothèque",
+  "title": "Arche",
+  "views": {
+    "tracks": "Morceaux",
+    "albums": "Albums",
+    "artists": "Artistes",
+    "genres": "Genres",
+    "comingSoon": "Bientôt disponible."
+  },
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
   "refresh": "Actualiser",

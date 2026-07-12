@@ -37,7 +37,7 @@ function StagedTrackCard({ track }: { track: StagedTrack }) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{track.title ?? t("unknownTitle")}</p>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="truncate text-sm text-muted">
             {track.artist ?? t("unknownArtist")}
             {track.duration != null && ` · ${formatDuration(track.duration)}`}
           </p>
@@ -92,7 +92,7 @@ export function DownloadPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
       </div>
 
       <form

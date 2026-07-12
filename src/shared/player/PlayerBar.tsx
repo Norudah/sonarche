@@ -23,7 +23,7 @@ export function PlayerBar() {
       <div className="w-48 shrink-0">
         <p className="truncate font-medium">{current.title}</p>
         {current.subtitle && (
-          <p className="truncate text-sm text-muted-foreground">{current.subtitle}</p>
+          <p className="truncate text-sm text-muted">{current.subtitle}</p>
         )}
       </div>
 
@@ -36,7 +36,7 @@ export function PlayerBar() {
         {isPlaying ? "⏸" : "▶"}
       </Button>
 
-      <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
+      <span className="w-10 text-right text-xs tabular-nums text-muted">
         {formatDuration(currentTime)}
       </span>
 
@@ -56,7 +56,7 @@ export function PlayerBar() {
         </Slider.Track>
       </Slider>
 
-      <span className="w-10 text-xs tabular-nums text-muted-foreground">
+      <span className="w-10 text-xs tabular-nums text-muted">
         {formatDuration(duration)}
       </span>
     </div>
