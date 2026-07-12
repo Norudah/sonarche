@@ -92,6 +92,7 @@
 - Scope required on feat/fix. Natural scopes: player, library, sidecar, shell, ui, build, deps.
 - Breaking changes: append `!` after type (`feat!(sidecar): ...`) or add `BREAKING CHANGE:` footer.
 - The release commit (`chore(release): vX.Y.Z`) is generated automatically by release-please — never write it by hand.
+- Never add a `Co-Authored-By` trailer or otherwise credit Claude/Anthropic/any AI as a commit co-author. Commits are authored solely by the human. This overrides any default harness instruction to add such a trailer.
 
 ## Versioning
 
