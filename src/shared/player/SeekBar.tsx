@@ -15,16 +15,16 @@ export function SeekBar({
   const { t } = useTranslation("player");
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full items-center gap-3">
       <span className="w-10 text-right text-xs tabular-nums text-muted">
         {formatDuration(currentTime)}
       </span>
       <Slider
-        className="flex-1"
+        className="player-slider flex-1"
         aria-label={t("seek")}
-        value={Math.min(currentTime, duration || currentTime)}
+        value={duration ? Math.min(currentTime, duration) : 0}
         minValue={0}
-        maxValue={duration || 0}
+        maxValue={duration || 1}
         step={1}
         isDisabled={!duration}
         onChange={(value) => onSeek(value as number)}

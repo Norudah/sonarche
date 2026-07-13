@@ -31,13 +31,54 @@
   --accent-foreground: var(--snow);
 }
 
+/* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
+
+/* Seekbar — accent color, thumb 1rem */
+.player-slider .slider__track {
+  @apply h-1;
+  border-inline-width: 0.5rem;
+}
+
+.player-slider .slider__thumb {
+  @apply opacity-0;
+  width: calc(1rem + 0.25rem);
+}
+
+.player-slider .slider__thumb::after {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Volume slider — thin gray bar, no visible thumb, no border artifacts */
+.volume-slider .slider__track {
+  @apply h-1;
+  /* No transparent side borders: eliminates the accent-colored edge artifact */
+  border-inline-width: 0;
+}
+
+.volume-slider .slider__fill {
+  @apply bg-foreground/75;
+}
+
+.volume-slider .slider__thumb {
+  @apply bg-transparent;
+  width: calc(0.75rem + 0.25rem);
+}
+
+.volume-slider .slider__thumb::after {
+  @apply bg-white shadow-sm;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
 /* --- App-level design tokens (theme-agnostic) ----------------------------- */
 
 @theme {
   /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
      Centralized so the shell layout never carries magic numbers. */
   --spacing-sidebar: 15rem;
-  --spacing-topbar: 2.75rem;
+  --spacing-topbar: 2.25rem;
   --spacing-player: 5.5rem;
 
   /* Typography */

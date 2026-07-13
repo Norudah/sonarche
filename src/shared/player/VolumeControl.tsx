@@ -14,7 +14,7 @@ export function VolumeControl({
   const Icon = muted ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className="flex w-40 items-center gap-2">
+    <div className="flex w-28 items-center gap-2">
       <Button
         variant="ghost"
         size="sm"
@@ -25,7 +25,7 @@ export function VolumeControl({
         <Icon className="size-4" />
       </Button>
       <Slider
-        className="flex-1"
+        className="volume-slider flex-1"
         aria-label={t("volume")}
         value={volume}
         minValue={0}

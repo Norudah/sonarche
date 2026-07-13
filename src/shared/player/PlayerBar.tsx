@@ -5,21 +5,22 @@ import { Transport } from "@/shared/player/Transport";
 import { VolumeControl } from "@/shared/player/VolumeControl";
 
 export function PlayerBar() {
-  const { current, isPlaying, currentTime, duration, volume, toggle, seek, setVolume } =
-    usePlayer();
+  const { current, isPlaying, currentTime, duration, volume, toggle, seek, setVolume } = usePlayer();
 
   return (
-    <div className="flex h-player shrink-0 flex-col justify-center gap-1.5 border-t border-separator bg-surface px-6 py-2">
-      <div className="flex items-center gap-4">
+    <div className="flex h-player shrink-0 items-center border-t border-separator bg-surface px-6">
+      <div className="flex flex-1 items-center">
         <NowPlaying current={current} isPlaying={isPlaying} />
-        <div className="flex flex-1 justify-center">
-          <Transport isPlaying={isPlaying} canPlay={!!current} onToggle={toggle} />
-        </div>
-        <div className="flex w-56 shrink-0 justify-end">
-          <VolumeControl volume={volume} onVolumeChange={setVolume} />
-        </div>
       </div>
-      <SeekBar currentTime={currentTime} duration={duration} onSeek={seek} />
+
+      <div className="flex w-[35rem] flex-col items-center gap-0.5">
+        <Transport isPlaying={isPlaying} canPlay={!!current} onToggle={toggle} />
+        <SeekBar currentTime={currentTime} duration={duration} onSeek={seek} />
+      </div>
+
+      <div className="flex flex-1 justify-end">
+        <VolumeControl volume={volume} onVolumeChange={setVolume} />
+      </div>
     </div>
   );
 }
