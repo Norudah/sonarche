@@ -14,5 +14,27 @@
   "empty": "Your library is empty for now.",
   "goToDownload": "Download a first track →",
   "unknownTitle": "Unknown title",
-  "unknownArtist": "Unknown artist"
+  "unknownArtist": "Unknown artist",
+  "metadata": {
+    "title": "Metadata",
+    "inspect": "Inspect metadata",
+    "artwork": "Artwork",
+    "changeArtwork": "Change image",
+    "matchTitle": "MusicBrainz match",
+    "applyTags": "Apply tags",
+    "comingSoon": "Coming soon",
+    "emptyValue": "—",
+    "fields": {
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "year": "Year",
+      "track": "Track no.",
+      "genre": "Genre"
+    },
+    "close": "Close",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
 }

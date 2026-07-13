@@ -7,6 +7,9 @@ export interface LibraryTrack {
   album: string;
   albumArtist: string;
   year: number | null;
+  genre: string | null;
+  track: number | null;
+  trackTotal: number | null;
   length: number | null;
   bitrate: number | null;
   format: string;
@@ -22,6 +25,9 @@ interface WireTrack {
   album: string;
   album_artist: string;
   year: number | null;
+  genre: string | null;
+  track: number | null;
+  track_total: number | null;
   length: number | null;
   bitrate: number | null;
   format: string;
@@ -38,6 +44,9 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     album: track.album,
     albumArtist: track.album_artist,
     year: track.year,
+    genre: track.genre,
+    track: track.track,
+    trackTotal: track.track_total,
     length: track.length,
     bitrate: track.bitrate,
     format: track.format,
