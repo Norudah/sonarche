@@ -8,6 +8,7 @@ import { AlbumsView } from "@/features/library/views/AlbumsView";
 import { ArtistsView } from "@/features/library/views/ArtistsView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { TracksView } from "@/features/library/views/TracksView";
+import { MetadataPage } from "@/features/metadata/MetadataPage";
 
 /**
  * Route ids stay technical (home / download / library); the visual identity
@@ -16,6 +17,7 @@ import { TracksView } from "@/features/library/views/TracksView";
 export const paths = {
   home: "/home",
   download: "/",
+  metadata: "/metadata",
   library: "/library",
   libraryTracks: "/library/tracks",
   libraryAlbums: "/library/albums",
@@ -29,6 +31,7 @@ export const router = createMemoryRouter([
     children: [
       { path: paths.home, element: <HomePage /> },
       { path: paths.download, element: <DownloadPage /> },
+      { path: paths.metadata, element: <MetadataPage /> },
       {
         path: paths.library,
         element: <LibraryLayout />,

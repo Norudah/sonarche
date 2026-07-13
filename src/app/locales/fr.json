@@ -2,8 +2,14 @@
   "appName": "Sonarche",
   "nav": {
     "home": "Accueil",
-    "download": "Explorer",
-    "library": "Arche"
+    "download": "Téléchargements",
+    "metadata": "Métadonnées",
+    "addPlaylist": "Ajouter une playlist",
+    "sections": {
+      "explorer": "Explorer",
+      "arche": "Arche",
+      "playlists": "Playlists"
+    }
   },
   "settings": "Paramètres"
 }
