@@ -31,6 +31,7 @@ def _handlers():
         "download": download.handle,
         "import": importer.handle,
         "library_list": library.handle,
+        "library_remove": library.remove,
     }
 
 

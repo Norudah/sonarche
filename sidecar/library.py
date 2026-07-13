@@ -48,3 +48,21 @@ def handle(_request_id: str, params: dict) -> dict:
         )
     tracks.sort(key=lambda t: t["added"] or 0, reverse=True)
     return {"tracks": tracks}
+
+
+def remove(_request_id: str, params: dict) -> dict:
+    """Remove a track from the library and delete its file. Goes through beets'
+    API (not raw SQL) so the DB and any now-empty album stay consistent."""
+    from beets.library import Library
+
+    db_path = params["beets_db"]
+    if not os.path.exists(db_path):
+        raise RuntimeError("library not found")
+
+    lib = Library(db_path, directory=params["library_dir"])
+    item = lib.get_item(params["id"])
+    if item is None:
+        raise RuntimeError(f"track not found: id={params['id']}")
+
+    item.remove(delete=True)
+    return {"removed": True}

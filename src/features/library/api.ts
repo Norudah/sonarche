@@ -35,6 +35,10 @@ interface WireTrack {
   art_path: string | null;
 }
 
+export async function deleteTrack(id: number): Promise<void> {
+  await invoke("delete_track", { id });
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({

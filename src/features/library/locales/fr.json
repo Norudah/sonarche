@@ -36,5 +36,13 @@
     "edit": "Modifier",
     "cancel": "Annuler",
     "save": "Enregistrer"
+  },
+  "delete": {
+    "action": "Supprimer le morceau",
+    "title": "Supprimer ce morceau ?",
+    "body": "« {{title}} » sera retiré de ta bibliothèque et le fichier supprimé du disque. Cette action est irréversible.",
+    "cancel": "Annuler",
+    "confirm": "Supprimer",
+    "failed": "La suppression a échoué."
   }
 }

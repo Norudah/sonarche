@@ -16,6 +16,7 @@ fn main() {
             commands::download_track,
             commands::import_track,
             commands::list_library,
+            commands::delete_track,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

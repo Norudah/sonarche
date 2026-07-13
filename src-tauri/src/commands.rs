@@ -92,3 +92,24 @@ pub async fn list_library(app: AppHandle, state: State<'_, SidecarState>) -> App
         )
         .await
 }
+
+#[tauri::command]
+pub async fn delete_track(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    id: i64,
+) -> AppResult<Value> {
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "library_remove",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "id": id,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}

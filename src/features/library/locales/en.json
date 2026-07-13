@@ -36,5 +36,13 @@
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save"
+  },
+  "delete": {
+    "action": "Delete track",
+    "title": "Delete this track?",
+    "body": "“{{title}}” will be removed from your library and its file deleted from disk. This cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete",
+    "failed": "Deletion failed."
   }
 }
