@@ -20,6 +20,7 @@ import {
   useImportTrack,
 } from "@/features/download/hooks";
 import { formatDuration } from "@/shared/lib/format";
+import { PageContainer } from "@/shared/ui/PageContainer";
 
 function StagedTrackCard({ track }: { track: StagedTrack }) {
   const { t } = useTranslation("download");
@@ -89,7 +90,7 @@ export function DownloadPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <PageContainer>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
@@ -134,6 +135,6 @@ export function DownloadPage() {
       {download.isSuccess && (
         <StagedTrackCard key={download.data.path} track={download.data} />
       )}
-    </div>
+    </PageContainer>
   );
 }

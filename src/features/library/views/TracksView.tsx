@@ -7,6 +7,7 @@ import type { LibraryTrack } from "@/features/library/api";
 import { useLibrary } from "@/features/library/hooks";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
+import { PageContainer } from "@/shared/ui/PageContainer";
 
 function TrackRow({ track }: { track: LibraryTrack }) {
   const { t } = useTranslation("library");
@@ -68,7 +69,7 @@ export function TracksView() {
   const library = useLibrary();
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <PageContainer>
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("views.tracks")}</h1>
@@ -120,6 +121,6 @@ export function TracksView() {
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 }
