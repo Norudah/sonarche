@@ -58,7 +58,7 @@ impl AppPaths {
         let library_dir = app
             .path()
             .audio_dir()
-            .map(|d| d.join("MusicManager"))
+            .map(|d| d.join("Sonarche"))
             .unwrap_or_else(|_| data.join("Library"));
         Ok(Self {
             venv_dir: data.join("venv"),
