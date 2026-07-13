@@ -5,8 +5,12 @@ import commonEn from "@/app/locales/en.json";
 import commonFr from "@/app/locales/fr.json";
 import downloadEn from "@/features/download/locales/en.json";
 import downloadFr from "@/features/download/locales/fr.json";
+import homeEn from "@/features/home/locales/en.json";
+import homeFr from "@/features/home/locales/fr.json";
 import libraryEn from "@/features/library/locales/en.json";
 import libraryFr from "@/features/library/locales/fr.json";
+import metadataEn from "@/features/metadata/locales/en.json";
+import metadataFr from "@/features/metadata/locales/fr.json";
 import onboardingEn from "@/features/onboarding/locales/en.json";
 import onboardingFr from "@/features/onboarding/locales/fr.json";
 import playerEn from "@/shared/player/locales/en.json";
@@ -20,15 +24,19 @@ i18n.use(initReactI18next).init({
     fr: {
       common: commonFr,
       onboarding: onboardingFr,
+      home: homeFr,
       download: downloadFr,
       library: libraryFr,
+      metadata: metadataFr,
       player: playerFr,
     },
     en: {
       common: commonEn,
       onboarding: onboardingEn,
+      home: homeEn,
       download: downloadEn,
       library: libraryEn,
+      metadata: metadataEn,
       player: playerEn,
     },
   },

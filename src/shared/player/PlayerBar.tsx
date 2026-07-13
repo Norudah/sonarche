@@ -1,64 +1,26 @@
-import { Button, Slider } from "@heroui/react";
-import { useTranslation } from "react-i18next";
-
-import { formatDuration } from "@/shared/lib/format";
+import { NowPlaying } from "@/shared/player/NowPlaying";
 import { usePlayer } from "@/shared/player/PlayerContext";
+import { SeekBar } from "@/shared/player/SeekBar";
+import { Transport } from "@/shared/player/Transport";
+import { VolumeControl } from "@/shared/player/VolumeControl";
 
 export function PlayerBar() {
-  const { t } = useTranslation("player");
-  const { current, isPlaying, currentTime, duration, toggle, seek } = usePlayer();
-
-  if (!current) return null;
+  const { current, isPlaying, currentTime, duration, volume, toggle, seek, setVolume } = usePlayer();
 
   return (
-    <div className="flex items-center gap-4 border-t border-default/40 bg-default/20 px-6 py-3">
-      {current.artUrl ? (
-        <img src={current.artUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
-      ) : (
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-default/60 text-lg">
-          ♪
-        </div>
-      )}
-
-      <div className="w-48 shrink-0">
-        <p className="truncate font-medium">{current.title}</p>
-        {current.subtitle && (
-          <p className="truncate text-sm text-muted-foreground">{current.subtitle}</p>
-        )}
+    <div className="flex h-player shrink-0 items-center border-t border-separator bg-surface px-6">
+      <div className="flex flex-1 items-center">
+        <NowPlaying current={current} isPlaying={isPlaying} />
       </div>
 
-      <Button
-        variant="secondary"
-        size="sm"
-        onPress={toggle}
-        aria-label={isPlaying ? t("pause") : t("play")}
-      >
-        {isPlaying ? "⏸" : "▶"}
-      </Button>
+      <div className="flex w-[35rem] flex-col items-center gap-0.5">
+        <Transport isPlaying={isPlaying} canPlay={!!current} onToggle={toggle} />
+        <SeekBar currentTime={currentTime} duration={duration} onSeek={seek} />
+      </div>
 
-      <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
-        {formatDuration(currentTime)}
-      </span>
-
-      <Slider
-        className="flex-1"
-        aria-label={t("seek")}
-        value={Math.min(currentTime, duration || currentTime)}
-        minValue={0}
-        maxValue={duration || 0}
-        step={1}
-        isDisabled={!duration}
-        onChange={(value) => seek(value as number)}
-      >
-        <Slider.Track>
-          <Slider.Fill />
-          <Slider.Thumb />
-        </Slider.Track>
-      </Slider>
-
-      <span className="w-10 text-xs tabular-nums text-muted-foreground">
-        {formatDuration(duration)}
-      </span>
+      <div className="flex flex-1 justify-end">
+        <VolumeControl volume={volume} onVolumeChange={setVolume} />
+      </div>
     </div>
   );
 }

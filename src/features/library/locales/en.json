@@ -1,5 +1,12 @@
 {
-  "title": "Library",
+  "title": "Arche",
+  "views": {
+    "tracks": "Tracks",
+    "albums": "Albums",
+    "artists": "Artists",
+    "genres": "Genres",
+    "comingSoon": "Coming soon."
+  },
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
   "refresh": "Refresh",

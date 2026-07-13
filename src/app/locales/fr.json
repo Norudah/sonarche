@@ -1,7 +1,15 @@
 {
-  "appName": "Music Manager",
+  "appName": "Sonarche",
   "nav": {
-    "download": "Télécharger",
-    "library": "Bibliothèque"
-  }
+    "home": "Accueil",
+    "download": "Téléchargements",
+    "metadata": "Métadonnées",
+    "addPlaylist": "Ajouter une playlist",
+    "sections": {
+      "explorer": "Explorer",
+      "arche": "Arche",
+      "playlists": "Playlists"
+    }
+  },
+  "settings": "Paramètres"
 }

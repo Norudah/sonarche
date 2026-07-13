@@ -1,0 +1,108 @@
+/**
+ * Sonarche design tokens — single source of truth for the visual identity.
+ *
+ * We sit on top of HeroUI v3's semantic token system (see @heroui/styles):
+ * HeroUI exposes every semantic color as a Tailwind utility (bg-surface,
+ * text-muted, bg-accent, bg-accent-soft, border-separator, ...) and computes
+ * hover/soft/radius/easing scales for us. This file ONLY overrides what makes
+ * the app feel like Sonarche and adds app-specific layout constants.
+ *
+ * Rules:
+ * - Never hardcode a hex/oklch color in a component. Use the semantic utility.
+ * - Theme switching works by overriding the RAW vars (--accent, ...) per theme
+ *   selector; HeroUI's @theme maps --color-accent: var(--accent) statically.
+ * - Light is the default (:root). A future settings toggle will set
+ *   data-theme="dark" on <html> — the dark block below is already wired.
+ */
+
+/* --- Brand colors (raw vars, swapped per theme) --------------------------- */
+
+:root,
+[data-theme="light"] {
+  /* Sonarche identity: indigo accent */
+  --accent: oklch(0.58 0.21 277);
+  --accent-foreground: var(--snow);
+  --focus: var(--accent);
+
+  /* Near-white app background — HeroUI's default is a flat, cold 0-chroma
+     gray (oklch 0.9702 0 0) that reads as dull/dirty next to white surfaces
+     (sidebar, player, cards). Barely-there warmth, not enough to read as
+     yellow or gray. --background-secondary/-tertiary derive from this via
+     color-mix, so they follow automatically. */
+  --background: oklch(0.995 0.0012 75);
+}
+
+[data-theme="dark"] {
+  /* Slightly lighter accent for contrast on dark surfaces */
+  --accent: oklch(0.66 0.2 277);
+  --accent-foreground: var(--snow);
+}
+
+/* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
+
+/* Seekbar — accent color, thumb 1rem */
+.player-slider .slider__track {
+  @apply h-1;
+  border-inline-width: 0.5rem;
+}
+
+.player-slider .slider__thumb {
+  @apply opacity-0;
+  width: calc(1rem + 0.25rem);
+}
+
+.player-slider .slider__thumb::after {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Volume slider — thin gray bar, no visible thumb, no border artifacts */
+.volume-slider .slider__track {
+  @apply h-1;
+  /* No transparent side borders: eliminates the accent-colored edge artifact */
+  border-inline-width: 0;
+}
+
+.volume-slider .slider__fill {
+  @apply bg-foreground/75;
+}
+
+.volume-slider .slider__thumb {
+  @apply bg-transparent;
+  width: calc(0.75rem + 0.25rem);
+}
+
+.volume-slider .slider__thumb::after {
+  @apply bg-white shadow-sm;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+/* --- App-level design tokens (theme-agnostic) ----------------------------- */
+
+@theme {
+  /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
+     Centralized so the shell layout never carries magic numbers. */
+  --spacing-sidebar: 15rem;
+  --spacing-topbar: 2.25rem;
+  --spacing-player: 5.5rem;
+
+  /* Typography */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Now-playing equalizer — used by the player when audio is playing. */
+  --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
+
+  @keyframes sonarche-equalizer {
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+}

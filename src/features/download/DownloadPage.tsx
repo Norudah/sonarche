@@ -1,13 +1,5 @@
-import {
-  Alert,
-  Button,
-  Card,
-  Chip,
-  Input,
-  Label,
-  ProgressBar,
-  TextField,
-} from "@heroui/react";
+import { Alert, Button, Card, Chip, InputGroup, ProgressBar } from "@heroui/react";
+import { Download, Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -20,6 +12,7 @@ import {
   useImportTrack,
 } from "@/features/download/hooks";
 import { formatDuration } from "@/shared/lib/format";
+import { PageContainer } from "@/shared/ui/PageContainer";
 
 function StagedTrackCard({ track }: { track: StagedTrack }) {
   const { t } = useTranslation("download");
@@ -37,7 +30,7 @@ function StagedTrackCard({ track }: { track: StagedTrack }) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{track.title ?? t("unknownTitle")}</p>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="truncate text-sm text-muted">
             {track.artist ?? t("unknownArtist")}
             {track.duration != null && ` · ${formatDuration(track.duration)}`}
           </p>
@@ -89,27 +82,54 @@ export function DownloadPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+    <PageContainer>
+      <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-12">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
+        <div className="relative flex flex-col gap-6">
+          <div>
+            <p className="text-xs font-semibold tracking-widest text-accent uppercase">
+              {t("eyebrow")}
+            </p>
+            <h1 className="mt-2 text-4xl font-bold tracking-tight text-balance whitespace-pre-line">
+              {t("title")}
+            </h1>
+          </div>
 
-      <form
-        className="flex items-end gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        <TextField value={url} onChange={setUrl} fullWidth>
-          <Label>{t("urlLabel")}</Label>
-          <Input placeholder="https://www.youtube.com/watch?v=…" />
-        </TextField>
-        <Button type="submit" variant="primary" isDisabled={!url.trim() || download.isPending}>
-          {download.isPending ? t("downloading") : t("download")}
-        </Button>
-      </form>
+          <form
+            className="flex items-center gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <InputGroup.Root
+              fullWidth
+              className="rounded-xl focus-within:ring-2 focus-within:ring-accent/30"
+            >
+              <InputGroup.Prefix className="rounded-l-xl px-4 text-muted">
+                <Link2 className="size-4" />
+              </InputGroup.Prefix>
+              <InputGroup.Input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder={t("urlPlaceholder")}
+                aria-label={t("urlLabel")}
+                className="py-3"
+              />
+            </InputGroup.Root>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="rounded-xl px-7"
+              isDisabled={!url.trim() || download.isPending}
+            >
+              <Download className="size-4" />
+              {download.isPending ? t("downloading") : t("download")}
+            </Button>
+          </form>
+        </div>
+      </div>
 
       {download.isPending && (
         <ProgressBar
@@ -134,6 +154,6 @@ export function DownloadPage() {
       {download.isSuccess && (
         <StagedTrackCard key={download.data.path} track={download.data} />
       )}
-    </div>
+    </PageContainer>
   );
 }
