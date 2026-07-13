@@ -112,6 +112,16 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     let python = discover_python().await;
     let venv_python = paths.venv_python();
     let venv_ok = tokio::fs::try_exists(&venv_python).await.unwrap_or(false);
+    // Keep the beets config's `directory:` in sync with library_dir on every check, not just
+    // first setup — otherwise an existing install can keep importing into a stale path after
+    // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
+    if venv_ok {
+        tokio::fs::create_dir_all(&paths.library_dir).await?;
+        if let Some(parent) = paths.beets_config.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        write_beets_config(&paths).await?;
+    }
     let deps_ok = if venv_ok {
         Command::new(&venv_python)
             .args(["-c", "import yt_dlp, beets, mutagen"])
