@@ -118,6 +118,8 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
 
 
 def _apply(item, album_info, track_info) -> None:
+    from beets import library
+
     # merge_with_album already carries the release's `genres` list along.
     merged = track_info.merge_with_album(album_info)
     item.update(merged)
@@ -131,6 +133,17 @@ def _apply(item, album_info, track_info) -> None:
         item.move()
     except Exception as exc:
         protocol.log(f"enrich: move failed: {exc}")
+
+    # The as-is import left the album row's own album/albumartist/genres etc.
+    # empty (only the item carries the new tags). Left unsynced, that empty
+    # row makes beets' duplicate check (albumartist+album, both blank) treat
+    # every subsequent untagged import as a duplicate of this one and skip it
+    # outright. Mirror mbsync's approach: copy the item's fields onto the album.
+    album = item.get_album()
+    if album is not None:
+        for key in library.Album.item_keys:
+            album[key] = item[key]
+        album.store()
 
 
 def _fetch_cover(item, release_id: str) -> None:
