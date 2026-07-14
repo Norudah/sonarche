@@ -12,6 +12,7 @@
     "colTrack": "Track",
     "colDownload": "Download",
     "colKind": "Type",
+    "colMatch": "Match",
     "colMetadata": "Metadata",
     "kindSingle": "Single",
     "kindAlbum": "Album",
@@ -22,7 +23,7 @@
     "statusFailed": "Failed",
     "retry": "Retry",
     "matched": "Match found",
-    "noMatch": "No match",
+    "matchNone": "None",
     "noReport": "No report"
   }
 }

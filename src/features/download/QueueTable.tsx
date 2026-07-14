@@ -1,5 +1,5 @@
 import { Button, Chip, ProgressCircle, Spinner, Table } from "@heroui/react";
-import { Check, CircleAlert, Clock, Music, RotateCcw } from "lucide-react";
+import { CircleAlert, CircleCheck, Clock, Music, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
@@ -7,10 +7,13 @@ import { useRetryJob } from "@/features/download/hooks";
 import { formatDuration } from "@/shared/lib/format";
 
 /** Share of expected metadata fields actually filled, per job kind. A single
- * only needs track-level info; an album track also needs its place in the set. */
+ * only needs track-level info; an album track also needs its place in the set.
+ * Without a trusted match nothing counts: unmatched files keep YouTube-free,
+ * empty tags by design, so their completion is 0. */
 function metadataCompletion(job: DownloadJob): number | null {
   const report = job.report;
   if (!report) return null;
+  if (!report.mbMatched) return 0;
   const wanted =
     job.kind === "album"
       ? [
@@ -32,47 +35,79 @@ function metadataCompletion(job: DownloadJob): number | null {
   return Math.round((wanted.filter(Boolean).length / wanted.length) * 100);
 }
 
-function CompletionCircle({ value, label }: { value: number; label: string }) {
-  const color = value === 100 ? "success" : value >= 50 ? "warning" : "danger";
+function StateCircle({
+  value,
+  isIndeterminate,
+  color,
+  label,
+}: {
+  value?: number;
+  isIndeterminate?: boolean;
+  color: "accent" | "success" | "warning" | "danger";
+  label: string;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <ProgressCircle value={value} size="sm" color={color} aria-label={label}>
-        <ProgressCircle.Track>
-          <ProgressCircle.TrackCircle />
-          <ProgressCircle.FillCircle />
-        </ProgressCircle.Track>
-      </ProgressCircle>
-      <span className="text-sm tabular-nums text-muted">{value}%</span>
-    </div>
+    <ProgressCircle
+      value={value}
+      isIndeterminate={isIndeterminate}
+      size="sm"
+      color={color}
+      aria-label={label}
+    >
+      <ProgressCircle.Track>
+        <ProgressCircle.TrackCircle />
+        <ProgressCircle.FillCircle />
+      </ProgressCircle.Track>
+    </ProgressCircle>
   );
 }
 
 function DownloadStateCell({ job, percent }: { job: DownloadJob; percent: number | null }) {
   const { t } = useTranslation("download");
-  if (job.status === "queued") {
-    return <Clock aria-label={t("queue.statusQueued")} className="size-5 text-muted" />;
-  }
-  if (job.status === "downloading") {
-    return (
-      <ProgressCircle
-        value={percent ?? undefined}
-        isIndeterminate={percent == null}
-        size="sm"
-        color="accent"
-        aria-label={t("queue.statusDownloading")}
-      >
-        <ProgressCircle.Track>
-          <ProgressCircle.TrackCircle />
-          <ProgressCircle.FillCircle />
-        </ProgressCircle.Track>
-      </ProgressCircle>
-    );
-  }
-  if (job.status === "failed" && job.failedStep === "download") {
-    return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
+  switch (job.status) {
+    case "queued":
+      return <Clock aria-label={t("queue.statusQueued")} className="size-5 text-muted" />;
+    case "downloading":
+      return (
+        <div className="flex items-center gap-2">
+          <StateCircle
+            value={percent ?? undefined}
+            isIndeterminate={percent == null}
+            color="accent"
+            label={t("queue.statusDownloading")}
+          />
+          {percent != null && (
+            <span className="text-sm tabular-nums text-muted">{Math.round(percent)}%</span>
+          )}
+        </div>
+      );
+    case "failed":
+      if (job.failedStep === "download") {
+        return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
+      }
+      break;
   }
   // Importing, done, or failed later in the pipeline: the download itself succeeded.
-  return <Check aria-label={t("queue.statusDone")} className="size-5 text-success" />;
+  return <CircleCheck aria-label={t("queue.statusDone")} className="size-5 text-success" />;
+}
+
+function MatchCell({ job }: { job: DownloadJob }) {
+  const { t } = useTranslation("download");
+  if (job.status !== "done") {
+    return <span className="text-sm text-muted">—</span>;
+  }
+  if (job.report?.mbMatched) {
+    return (
+      <Chip variant="soft" size="sm" color="success">
+        {job.report.source ?? t("queue.matched")}
+      </Chip>
+    );
+  }
+  return (
+    <Chip variant="soft" size="sm" color="danger">
+      {t("queue.matchNone")}
+    </Chip>
+  );
 }
 
 function MetadataStateCell({ job }: { job: DownloadJob }) {
@@ -83,23 +118,20 @@ function MetadataStateCell({ job }: { job: DownloadJob }) {
   if (job.status === "failed" && job.failedStep === "import") {
     return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
   }
-  if (job.status === "done") {
-    const completion = metadataCompletion(job);
-    if (completion == null) {
-      return <span className="text-sm text-muted">{t("queue.noReport")}</span>;
-    }
-    return (
-      <div className="flex flex-col gap-0.5">
-        <CompletionCircle value={completion} label={t("queue.colMetadata")} />
-        <span className="text-xs text-muted">
-          {job.report?.mbMatched
-            ? (job.report.source ?? t("queue.matched"))
-            : t("queue.noMatch")}
-        </span>
-      </div>
-    );
+  if (job.status !== "done") {
+    return <span className="text-sm text-muted">—</span>;
   }
-  return <span className="text-sm text-muted">—</span>;
+  const completion = metadataCompletion(job);
+  if (completion == null) {
+    return <span className="text-sm text-muted">{t("queue.noReport")}</span>;
+  }
+  const color = completion === 100 ? "success" : completion >= 50 ? "warning" : "danger";
+  return (
+    <div className="flex items-center gap-2">
+      <StateCircle value={completion} color={color} label={t("queue.colMetadata")} />
+      <span className="text-sm tabular-nums text-muted">{completion}%</span>
+    </div>
+  );
 }
 
 function TrackCell({ job }: { job: DownloadJob }) {
@@ -114,13 +146,15 @@ function TrackCell({ job }: { job: DownloadJob }) {
         </div>
       )}
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{job.title ?? job.url}</p>
+        <p className="max-w-md truncate text-sm font-medium">{job.title ?? job.url}</p>
         <p className="truncate text-xs text-muted">
           {job.artist ?? t("unknownArtist")}
           {job.duration != null && ` · ${formatDuration(job.duration)}`}
         </p>
         {job.status === "failed" && job.error && (
-          <p className="truncate text-xs text-danger">{job.error}</p>
+          <p className="max-w-md truncate text-xs text-danger" title={job.error}>
+            {job.error}
+          </p>
         )}
       </div>
     </div>
@@ -150,6 +184,7 @@ export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
           </Table.Column>
           <Table.Column>{t("queue.colDownload")}</Table.Column>
           <Table.Column>{t("queue.colKind")}</Table.Column>
+          <Table.Column>{t("queue.colMatch")}</Table.Column>
           <Table.Column>{t("queue.colMetadata")}</Table.Column>
           <Table.Column>
             <span className="sr-only">{t("queue.retry")}</span>
@@ -171,6 +206,9 @@ export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
                 <Chip variant="soft" size="sm">
                   {job.kind === "album" ? t("queue.kindAlbum") : t("queue.kindSingle")}
                 </Chip>
+              </Table.Cell>
+              <Table.Cell>
+                <MatchCell job={job} />
               </Table.Cell>
               <Table.Cell>
                 <MetadataStateCell job={job} />

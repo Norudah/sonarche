@@ -46,6 +46,8 @@ const jobs = [
   job({ status: "failed", failedStep: "import", title: "Some Track", artist: "Someone", error: "beet import failed (exit 1)", createdAt: now - 7000 }),
 ];
 
+const apiKeys = [{ name: "acoustid", configured: false }];
+
 const responses: Record<string, unknown> = {
   get_env_status: {
     python: { path: "/usr/bin/python3", version: "3.12.0" },
@@ -55,6 +57,7 @@ const responses: Record<string, unknown> = {
   },
   list_jobs: jobs,
   list_library: { tracks: [] },
+  list_api_keys: apiKeys,
 };
 
 let callbackId = 0;
@@ -63,8 +66,13 @@ export function installMockTauri() {
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     transformCallback: () => ++callbackId,
-    invoke: async (cmd: string) => {
+    invoke: async (cmd: string, payload?: Record<string, unknown>) => {
       if (cmd.startsWith("plugin:event|")) return ++callbackId;
+      if (cmd === "set_api_key") {
+        const key = apiKeys.find((k) => k.name === payload?.name);
+        if (key) key.configured = String(payload?.value ?? "").trim() !== "";
+        return key;
+      }
       return responses[cmd] ?? {};
     },
   };

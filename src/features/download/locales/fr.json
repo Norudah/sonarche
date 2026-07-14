@@ -12,6 +12,7 @@
     "colTrack": "Titre",
     "colDownload": "Téléchargement",
     "colKind": "Type",
+    "colMatch": "Correspondance",
     "colMetadata": "Métadonnées",
     "kindSingle": "Single",
     "kindAlbum": "Album",
@@ -22,7 +23,7 @@
     "statusFailed": "Échec",
     "retry": "Réessayer",
     "matched": "Correspondance trouvée",
-    "noMatch": "Aucune correspondance",
+    "matchNone": "Aucune",
     "noReport": "Pas de rapport"
   }
 }
