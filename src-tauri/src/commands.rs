@@ -6,6 +6,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::jobs::{Job, JobsState};
 use crate::python_env::{self, AppPaths, EnvStatus};
+use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
 
 const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -44,6 +45,16 @@ pub async fn list_jobs(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
 #[tauri::command]
 pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) -> AppResult<Job> {
     state.retry(&app, &id).await
+}
+
+#[tauri::command]
+pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
+    settings::list().await
+}
+
+#[tauri::command]
+pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus> {
+    settings::set(name, value).await
 }
 
 #[tauri::command]

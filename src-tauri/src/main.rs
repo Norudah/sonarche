@@ -4,6 +4,7 @@ mod commands;
 mod error;
 mod jobs;
 mod python_env;
+mod settings;
 mod sidecar;
 
 use tauri::Manager;
@@ -24,6 +25,8 @@ fn main() {
             commands::retry_job,
             commands::list_library,
             commands::delete_track,
+            commands::list_api_keys,
+            commands::set_api_key,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

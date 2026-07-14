@@ -13,6 +13,8 @@ import metadataEn from "@/features/metadata/locales/en.json";
 import metadataFr from "@/features/metadata/locales/fr.json";
 import onboardingEn from "@/features/onboarding/locales/en.json";
 import onboardingFr from "@/features/onboarding/locales/fr.json";
+import settingsEn from "@/features/settings/locales/en.json";
+import settingsFr from "@/features/settings/locales/fr.json";
 import playerEn from "@/shared/player/locales/en.json";
 import playerFr from "@/shared/player/locales/fr.json";
 
@@ -28,6 +30,7 @@ i18n.use(initReactI18next).init({
       download: downloadFr,
       library: libraryFr,
       metadata: metadataFr,
+      settings: settingsFr,
       player: playerFr,
     },
     en: {
@@ -37,6 +40,7 @@ i18n.use(initReactI18next).init({
       download: downloadEn,
       library: libraryEn,
       metadata: metadataEn,
+      settings: settingsEn,
       player: playerEn,
     },
   },

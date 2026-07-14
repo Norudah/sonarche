@@ -12,6 +12,8 @@ pub enum AppError {
     InvalidInput(String),
     #[error("setup failed: {0}")]
     Setup(String),
+    #[error("keychain error: {0}")]
+    Keychain(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
