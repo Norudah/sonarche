@@ -18,18 +18,20 @@ _MAX_CANDIDATES = 4
 _TYPE_RANK = {"album": 0, "ep": 1, "single": 2, "compilation": 3}
 
 
-def _ensure_plugins():
+def ensure_plugins():
     global _loaded
     if _loaded:
         return
     from beets import config, plugins
 
     config["plugins"] = ["musicbrainz"]
+    # MB community genres ride along with the release; no extra service needed.
+    config["musicbrainz"]["genres"] = True
     plugins.load_plugins()
     _loaded = True
 
 
-def _mb_plugin():
+def mb_plugin():
     import beets.metadata_plugins as mp
 
     sources = mp.find_metadata_source_plugins()
@@ -38,7 +40,7 @@ def _mb_plugin():
     return sources[0]
 
 
-def _pick_release(releases: list) -> dict | None:
+def pick_release(releases: list) -> dict | None:
     """Prefer an official, dated release; earliest wins (original over reissue)."""
     if not releases:
         return None
@@ -48,7 +50,7 @@ def _pick_release(releases: list) -> dict | None:
 
 def _candidate_from_recording(plugin, rec_id: str, match_pct: int) -> dict | None:
     rec = plugin.mb_api.get_recording(rec_id, includes=["releases"])
-    release = _pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
+    release = pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
     if not release:
         return None
 
@@ -77,8 +79,8 @@ def handle(request_id: str, params: dict) -> dict:
     from beets.library import Item
     from beets import autotag
 
-    _ensure_plugins()
-    plugin = _mb_plugin()
+    ensure_plugins()
+    plugin = mb_plugin()
 
     item = Item()
     item.artist = params.get("artist") or ""

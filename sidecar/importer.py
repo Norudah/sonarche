@@ -1,5 +1,9 @@
-"""Import a staged file into the beets library via the beet CLI (quiet autotag),
-then re-read the imported item to report which metadata the autotag actually filled."""
+"""Import a staged file into the beets library via the beet CLI, then re-read
+the imported item to report its metadata state.
+
+The import is deliberately as-is (-A): staged files carry no tags by design,
+so autotagging here would only waste MusicBrainz calls. The enrich step owns
+the real matching, via the acoustic fingerprint."""
 
 import os
 import subprocess
@@ -7,6 +11,7 @@ import sys
 import time
 
 import protocol
+from report import build_report
 
 
 def _beet_bin() -> str:
@@ -32,36 +37,6 @@ def _find_imported_item(db_path: str, library_dir: str, since: float):
     return newest
 
 
-def _build_report(item) -> dict:
-    """Field-level presence report; the frontend derives a completion score from it."""
-    album = None
-    try:
-        album = item.get_album()
-    except Exception:
-        pass
-
-    art_path = album.artpath if album else None
-    if isinstance(art_path, bytes):
-        art_path = art_path.decode("utf-8", errors="replace")
-
-    return {
-        "item_id": item.id,
-        # Empty mb_trackid means the autotag found no match and fell back to asis.
-        "mb_matched": bool(item.mb_trackid),
-        "source": item.get("data_source") or None,
-        "fields": {
-            "title": bool(item.title),
-            "artist": bool(item.artist),
-            "album": bool(item.album),
-            "year": bool(item.year),
-            "track": bool(item.track),
-            "genre": bool(item.get("genre")),
-        },
-        "cover": bool(art_path and os.path.exists(art_path)),
-        "cover_source": (album.get("art_source") if album else None) or None,
-    }
-
-
 def handle(request_id: str, params: dict) -> dict:
     path = params["path"]
     config_path = params["beets_config"]
@@ -69,7 +44,7 @@ def handle(request_id: str, params: dict) -> dict:
         raise RuntimeError(f"file not found: {path}")
 
     started = time.time()
-    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", path]
+    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A", path]
     protocol.send_event(request_id, "import_progress", {"stage": "matching"})
 
     # Separate process: beets' own stdout stays out of our protocol stream.
@@ -84,7 +59,7 @@ def handle(request_id: str, params: dict) -> dict:
     try:
         item = _find_imported_item(params["beets_db"], params["library_dir"], started)
         if item is not None:
-            report = _build_report(item)
+            report = build_report(item)
     except Exception as exc:  # the import itself succeeded; a missing report must not fail it
         protocol.log(f"import report failed: {exc}")
 

@@ -35,7 +35,8 @@ def handle(_request_id: str, params: dict) -> dict:
                 "album": item.album,
                 "album_artist": item.albumartist,
                 "year": item.year or None,
-                "genre": item.get("genre") or None,
+                # beets 2.12 keeps a `genres` list; expose the primary one.
+                "genre": next(iter(item.get("genres") or []), None),
                 "track": item.track or None,
                 "track_total": item.tracktotal or None,
                 "length": round(item.length, 1) if item.length else None,
