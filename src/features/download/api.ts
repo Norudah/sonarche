@@ -14,6 +14,8 @@ export interface MetadataReportFields {
 }
 
 export interface MetadataReport {
+  /** beets item id — links the job to its library track (null if unknown). */
+  itemId: number | null;
   mbMatched: boolean;
   source: string | null;
   fields: MetadataReportFields;
@@ -38,6 +40,7 @@ export interface DownloadJob {
 }
 
 interface WireReport {
+  item_id: number | null;
   mb_matched: boolean;
   source: string | null;
   fields: MetadataReportFields;
@@ -66,6 +69,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     ...raw,
     report: raw.report
       ? {
+          itemId: raw.report.item_id ?? null,
           mbMatched: raw.report.mb_matched,
           source: raw.report.source,
           fields: raw.report.fields,

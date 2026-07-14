@@ -1,9 +1,14 @@
 import { Button, Chip, ProgressCircle, Spinner, Table } from "@heroui/react";
-import { CircleAlert, CircleCheck, Clock, Music, RotateCcw } from "lucide-react";
+import { CircleAlert, CircleCheck, Clock, FileText, Music, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
 import { useRetryJob } from "@/features/download/hooks";
+import type { LibraryTrack } from "@/features/library/api";
+import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
+import { useLibrary } from "@/features/library/hooks";
+import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { formatDuration } from "@/shared/lib/format";
 
 /** Share of expected metadata fields actually filled, per job kind. A single
@@ -134,6 +139,34 @@ function MetadataStateCell({ job }: { job: DownloadJob }) {
   );
 }
 
+function LibraryCell({
+  job,
+  track,
+  libraryLoaded,
+}: {
+  job: DownloadJob;
+  track: LibraryTrack | undefined;
+  libraryLoaded: boolean;
+}) {
+  const { t } = useTranslation("download");
+  // Only a completed import with a known item id can be linked to the library.
+  if (job.status !== "done" || job.report?.itemId == null || !libraryLoaded) {
+    return <span className="text-sm text-muted">—</span>;
+  }
+  if (track) {
+    return (
+      <Chip variant="soft" size="sm" color="success">
+        {t("queue.inLibrary")}
+      </Chip>
+    );
+  }
+  return (
+    <Chip variant="soft" size="sm" color="default">
+      {t("queue.removedFromLibrary")}
+    </Chip>
+  );
+}
+
 function TrackCell({ job }: { job: DownloadJob }) {
   const { t } = useTranslation("download");
   return (
@@ -170,66 +203,109 @@ interface QueueTableProps {
 export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
   const { t } = useTranslation("download");
   const retry = useRetryJob();
+  const library = useLibrary();
+  const [inspected, setInspected] = useState<LibraryTrack | null>(null);
+  const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
 
   if (jobs.length === 0) {
     return <p className="text-sm text-muted">{t("queue.empty")}</p>;
   }
 
+  const trackById = new Map((library.data ?? []).map((track) => [track.id, track]));
+  const trackFor = (job: DownloadJob) =>
+    job.report?.itemId != null ? trackById.get(job.report.itemId) : undefined;
+
   return (
-    <Table aria-label={t("queue.heading")}>
-      <Table.Content aria-label={t("queue.heading")}>
-        <Table.Header>
-          <Table.Column isRowHeader className="w-full">
-            {t("queue.colTrack")}
-          </Table.Column>
-          <Table.Column>{t("queue.colDownload")}</Table.Column>
-          <Table.Column>{t("queue.colKind")}</Table.Column>
-          <Table.Column>{t("queue.colMatch")}</Table.Column>
-          <Table.Column>{t("queue.colMetadata")}</Table.Column>
-          <Table.Column>
-            <span className="sr-only">{t("queue.retry")}</span>
-          </Table.Column>
-        </Table.Header>
-        <Table.Body items={jobs}>
-          {(job) => (
-            <Table.Row id={job.id}>
-              <Table.Cell>
-                <TrackCell job={job} />
-              </Table.Cell>
-              <Table.Cell>
-                <DownloadStateCell
-                  job={job}
-                  percent={job.status === "downloading" ? downloadPercent : null}
-                />
-              </Table.Cell>
-              <Table.Cell>
-                <Chip variant="soft" size="sm">
-                  {job.kind === "album" ? t("queue.kindAlbum") : t("queue.kindSingle")}
-                </Chip>
-              </Table.Cell>
-              <Table.Cell>
-                <MatchCell job={job} />
-              </Table.Cell>
-              <Table.Cell>
-                <MetadataStateCell job={job} />
-              </Table.Cell>
-              <Table.Cell>
-                {job.status === "failed" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    isDisabled={retry.isPending}
-                    onPress={() => retry.mutate(job.id)}
-                  >
-                    <RotateCcw className="size-4" />
-                    {t("queue.retry")}
-                  </Button>
-                )}
-              </Table.Cell>
-            </Table.Row>
-          )}
-        </Table.Body>
-      </Table.Content>
-    </Table>
+    <>
+      <Table aria-label={t("queue.heading")}>
+        <Table.Content aria-label={t("queue.heading")}>
+          <Table.Header>
+            <Table.Column isRowHeader className="w-full">
+              {t("queue.colTrack")}
+            </Table.Column>
+            <Table.Column>{t("queue.colDownload")}</Table.Column>
+            <Table.Column>{t("queue.colKind")}</Table.Column>
+            <Table.Column>{t("queue.colMatch")}</Table.Column>
+            <Table.Column>{t("queue.colMetadata")}</Table.Column>
+            <Table.Column>{t("queue.colLibrary")}</Table.Column>
+            <Table.Column>
+              <span className="sr-only">{t("queue.colActions")}</span>
+            </Table.Column>
+          </Table.Header>
+          <Table.Body items={jobs}>
+            {(job) => {
+              const track = trackFor(job);
+              return (
+                <Table.Row id={job.id}>
+                  <Table.Cell>
+                    <TrackCell job={job} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <DownloadStateCell
+                      job={job}
+                      percent={job.status === "downloading" ? downloadPercent : null}
+                    />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Chip variant="soft" size="sm">
+                      {job.kind === "album" ? t("queue.kindAlbum") : t("queue.kindSingle")}
+                    </Chip>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <MatchCell job={job} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <MetadataStateCell job={job} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <LibraryCell job={job} track={track} libraryLoaded={library.data != null} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <div className="flex items-center justify-end gap-1">
+                      {job.status === "failed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isDisabled={retry.isPending}
+                          onPress={() => retry.mutate(job.id)}
+                        >
+                          <RotateCcw className="size-4" />
+                          {t("queue.retry")}
+                        </Button>
+                      )}
+                      {track && (
+                        <>
+                          <Button
+                            variant="tertiary"
+                            size="sm"
+                            isIconOnly
+                            onPress={() => setInspected(track)}
+                            aria-label={t("queue.inspect")}
+                          >
+                            <FileText className="size-4" />
+                          </Button>
+                          <Button
+                            variant="tertiary"
+                            size="sm"
+                            isIconOnly
+                            onPress={() => setDeleting(track)}
+                            aria-label={t("queue.delete")}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              );
+            }}
+          </Table.Body>
+        </Table.Content>
+      </Table>
+
+      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
+      <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
+    </>
   );
 }

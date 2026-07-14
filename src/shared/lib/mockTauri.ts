@@ -29,7 +29,7 @@ const jobs = [
   job({
     status: "done", title: "Monster", artist: "Skillet", duration: 178, createdAt: now - 4000,
     report: {
-      mb_matched: true, source: "MusicBrainz",
+      item_id: 2, mb_matched: true, source: "MusicBrainz",
       fields: { title: true, artist: true, album: true, year: true, track: true, genre: false },
       cover: true, cover_source: "Cover Art Archive",
     },
@@ -37,7 +37,7 @@ const jobs = [
   job({
     status: "done", title: "Commander's Theme", artist: "The Algorithm", duration: 201, createdAt: now - 5000,
     report: {
-      mb_matched: false, source: null,
+      item_id: 5, mb_matched: false, source: null,
       fields: { title: true, artist: true, album: false, year: false, track: false, genre: false },
       cover: false, cover_source: null,
     },
@@ -48,6 +48,27 @@ const jobs = [
 
 const apiKeys = [{ name: "acoustid", configured: false }];
 
+// One track matching the "Monster" job's item_id; the other done job's item is
+// deliberately absent so the "removed from library" state is visible too.
+const libraryTracks = [
+  {
+    id: 2,
+    title: "Monster",
+    artist: "Skillet",
+    album: "Awake",
+    album_artist: "Skillet",
+    year: 2009,
+    genre: null,
+    track: 2,
+    track_total: 12,
+    length: 178,
+    bitrate: 256000,
+    format: "AAC",
+    path: "/Users/dev/Music/Sonarche/Skillet/Monster.m4a",
+    art_path: null,
+  },
+];
+
 const responses: Record<string, unknown> = {
   get_env_status: {
     python: { path: "/usr/bin/python3", version: "3.12.0" },
@@ -56,7 +77,7 @@ const responses: Record<string, unknown> = {
     libraryDir: "/Users/dev/Music/Sonarche",
   },
   list_jobs: jobs,
-  list_library: { tracks: [] },
+  list_library: { tracks: libraryTracks },
   list_api_keys: apiKeys,
 };
 
@@ -66,6 +87,7 @@ export function installMockTauri() {
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     transformCallback: () => ++callbackId,
+    convertFileSrc: (path: string) => path,
     invoke: async (cmd: string, payload?: Record<string, unknown>) => {
       if (cmd.startsWith("plugin:event|")) return ++callbackId;
       if (cmd === "set_api_key") {
