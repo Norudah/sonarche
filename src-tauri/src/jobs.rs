@@ -13,11 +13,13 @@ use tokio::sync::{mpsc, Mutex};
 use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
-use crate::python_env::AppPaths;
+use crate::python_env::{self, AppPaths};
+use crate::settings;
 use crate::sidecar::SidecarState;
 
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const IMPORT_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+const ENRICH_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 /// Persisted history cap; oldest terminal jobs are dropped past this.
 const MAX_JOBS: usize = 200;
 
@@ -34,6 +36,7 @@ pub enum JobStatus {
     Queued,
     Downloading,
     Importing,
+    Enriching,
     Done,
     Failed,
 }
@@ -49,6 +52,7 @@ impl JobStatus {
 pub enum JobStep {
     Download,
     Import,
+    Enrich,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +69,10 @@ pub struct Job {
     pub thumbnail: Option<String>,
     pub duration: Option<f64>,
     pub staged_path: Option<String>,
-    /// Post-import metadata report, verbatim from the sidecar.
+    /// beets item id once imported; lets a retry resume at the enrich step.
+    #[serde(default)]
+    pub item_id: Option<i64>,
+    /// Post-import/enrich metadata report, verbatim from the sidecar.
     pub report: Option<Value>,
     pub created_at: u64,
     pub updated_at: u64,
@@ -176,35 +183,62 @@ async fn run_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = inner.jobs.lock().await.iter().find(|j| j.id == id).cloned() else {
         return;
     };
-    // Retries resume after the last completed step: a staged file that still
-    // exists means the download already succeeded.
-    let staged = job
-        .staged_path
-        .as_ref()
-        .filter(|p| std::path::Path::new(p).exists())
-        .cloned();
 
-    let path = match staged {
-        Some(path) => path,
-        None => match run_download(app, inner, id, &job.url).await {
-            Ok(path) => path,
+    // Retries resume after the last completed step: an item id means the
+    // import already succeeded; a staged file means the download did.
+    let mut item_id = job.item_id;
+    if item_id.is_none() {
+        let staged = job
+            .staged_path
+            .as_ref()
+            .filter(|p| std::path::Path::new(p).exists())
+            .cloned();
+        let path = match staged {
+            Some(path) => path,
+            None => match run_download(app, inner, id, &job.url).await {
+                Ok(path) => path,
+                Err(err) => {
+                    fail(app, inner, id, JobStep::Download, err).await;
+                    return;
+                }
+            },
+        };
+
+        update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
+        match run_import(app, &path).await {
+            Ok(result) => {
+                item_id = result.pointer("/report/item_id").and_then(Value::as_i64);
+                update_job(app, inner, id, |j| {
+                    j.report = result.get("report").cloned().filter(|r| !r.is_null());
+                    j.item_id = item_id;
+                })
+                .await;
+            }
             Err(err) => {
-                fail(app, inner, id, JobStep::Download, err).await;
+                fail(app, inner, id, JobStep::Import, err).await;
                 return;
             }
-        },
+        }
+    }
+
+    // Without an item id (e.g. duplicate skipped) there is nothing to enrich.
+    let Some(item_id) = item_id else {
+        update_job(app, inner, id, |j| j.status = JobStatus::Done).await;
+        return;
     };
 
-    update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
-    match run_import(app, &path).await {
+    update_job(app, inner, id, |j| j.status = JobStatus::Enriching).await;
+    match run_enrich(app, inner, id, item_id).await {
         Ok(result) => {
             update_job(app, inner, id, |j| {
                 j.status = JobStatus::Done;
-                j.report = result.get("report").cloned().filter(|r| !r.is_null());
+                if let Some(report) = result.get("report").cloned().filter(|r| !r.is_null()) {
+                    j.report = Some(report);
+                }
             })
             .await;
         }
-        Err(err) => fail(app, inner, id, JobStep::Import, err).await,
+        Err(err) => fail(app, inner, id, JobStep::Enrich, err).await,
     }
 }
 
@@ -255,6 +289,52 @@ async fn run_download(
     Ok(path)
 }
 
+async fn run_enrich(
+    app: &AppHandle,
+    inner: &JobsInner,
+    id: &str,
+    item_id: i64,
+) -> AppResult<Value> {
+    let paths = AppPaths::resolve(app)?;
+    python_env::ensure_fpcalc(&paths).await?;
+
+    // The key never transits through the webview; keychain → sidecar directly.
+    let acoustid_key = match settings::read("acoustid").await {
+        Ok(key) => key,
+        Err(err) => {
+            eprintln!("[jobs] keychain read failed, enriching without AcoustID: {err}");
+            None
+        }
+    };
+
+    let hints = inner
+        .jobs
+        .lock()
+        .await
+        .iter()
+        .find(|j| j.id == id)
+        .map(|j| (j.title.clone(), j.artist.clone()))
+        .unwrap_or((None, None));
+
+    let sidecar = app.state::<SidecarState>();
+    sidecar
+        .request(
+            app,
+            "enrich",
+            json!({
+                "item_id": item_id,
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "fpcalc": paths.fpcalc().to_string_lossy(),
+                "acoustid_key": acoustid_key,
+                "title": hints.0,
+                "artist": hints.1,
+            }),
+            ENRICH_TIMEOUT,
+        )
+        .await
+}
+
 async fn run_import(app: &AppHandle, path: &str) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
     let sidecar = app.state::<SidecarState>();
@@ -288,6 +368,7 @@ impl JobsState {
             thumbnail: None,
             duration: None,
             staged_path: None,
+            item_id: None,
             report: None,
             created_at: now,
             updated_at: now,

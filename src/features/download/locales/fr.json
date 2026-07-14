@@ -25,6 +25,7 @@
     "statusQueued": "En attente",
     "statusDownloading": "Téléchargement en cours",
     "statusImporting": "Import en cours",
+    "statusEnriching": "Identification…",
     "statusDone": "Téléchargé",
     "statusFailed": "Échec",
     "retry": "Réessayer",

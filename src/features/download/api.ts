@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type JobKind = "single" | "album";
-export type JobStatus = "queued" | "downloading" | "importing" | "done" | "failed";
-export type JobStep = "download" | "import";
+export type JobStatus = "queued" | "downloading" | "importing" | "enriching" | "done" | "failed";
+export type JobStep = "download" | "import" | "enrich";
 
 export interface MetadataReportFields {
   title: boolean;

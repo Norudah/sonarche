@@ -26,6 +26,7 @@ const jobs = [
   job({ status: "downloading", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 1000 }),
   job({ status: "queued", createdAt: now - 2000 }),
   job({ status: "importing", title: "Knock Knock", artist: "Scattle", duration: 213, createdAt: now - 3000 }),
+  job({ status: "enriching", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 3500 }),
   job({
     status: "done", title: "Monster", artist: "Skillet", duration: 178, createdAt: now - 4000,
     report: {

@@ -120,7 +120,15 @@ function MetadataStateCell({ job }: { job: DownloadJob }) {
   if (job.status === "importing") {
     return <Spinner size="sm" aria-label={t("queue.statusImporting")} />;
   }
-  if (job.status === "failed" && job.failedStep === "import") {
+  if (job.status === "enriching") {
+    return (
+      <div className="flex items-center gap-2">
+        <Spinner size="sm" aria-label={t("queue.statusEnriching")} />
+        <span className="text-xs text-muted">{t("queue.statusEnriching")}</span>
+      </div>
+    );
+  }
+  if (job.status === "failed" && (job.failedStep === "import" || job.failedStep === "enrich")) {
     return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
   }
   if (job.status !== "done") {

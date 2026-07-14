@@ -47,6 +47,19 @@ pub async fn list() -> AppResult<Vec<ApiKeyStatus>> {
     .map_err(|err| AppError::Keychain(err.to_string()))?
 }
 
+/// Read a key's value for internal use (e.g. handed to the sidecar).
+/// Never exposed over IPC.
+pub async fn read(name: &str) -> AppResult<Option<String>> {
+    let name = name.to_string();
+    tauri::async_runtime::spawn_blocking(move || match entry(&name)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(err) => Err(AppError::Keychain(err.to_string())),
+    })
+    .await
+    .map_err(|err| AppError::Keychain(err.to_string()))?
+}
+
 /// Store (or clear, when the value is empty) one API key.
 pub async fn set(name: String, value: String) -> AppResult<ApiKeyStatus> {
     if !KNOWN_KEYS.contains(&name.as_str()) {

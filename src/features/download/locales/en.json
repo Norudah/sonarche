@@ -25,6 +25,7 @@
     "statusQueued": "Queued",
     "statusDownloading": "Downloading",
     "statusImporting": "Importing",
+    "statusEnriching": "Identifying…",
     "statusDone": "Downloaded",
     "statusFailed": "Failed",
     "retry": "Retry",
