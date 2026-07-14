@@ -187,13 +187,13 @@ function TrackCell({ job }: { job: DownloadJob }) {
         </div>
       )}
       <div className="min-w-0">
-        <p className="max-w-md truncate text-sm font-medium">{job.title ?? job.url}</p>
+        <p className="max-w-52 truncate text-sm font-medium">{job.title ?? job.url}</p>
         <p className="truncate text-xs text-muted">
           {job.artist ?? t("unknownArtist")}
           {job.duration != null && ` · ${formatDuration(job.duration)}`}
         </p>
         {job.status === "failed" && job.error && (
-          <p className="max-w-md truncate text-xs text-danger" title={job.error}>
+          <p className="max-w-52 truncate text-xs text-danger" title={job.error}>
             {job.error}
           </p>
         )}
@@ -226,90 +226,99 @@ export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
   return (
     <>
       <Table aria-label={t("queue.heading")}>
-        <Table.Content aria-label={t("queue.heading")}>
-          <Table.Header>
-            <Table.Column isRowHeader className="w-full">
-              {t("queue.colTrack")}
-            </Table.Column>
-            <Table.Column>{t("queue.colDownload")}</Table.Column>
-            <Table.Column>{t("queue.colKind")}</Table.Column>
-            <Table.Column>{t("queue.colMatch")}</Table.Column>
-            <Table.Column>{t("queue.colMetadata")}</Table.Column>
-            <Table.Column>{t("queue.colLibrary")}</Table.Column>
-            <Table.Column>
-              <span className="sr-only">{t("queue.colActions")}</span>
-            </Table.Column>
-          </Table.Header>
-          <Table.Body items={jobs}>
-            {(job) => {
-              const track = trackFor(job);
-              return (
-                <Table.Row id={job.id}>
-                  <Table.Cell>
-                    <TrackCell job={job} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <DownloadStateCell
-                      job={job}
-                      percent={job.status === "downloading" ? downloadPercent : null}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Chip variant="soft" size="sm">
-                      {job.kind === "album" ? t("queue.kindAlbum") : t("queue.kindSingle")}
-                    </Chip>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <MatchCell job={job} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <MetadataStateCell job={job} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <LibraryCell job={job} track={track} libraryLoaded={library.data != null} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <div className="flex items-center justify-end gap-1">
-                      {job.status === "failed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          isDisabled={retry.isPending}
-                          onPress={() => retry.mutate(job.id)}
-                        >
-                          <RotateCcw className="size-4" />
-                          {t("queue.retry")}
-                        </Button>
-                      )}
-                      {track && (
-                        <>
+        {/* Default table content clips overflow with no scrollbar; without this,
+         * a wide row (e.g. the retry button's icon+label) silently hides the
+         * actions column instead of squeezing or scrolling to it. */}
+        <Table.ScrollContainer>
+          <Table.Content aria-label={t("queue.heading")}>
+            <Table.Header>
+              <Table.Column isRowHeader className="w-full">
+                {t("queue.colTrack")}
+              </Table.Column>
+              <Table.Column>{t("queue.colDownload")}</Table.Column>
+              <Table.Column>{t("queue.colKind")}</Table.Column>
+              <Table.Column>{t("queue.colMatch")}</Table.Column>
+              <Table.Column>{t("queue.colMetadata")}</Table.Column>
+              <Table.Column>{t("queue.colLibrary")}</Table.Column>
+              <Table.Column>
+                <span className="sr-only">{t("queue.colActions")}</span>
+              </Table.Column>
+            </Table.Header>
+            {/* `dependencies` is react-aria's escape hatch for external state read
+             * inside the row renderer (`track`, from a separate query): rows are
+             * cached by job identity, so without it a library refetch never
+             * reaches an already-rendered row until the table remounts. */}
+            <Table.Body items={jobs} dependencies={[library.data]}>
+              {(job) => {
+                const track = trackFor(job);
+                return (
+                  <Table.Row id={job.id}>
+                    <Table.Cell>
+                      <TrackCell job={job} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <DownloadStateCell
+                        job={job}
+                        percent={job.status === "downloading" ? downloadPercent : null}
+                      />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Chip variant="soft" size="sm">
+                        {job.kind === "album" ? t("queue.kindAlbum") : t("queue.kindSingle")}
+                      </Chip>
+                    </Table.Cell>
+                    <Table.Cell>
+                      <MatchCell job={job} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <MetadataStateCell job={job} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <LibraryCell job={job} track={track} libraryLoaded={library.data != null} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <div className="flex items-center justify-end gap-1">
+                        {job.status === "failed" && (
                           <Button
-                            variant="tertiary"
+                            variant="ghost"
                             size="sm"
-                            isIconOnly
-                            onPress={() => setInspected(track)}
-                            aria-label={t("queue.inspect")}
+                            isDisabled={retry.isPending}
+                            onPress={() => retry.mutate(job.id)}
                           >
-                            <FileText className="size-4" />
+                            <RotateCcw className="size-4" />
+                            {t("queue.retry")}
                           </Button>
-                          <Button
-                            variant="tertiary"
-                            size="sm"
-                            isIconOnly
-                            onPress={() => setDeleting(track)}
-                            aria-label={t("queue.delete")}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            }}
-          </Table.Body>
-        </Table.Content>
+                        )}
+                        {track && (
+                          <>
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              isIconOnly
+                              onPress={() => setInspected(track)}
+                              aria-label={t("queue.inspect")}
+                            >
+                              <FileText className="size-4" />
+                            </Button>
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              isIconOnly
+                              onPress={() => setDeleting(track)}
+                              aria-label={t("queue.delete")}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              }}
+            </Table.Body>
+          </Table.Content>
+        </Table.ScrollContainer>
       </Table>
 
       <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
