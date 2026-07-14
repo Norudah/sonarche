@@ -188,7 +188,7 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
-plugins: fetchart embedart
+plugins: musicbrainz fetchart embedart
 fetchart:
   auto: yes
 embedart:
