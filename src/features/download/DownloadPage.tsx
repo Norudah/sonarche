@@ -1,84 +1,25 @@
-import { Alert, Button, Card, Chip, InputGroup, ProgressBar } from "@heroui/react";
+import { Alert, Button, InputGroup } from "@heroui/react";
 import { Download, Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
-import { paths } from "@/app/routes";
-import type { StagedTrack } from "@/features/download/api";
-import {
-  useDownloadProgress,
-  useDownloadTrack,
-  useImportTrack,
-} from "@/features/download/hooks";
-import { formatDuration } from "@/shared/lib/format";
+import { QueueTable } from "@/features/download/QueueTable";
+import { useActiveDownloadProgress, useEnqueueDownload, useJobs } from "@/features/download/hooks";
 import { PageContainer } from "@/shared/ui/PageContainer";
-
-function StagedTrackCard({ track }: { track: StagedTrack }) {
-  const { t } = useTranslation("download");
-  const importTrack = useImportTrack();
-
-  return (
-    <Card className="p-5">
-      <Card.Content className="flex items-center gap-4">
-        {track.thumbnail && (
-          <img
-            src={track.thumbnail}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-lg object-cover"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{track.title ?? t("unknownTitle")}</p>
-          <p className="truncate text-sm text-muted">
-            {track.artist ?? t("unknownArtist")}
-            {track.duration != null && ` · ${formatDuration(track.duration)}`}
-          </p>
-        </div>
-        {importTrack.isSuccess ? (
-          <Chip color="success">{t("imported")}</Chip>
-        ) : (
-          <Button
-            variant="primary"
-            size="sm"
-            onPress={() => importTrack.mutate(track.path)}
-            isDisabled={importTrack.isPending}
-          >
-            {importTrack.isPending ? t("importing") : t("import")}
-          </Button>
-        )}
-      </Card.Content>
-      {importTrack.isError && (
-        <Card.Footer>
-          <Alert status="danger" className="w-full">
-            <Alert.Content>
-              <Alert.Title>{t("importFailed")}</Alert.Title>
-              <Alert.Description>{String(importTrack.error)}</Alert.Description>
-            </Alert.Content>
-          </Alert>
-        </Card.Footer>
-      )}
-      {importTrack.isSuccess && (
-        <Card.Footer className="text-sm">
-          <Link to={paths.library} className="text-accent underline-offset-4 hover:underline">
-            {t("goToLibrary")}
-          </Link>
-        </Card.Footer>
-      )}
-    </Card>
-  );
-}
 
 export function DownloadPage() {
   const { t } = useTranslation("download");
   const [url, setUrl] = useState("");
-  const download = useDownloadTrack();
-  const progress = useDownloadProgress(download.isPending);
+  const jobs = useJobs();
+  const enqueue = useEnqueueDownload();
+
+  const hasActiveDownload = jobs.data?.some((job) => job.status === "downloading") ?? false;
+  const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
 
   const submit = () => {
     const trimmed = url.trim();
-    if (!trimmed || download.isPending) return;
-    download.mutate(trimmed);
+    if (!trimmed || enqueue.isPending) return;
+    enqueue.mutate(trimmed, { onSuccess: () => setUrl("") });
   };
 
   return (
@@ -122,38 +63,28 @@ export function DownloadPage() {
               variant="primary"
               size="lg"
               className="rounded-xl px-7"
-              isDisabled={!url.trim() || download.isPending}
+              isDisabled={!url.trim() || enqueue.isPending}
             >
               <Download className="size-4" />
-              {download.isPending ? t("downloading") : t("download")}
+              {t("download")}
             </Button>
           </form>
         </div>
       </div>
 
-      {download.isPending && (
-        <ProgressBar
-          value={progress?.percent ?? 0}
-          isIndeterminate={progress?.percent == null}
-        >
-          <ProgressBar.Track>
-            <ProgressBar.Fill />
-          </ProgressBar.Track>
-        </ProgressBar>
-      )}
-
-      {download.isError && (
+      {enqueue.isError && (
         <Alert status="danger">
           <Alert.Content>
-            <Alert.Title>{t("downloadFailed")}</Alert.Title>
-            <Alert.Description>{String(download.error)}</Alert.Description>
+            <Alert.Title>{t("enqueueFailed")}</Alert.Title>
+            <Alert.Description>{String(enqueue.error)}</Alert.Description>
           </Alert.Content>
         </Alert>
       )}
 
-      {download.isSuccess && (
-        <StagedTrackCard key={download.data.path} track={download.data} />
-      )}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
+        <QueueTable jobs={jobs.data ?? []} downloadPercent={downloadPercent} />
+      </section>
     </PageContainer>
   );
 }

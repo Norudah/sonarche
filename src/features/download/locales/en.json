@@ -4,13 +4,25 @@
   "urlLabel": "Video link",
   "urlPlaceholder": "https://youtube.com/watch?v=…",
   "download": "Fetch",
-  "downloading": "Fetching…",
-  "downloadFailed": "Download failed",
-  "unknownTitle": "Unknown title",
+  "enqueueFailed": "Could not add to the queue",
   "unknownArtist": "Unknown artist",
-  "import": "Import into library",
-  "importing": "Importing…",
-  "imported": "Imported",
-  "importFailed": "Import failed",
-  "goToLibrary": "Open the library →"
+  "queue": {
+    "heading": "Activity",
+    "empty": "No downloads yet. Paste a link to get started.",
+    "colTrack": "Track",
+    "colDownload": "Download",
+    "colKind": "Type",
+    "colMetadata": "Metadata",
+    "kindSingle": "Single",
+    "kindAlbum": "Album",
+    "statusQueued": "Queued",
+    "statusDownloading": "Downloading",
+    "statusImporting": "Importing",
+    "statusDone": "Downloaded",
+    "statusFailed": "Failed",
+    "retry": "Retry",
+    "matched": "Match found",
+    "noMatch": "No match",
+    "noReport": "No report"
+  }
 }

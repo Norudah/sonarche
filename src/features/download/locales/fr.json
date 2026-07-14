@@ -4,13 +4,25 @@
   "urlLabel": "Lien de la vidéo",
   "urlPlaceholder": "https://youtube.com/watch?v=…",
   "download": "Récupérer",
-  "downloading": "Récupération…",
-  "downloadFailed": "Le téléchargement a échoué",
-  "unknownTitle": "Titre inconnu",
+  "enqueueFailed": "Impossible d'ajouter à la file",
   "unknownArtist": "Artiste inconnu",
-  "import": "Importer dans la bibliothèque",
-  "importing": "Import en cours…",
-  "imported": "Importé",
-  "importFailed": "L'import a échoué",
-  "goToLibrary": "Voir la bibliothèque →"
+  "queue": {
+    "heading": "Activité",
+    "empty": "Aucun téléchargement pour l'instant. Colle un lien pour commencer.",
+    "colTrack": "Titre",
+    "colDownload": "Téléchargement",
+    "colKind": "Type",
+    "colMetadata": "Métadonnées",
+    "kindSingle": "Single",
+    "kindAlbum": "Album",
+    "statusQueued": "En attente",
+    "statusDownloading": "Téléchargement en cours",
+    "statusImporting": "Import en cours",
+    "statusDone": "Téléchargé",
+    "statusFailed": "Échec",
+    "retry": "Réessayer",
+    "matched": "Correspondance trouvée",
+    "noMatch": "Aucune correspondance",
+    "noReport": "Pas de rapport"
+  }
 }
