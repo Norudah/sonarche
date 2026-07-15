@@ -3,6 +3,8 @@ import { initReactI18next } from "react-i18next";
 
 import commonEn from "@/app/locales/en.json";
 import commonFr from "@/app/locales/fr.json";
+import browseEn from "@/features/browse/locales/en.json";
+import browseFr from "@/features/browse/locales/fr.json";
 import downloadEn from "@/features/download/locales/en.json";
 import downloadFr from "@/features/download/locales/fr.json";
 import homeEn from "@/features/home/locales/en.json";
@@ -27,6 +29,7 @@ i18n.use(initReactI18next).init({
       common: commonFr,
       onboarding: onboardingFr,
       home: homeFr,
+      browse: browseFr,
       download: downloadFr,
       library: libraryFr,
       metadata: metadataFr,
@@ -37,6 +40,7 @@ i18n.use(initReactI18next).init({
       common: commonEn,
       onboarding: onboardingEn,
       home: homeEn,
+      browse: browseEn,
       download: downloadEn,
       library: libraryEn,
       metadata: metadataEn,

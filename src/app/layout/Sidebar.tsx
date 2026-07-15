@@ -1,5 +1,5 @@
 import { cn } from "@heroui/react";
-import { AudioLines, Disc, Download, FileText, Home, Layers, Mic2, Music, Plus } from "lucide-react";
+import { AudioLines, Disc, Download, FileText, Home, Layers, Mic2, Music, Plus, Tags } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -95,6 +95,12 @@ export function Sidebar() {
         <NavSection label={t("nav.sections.explorer")}>
           <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
           <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
+        </NavSection>
+
+        <Divider />
+
+        <NavSection label={t("nav.sections.browse")}>
+          <NavItem to={paths.browseGenres} label={t("nav.browseGenres")} icon={Tags} />
         </NavSection>
 
         <Divider />
