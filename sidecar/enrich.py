@@ -88,7 +88,7 @@ def _lookup_recordings(api_key: str, fingerprint: str, duration: int) -> list[st
 def _album_for_recording(rec_id: str):
     """Resolve a recording to (AlbumInfo, TrackInfo) via its canonical release."""
     plugin = metadata.mb_plugin()
-    rec = plugin.mb_api.get_recording(rec_id, includes=["releases"])
+    rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
     release = metadata.pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
     if not release:
         return None, None

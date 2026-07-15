@@ -15,7 +15,15 @@ _loaded = False
 _MAX_CANDIDATES = 4
 
 # Release-group primary types, best first, for picking a recording's canonical release.
-_TYPE_RANK = {"album": 0, "ep": 1, "single": 2, "compilation": 3}
+_PRIMARY_RANK = {"Album": 0, "EP": 1, "Single": 2, "Broadcast": 3, "Other": 4}
+# Secondary types mark non-canonical releases (best-of, live, remix collections).
+# Any of these pushes a release below clean studio releases, so a recording that
+# also lives on a compilation ("Made in Germany 1995–2011") resolves to its album.
+_UNWANTED_SECONDARY = frozenset({
+    "Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo",
+    "Soundtrack", "Interview", "Audiobook", "Audio drama", "Spokenword",
+    "Field recording",
+})
 
 
 def ensure_plugins():
@@ -62,15 +70,25 @@ def lastgenre_plugin():
 
 
 def pick_release(releases: list) -> dict | None:
-    """Prefer an official, dated release; earliest wins (original over reissue)."""
+    """Pick a recording's canonical release: an official studio album, not a
+    best-of/live/remix, earliest date winning (original over reissue). Requires
+    the recording lookup to include `release-groups`, else every type ranks equal
+    and it degrades to earliest-date."""
     if not releases:
         return None
     official = [r for r in releases if r.get("status") == "Official"] or releases
-    return sorted(official, key=lambda r: (r.get("date") or "9999"))[0]
+
+    def rank(r: dict) -> tuple:
+        rg = r.get("release_group") or {}
+        secondary = rg.get("secondary_types") or []
+        unwanted = any(s in _UNWANTED_SECONDARY for s in secondary)
+        return (unwanted, _PRIMARY_RANK.get(rg.get("primary_type"), 5), r.get("date") or "9999")
+
+    return sorted(official, key=rank)[0]
 
 
 def _candidate_from_recording(plugin, rec_id: str, match_pct: int) -> dict | None:
-    rec = plugin.mb_api.get_recording(rec_id, includes=["releases"])
+    rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
     release = pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
     if not release:
         return None
