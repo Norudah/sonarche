@@ -4,11 +4,9 @@
     "home": "Home",
     "download": "Downloads",
     "metadata": "Metadata",
-    "browseGenres": "By genre",
     "addPlaylist": "Add a playlist",
     "sections": {
       "explorer": "Explore",
-      "browse": "Browse",
       "arche": "Arche",
       "playlists": "Playlists"
     }

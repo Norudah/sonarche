@@ -1,7 +1,6 @@
 import { createMemoryRouter, Navigate } from "react-router";
 
 import { AppLayout } from "@/app/layout/AppLayout";
-import { BrowseGenresPage } from "@/features/browse/BrowseGenresPage";
 import { DownloadPage } from "@/features/download/DownloadPage";
 import { HomePage } from "@/features/home/HomePage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
@@ -20,7 +19,6 @@ export const paths = {
   home: "/home",
   download: "/",
   metadata: "/metadata",
-  browseGenres: "/browse/genres",
   library: "/library",
   libraryTracks: "/library/tracks",
   libraryAlbums: "/library/albums",
@@ -38,7 +36,6 @@ export const router = createMemoryRouter([
       { path: paths.home, element: <HomePage /> },
       { path: paths.download, element: <DownloadPage /> },
       { path: paths.metadata, element: <MetadataPage /> },
-      { path: paths.browseGenres, element: <BrowseGenresPage /> },
       {
         path: paths.library,
         element: <LibraryLayout />,

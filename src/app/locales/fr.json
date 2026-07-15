@@ -4,11 +4,9 @@
     "home": "Accueil",
     "download": "Téléchargements",
     "metadata": "Métadonnées",
-    "browseGenres": "Par genre",
     "addPlaylist": "Ajouter une playlist",
     "sections": {
       "explorer": "Explorer",
-      "browse": "Parcourir",
       "arche": "Arche",
       "playlists": "Playlists"
     }
