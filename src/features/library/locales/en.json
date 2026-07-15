@@ -30,7 +30,8 @@
       "album": "Album",
       "year": "Year",
       "track": "Track no.",
-      "genre": "Genre"
+      "genre": "Genre",
+      "genreBucket": "Browse genre"
     },
     "close": "Close",
     "edit": "Edit",

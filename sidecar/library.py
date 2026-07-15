@@ -2,6 +2,8 @@
 
 import os
 
+from genre_buckets import bucket_for
+
 
 def _decode(value):
     if isinstance(value, bytes):
@@ -27,6 +29,8 @@ def handle(_request_id: str, params: dict) -> dict:
                 art_path = _decode(album_obj.artpath)
         except Exception:
             art_path = None
+        # beets 2.12 keeps a `genres` list; expose the primary one.
+        genre = next(iter(item.get("genres") or []), None)
         tracks.append(
             {
                 "id": item.id,
@@ -35,8 +39,9 @@ def handle(_request_id: str, params: dict) -> dict:
                 "album": item.album,
                 "album_artist": item.albumartist,
                 "year": item.year or None,
-                # beets 2.12 keeps a `genres` list; expose the primary one.
-                "genre": next(iter(item.get("genres") or []), None),
+                "genre": genre,
+                # Broad browse family (e.g. "Metal") derived from the specific genre.
+                "genre_bucket": bucket_for(genre),
                 "track": item.track or None,
                 "track_total": item.tracktotal or None,
                 "length": round(item.length, 1) if item.length else None,

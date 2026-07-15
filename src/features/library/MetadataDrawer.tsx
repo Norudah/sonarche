@@ -166,6 +166,13 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           isEditing={isEditing}
           onChange={setField("genre")}
         />
+        {/* Derived from the genre, not an editable tag: read-only even while editing. */}
+        <Field
+          label={t("metadata.fields.genreBucket")}
+          value={track.genreBucket ?? ""}
+          isEditing={false}
+          onChange={() => {}}
+        />
       </div>
 
       <div className="flex justify-end gap-3 border-t border-separator px-5 py-4">
