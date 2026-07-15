@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.3.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.2.0...sonarche-v0.3.0) (2026-07-15)
+
+
+### Features
+
+* **download:** add match column and honest completion score ([161b0cc](https://github.com/Norudah/sonarche/commit/161b0ccbda17a5e7a5ad73af4c16481c840e16d6))
+* **download:** add sequential job queue with auto-import ([7fa0e2e](https://github.com/Norudah/sonarche/commit/7fa0e2edd452b619388795a222ce931b4286fe31))
+* **download:** replace staged card with queue/history table ([9384f54](https://github.com/Norudah/sonarche/commit/9384f54d9fd227dd2cf619750e7d042267b78062))
+* **download:** run enrichment step in the job queue ([eb6e62b](https://github.com/Norudah/sonarche/commit/eb6e62bd11c7e96c8e0d21b278a5b26b63fcb096))
+* **download:** show library presence with inspect and delete actions ([91d9220](https://github.com/Norudah/sonarche/commit/91d922042de775bf1d54793544801b935a4aceba))
+* **library:** add metadata inspection drawer on tracks ([2eb7609](https://github.com/Norudah/sonarche/commit/2eb7609bb734b1d1392571a007e0449f4b3aa3b0))
+* **library:** add track deletion with confirmation dialog ([44e559f](https://github.com/Norudah/sonarche/commit/44e559ff8e96c8bb1a2eaa02f59cdd7a8a26e9ec))
+* **settings:** store API keys in the OS keychain ([b56ddf0](https://github.com/Norudah/sonarche/commit/b56ddf0eb298e37c6a84f81b1751c638dbad3177))
+* **shell:** add topbar with settings entry point ([0a3ca27](https://github.com/Norudah/sonarche/commit/0a3ca272b0a0cd0bb7c8d8a34fc6f9c8ca15e613))
+* **sidecar:** add read-only metadata candidates handler ([1002237](https://github.com/Norudah/sonarche/commit/10022373f3c39bd67ed56607a286406374b6e0f3))
+* **sidecar:** enrich imported items via AcoustID fingerprint ([fb0ac4a](https://github.com/Norudah/sonarche/commit/fb0ac4a7a32fe0496bafc5263ad1f988f6f1c07d))
+* **sidecar:** report post-import metadata from the beets library ([9f8d375](https://github.com/Norudah/sonarche/commit/9f8d375e66d233bb9342d4a72b734b5201b69b91))
+
+
+### Bug Fixes
+
+* **download:** fix hidden actions column and stale library chip in queue table ([53aab9c](https://github.com/Norudah/sonarche/commit/53aab9c66d0213f8691e2edab16dd423e1511ca0))
+* **sidecar:** enable musicbrainz plugin in generated beets config ([49ba4ae](https://github.com/Norudah/sonarche/commit/49ba4ae245d52f5ccea670a57d67a29620869482))
+* **sidecar:** sync album row after enrichment to stop false duplicates ([a9e1f9c](https://github.com/Norudah/sonarche/commit/a9e1f9c994fb13289f0c882cc196286e9a3f0970))
+* **sidecar:** sync album row before move so albums keep distinct covers ([3d98cb9](https://github.com/Norudah/sonarche/commit/3d98cb9a1a975b1537dbfde878da305ef437ac32))
+
 ## [0.2.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.1.0...sonarche-v0.2.0) (2026-07-13)
 
 
