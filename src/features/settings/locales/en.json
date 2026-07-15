@@ -1,0 +1,22 @@
+{
+  "title": "Settings",
+  "open": "Open settings",
+  "close": "Close settings",
+  "loading": "Loading",
+  "save": "Save",
+  "saving": "Saving…",
+  "saved": "Settings saved",
+  "apiKeys": {
+    "category": "API keys",
+    "title": "API keys",
+    "description": "Some features rely on external services that require a personal key. Keys are stored in the system keychain, never in a file.",
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "fieldLabel": "API key",
+    "placeholder": "Paste your key here",
+    "acoustid": {
+      "name": "AcoustID",
+      "why": "Identifies a track by its acoustic fingerprint (the audio itself, not its name). This is what finds the right studio version of a song and automatically fills in album, year, track number and cover art. Free key at acoustid.org."
+    }
+  }
+}

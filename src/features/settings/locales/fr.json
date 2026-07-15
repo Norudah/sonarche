@@ -1,0 +1,22 @@
+{
+  "title": "Paramètres",
+  "open": "Ouvrir les paramètres",
+  "close": "Fermer les paramètres",
+  "loading": "Chargement",
+  "save": "Enregistrer",
+  "saving": "Enregistrement…",
+  "saved": "Paramètres enregistrés",
+  "apiKeys": {
+    "category": "Clefs API",
+    "title": "Clefs API",
+    "description": "Certaines fonctionnalités s'appuient sur des services externes qui demandent une clef personnelle. Les clefs sont stockées dans le trousseau du système, jamais dans un fichier.",
+    "configured": "Configurée",
+    "notConfigured": "Non configurée",
+    "fieldLabel": "Clef API",
+    "placeholder": "Colle ta clef ici",
+    "acoustid": {
+      "name": "AcoustID",
+      "why": "Identifie un morceau par son empreinte acoustique (l'audio lui-même, pas son nom). C'est ce qui permet de retrouver la bonne version studio d'un titre et de remplir automatiquement album, année, numéro de piste et pochette. Clef gratuite sur acoustid.org."
+    }
+  }
+}

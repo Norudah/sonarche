@@ -1,57 +1,82 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
-import { downloadTrack, importTrack } from "@/features/download/api";
+import {
+  type DownloadJob,
+  enqueueDownload,
+  listJobs,
+  mapJob,
+  retryJob,
+  type WireJob,
+} from "@/features/download/api";
 import { libraryKey } from "@/features/library/hooks";
 
-export interface DownloadProgress {
-  percent: number | null;
-  speed: number | null;
-  eta: number | null;
-}
+export const jobsKey = ["download", "jobs"];
 
-interface SidecarEventPayload {
-  event: string;
-  data: {
-    percent?: number | null;
-    speed?: number | null;
-    eta?: number | null;
-  };
-}
-
-export function useDownloadTrack() {
-  return useMutation({ mutationFn: downloadTrack });
-}
-
-export function useImportTrack() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: importTrack,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: libraryKey });
-    },
+function upsertJob(queryClient: QueryClient, job: DownloadJob) {
+  queryClient.setQueryData<DownloadJob[]>(jobsKey, (prev) => {
+    const others = (prev ?? []).filter((j) => j.id !== job.id);
+    return [job, ...others].sort((a, b) => b.createdAt - a.createdAt);
   });
 }
 
-/** Follows sidecar download progress events while a download runs. */
-export function useDownloadProgress(active: boolean) {
-  const [progress, setProgress] = useState<DownloadProgress | null>(null);
+/** Job list, kept live by the backend's `jobs:updated` events. */
+export function useJobs() {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: jobsKey, queryFn: listJobs });
+
+  // Sync with the Tauri event stream: the Rust worker owns job state and
+  // broadcasts every transition; the query cache just mirrors it.
   useEffect(() => {
-    if (!active) return;
-    setProgress(null);
-    const unlisten = listen<SidecarEventPayload>("sidecar:event", (event) => {
-      if (event.payload.event !== "download_progress") return;
-      const data = event.payload.data;
-      setProgress({
-        percent: data.percent ?? null,
-        speed: data.speed ?? null,
-        eta: data.eta ?? null,
-      });
+    const unlisten = listen<WireJob>("jobs:updated", (event) => {
+      const job = mapJob(event.payload);
+      upsertJob(queryClient, job);
+      if (job.status === "done") {
+        queryClient.invalidateQueries({ queryKey: libraryKey });
+      }
     });
     return () => {
       unlisten.then((fn) => fn());
     };
+  }, [queryClient]);
+
+  return query;
+}
+
+export function useEnqueueDownload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: enqueueDownload,
+    onSuccess: (job) => upsertJob(queryClient, job),
+  });
+}
+
+export function useRetryJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: retryJob,
+    onSuccess: (job) => upsertJob(queryClient, job),
+  });
+}
+
+/** Download percentage of the currently active job. The queue is strictly
+ * sequential, so at most one job is downloading at a time. */
+export function useActiveDownloadProgress(active: boolean) {
+  const [percent, setPercent] = useState<number | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    setPercent(null);
+    const unlisten = listen<{ event: string; data: { percent?: number | null } }>(
+      "sidecar:event",
+      (event) => {
+        if (event.payload.event !== "download_progress") return;
+        setPercent(event.payload.data.percent ?? null);
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [active]);
-  return progress;
+  return percent;
 }

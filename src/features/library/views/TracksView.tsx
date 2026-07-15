@@ -1,15 +1,27 @@
 import { Alert, Button, Chip, Spinner } from "@heroui/react";
+import { FileText, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
+import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-function TrackRow({ track }: { track: LibraryTrack }) {
+function TrackRow({
+  track,
+  onInspect,
+  onDelete,
+}: {
+  track: LibraryTrack;
+  onInspect: () => void;
+  onDelete: () => void;
+}) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
@@ -60,6 +72,24 @@ function TrackRow({ track }: { track: LibraryTrack }) {
       <span className="w-12 text-right text-sm tabular-nums text-muted">
         {track.length != null ? formatDuration(track.length) : "—"}
       </span>
+      <Button
+        variant="tertiary"
+        size="sm"
+        isIconOnly
+        onPress={onInspect}
+        aria-label={t("metadata.inspect")}
+      >
+        <FileText className="size-4" />
+      </Button>
+      <Button
+        variant="tertiary"
+        size="sm"
+        isIconOnly
+        onPress={onDelete}
+        aria-label={t("delete.action")}
+      >
+        <Trash2 className="size-4" />
+      </Button>
     </li>
   );
 }
@@ -67,6 +97,8 @@ function TrackRow({ track }: { track: LibraryTrack }) {
 export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
+  const [inspected, setInspected] = useState<LibraryTrack | null>(null);
+  const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
 
   return (
     <PageContainer>
@@ -117,10 +149,18 @@ export function TracksView() {
       {library.data && library.data.length > 0 && (
         <ul className="flex flex-col gap-1">
           {library.data.map((track) => (
-            <TrackRow key={track.id} track={track} />
+            <TrackRow
+              key={track.id}
+              track={track}
+              onInspect={() => setInspected(track)}
+              onDelete={() => setDeleting(track)}
+            />
           ))}
         </ul>
       )}
+
+      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
+      <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </PageContainer>
   );
 }

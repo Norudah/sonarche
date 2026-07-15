@@ -2,7 +2,9 @@
 
 mod commands;
 mod error;
+mod jobs;
 mod python_env;
+mod settings;
 mod sidecar;
 
 use tauri::Manager;
@@ -10,12 +12,21 @@ use tauri::Manager;
 fn main() {
     tauri::Builder::default()
         .manage(sidecar::SidecarState::default())
+        .setup(|app| {
+            let state = jobs::init(app.handle())?;
+            app.manage(state);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::get_env_status,
             commands::setup_env,
-            commands::download_track,
-            commands::import_track,
+            commands::enqueue_download,
+            commands::list_jobs,
+            commands::retry_job,
             commands::list_library,
+            commands::delete_track,
+            commands::list_api_keys,
+            commands::set_api_key,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

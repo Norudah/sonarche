@@ -14,5 +14,35 @@
   "empty": "Ta bibliothèque est vide pour l'instant.",
   "goToDownload": "Télécharger un premier titre →",
   "unknownTitle": "Titre inconnu",
-  "unknownArtist": "Artiste inconnu"
+  "unknownArtist": "Artiste inconnu",
+  "metadata": {
+    "title": "Métadonnées",
+    "inspect": "Inspecter les métadonnées",
+    "artwork": "Pochette",
+    "changeArtwork": "Changer l'image",
+    "matchTitle": "Correspondance MusicBrainz",
+    "applyTags": "Appliquer les tags",
+    "comingSoon": "Bientôt disponible",
+    "emptyValue": "—",
+    "fields": {
+      "title": "Titre",
+      "artist": "Artiste",
+      "album": "Album",
+      "year": "Année",
+      "track": "N° piste",
+      "genre": "Genre"
+    },
+    "close": "Fermer",
+    "edit": "Modifier",
+    "cancel": "Annuler",
+    "save": "Enregistrer"
+  },
+  "delete": {
+    "action": "Supprimer le morceau",
+    "title": "Supprimer ce morceau ?",
+    "body": "« {{title}} » sera retiré de ta bibliothèque et le fichier supprimé du disque. Cette action est irréversible.",
+    "cancel": "Annuler",
+    "confirm": "Supprimer",
+    "failed": "La suppression a échoué."
+  }
 }

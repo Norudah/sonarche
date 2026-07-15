@@ -47,6 +47,7 @@ pub struct AppPaths {
     pub library_dir: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
+    pub tools_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -68,12 +69,66 @@ impl AppPaths {
             library_dir,
             sidecar_main: sidecar_dir.join("main.py"),
             requirements: sidecar_dir.join("requirements.txt"),
+            tools_dir: data.join("tools"),
         })
     }
 
     pub fn venv_python(&self) -> PathBuf {
         self.venv_dir.join("bin").join("python3")
     }
+
+    pub fn fpcalc(&self) -> PathBuf {
+        self.tools_dir.join("fpcalc")
+    }
+}
+
+/// Pinned Chromaprint release; fpcalc ships statically linked (no ffmpeg needed).
+const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz";
+const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-macos-universal/fpcalc";
+
+/// Download fpcalc into the app-owned tools dir on first use. Self-healing,
+/// like the venv: a failure only degrades enrichment, never the app.
+pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
+    let dest = paths.fpcalc();
+    if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
+        return Ok(());
+    }
+    tokio::fs::create_dir_all(&paths.tools_dir).await?;
+    let archive = paths.tools_dir.join("fpcalc.tar.gz");
+
+    eprintln!("[tools] downloading fpcalc from {FPCALC_URL}");
+    let status = Command::new("/usr/bin/curl")
+        .args(["-fsSL", "-o"])
+        .arg(&archive)
+        .arg(FPCALC_URL)
+        .stdin(Stdio::null())
+        .status()
+        .await?;
+    if !status.success() {
+        return Err(AppError::Setup("fpcalc download failed".into()));
+    }
+
+    let status = Command::new("/usr/bin/tar")
+        .arg("-xzf")
+        .arg(&archive)
+        .arg("-C")
+        .arg(&paths.tools_dir)
+        // BSD tar treats everything after the first member name as more member
+        // names, so options must come before FPCALC_ARCHIVE_BIN.
+        .arg("--strip-components=1")
+        .arg(FPCALC_ARCHIVE_BIN)
+        .stdin(Stdio::null())
+        .status()
+        .await?;
+    let _ = tokio::fs::remove_file(&archive).await;
+    if !status.success() {
+        return Err(AppError::Setup("fpcalc extraction failed".into()));
+    }
+    if !tokio::fs::try_exists(&dest).await.unwrap_or(false) {
+        return Err(AppError::Setup("fpcalc missing after extraction".into()));
+    }
+    eprintln!("[tools] fpcalc ready at {}", dest.display());
+    Ok(())
 }
 
 async fn probe(path: &str) -> Option<PythonInfo> {
@@ -188,7 +243,7 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
-plugins: fetchart embedart
+plugins: musicbrainz fetchart embedart
 fetchart:
   auto: yes
 embedart:

@@ -1,14 +1,40 @@
-"""Import a staged file into the beets library via the beet CLI (quiet autotag)."""
+"""Import a staged file into the beets library via the beet CLI, then re-read
+the imported item to report its metadata state.
+
+The import is deliberately as-is (-A): staged files carry no tags by design,
+so autotagging here would only waste MusicBrainz calls. The enrich step owns
+the real matching, via the acoustic fingerprint."""
 
 import os
 import subprocess
 import sys
+import time
 
 import protocol
+from report import build_report
 
 
 def _beet_bin() -> str:
     return os.path.join(os.path.dirname(sys.executable), "beet")
+
+
+def _find_imported_item(db_path: str, library_dir: str, since: float):
+    """The item added by this import, or None (e.g. duplicate skipped).
+
+    Requests are processed serially, so 'newest item added after the import
+    started' can only be ours.
+    """
+    from beets.library import Library
+
+    if not os.path.exists(db_path):
+        return None
+    lib = Library(db_path, directory=library_dir)
+    newest = None
+    for item in lib.items():
+        if item.added and item.added >= since - 1:
+            if newest is None or item.added > newest.added:
+                newest = item
+    return newest
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -17,7 +43,8 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
 
-    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", path]
+    started = time.time()
+    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A", path]
     protocol.send_event(request_id, "import_progress", {"stage": "matching"})
 
     # Separate process: beets' own stdout stays out of our protocol stream.
@@ -28,4 +55,12 @@ def handle(request_id: str, params: dict) -> dict:
     if proc.returncode != 0:
         raise RuntimeError(f"beet import failed (exit {proc.returncode}): {proc.stderr.strip()[:500]}")
 
-    return {"imported": True}
+    report = None
+    try:
+        item = _find_imported_item(params["beets_db"], params["library_dir"], started)
+        if item is not None:
+            report = build_report(item)
+    except Exception as exc:  # the import itself succeeded; a missing report must not fail it
+        protocol.log(f"import report failed: {exc}")
+
+    return {"imported": True, "report": report}

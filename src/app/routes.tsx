@@ -9,6 +9,7 @@ import { ArtistsView } from "@/features/library/views/ArtistsView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { TracksView } from "@/features/library/views/TracksView";
 import { MetadataPage } from "@/features/metadata/MetadataPage";
+import { SettingsPage } from "@/features/settings/SettingsPage";
 
 /**
  * Route ids stay technical (home / download / library); the visual identity
@@ -23,9 +24,12 @@ export const paths = {
   libraryAlbums: "/library/albums",
   libraryArtists: "/library/artists",
   libraryGenres: "/library/genres",
+  settings: "/settings",
 } as const;
 
 export const router = createMemoryRouter([
+  // Standalone screen, deliberately outside the app shell (no sidebar/player).
+  { path: paths.settings, element: <SettingsPage /> },
   {
     element: <AppLayout />,
     children: [

@@ -15,3 +15,5 @@ tokio = { version = "1", features = ["macros", "process", "io-util", "sync", "ti
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
 url = "2"
+# OS keychain for API keys: secrets never land in a config file.
+keyring = { version = "3", features = ["apple-native"] }
