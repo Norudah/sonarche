@@ -1,8 +1,9 @@
 import { Alert, Button, InputGroup } from "@heroui/react";
-import { Download, Link2 } from "lucide-react";
+import { Download, Link2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { QueueTable } from "@/features/download/QueueTable";
 import { useActiveDownloadProgress, useEnqueueDownload, useJobs } from "@/features/download/hooks";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -10,8 +11,11 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function DownloadPage() {
   const { t } = useTranslation("download");
   const [url, setUrl] = useState("");
+  const [clearingHistory, setClearingHistory] = useState(false);
   const jobs = useJobs();
   const enqueue = useEnqueueDownload();
+
+  const hasHistory = jobs.data?.some((job) => job.status === "done" || job.status === "failed") ?? false;
 
   const hasActiveDownload = jobs.data?.some((job) => job.status === "downloading") ?? false;
   const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
@@ -82,9 +86,22 @@ export function DownloadPage() {
       )}
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onPress={() => setClearingHistory(true)}
+            isDisabled={!hasHistory}
+          >
+            <Trash2 className="size-4" />
+            {t("queue.clearHistory")}
+          </Button>
+        </div>
         <QueueTable jobs={jobs.data ?? []} downloadPercent={downloadPercent} />
       </section>
+
+      <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />
     </PageContainer>
   );
 }

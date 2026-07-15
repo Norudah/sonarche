@@ -420,6 +420,16 @@ impl JobsState {
         jobs.sort_by_key(|j| std::cmp::Reverse(j.created_at));
         jobs
     }
+
+    /// Drop terminal (done/failed) jobs from the history; in-flight jobs are untouched.
+    pub async fn clear_history(&self) -> Vec<Job> {
+        let mut jobs = self.0.jobs.lock().await;
+        jobs.retain(|j| !j.status.is_terminal());
+        persist(&self.0.store_path, &jobs).await;
+        let mut remaining = jobs.clone();
+        remaining.sort_by_key(|j| std::cmp::Reverse(j.created_at));
+        remaining
+    }
 }
 
 /// Drop the oldest terminal jobs once the history exceeds the cap.

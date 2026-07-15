@@ -48,6 +48,11 @@ pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) 
 }
 
 #[tauri::command]
+pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
+    Ok(state.clear_history().await)
+}
+
+#[tauri::command]
 pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
     settings::list().await
 }

@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
 import {
+  clearJobHistory,
   type DownloadJob,
   enqueueDownload,
   listJobs,
@@ -57,6 +58,15 @@ export function useRetryJob() {
   return useMutation({
     mutationFn: retryJob,
     onSuccess: (job) => upsertJob(queryClient, job),
+  });
+}
+
+/** Clears completed/failed jobs from the history; in-flight jobs are untouched. */
+export function useClearJobHistory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: clearJobHistory,
+    onSuccess: (jobs) => queryClient.setQueryData(jobsKey, jobs),
   });
 }
 
