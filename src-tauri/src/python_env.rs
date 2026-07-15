@@ -243,11 +243,20 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
-plugins: musicbrainz fetchart embedart
+plugins: musicbrainz fetchart embedart lastgenre
 fetchart:
   auto: yes
 embedart:
   auto: yes
+lastgenre:
+  auto: no
+  whitelist: yes
+  canonical: no
+  cleanup_existing: yes
+  prefer_specific: no
+  source: album
+  count: 1
+  fallback: null
 ui:
   color: no
 "#,

@@ -123,6 +123,14 @@ def _apply(item, album_info, track_info) -> None:
     # merge_with_album already carries the release's `genres` list along.
     merged = track_info.merge_with_album(album_info)
     item.update(merged)
+
+    if item.get("genres"):
+        # Canonicalize the MB genre (whitelist + title-case) without a
+        # Last.fm fetch. If MB gave nothing, leave it empty rather than
+        # falling back to a network lookup in the automatic pipeline.
+        genres, _ = metadata.lastgenre_plugin()._get_genre(item)
+        item.genres = genres
+
     item.store()
     try:
         item.write()

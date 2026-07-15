@@ -24,9 +24,21 @@ def ensure_plugins():
         return
     from beets import config, plugins
 
-    config["plugins"] = ["musicbrainz"]
+    config["plugins"] = ["musicbrainz", "lastgenre"]
     # MB community genres ride along with the release; no extra service needed.
     config["musicbrainz"]["genres"] = True
+    # auto=no: the import stage never runs lastgenre itself; enrich.py calls
+    # _get_genre() directly so it can skip entirely when MB gave no genre
+    # (no Last.fm fallback network call in the automatic pipeline).
+    lg = config["lastgenre"]
+    lg["auto"] = False
+    lg["cleanup_existing"] = True
+    lg["whitelist"] = True
+    lg["canonical"] = False
+    lg["prefer_specific"] = False
+    lg["source"] = "album"
+    lg["count"] = 1
+    lg["fallback"] = None
     plugins.load_plugins()
     _loaded = True
 
@@ -38,6 +50,15 @@ def mb_plugin():
     if not sources:
         raise RuntimeError("no metadata source plugin loaded")
     return sources[0]
+
+
+def lastgenre_plugin():
+    import beets.plugins as plugins
+
+    for plugin in plugins.find_plugins():
+        if plugin.name == "lastgenre":
+            return plugin
+    raise RuntimeError("lastgenre not loaded")
 
 
 def pick_release(releases: list) -> dict | None:
