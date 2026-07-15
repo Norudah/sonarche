@@ -128,22 +128,28 @@ def _apply(item, album_info, track_info) -> None:
         item.write()
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"enrich: tag write failed: {exc}")
-    try:
-        # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
-        item.move()
-    except Exception as exc:
-        protocol.log(f"enrich: move failed: {exc}")
 
-    # The as-is import left the album row's own album/albumartist/genres etc.
-    # empty (only the item carries the new tags). Left unsynced, that empty
-    # row makes beets' duplicate check (albumartist+album, both blank) treat
-    # every subsequent untagged import as a duplicate of this one and skip it
-    # outright. Mirror mbsync's approach: copy the item's fields onto the album.
+    # Sync the album row BEFORE moving. Two reasons, both stemming from the
+    # as-is import leaving the album row's own album/albumartist/genres empty:
+    #   1. Item.destination() reads album-level fields ($albumartist/$album/…)
+    #      from the album ROW, not the item. With a blank row, $album collapses
+    #      to nothing and the file lands in <albumartist>/ with no album folder.
+    #      Every album by one artist then shares that directory — and thus a
+    #      single cover.jpg — so each enrichment overwrites the previous album's
+    #      cover. Syncing first gives each album its own <artist>/<album>/ dir.
+    #   2. beets' duplicate check keys on albumartist+album; two blank rows look
+    #      like duplicates, making it skip every later untagged import.
     album = item.get_album()
     if album is not None:
         for key in library.Album.item_keys:
             album[key] = item[key]
         album.store()
+
+    try:
+        # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
+        item.move()
+    except Exception as exc:
+        protocol.log(f"enrich: move failed: {exc}")
 
 
 def _fetch_cover(item, release_id: str) -> None:
