@@ -2,7 +2,7 @@
 
 import unittest
 
-from metadata import pick_release
+from metadata import pick_release, release_rank
 
 
 def _rel(title, date, primary, secondary=None, status="Official"):
@@ -62,6 +62,28 @@ class PickReleaseTest(unittest.TestCase):
 
     def test_empty(self):
         self.assertIsNone(pick_release([]))
+
+
+class ReleaseRankTest(unittest.TestCase):
+    """release_rank compares picks across the several recordings one fingerprint
+    resolves to; the compilation-linked recording must lose to the album one."""
+
+    def test_studio_album_beats_compilation_across_recordings(self):
+        album = _rel("Mutter", "2001-03-27", "Album")
+        comp = _rel("Made in Germany 1995–2011", "2011", "Album", ["Compilation"])
+        self.assertLess(release_rank(album), release_rank(comp))
+
+    def test_clean_album_is_flagged_as_ideal(self):
+        rank = release_rank(_rel("Mutter", "2001-03-27", "Album"))
+        self.assertFalse(rank[0])  # no unwanted secondary type
+        self.assertEqual(rank[1], 0)  # Album primary type
+
+    def test_single_ranks_between_album_and_compilation(self):
+        album = release_rank(_rel("A", "2001", "Album"))
+        single = release_rank(_rel("B", "2001", "Single"))
+        comp = release_rank(_rel("C", "2001", "Album", ["Compilation"]))
+        self.assertLess(album, single)
+        self.assertLess(single, comp)
 
 
 if __name__ == "__main__":

@@ -86,19 +86,19 @@ def _lookup_recordings(api_key: str, fingerprint: str, duration: int) -> list[st
 
 
 def _album_for_recording(rec_id: str):
-    """Resolve a recording to (AlbumInfo, TrackInfo) via its canonical release."""
+    """Resolve a recording to (AlbumInfo, TrackInfo, release) via its canonical release."""
     plugin = metadata.mb_plugin()
     rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
     release = metadata.pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
     if not release:
-        return None, None
+        return None, None, None
     album_info = plugin.album_for_id(release["id"])
     if not album_info:
-        return None, None
+        return None, None, None
     track_info = next((t for t in album_info.tracks if t.track_id == rec_id), None)
     if not track_info:
-        return None, None
-    return album_info, track_info
+        return None, None, None
+    return album_info, track_info, release
 
 
 def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str | None:
@@ -219,21 +219,32 @@ def handle(request_id: str, params: dict) -> dict:
     else:
         protocol.log("enrich: no AcoustID key configured, text fallback only")
 
+    # One fingerprint resolves to several recordings (MB keeps a separate
+    # recording for the album version and for each best-of it lands on), ordered
+    # by AcoustID submission count. Picking the first that resolves tags whatever
+    # release happens to top that list — often a compilation. Score every
+    # candidate's canonical release and keep the best (studio album over best-of).
     album_info = track_info = None
+    best_rank = None
     for rec_id in recordings:
         try:
-            album_info, track_info = _album_for_recording(rec_id)
+            ai, ti, release = _album_for_recording(rec_id)
         except Exception as exc:  # one bad recording must not sink the others
             protocol.log(f"enrich: recording {rec_id} failed: {exc}")
             continue
-        if track_info:
+        if ti is None:
+            continue
+        rank = metadata.release_rank(release)
+        if best_rank is None or rank < best_rank:
+            album_info, track_info, best_rank = ai, ti, rank
+        if not rank[0] and rank[1] == 0:  # clean studio album: nothing beats it
             break
 
     if track_info is None:
         rec_id = _text_fallback(item, params.get("artist"), params.get("title"))
         if rec_id:
             try:
-                album_info, track_info = _album_for_recording(rec_id)
+                album_info, track_info, _ = _album_for_recording(rec_id)
             except Exception as exc:
                 protocol.log(f"enrich: fallback recording {rec_id} failed: {exc}")
 

@@ -69,6 +69,16 @@ def lastgenre_plugin():
     raise RuntimeError("lastgenre not loaded")
 
 
+def release_rank(release: dict) -> tuple:
+    """Sort key: lower is better. Studio album beats single beats compilation/
+    live/remix; earliest date breaks ties (original over reissue). Also used to
+    compare picks across the several recordings one fingerprint resolves to."""
+    rg = release.get("release_group") or {}
+    secondary = rg.get("secondary_types") or []
+    unwanted = any(s in _UNWANTED_SECONDARY for s in secondary)
+    return (unwanted, _PRIMARY_RANK.get(rg.get("primary_type"), 5), release.get("date") or "9999")
+
+
 def pick_release(releases: list) -> dict | None:
     """Pick a recording's canonical release: an official studio album, not a
     best-of/live/remix, earliest date winning (original over reissue). Requires
@@ -77,14 +87,7 @@ def pick_release(releases: list) -> dict | None:
     if not releases:
         return None
     official = [r for r in releases if r.get("status") == "Official"] or releases
-
-    def rank(r: dict) -> tuple:
-        rg = r.get("release_group") or {}
-        secondary = rg.get("secondary_types") or []
-        unwanted = any(s in _UNWANTED_SECONDARY for s in secondary)
-        return (unwanted, _PRIMARY_RANK.get(rg.get("primary_type"), 5), r.get("date") or "9999")
-
-    return sorted(official, key=rank)[0]
+    return sorted(official, key=release_rank)[0]
 
 
 def _candidate_from_recording(plugin, rec_id: str, match_pct: int) -> dict | None:
