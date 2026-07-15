@@ -7,6 +7,13 @@
     "genres": "Genres",
     "comingSoon": "Coming soon."
   },
+  "genres": {
+    "other": "Other",
+    "none": "No genre",
+    "allOf": "All {{parent}}",
+    "clear": "Clear",
+    "pickHint": "Pick a genre to see its tracks."
+  },
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
   "refresh": "Refresh",
@@ -31,7 +38,7 @@
       "year": "Year",
       "track": "Track no.",
       "genre": "Genre",
-      "genreBucket": "Browse genre"
+      "genreBucket": "Parent genre"
     },
     "close": "Close",
     "edit": "Edit",

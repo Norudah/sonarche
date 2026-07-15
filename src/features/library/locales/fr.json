@@ -7,6 +7,13 @@
     "genres": "Genres",
     "comingSoon": "Bientôt disponible."
   },
+  "genres": {
+    "other": "Autres",
+    "none": "Sans genre",
+    "allOf": "Tout {{parent}}",
+    "clear": "Effacer",
+    "pickHint": "Choisis un genre pour voir les titres."
+  },
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
   "refresh": "Actualiser",
@@ -31,7 +38,7 @@
       "year": "Année",
       "track": "N° piste",
       "genre": "Genre",
-      "genreBucket": "Genre de browse"
+      "genreBucket": "Genre parent"
     },
     "close": "Fermer",
     "edit": "Modifier",
