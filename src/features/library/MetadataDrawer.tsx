@@ -122,7 +122,10 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
   const cancel = () => setIsEditing(false);
 
   return (
-    <>
+    // data-slot="drawer-body" opts the whole panel out of HeroUI's drag-to-dismiss
+    // (it excludes pointer-downs inside a drawer-body), so text selection for
+    // copy-paste works; the backdrop click and the ✕ still close the drawer.
+    <div data-slot="drawer-body" className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-separator px-5 py-4">
         <div className="flex items-center gap-2.5">
           <FileText className="size-5 shrink-0 text-accent" />
@@ -232,7 +235,7 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
