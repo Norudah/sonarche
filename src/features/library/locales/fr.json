@@ -28,7 +28,12 @@
     "artwork": "Pochette",
     "changeArtwork": "Changer l'image",
     "matchTitle": "Correspondance MusicBrainz",
-    "applyTags": "Appliquer les tags",
+    "reenrichHint": "Relance l'identification acoustique pour corriger album, pochette et tags.",
+    "reenrich": "Relancer l'auto-correspondance",
+    "reenriching": "Correspondance en cours…",
+    "reenrichMatched": "Métadonnées mises à jour.",
+    "reenrichUnmatched": "Aucune correspondance trouvée.",
+    "reenrichFailed": "La correspondance a échoué, réessaie dans un instant.",
     "comingSoon": "Bientôt disponible",
     "emptyValue": "—",
     "fields": {

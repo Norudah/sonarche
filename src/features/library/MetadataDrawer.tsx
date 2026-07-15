@@ -1,9 +1,10 @@
 import { Button, Drawer, Input, Label, TextField, useOverlayState } from "@heroui/react";
-import { FileText, Sparkles, X } from "lucide-react";
+import { FileText, Loader2, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
+import { useReenrichTrack } from "@/features/library/hooks";
 
 interface FieldValues {
   title: string;
@@ -58,18 +59,67 @@ function Field({
   );
 }
 
+function ReenrichCard({ track }: { track: LibraryTrack }) {
+  const { t } = useTranslation("library");
+  const reenrich = useReenrichTrack();
+
+  const feedback = reenrich.isError
+    ? { text: t("metadata.reenrichFailed"), tone: "text-danger" }
+    : reenrich.isSuccess
+      ? reenrich.data.matched
+        ? { text: t("metadata.reenrichMatched"), tone: "text-success" }
+        : { text: t("metadata.reenrichUnmatched"), tone: "text-muted" }
+      : null;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-accent/10 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <Sparkles className="mt-0.5 size-4 shrink-0 text-accent" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">{t("metadata.matchTitle")}</p>
+          <p className="text-sm text-muted">{t("metadata.reenrichHint")}</p>
+        </div>
+      </div>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="self-start rounded-xl"
+        isDisabled={reenrich.isPending}
+        onPress={() => reenrich.mutate(track.id)}
+      >
+        {reenrich.isPending ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            {t("metadata.reenriching")}
+          </>
+        ) : (
+          t("metadata.reenrich")
+        )}
+      </Button>
+      {feedback && <p className={`text-sm ${feedback.tone}`}>{feedback.text}</p>}
+    </div>
+  );
+}
+
 function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
   const { t } = useTranslation("library");
   const [isEditing, setIsEditing] = useState(false);
-  const [values, setValues] = useState<FieldValues>(() => toFieldValues(track));
+  const [draft, setDraft] = useState<FieldValues>(() => toFieldValues(track));
+
+  // Read mode shows the live track (so a re-enrich refetch updates the drawer in
+  // place — the form isn't remounted since its key/id is unchanged); the draft is
+  // only the editing buffer, reseeded from the track each time editing starts.
+  const live = toFieldValues(track);
+  const shown = isEditing ? draft : live;
 
   const setField = (key: keyof FieldValues) => (value: string) =>
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setDraft((prev) => ({ ...prev, [key]: value }));
 
-  const cancel = () => {
-    setValues(toFieldValues(track));
-    setIsEditing(false);
+  const startEditing = () => {
+    setDraft(toFieldValues(track));
+    setIsEditing(true);
   };
+  const cancel = () => setIsEditing(false);
 
   return (
     <>
@@ -111,50 +161,37 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           </div>
         </div>
 
-        <div className="flex items-start gap-3 rounded-xl bg-accent/10 px-4 py-3">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-accent" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{t("metadata.matchTitle")}</p>
-            <button
-              type="button"
-              disabled
-              className="text-sm text-accent/60"
-              title={t("metadata.comingSoon")}
-            >
-              {t("metadata.applyTags")}
-            </button>
-          </div>
-        </div>
+        <ReenrichCard track={track} />
 
         <Field
           label={t("metadata.fields.title")}
-          value={values.title}
+          value={shown.title}
           isEditing={isEditing}
           onChange={setField("title")}
         />
         <Field
           label={t("metadata.fields.artist")}
-          value={values.artist}
+          value={shown.artist}
           isEditing={isEditing}
           onChange={setField("artist")}
         />
         <Field
           label={t("metadata.fields.album")}
-          value={values.album}
+          value={shown.album}
           isEditing={isEditing}
           onChange={setField("album")}
         />
         <div className="flex gap-3">
           <Field
             label={t("metadata.fields.year")}
-            value={values.year}
+            value={shown.year}
             isEditing={isEditing}
             onChange={setField("year")}
             className="min-w-0 flex-1"
           />
           <Field
             label={t("metadata.fields.track")}
-            value={values.track}
+            value={shown.track}
             isEditing={isEditing}
             onChange={setField("track")}
             className="min-w-0 flex-1"
@@ -162,7 +199,7 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
         </div>
         <Field
           label={t("metadata.fields.genre")}
-          value={values.genre}
+          value={shown.genre}
           isEditing={isEditing}
           onChange={setField("genre")}
         />
@@ -190,11 +227,7 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
             </Button>
           </>
         ) : (
-          <Button
-            variant="primary"
-            className="rounded-xl px-6"
-            onPress={() => setIsEditing(true)}
-          >
+          <Button variant="primary" className="rounded-xl px-6" onPress={startEditing}>
             {t("metadata.edit")}
           </Button>
         )}

@@ -6,6 +6,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::jobs::{Job, JobsState};
 use crate::python_env::{self, AppPaths, EnvStatus};
+use crate::reenrich::ReenrichState;
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
 
@@ -76,6 +77,15 @@ pub async fn list_library(app: AppHandle, state: State<'_, SidecarState>) -> App
             QUERY_TIMEOUT,
         )
         .await
+}
+
+#[tauri::command]
+pub async fn reenrich_track(
+    app: AppHandle,
+    state: State<'_, ReenrichState>,
+    id: i64,
+) -> AppResult<Value> {
+    state.run(&app, id).await
 }
 
 #[tauri::command]

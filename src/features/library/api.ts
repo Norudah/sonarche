@@ -41,6 +41,11 @@ export async function deleteTrack(id: number): Promise<void> {
   await invoke("delete_track", { id });
 }
 
+export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
+  const result = await invoke<{ matched: boolean }>("reenrich_track", { id });
+  return { matched: result.matched };
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({

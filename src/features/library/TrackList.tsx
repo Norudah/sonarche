@@ -91,8 +91,12 @@ function TrackRow({
 }
 
 export function TrackList({ tracks }: { tracks: LibraryTrack[] }) {
-  const [inspected, setInspected] = useState<LibraryTrack | null>(null);
+  const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+
+  // Derive from the live list, not a snapshot: re-enrich mutates the track and
+  // the drawer must show the new album/artwork after the query refetches.
+  const inspected = inspectedId != null ? (tracks.find((t) => t.id === inspectedId) ?? null) : null;
 
   return (
     <>
@@ -101,13 +105,13 @@ export function TrackList({ tracks }: { tracks: LibraryTrack[] }) {
           <TrackRow
             key={track.id}
             track={track}
-            onInspect={() => setInspected(track)}
+            onInspect={() => setInspectedId(track.id)}
             onDelete={() => setDeleting(track)}
           />
         ))}
       </ul>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

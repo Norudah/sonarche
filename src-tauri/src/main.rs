@@ -4,6 +4,7 @@ mod commands;
 mod error;
 mod jobs;
 mod python_env;
+mod reenrich;
 mod settings;
 mod sidecar;
 
@@ -12,6 +13,7 @@ use tauri::Manager;
 fn main() {
     tauri::Builder::default()
         .manage(sidecar::SidecarState::default())
+        .manage(reenrich::ReenrichState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
             app.manage(state);
@@ -25,6 +27,7 @@ fn main() {
             commands::retry_job,
             commands::clear_job_history,
             commands::list_library,
+            commands::reenrich_track,
             commands::delete_track,
             commands::list_api_keys,
             commands::set_api_key,

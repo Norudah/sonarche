@@ -28,7 +28,12 @@
     "artwork": "Artwork",
     "changeArtwork": "Change image",
     "matchTitle": "MusicBrainz match",
-    "applyTags": "Apply tags",
+    "reenrichHint": "Re-run acoustic identification to fix album, artwork and tags.",
+    "reenrich": "Re-run auto-match",
+    "reenriching": "Matching…",
+    "reenrichMatched": "Metadata updated.",
+    "reenrichUnmatched": "No match found.",
+    "reenrichFailed": "Match failed, try again in a moment.",
     "comingSoon": "Coming soon",
     "emptyValue": "—",
     "fields": {
