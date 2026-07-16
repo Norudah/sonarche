@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { deleteTrack, listLibrary } from "@/features/library/api";
+import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack } from "@/features/library/api";
 
 export const libraryKey = ["library"] as const;
 
@@ -15,6 +15,26 @@ export function useDeleteTrack() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteTrack,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
+export function useReenrichTrack() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: reenrichTrack,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
+export function useRecomputeGenres() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: recomputeGenres,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },

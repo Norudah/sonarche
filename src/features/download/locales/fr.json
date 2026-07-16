@@ -31,6 +31,12 @@
     "retry": "Réessayer",
     "matched": "Correspondance trouvée",
     "matchNone": "Aucune",
-    "noReport": "Pas de rapport"
+    "noReport": "Pas de rapport",
+    "clearHistory": "Vider l'historique",
+    "clearHistoryTitle": "Vider l'historique des téléchargements ?",
+    "clearHistoryBody": "Les téléchargements terminés ou en échec seront retirés de cette liste. Les morceaux déjà importés restent dans ta bibliothèque.",
+    "clearHistoryCancel": "Annuler",
+    "clearHistoryConfirm": "Vider",
+    "clearHistoryFailed": "La suppression de l'historique a échoué."
   }
 }

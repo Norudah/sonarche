@@ -295,6 +295,27 @@ async fn run_enrich(
     id: &str,
     item_id: i64,
 ) -> AppResult<Value> {
+    let (title, artist) = inner
+        .jobs
+        .lock()
+        .await
+        .iter()
+        .find(|j| j.id == id)
+        .map(|j| (j.title.clone(), j.artist.clone()))
+        .unwrap_or((None, None));
+    enrich_item(app, item_id, title, artist).await
+}
+
+/// Run the enrich stage for a beets item. `title`/`artist` are only used by the
+/// text fallback; pass `None` to let the sidecar reuse the item's own tags (the
+/// re-enrich path has no YouTube hints). Shared by the download worker and the
+/// standalone re-enrich command.
+pub async fn enrich_item(
+    app: &AppHandle,
+    item_id: i64,
+    title: Option<String>,
+    artist: Option<String>,
+) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
     python_env::ensure_fpcalc(&paths).await?;
 
@@ -307,15 +328,6 @@ async fn run_enrich(
         }
     };
 
-    let hints = inner
-        .jobs
-        .lock()
-        .await
-        .iter()
-        .find(|j| j.id == id)
-        .map(|j| (j.title.clone(), j.artist.clone()))
-        .unwrap_or((None, None));
-
     let sidecar = app.state::<SidecarState>();
     sidecar
         .request(
@@ -327,8 +339,8 @@ async fn run_enrich(
                 "library_dir": paths.library_dir.to_string_lossy(),
                 "fpcalc": paths.fpcalc().to_string_lossy(),
                 "acoustid_key": acoustid_key,
-                "title": hints.0,
-                "artist": hints.1,
+                "title": title,
+                "artist": artist,
             }),
             ENRICH_TIMEOUT,
         )
@@ -419,6 +431,16 @@ impl JobsState {
         let mut jobs = self.0.jobs.lock().await.clone();
         jobs.sort_by_key(|j| std::cmp::Reverse(j.created_at));
         jobs
+    }
+
+    /// Drop terminal (done/failed) jobs from the history; in-flight jobs are untouched.
+    pub async fn clear_history(&self) -> Vec<Job> {
+        let mut jobs = self.0.jobs.lock().await;
+        jobs.retain(|j| !j.status.is_terminal());
+        persist(&self.0.store_path, &jobs).await;
+        let mut remaining = jobs.clone();
+        remaining.sort_by_key(|j| std::cmp::Reverse(j.created_at));
+        remaining
     }
 }
 

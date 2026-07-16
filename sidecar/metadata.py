@@ -15,18 +15,28 @@ _loaded = False
 _MAX_CANDIDATES = 4
 
 # Release-group primary types, best first, for picking a recording's canonical release.
-_TYPE_RANK = {"album": 0, "ep": 1, "single": 2, "compilation": 3}
+_PRIMARY_RANK = {"Album": 0, "EP": 1, "Single": 2, "Broadcast": 3, "Other": 4}
+# Secondary types mark non-canonical releases (best-of, live, remix collections).
+# Any of these pushes a release below clean studio releases, so a recording that
+# also lives on a compilation ("Made in Germany 1995–2011") resolves to its album.
+_UNWANTED_SECONDARY = frozenset({
+    "Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo",
+    "Soundtrack", "Interview", "Audiobook", "Audio drama", "Spokenword",
+    "Field recording",
+})
 
 
 def ensure_plugins():
+    """Load the plugins declared in the beets config.
+
+    The Rust host sets BEETSDIR, so the in-process config is the very
+    config.yaml `write_beets_config()` regenerates on every launch — one
+    config site, nothing redefined programmatically here."""
     global _loaded
     if _loaded:
         return
-    from beets import config, plugins
+    from beets import plugins
 
-    config["plugins"] = ["musicbrainz"]
-    # MB community genres ride along with the release; no extra service needed.
-    config["musicbrainz"]["genres"] = True
     plugins.load_plugins()
     _loaded = True
 
@@ -40,16 +50,38 @@ def mb_plugin():
     return sources[0]
 
 
+def lastgenre_plugin():
+    import beets.plugins as plugins
+
+    for plugin in plugins.find_plugins():
+        if plugin.name == "lastgenre":
+            return plugin
+    raise RuntimeError("lastgenre not loaded")
+
+
+def release_rank(release: dict) -> tuple:
+    """Sort key: lower is better. Studio album beats single beats compilation/
+    live/remix; earliest date breaks ties (original over reissue). Also used to
+    compare picks across the several recordings one fingerprint resolves to."""
+    rg = release.get("release_group") or {}
+    secondary = rg.get("secondary_types") or []
+    unwanted = any(s in _UNWANTED_SECONDARY for s in secondary)
+    return (unwanted, _PRIMARY_RANK.get(rg.get("primary_type"), 5), release.get("date") or "9999")
+
+
 def pick_release(releases: list) -> dict | None:
-    """Prefer an official, dated release; earliest wins (original over reissue)."""
+    """Pick a recording's canonical release: an official studio album, not a
+    best-of/live/remix, earliest date winning (original over reissue). Requires
+    the recording lookup to include `release-groups`, else every type ranks equal
+    and it degrades to earliest-date."""
     if not releases:
         return None
     official = [r for r in releases if r.get("status") == "Official"] or releases
-    return sorted(official, key=lambda r: (r.get("date") or "9999"))[0]
+    return sorted(official, key=release_rank)[0]
 
 
 def _candidate_from_recording(plugin, rec_id: str, match_pct: int) -> dict | None:
-    rec = plugin.mb_api.get_recording(rec_id, includes=["releases"])
+    rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
     release = pick_release(rec.get("releases", []) if isinstance(rec, dict) else [])
     if not release:
         return None

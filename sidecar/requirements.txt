@@ -2,3 +2,4 @@ beets==2.12.0
 yt-dlp==2026.7.4
 mutagen==1.47.0
 requests==2.32.4
+pylast==7.1.0

@@ -4,8 +4,11 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
 use crate::error::{AppError, AppResult};
+use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobsState};
+use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
+use crate::reenrich::ReenrichState;
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
 
@@ -48,6 +51,11 @@ pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) 
 }
 
 #[tauri::command]
+pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
+    Ok(state.clear_history().await)
+}
+
+#[tauri::command]
 pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
     settings::list().await
 }
@@ -71,6 +79,33 @@ pub async fn list_library(app: AppHandle, state: State<'_, SidecarState>) -> App
             QUERY_TIMEOUT,
         )
         .await
+}
+
+#[tauri::command]
+pub async fn reenrich_track(
+    app: AppHandle,
+    state: State<'_, ReenrichState>,
+    id: i64,
+) -> AppResult<Value> {
+    state.run(&app, id).await
+}
+
+#[tauri::command]
+pub async fn get_preferences(app: AppHandle) -> AppResult<Preferences> {
+    preferences::load(&app).await
+}
+
+#[tauri::command]
+pub async fn set_lastfm_fetch_delay(app: AppHandle, seconds: f64) -> AppResult<Preferences> {
+    preferences::set_lastfm_fetch_delay(&app, seconds).await
+}
+
+#[tauri::command]
+pub async fn recompute_genres(
+    app: AppHandle,
+    state: State<'_, RecomputeGenresState>,
+) -> AppResult<Value> {
+    state.run(&app).await
 }
 
 #[tauri::command]

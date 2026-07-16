@@ -31,6 +31,12 @@
     "retry": "Retry",
     "matched": "Match found",
     "matchNone": "None",
-    "noReport": "No report"
+    "noReport": "No report",
+    "clearHistory": "Clear history",
+    "clearHistoryTitle": "Clear download history?",
+    "clearHistoryBody": "Completed and failed downloads will be removed from this list. Tracks already imported stay in your library.",
+    "clearHistoryCancel": "Cancel",
+    "clearHistoryConfirm": "Clear",
+    "clearHistoryFailed": "Clearing the history failed."
   }
 }

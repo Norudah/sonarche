@@ -92,3 +92,8 @@ export async function listJobs(): Promise<DownloadJob[]> {
 export async function retryJob(id: string): Promise<DownloadJob> {
   return mapJob(await invoke<WireJob>("retry_job", { id }));
 }
+
+export async function clearJobHistory(): Promise<DownloadJob[]> {
+  const raw = await invoke<WireJob[]>("clear_job_history");
+  return raw.map(mapJob);
+}
