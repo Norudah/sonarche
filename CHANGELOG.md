@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.3.0...sonarche-v0.4.0) (2026-07-16)
+
+
+### Features
+
+* **download:** clear queue history with confirmation dialog ([5266fc8](https://github.com/Norudah/sonarche/commit/5266fc87104367ad1000093e712066f304a58465))
+* **library:** add a re-run auto-enrich action on a track ([c05ddb2](https://github.com/Norudah/sonarche/commit/c05ddb2e9def4082723eee444ebc0c8fe6a8953c))
+* **library:** derive and surface each track's parent genre ([06f42b7](https://github.com/Norudah/sonarche/commit/06f42b75f30a5243827a8fc18362fe43e09a89cb))
+* **library:** unify genre browsing into a parent/sub-genre accordion ([34e7bb7](https://github.com/Norudah/sonarche/commit/34e7bb77a305a65554eac900326468237a9e1566))
+* **settings:** expose the Last.fm fetch delay as a user preference ([f3717b4](https://github.com/Norudah/sonarche/commit/f3717b48d94123d98968b848ab777c9cc4cd9b1c))
+* **shell:** add a browse-by-genre section to the sidebar ([3b74803](https://github.com/Norudah/sonarche/commit/3b74803a33fe2c8c51af077475423d3777e0d7cd))
+* **sidecar:** canonical genre tree, throttled Last.fm fallback, rate-limit setting ([d0c3fd5](https://github.com/Norudah/sonarche/commit/d0c3fd58662072b8eca4e260cff9f1f2ed74b72b))
+* **sidecar:** canonicalize genres via lastgenre during enrichment ([9e73260](https://github.com/Norudah/sonarche/commit/9e732602fbf780970af1afe25e87ba027a31b0f0))
+* **sidecar:** derive genre buckets from a canonical lastgenre tree ([e097844](https://github.com/Norudah/sonarche/commit/e097844a52bed906f21c4dd5fa3a904af52b74b4))
+
+
+### Bug Fixes
+
+* **library:** bucket guitar-based industrial genres under Metal/Rock ([2fe804b](https://github.com/Norudah/sonarche/commit/2fe804bdeebe4da4044f45cf531fad92951f448a))
+* **library:** stop the metadata drawer from dragging on text selection ([592a6e9](https://github.com/Norudah/sonarche/commit/592a6e91e57cfd023ca6eecf27307c8705ac5bba))
+* **sidecar:** pick the best release across a fingerprint's recordings ([c563f1b](https://github.com/Norudah/sonarche/commit/c563f1b2a9addd2a53b26e05d0269851bf79b71b))
+* **sidecar:** resolve recordings to their studio album, not a best-of ([93d4d27](https://github.com/Norudah/sonarche/commit/93d4d270c4ac6fc611d0cc0df4065f7f428ecbfb))
+* **sidecar:** throttle the genre recompute batch's Last.fm calls ([b24e95a](https://github.com/Norudah/sonarche/commit/b24e95afd6e3db4d4a3689fed71432e6958f7282))
+
 ## [0.3.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.2.0...sonarche-v0.3.0) (2026-07-15)
 
 
