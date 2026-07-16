@@ -113,12 +113,16 @@ def _vote_from_fingerprints(request_id: str, items, params: dict, pause: float) 
         if not os.path.exists(path):
             continue
         protocol.send_event(
-            request_id, "enrich_progress", {"stage": "fingerprint", "done": done, "total": total}
+            request_id,
+            "enrich_progress",
+            {"stage": "fingerprint", "done": done, "total": total, "item_id": item.id},
         )
         try:
             duration, fingerprint = enrich._fingerprint(params["fpcalc"], path)
             protocol.send_event(
-                request_id, "enrich_progress", {"stage": "lookup", "done": done, "total": total}
+                request_id,
+                "enrich_progress",
+                {"stage": "lookup", "done": done, "total": total, "item_id": item.id},
             )
             recordings = enrich._lookup_recordings(params["acoustid_key"], fingerprint, duration)
         except Exception as exc:  # one bad sample must not sink the vote
@@ -204,6 +208,9 @@ def _apply_album(request_id: str, lib, items, match, pause: float) -> list[dict]
     lastgenre = metadata.lastgenre_plugin()
     total = len(mapped)
     for done, item in enumerate(mapped, start=1):
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
+        )
         # Same policy as enrich/genres: MB genres canonicalize offline; only a
         # genre-less item reaches Last.fm, and only those pace the loop.
         had_genre = bool(item.get("genres", with_album=False))
@@ -222,8 +229,11 @@ def _apply_album(request_id: str, lib, items, match, pause: float) -> list[dict]
             protocol.log(f"enrich_album: move failed: {exc}")
         if not had_genre and pause > 0 and done < total:
             time.sleep(pause)
+        # track_done is the per-row completion signal the UI keys on.
         protocol.send_event(
-            request_id, "enrich_progress", {"stage": "apply", "done": done, "total": total}
+            request_id,
+            "enrich_progress",
+            {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
         )
 
     # One cover fetch for the whole album, embedded into every file.
@@ -335,6 +345,11 @@ def handle(request_id: str, params: dict) -> dict:
             protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
             result = {"matched": False}
         any_matched = any_matched or bool(result.get("matched"))
+        protocol.send_event(
+            request_id,
+            "enrich_progress",
+            {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
+        )
         if pause > 0 and done < total:
             time.sleep(pause)
 

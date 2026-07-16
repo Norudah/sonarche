@@ -242,9 +242,14 @@ def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = Tru
     recordings: list[str] = []
     api_key = params.get("acoustid_key")
     if api_key:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "fingerprint"})
+        # item_id lets the album batch's UI animate the matching child row.
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
+        )
         duration, fingerprint = _fingerprint(params["fpcalc"], path)
-        protocol.send_event(request_id, "enrich_progress", {"stage": "lookup"})
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id}
+        )
         recordings = _lookup_recordings(api_key, fingerprint, duration)
         protocol.log(f"enrich: acoustid returned {len(recordings)} recording(s)")
     else:
@@ -281,7 +286,9 @@ def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = Tru
 
     matched = bool(album_info and track_info)
     if matched:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
+        )
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
             try:

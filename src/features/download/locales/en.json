@@ -39,6 +39,7 @@
     "statusDownloading": "Downloading",
     "statusImporting": "Importing",
     "statusEnriching": "Identifying…",
+    "statusEnriched": "Identified",
     "statusDone": "Downloaded",
     "statusFailed": "Failed",
     "retry": "Retry",

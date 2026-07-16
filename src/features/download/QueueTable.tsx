@@ -20,7 +20,7 @@ import type {
   JobKind,
   MetadataReport,
 } from "@/features/download/api";
-import { useRetryJob } from "@/features/download/hooks";
+import { type EnrichStage, useRetryJob } from "@/features/download/hooks";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
@@ -240,16 +240,31 @@ function TrackMatchCell({ track }: { track: AlbumTrackJob }) {
   return <MatchChip report={track.report} />;
 }
 
-function MetadataStateCell({ job }: { job: DownloadJob }) {
+function MetadataStateCell({
+  job,
+  enrichStages,
+}: {
+  job: DownloadJob;
+  enrichStages: Record<number, EnrichStage>;
+}) {
   const { t } = useTranslation("download");
   if (job.status === "importing") {
     return <Spinner size="sm" aria-label={t("queue.statusImporting")} />;
   }
   if (job.status === "enriching") {
+    // Album batch: count the per-track completion events as they stream in.
+    const enrichable = job.tracks.filter((track) => track.itemId != null);
+    const done = enrichable.filter(
+      (track) => enrichStages[track.itemId as number] === "track_done",
+    ).length;
     return (
       <div className="flex items-center gap-2">
         <Spinner size="sm" aria-label={t("queue.statusEnriching")} />
-        <span className="text-xs text-muted">{t("queue.statusEnriching")}</span>
+        <span className="text-xs text-muted">
+          {job.kind === "album" && enrichable.length > 0
+            ? `${done}/${enrichable.length}`
+            : t("queue.statusEnriching")}
+        </span>
       </div>
     );
   }
@@ -267,12 +282,22 @@ function MetadataStateCell({ job }: { job: DownloadJob }) {
   return <CompletionCircle completion={completion} label={t("queue.colMetadata")} />;
 }
 
-function TrackMetadataCell({ track }: { track: AlbumTrackJob }) {
+function TrackMetadataCell({ track, stage }: { track: AlbumTrackJob; stage?: EnrichStage }) {
   const { t } = useTranslation("download");
   if (track.status === "failed") {
     return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
   }
   if (track.status !== "done") {
+    // Live view while the album-wide enrich request runs: this track's own
+    // events light the row up before the final per-track reports land.
+    if (stage === "track_done") {
+      return (
+        <CircleCheck aria-label={t("queue.statusEnriched")} className="size-5 text-success" />
+      );
+    }
+    if (stage != null) {
+      return <Spinner size="sm" aria-label={t("queue.statusEnriching")} />;
+    }
     return <span className="text-sm text-muted">—</span>;
   }
   const completion = metadataCompletion("album", track.report);
@@ -373,9 +398,11 @@ interface QueueTableProps {
   jobs: DownloadJob[];
   /** Percent of the one currently downloading job (the queue is sequential). */
   downloadPercent: number | null;
+  /** Live enrich stage per beets item id, for the one currently enriching job. */
+  enrichStages: Record<number, EnrichStage>;
 }
 
-export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
+export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTableProps) {
   const { t } = useTranslation("download");
   const retry = useRetryJob();
   const library = useLibrary();
@@ -482,7 +509,7 @@ export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
                       <MatchCell job={job} />
                     </Table.Cell>
                     <Table.Cell>
-                      <MetadataStateCell job={job} />
+                      <MetadataStateCell job={job} enrichStages={enrichStages} />
                     </Table.Cell>
                     <Table.Cell>
                       {job.status === "done" && job.report?.itemId != null && libraryLoaded ? (
@@ -535,7 +562,14 @@ export function QueueTable({ jobs, downloadPercent }: QueueTableProps) {
                             <TrackMatchCell track={track} />
                           </Table.Cell>
                           <Table.Cell>
-                            <TrackMetadataCell track={track} />
+                            <TrackMetadataCell
+                              track={track}
+                              stage={
+                                job.status === "enriching" && track.itemId != null
+                                  ? enrichStages[track.itemId]
+                                  : undefined
+                              }
+                            />
                           </Table.Cell>
                           <Table.Cell>
                             {track.status === "done" && track.itemId != null && libraryLoaded ? (

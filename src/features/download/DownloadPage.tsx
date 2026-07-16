@@ -6,7 +6,12 @@ import { useTranslation } from "react-i18next";
 import type { JobKind } from "@/features/download/api";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { QueueTable } from "@/features/download/QueueTable";
-import { useActiveDownloadProgress, useEnqueueDownload, useJobs } from "@/features/download/hooks";
+import {
+  useActiveDownloadProgress,
+  useEnqueueDownload,
+  useEnrichProgress,
+  useJobs,
+} from "@/features/download/hooks";
 import { detectUrlKind } from "@/features/download/urlKind";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -24,6 +29,9 @@ export function DownloadPage() {
 
   const hasActiveDownload = jobs.data?.some((job) => job.status === "downloading") ?? false;
   const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
+
+  const hasActiveEnrich = jobs.data?.some((job) => job.status === "enriching") ?? false;
+  const enrichStages = useEnrichProgress(hasActiveEnrich);
 
   const detected = detectUrlKind(url);
   const chosenKind = mixedChoice?.url === url ? mixedChoice.kind : null;
@@ -154,7 +162,11 @@ export function DownloadPage() {
             {t("queue.clearHistory")}
           </Button>
         </div>
-        <QueueTable jobs={jobs.data ?? []} downloadPercent={downloadPercent} />
+        <QueueTable
+          jobs={jobs.data ?? []}
+          downloadPercent={downloadPercent}
+          enrichStages={enrichStages}
+        />
       </section>
 
       <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />

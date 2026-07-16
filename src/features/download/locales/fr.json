@@ -39,6 +39,7 @@
     "statusDownloading": "Téléchargement en cours",
     "statusImporting": "Import en cours",
     "statusEnriching": "Identification…",
+    "statusEnriched": "Identifiée",
     "statusDone": "Téléchargé",
     "statusFailed": "Échec",
     "retry": "Réessayer",
