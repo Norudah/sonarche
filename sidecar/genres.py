@@ -5,8 +5,18 @@ genres came from MB canonicalize offline; only items with no genre at all
 trigger a Last.fm fetch. Meant to run after the genre tree or the lastgenre
 config changes."""
 
+import time
+
 import metadata
 import protocol
+
+# lastgenre's Last.fm client (beetsplug/lastgenre/client.py) has no rate
+# limiting of its own, and it shares beets' embedded API key with every other
+# beets install — hammering it across a whole library risks 429s or a
+# temporary block for everyone using that key, not just us. Pace the batch:
+# only items with no existing genre reach the network (up to 3 sequential
+# calls: track, album, artist), so the pause only applies to those.
+_FETCH_PAUSE_SECONDS = 1.0
 
 
 def recompute(request_id: str, params: dict) -> dict:
@@ -20,6 +30,7 @@ def recompute(request_id: str, params: dict) -> dict:
     total = len(items)
     updated = 0
     for done, item in enumerate(items, start=1):
+        had_genre = bool(item.get("genres", with_album=False))
         genres, label = plugin._get_genre(item)
         # Empty result = nothing resolved and no fallback configured: keep the
         # existing genre rather than erasing it (same policy as enrich).
@@ -32,6 +43,8 @@ def recompute(request_id: str, params: dict) -> dict:
                 protocol.log(f"genres: tag write failed: {exc}")
             updated += 1
             protocol.log(f"genres: {item.artist} - {item.title} -> {genres} ({label})")
+        if not had_genre:
+            time.sleep(_FETCH_PAUSE_SECONDS)
         if done % 10 == 0 or done == total:
             protocol.send_event(
                 request_id, "genres_progress", {"done": done, "total": total}

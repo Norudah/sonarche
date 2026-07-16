@@ -14,8 +14,10 @@ use crate::error::{AppError, AppResult};
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// Genre-less items each cost a Last.fm round-trip; leave the batch room.
-const RECOMPUTE_TIMEOUT: Duration = Duration::from_secs(1800);
+/// Genre-less items each cost a throttled Last.fm round-trip (sidecar paces
+/// itself at ~1s/item to stay polite to beets' shared API key) — a large,
+/// mostly-untagged library needs real headroom here.
+const RECOMPUTE_TIMEOUT: Duration = Duration::from_secs(3600 * 3);
 
 #[derive(Default)]
 pub struct RecomputeGenresState {
