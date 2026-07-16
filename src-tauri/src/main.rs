@@ -4,6 +4,7 @@ mod commands;
 mod error;
 mod genres;
 mod jobs;
+mod preferences;
 mod python_env;
 mod reenrich;
 mod settings;
@@ -31,6 +32,8 @@ fn main() {
             commands::list_library,
             commands::reenrich_track,
             commands::recompute_genres,
+            commands::get_preferences,
+            commands::set_lastfm_fetch_delay,
             commands::delete_track,
             commands::list_api_keys,
             commands::set_api_key,

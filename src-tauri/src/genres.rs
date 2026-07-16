@@ -11,6 +11,7 @@ use tauri::{AppHandle, Manager};
 use tokio::sync::Mutex;
 
 use crate::error::{AppError, AppResult};
+use crate::preferences;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
@@ -46,6 +47,7 @@ impl RecomputeGenresState {
 
 async fn request(app: &AppHandle) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
+    let prefs = preferences::load(app).await?;
     let sidecar = app.state::<SidecarState>();
     sidecar
         .request(
@@ -54,6 +56,7 @@ async fn request(app: &AppHandle) -> AppResult<Value> {
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
                 "library_dir": paths.library_dir.to_string_lossy(),
+                "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
             }),
             RECOMPUTE_TIMEOUT,
         )

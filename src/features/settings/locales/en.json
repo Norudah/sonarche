@@ -18,5 +18,17 @@
       "name": "AcoustID",
       "why": "Identifies a track by its acoustic fingerprint (the audio itself, not its name). This is what finds the right studio version of a song and automatically fills in album, year, track number and cover art. Free key at acoustid.org."
     }
+  },
+  "rateLimits": {
+    "category": "API rate limits",
+    "title": "API rate limits",
+    "description": "Controls how cautious the app is when calling external services during library-wide batch operations.",
+    "lastfmDelay": {
+      "name": "Delay between Last.fm requests",
+      "instant": "Instant",
+      "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
+      "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
+      "warning": "Below one second isn't recommended: stay polite to Last.fm and avoid hitting it with too many requests too close together."
+    }
   }
 }

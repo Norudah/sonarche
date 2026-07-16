@@ -15,3 +15,15 @@ export async function listApiKeys(): Promise<ApiKeyStatus[]> {
 export async function setApiKey(name: ApiKeyName, value: string): Promise<ApiKeyStatus> {
   return invoke<ApiKeyStatus>("set_api_key", { name, value });
 }
+
+export interface Preferences {
+  lastfmFetchDelaySeconds: number;
+}
+
+export async function getPreferences(): Promise<Preferences> {
+  return invoke<Preferences>("get_preferences");
+}
+
+export async function setLastfmFetchDelay(seconds: number): Promise<Preferences> {
+  return invoke<Preferences>("set_lastfm_fetch_delay", { seconds });
+}

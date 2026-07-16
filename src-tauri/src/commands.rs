@@ -6,6 +6,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobsState};
+use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
 use crate::settings::{self, ApiKeyStatus};
@@ -87,6 +88,16 @@ pub async fn reenrich_track(
     id: i64,
 ) -> AppResult<Value> {
     state.run(&app, id).await
+}
+
+#[tauri::command]
+pub async fn get_preferences(app: AppHandle) -> AppResult<Preferences> {
+    preferences::load(&app).await
+}
+
+#[tauri::command]
+pub async fn set_lastfm_fetch_delay(app: AppHandle, seconds: f64) -> AppResult<Preferences> {
+    preferences::set_lastfm_fetch_delay(&app, seconds).await
 }
 
 #[tauri::command]

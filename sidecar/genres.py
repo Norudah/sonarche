@@ -15,8 +15,10 @@ import protocol
 # beets install — hammering it across a whole library risks 429s or a
 # temporary block for everyone using that key, not just us. Pace the batch:
 # only items with no existing genre reach the network (up to 3 sequential
-# calls: track, album, artist), so the pause only applies to those.
-_FETCH_PAUSE_SECONDS = 1.0
+# calls: track, album, artist), so the pause only applies to those. The Rust
+# host passes the user's configured delay (Settings > Limitations appels
+# API); this is only a fallback for direct/test invocations.
+_DEFAULT_FETCH_PAUSE_SECONDS = 1.0
 
 
 def recompute(request_id: str, params: dict) -> dict:
@@ -24,6 +26,7 @@ def recompute(request_id: str, params: dict) -> dict:
 
     metadata.ensure_plugins()
     plugin = metadata.lastgenre_plugin()
+    pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
     items = list(lib.items())
@@ -43,8 +46,8 @@ def recompute(request_id: str, params: dict) -> dict:
                 protocol.log(f"genres: tag write failed: {exc}")
             updated += 1
             protocol.log(f"genres: {item.artist} - {item.title} -> {genres} ({label})")
-        if not had_genre:
-            time.sleep(_FETCH_PAUSE_SECONDS)
+        if not had_genre and pause > 0:
+            time.sleep(pause)
         if done % 10 == 0 or done == total:
             protocol.send_event(
                 request_id, "genres_progress", {"done": done, "total": total}
