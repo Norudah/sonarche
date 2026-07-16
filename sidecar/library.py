@@ -11,6 +11,21 @@ def _decode(value):
     return value
 
 
+def _art_path(album_obj) -> str | None:
+    """Sonarche displays the HQ cover (cover-hq.*) next to beets' own artpath
+    (the 500px thumb it embeds/tracks); fall back to the artpath itself for
+    albums enriched before the HQ/thumb split."""
+    if not album_obj or not album_obj.artpath:
+        return None
+    artpath = _decode(album_obj.artpath)
+    art_dir = os.path.dirname(artpath)
+    for ext in ("jpg", "png"):
+        hq_path = os.path.join(art_dir, f"cover-hq.{ext}")
+        if os.path.exists(hq_path):
+            return hq_path
+    return artpath
+
+
 def handle(_request_id: str, params: dict) -> dict:
     from beets.library import Library
 
@@ -22,11 +37,8 @@ def handle(_request_id: str, params: dict) -> dict:
     lib = Library(db_path, directory=params["library_dir"])
     tracks = []
     for item in lib.items():
-        art_path = None
         try:
-            album_obj = item.get_album()
-            if album_obj and album_obj.artpath:
-                art_path = _decode(album_obj.artpath)
+            art_path = _art_path(item.get_album())
         except Exception:
             art_path = None
         # beets 2.12 keeps a `genres` list; expose the primary one.

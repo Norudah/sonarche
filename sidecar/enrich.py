@@ -24,11 +24,14 @@ _MAX_TEXT_DISTANCE = 0.10
 _MAX_RECORDINGS = 3
 
 
+def _decode(value) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
 def _decode_path(item) -> str:
-    path = item.path
-    if isinstance(path, bytes):
-        path = path.decode("utf-8", errors="replace")
-    return path
+    return _decode(item.path)
 
 
 def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
@@ -168,21 +171,36 @@ def _apply(lib, item, album_info, track_info) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def download_cover(release_id: str) -> tuple[bytes, bool] | None:
-    """Front cover bytes from the Cover Art Archive, or None. (data, is_png)."""
+def download_cover(release_id: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) cover images from the Cover Art Archive, each as (data, is_png),
+    or None. hq is CAA's original upload, kept on disk for Sonarche's own display;
+    thumb is CAA's 500px rendition — used as beets' artpath (cover.jpg) and
+    embedded into file tags, so the beets copy and the audio files stay light."""
     import requests
 
-    resp = requests.get(
+    hq_resp = requests.get(
         f"https://coverartarchive.org/release/{release_id}/front", timeout=30
     )
-    if resp.status_code != 200:
-        protocol.log(f"enrich: no cover for release {release_id} (HTTP {resp.status_code})")
+    if hq_resp.status_code != 200:
+        protocol.log(f"enrich: no cover for release {release_id} (HTTP {hq_resp.status_code})")
         return None
-    data = resp.content
-    return data, data[:4] == b"\x89PNG"
+    hq_data = hq_resp.content
+    hq = (hq_data, hq_data[:4] == b"\x89PNG")
+
+    thumb_resp = requests.get(
+        f"https://coverartarchive.org/release/{release_id}/front-500", timeout=30
+    )
+    thumb = (
+        (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
+        if thumb_resp.status_code == 200
+        else hq  # CAA has no 500px rendition for this release: fall back to the original
+    )
+    return hq, thumb
 
 
 def set_album_art(album, data: bytes, is_png: bool) -> None:
+    """Set beets' artpath (cover.jpg) — expects the 500px thumb, so the beets
+    copy stays light."""
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -193,6 +211,18 @@ def set_album_art(album, data: bytes, is_png: bool) -> None:
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+def save_hq_cover(album, data: bytes, is_png: bool) -> None:
+    """Write the HQ cover next to beets' artpath as cover-hq.*, for Sonarche's
+    own display. Kept outside beets' management — call after set_album_art so
+    album.artpath already points at the album's directory."""
+    if not album.artpath:
+        return
+    art_dir = os.path.dirname(_decode(album.artpath))
+    ext = "png" if is_png else "jpg"
+    with open(os.path.join(art_dir, f"cover-hq.{ext}"), "wb") as f:
+        f.write(data)
 
 
 def embed_cover(item, data: bytes, is_png: bool) -> None:
@@ -213,9 +243,10 @@ def _fetch_cover(item, release_id: str) -> None:
     cover = download_cover(release_id)
     if cover is None:
         return
-    data, is_png = cover
-    set_album_art(album, data, is_png)
-    embed_cover(item, data, is_png)
+    hq, thumb = cover
+    set_album_art(album, *thumb)
+    save_hq_cover(album, *hq)
+    embed_cover(item, *thumb)
 
 
 def handle(request_id: str, params: dict) -> dict:
