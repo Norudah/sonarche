@@ -155,11 +155,15 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
     One bad file yields [] rather than sinking the batch."""
     recordings: dict[int, list[str]] = {}
     total = len(items)
+    protocol.log(f"enrich_album: fingerprinting {total} file(s)")
     for done, item in enumerate(items):
         path = enrich._decode_path(item)
         if not os.path.exists(path):
             recordings[item.id] = []
             continue
+        protocol.log(
+            f"enrich_album: fingerprint {done + 1}/{total}: {os.path.basename(path)}"
+        )
         protocol.send_event(
             request_id,
             "enrich_progress",
@@ -174,6 +178,9 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
             )
             recordings[item.id] = enrich._lookup_recordings(
                 params["acoustid_key"], fingerprint, duration
+            )
+            protocol.log(
+                f"enrich_album: fingerprint ok ({len(recordings[item.id])} recording(s))"
             )
         except Exception as exc:
             protocol.log(f"enrich_album: item {item.id} fingerprint failed: {exc}")
@@ -251,6 +258,10 @@ def _build_match(items, recordings: dict, release_id: str):
             f"{len(items)} tracks map onto it)"
         )
         return None, list(items)
+    protocol.log(
+        f"enrich_album: mapped {len(mapping)}/{len(items)} track(s) onto "
+        f"« {album_info.album} » by recording id"
+    )
     if leftovers:
         protocol.log(
             f"enrich_album: {len(leftovers)} track(s) off the voted release"
@@ -407,6 +418,9 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
             item.update(track.merge_with_album(match.info))
             item.track = next_track
             item.album_id = album.id
+            # Where the bonus really comes from — surfaced in the UI so the
+            # iTunes/Spotify-style filing stays explicit to the user.
+            item["sonarche_bonus_source"] = info.album
             genres, label = lastgenre._get_genre(item)
             if genres:
                 item.genres = genres
@@ -431,6 +445,7 @@ def _fetch_album_cover(album, items, release_id: str | None) -> None:
     if not release_id:
         return
     try:
+        protocol.log(f"enrich_album: fetching cover for release {release_id}")
         cover = enrich.download_cover(release_id)
         if cover is not None:
             hq, thumb = cover
@@ -438,6 +453,9 @@ def _fetch_album_cover(album, items, release_id: str | None) -> None:
             enrich.save_hq_cover(album, *hq)
             for item in items:
                 enrich.embed_cover(item, *thumb)
+            protocol.log(
+                f"enrich_album: cover stored (hq on disk, 500px embedded in {len(items)} file(s))"
+            )
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"enrich_album: cover fetch failed: {exc}")
 

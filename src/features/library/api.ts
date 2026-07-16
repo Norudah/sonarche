@@ -17,6 +17,9 @@ export interface LibraryTrack {
   path: string;
   audioUrl: string;
   artUrl: string | null;
+  /** Origin release title when the track is a bonus adopted into this album
+   * (deluxe/regional edition filed with the main album), else null. */
+  bonusSource: string | null;
 }
 
 interface WireTrack {
@@ -35,6 +38,7 @@ interface WireTrack {
   format: string;
   path: string;
   art_path: string | null;
+  bonus_source: string | null;
 }
 
 export async function deleteTrack(id: number): Promise<void> {
@@ -69,5 +73,6 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     path: track.path,
     audioUrl: convertFileSrc(track.path),
     artUrl: track.art_path ? convertFileSrc(track.art_path) : null,
+    bonusSource: track.bonus_source,
   }));
 }

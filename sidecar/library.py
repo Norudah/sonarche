@@ -61,6 +61,9 @@ def handle(_request_id: str, params: dict) -> dict:
                 "format": item.format,
                 "path": _decode(item.path),
                 "art_path": art_path,
+                # Origin release of an adopted bonus track (deluxe/regional
+                # edition filed with the main album), or None.
+                "bonus_source": item.get("sonarche_bonus_source") or None,
                 "added": item.added,
             }
         )

@@ -40,6 +40,7 @@
     "reenrichFailed": "La correspondance a échoué, réessaie dans un instant.",
     "comingSoon": "Bientôt disponible",
     "emptyValue": "—",
+    "bonusFrom": "Piste bonus issue de « {{source}} », rangée avec l'album principal.",
     "fields": {
       "title": "Titre",
       "artist": "Artiste",

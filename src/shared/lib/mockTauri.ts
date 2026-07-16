@@ -131,6 +131,8 @@ const libraryTracks = [
     format: "AAC",
     path: "/Users/dev/Music/Sonarche/Skillet/Monster.m4a",
     art_path: null,
+    // Adopted bonus track: exercises the origin note in the metadata drawer.
+    bonus_source: "Awake: Deluxe Edition",
   },
 ];
 

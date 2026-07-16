@@ -193,6 +193,13 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           isEditing={isEditing}
           onChange={setField("album")}
         />
+        {track.bonusSource && (
+          // Adopted bonus track: filed with the main album for convenience
+          // (iTunes/Spotify-style) — keep the real origin explicit.
+          <p className="rounded-xl bg-default/40 px-3 py-2 text-xs text-muted">
+            {t("metadata.bonusFrom", { source: track.bonusSource })}
+          </p>
+        )}
         <div className="flex gap-3">
           <Field
             label={t("metadata.fields.year")}
