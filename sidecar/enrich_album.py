@@ -18,9 +18,10 @@ from report import build_report
 # Sampled tracks are enough to identify the release; each costs one fpcalc run,
 # one AcoustID lookup and a few MusicBrainz calls.
 _MAX_SAMPLES = 3
-# The release identity comes from fingerprints, so the textual distance check
-# can stay loose — it only guards the item->track mapping.
-_MAX_ALBUM_DISTANCE = 0.4
+# A mapped file may differ from its studio track by trims/silence, but a wrong
+# mapping is usually a different song entirely — durations are the one signal
+# YouTube can't corrupt (channel names and video titles are junk hints).
+_MAX_DURATION_DIFF_SECONDS = 20.0
 # The text search has no fingerprint safety net: near-perfect hits only.
 _MAX_TEXT_ALBUM_DISTANCE = 0.15
 
@@ -66,6 +67,25 @@ def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None
         )
 
     return sorted(votes, key=_key)[0]
+
+
+def durations_plausible(pairs: list[tuple[float | None, float | None]]) -> bool:
+    """Whether every (file_length, track_length) mapping pair is close enough.
+    Pure. Pairs with a missing side don't count against the mapping; an empty
+    list is fine (nothing contradicts it)."""
+    for file_length, track_length in pairs:
+        if not file_length or not track_length:
+            continue
+        if abs(file_length - track_length) > _MAX_DURATION_DIFF_SECONDS:
+            return False
+    return True
+
+
+def _mapping_pairs(match) -> list[tuple[float | None, float | None]]:
+    return [
+        (float(item.length) if item.length else None, track.length)
+        for item, track in match.mapping.items()
+    ]
 
 
 def _apply_hints(items, hints: dict, artist: str | None) -> None:
@@ -139,11 +159,16 @@ def _find_album_match(request_id: str, items, params: dict, pause: float):
         protocol.log(f"enrich_album: fingerprints voted release {release_id}")
         _, _, proposal = autotag.tag_album(items, search_ids=[release_id])
         for match in proposal.candidates[:1]:
-            if not match.extra_items and float(match.distance) <= _MAX_ALBUM_DISTANCE:
+            # No textual distance gate here: the release identity is anchored
+            # by fingerprints and the hints (channel name, video titles) are
+            # untrusted, so distance only measures how junky YouTube data is.
+            # What must hold is the mapping itself: every file assigned to a
+            # track, at a believable duration.
+            if not match.extra_items and durations_plausible(_mapping_pairs(match)):
                 return match
             protocol.log(
                 f"enrich_album: voted release rejected "
-                f"(distance {float(match.distance):.3f}, {len(match.extra_items)} unmapped)"
+                f"({len(match.extra_items)} unmapped, implausible durations)"
             )
 
     album_title = params.get("album_title")
@@ -202,21 +227,72 @@ def _apply_album(request_id: str, lib, items, match, pause: float) -> list[dict]
         )
 
     # One cover fetch for the whole album, embedded into every file.
+    _fetch_album_cover(album, mapped, match.info.album_id)
+
+    return _build_reports(lib, mapped)
+
+
+def _fetch_album_cover(album, items, release_id: str | None) -> None:
+    if not release_id:
+        return
     try:
-        cover = enrich.download_cover(match.info.album_id)
+        cover = enrich.download_cover(release_id)
         if cover is not None:
             data, is_png = cover
             enrich.set_album_art(album, data, is_png)
-            for item in mapped:
+            for item in items:
                 enrich.embed_cover(item, data, is_png)
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"enrich_album: cover fetch failed: {exc}")
 
+
+def _build_reports(lib, items) -> list[dict]:
     reports = []
-    for item in mapped:
+    for item in items:
         fresh = lib.get_item(item.id)
         reports.append({"item_id": item.id, "report": build_report(fresh) if fresh else None})
     return reports
+
+
+def _consolidate_fallback_albums(lib, items) -> list:
+    """Merge the one-item album rows left by per-track enrichment.
+
+    Each enrich_one call creates its own album row, so tracks that matched
+    the same MusicBrainz release end up in N sibling rows — beets' %aunique
+    then suffixes every folder ("New Model [7]", …) and each gets its own
+    cover. Regroup by mb_albumid: keep one row per release, reattach the
+    items, drop the empty rows, and re-move the files (with the dead
+    siblings gone, %aunique yields the clean folder name again)."""
+    groups: dict[str, list] = {}
+    for item in items:
+        fresh = lib.get_item(item.id)
+        if fresh is None or not fresh.mb_albumid or fresh.album_id is None:
+            continue
+        groups.setdefault(fresh.mb_albumid, []).append(fresh)
+
+    albums = []
+    for group in groups.values():
+        keep = group[0].get_album()
+        if keep is None:
+            continue
+        emptied = []
+        for item in group[1:]:
+            old = item.get_album()
+            if old is not None and old.id != keep.id:
+                item.album_id = keep.id
+                item.store()
+                emptied.append(old)
+        for old in emptied:
+            if not list(old.items()):
+                old.remove(delete=False, with_items=False)
+        # Re-move every item now that the sibling rows are gone.
+        for item in group:
+            try:
+                item.move()
+            except Exception as exc:
+                protocol.log(f"enrich_album: move failed: {exc}")
+        albums.append(keep)
+    return albums
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -246,24 +322,27 @@ def handle(request_id: str, params: dict) -> dict:
 
     protocol.log("enrich_album: no album-level match, falling back per track")
     hints = {h["item_id"]: h for h in params.get("track_hints") or []}
-    reports = []
     any_matched = False
     total = len(items)
     for done, item in enumerate(items, start=1):
         hint = hints.get(item.id) or {}
         track_params = {**params, "title": hint.get("title"), "artist": params.get("artist")}
         try:
-            result = enrich.enrich_one(request_id, lib, item, track_params)
+            # Covers are deferred: tracks landing on the same release share
+            # one album row and one Cover Art Archive fetch below.
+            result = enrich.enrich_one(request_id, lib, item, track_params, fetch_cover=False)
         except Exception as exc:  # one bad track must not sink the rest
             protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
-            result = {"matched": False, "report": None}
+            result = {"matched": False}
         any_matched = any_matched or bool(result.get("matched"))
-        reports.append({"item_id": item.id, "report": result.get("report")})
         if pause > 0 and done < total:
             time.sleep(pause)
+
+    for album in _consolidate_fallback_albums(lib, items):
+        _fetch_album_cover(album, list(album.items()), album.mb_albumid)
 
     return {
         "matched": any_matched,
         "mode": "per_track" if any_matched else "none",
-        "reports": reports,
+        "reports": _build_reports(lib, items),
     }

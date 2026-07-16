@@ -1,8 +1,9 @@
-"""Regression tests for vote_release (run: python -m unittest enrich_album_test)."""
+"""Regression tests for enrich_album's pure functions
+(run: python -m unittest enrich_album_test)."""
 
 import unittest
 
-from enrich_album import vote_release
+from enrich_album import durations_plausible, vote_release
 
 
 def _rel(release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"):
@@ -75,6 +76,23 @@ class VoteReleaseTest(unittest.TestCase):
     def test_release_without_id_ignored(self):
         sets = [[{"date": "2001"}, _rel("album")]]
         self.assertEqual(vote_release(sets, 11), "album")
+
+
+class DurationsPlausibleTest(unittest.TestCase):
+    def test_close_durations_pass(self):
+        # YouTube rips differ from studio lengths by trims/silence.
+        self.assertTrue(durations_plausible([(279.0, 281.5), (197.2, 190.0)]))
+
+    def test_one_outlier_rejects_the_mapping(self):
+        # Regression: junk-text distance used to be the gate; a wrong mapping
+        # (different song on the assigned slot) must fail on duration instead.
+        self.assertFalse(durations_plausible([(279.0, 281.0), (154.0, 412.0)]))
+
+    def test_missing_lengths_do_not_count_against(self):
+        self.assertTrue(durations_plausible([(None, 281.0), (279.0, None)]))
+
+    def test_empty_is_fine(self):
+        self.assertTrue(durations_plausible([]))
 
 
 if __name__ == "__main__":

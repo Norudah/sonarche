@@ -230,10 +230,11 @@ def handle(request_id: str, params: dict) -> dict:
     return enrich_one(request_id, lib, item, params)
 
 
-def enrich_one(request_id: str, lib, item, params: dict) -> dict:
+def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = True) -> dict:
     """Fingerprint-first enrichment of one item. Caller owns the Library and
     must have called metadata.ensure_plugins(). `params` carries fpcalc,
-    acoustid_key and the optional title/artist hints."""
+    acoustid_key and the optional title/artist hints. `fetch_cover=False`
+    lets the album batch fetch one cover per album instead of per track."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
@@ -282,10 +283,11 @@ def enrich_one(request_id: str, lib, item, params: dict) -> dict:
     if matched:
         protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
         _apply(lib, item, album_info, track_info)
-        try:
-            _fetch_cover(item, album_info.album_id)
-        except Exception as exc:  # metadata landed; a missing cover is not a failure
-            protocol.log(f"enrich: cover fetch failed: {exc}")
+        if fetch_cover:
+            try:
+                _fetch_cover(item, album_info.album_id)
+            except Exception as exc:  # metadata landed; a missing cover is not a failure
+                protocol.log(f"enrich: cover fetch failed: {exc}")
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
     fresh = lib.get_item(item.id)
