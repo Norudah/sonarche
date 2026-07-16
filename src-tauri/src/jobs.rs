@@ -27,6 +27,12 @@ const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 /// Random pause between two YouTube downloads of an album batch. Sequential
 /// same-IP hammering is exactly what gets clients throttled or flagged.
 const TRACK_SLEEP_RANGE_SECS: (f64, f64) = (3.0, 6.0);
+/// YouTube 403s are transient flow protection, not permanent failures: retry
+/// each URL a few times before giving up on it. A handful of polite, spaced
+/// attempts doesn't escalate throttling; hammering without pause does.
+const DOWNLOAD_ATTEMPTS: u32 = 3;
+/// Pause before the first retry; doubles per attempt (6s, then 12s).
+const DOWNLOAD_RETRY_PAUSE_SECS: u64 = 6;
 const MAX_ALBUM_TRACKS: u64 = 100;
 /// Persisted history cap; oldest terminal jobs are dropped past this.
 const MAX_JOBS: usize = 200;
@@ -289,6 +295,7 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             },
         };
 
+        job_log(id, "━━ import phase ━━");
         update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
         match run_import(app, &path, false).await {
             Ok(result) => {
@@ -312,9 +319,11 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         return;
     };
 
+    job_log(id, "━━ metadata phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Enriching).await;
     match run_enrich(app, inner, id, item_id).await {
         Ok(result) => {
+            job_log(id, "job done");
             update_job(app, inner, id, |j| {
                 j.status = JobStatus::Done;
                 if let Some(report) = result.get("report").cloned().filter(|r| !r.is_null()) {
@@ -328,12 +337,19 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
 }
 
 async fn fail(app: &AppHandle, inner: &JobsInner, id: &str, step: JobStep, err: AppError) {
+    job_log(id, &format!("job FAILED at {step:?}: {err}"));
     update_job(app, inner, id, |j| {
         j.status = JobStatus::Failed;
         j.failed_step = Some(step);
         j.error = Some(err.to_string());
     })
     .await;
+}
+
+/// Workflow trace for the dev terminal: one readable line per pipeline step,
+/// prefixed with the job's short id so parallel history stays attributable.
+fn job_log(id: &str, msg: &str) {
+    eprintln!("[job {}] {msg}", &id[..id.len().min(8)]);
 }
 
 /// Raw sidecar download of one URL into the staging dir.
@@ -353,14 +369,49 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
         .await
 }
 
+/// One URL through the retry policy: transient failures (YouTube 403s, network
+/// blips) get DOWNLOAD_ATTEMPTS tries with growing pauses; the row keeps its
+/// live status, the terminal log carries the attempt trail.
+async fn download_with_retry(app: &AppHandle, job_id: &str, url: &str) -> AppResult<Value> {
+    let mut pause = DOWNLOAD_RETRY_PAUSE_SECS;
+    let mut attempt = 1;
+    loop {
+        job_log(
+            job_id,
+            &format!("attempt {attempt}/{DOWNLOAD_ATTEMPTS}: {url}"),
+        );
+        match download_request(app, url).await {
+            Ok(result) => {
+                job_log(job_id, "downloaded ok");
+                return Ok(result);
+            }
+            Err(err) if attempt < DOWNLOAD_ATTEMPTS => {
+                job_log(job_id, &format!("failed: {err}"));
+                job_log(job_id, &format!("retrying in {pause}s"));
+                tokio::time::sleep(Duration::from_secs(pause)).await;
+                pause *= 2;
+                attempt += 1;
+            }
+            Err(err) => {
+                job_log(
+                    job_id,
+                    &format!("giving up after {DOWNLOAD_ATTEMPTS} attempts: {err}"),
+                );
+                return Err(err);
+            }
+        }
+    }
+}
+
 async fn run_download(
     app: &AppHandle,
     inner: &JobsInner,
     id: &str,
     url: &str,
 ) -> AppResult<String> {
+    job_log(id, "━━ download phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Downloading).await;
-    let result = download_request(app, url).await?;
+    let result = download_with_retry(app, id, url).await?;
 
     let path = result
         .get("path")
@@ -503,6 +554,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
 
     // Probe — skipped on retry, the entry list is already persisted.
     if job.tracks.is_empty() {
+        job_log(id, "━━ probe phase (playlist listing) ━━");
         let probe = match run_probe(app, &job.url).await {
             Ok(probe) => probe,
             Err(err) => {
@@ -538,10 +590,12 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
 
     // Download loop: one sidecar request per track, jittered pauses between
     // network hits so the batch never hammers YouTube.
+    job_log(id, "━━ download phase ━━");
     let tracks = snapshot(inner, id)
         .await
         .map(|j| j.tracks)
         .unwrap_or_default();
+    let total = tracks.len();
     let mut downloaded_before = false;
     for track in &tracks {
         if track.status == TrackStatus::Done {
@@ -579,7 +633,8 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             t.status = TrackStatus::Downloading;
         })
         .await;
-        match download_request(app, &track.url).await {
+        job_log(id, &format!("track {}/{total}", track.index));
+        match download_with_retry(app, id, &track.url).await {
             Ok(result) => {
                 let as_string =
                     |key: &str| result.get(key).and_then(Value::as_str).map(str::to_string);
@@ -598,6 +653,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             }
             Err(err) => {
                 // One dead video must not sink the album; the row shows it.
+                job_log(id, &format!("track {} marked failed", track.index));
                 let message = err.to_string();
                 update_track(app, inner, id, track.index, |t| {
                     t.status = TrackStatus::Failed;
@@ -610,6 +666,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
 
     // Import loop: singleton per file (the real album row is created by
     // enrich_album once every item is known).
+    job_log(id, "━━ import phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
     let tracks = snapshot(inner, id)
         .await
@@ -622,6 +679,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         let Some(path) = track.staged_path.clone() else {
             continue;
         };
+        job_log(id, &format!("importing track {}", track.index));
         match run_import(app, &path, true).await {
             Ok(result) => {
                 let item_id = result.pointer("/report/item_id").and_then(Value::as_i64);
@@ -661,6 +719,10 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .filter_map(|t| t.item_id)
         .collect();
     if !item_ids.is_empty() {
+        job_log(
+            id,
+            &format!("━━ metadata phase ({} item(s)) ━━", item_ids.len()),
+        );
         update_job(app, inner, id, |j| j.status = JobStatus::Enriching).await;
         match run_enrich_album(app, &job, &item_ids).await {
             Ok(result) => {
@@ -708,9 +770,17 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .filter(|t| t.status == TrackStatus::Failed)
         .count();
     if failed == 0 {
+        job_log(id, "job done");
         update_job(app, inner, id, |j| j.status = JobStatus::Done).await;
         return;
     }
+    job_log(
+        id,
+        &format!(
+            "job done with {failed}/{} failed track(s)",
+            job.tracks.len()
+        ),
+    );
     // The earliest failing phase: a failed track without a staged file never
     // downloaded; with a file but no item it failed the import.
     let step = if job
