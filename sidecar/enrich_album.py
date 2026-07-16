@@ -1,11 +1,15 @@
 """Enrich a whole album's items against one MusicBrainz release.
 
-Per-track enrichment matches each file independently, so an OST/compilation
-can scatter across different releases (inconsistent album names, N cover
-fetches). Here the release identity is decided once — fingerprint a sample of
-tracks, vote for the release they share — then beets' album autotagger maps
-every item to its track on that release. Per-track enrichment remains as the
-fallback when no coherent release emerges."""
+Every file is fingerprinted (fpcalc is local and free; only the AcoustID
+lookup hits the network, paced under its 3 req/s), giving each item its
+recording identity. From there: two files of one recording are duplicates
+(playlists love mislabelled re-uploads) and only the first is kept; a release
+is voted from sampled recordings; the item→track mapping is exact by
+recording id, with duration rescuing the files AcoustID couldn't identify —
+YouTube titles are never trusted; and bonus tracks living on sibling editions
+of the same release-group (deluxe, regional) are adopted into the main
+album's folder. Per-track enrichment remains the fallback when no coherent
+release emerges."""
 
 import os
 import time
@@ -15,8 +19,8 @@ import metadata
 import protocol
 from report import build_report
 
-# Sampled tracks are enough to identify the release; each costs one fpcalc run,
-# one AcoustID lookup and a few MusicBrainz calls.
+# Sampled tracks are enough to identify the release; each sample costs a few
+# MusicBrainz calls (~1 req/s), so not every item votes.
 _MAX_SAMPLES = 3
 # A mapped file may differ from its studio track by trims/silence, but a wrong
 # mapping is usually a different song entirely — durations are the one signal
@@ -26,6 +30,8 @@ _MAX_DURATION_DIFF_SECONDS = 20.0
 _MAX_TEXT_ALBUM_DISTANCE = 0.15
 
 _DEFAULT_FETCH_PAUSE_SECONDS = 1.0
+# AcoustID allows 3 req/s per application key; fpcalc adds natural headroom.
+_LOOKUP_PAUSE_SECONDS = 0.4
 
 
 def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None:
@@ -69,28 +75,71 @@ def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None
     return sorted(votes, key=_key)[0]
 
 
-def durations_plausible(pairs: list[tuple[float | None, float | None]]) -> bool:
-    """Whether every (file_length, track_length) mapping pair is close enough.
-    Pure. Pairs with a missing side don't count against the mapping; an empty
-    list is fine (nothing contradicts it)."""
-    for file_length, track_length in pairs:
-        if not file_length or not track_length:
+def _pair_plausible(file_length: float | None, track_length: float | None) -> bool:
+    """A pair with a missing side doesn't count against the mapping."""
+    if not file_length or not track_length:
+        return True
+    return abs(file_length - track_length) <= _MAX_DURATION_DIFF_SECONDS
+
+
+def find_content_duplicates(recording_sets: list[tuple[int, set[str]]]) -> dict[int, int]:
+    """{duplicate item id: kept item id} for items whose AcoustID recording
+    sets intersect — same recording means same audio, whatever the video was
+    titled. Pure. First occurrence wins; items with no recordings never match."""
+    kept: list[tuple[int, set[str]]] = []
+    duplicates: dict[int, int] = {}
+    for item_id, recordings in recording_sets:
+        kept_id = next((kid for kid, kset in kept if recordings & kset), None)
+        if kept_id is not None:
+            duplicates[item_id] = kept_id
+        else:
+            kept.append((item_id, recordings))
+    return duplicates
+
+
+def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, list, list]:
+    """(mapping item→track, leftover_items, extra_tracks). Pure — needs only
+    `.id`/`.length` on items and `.track_id`/`.length` on tracks.
+
+    First pass is content identity: an item maps to the release track whose id
+    is among its AcoustID recordings. Second pass rescues the items AcoustID
+    couldn't identify by nearest duration among the remaining slots. Items
+    identified as some OTHER recording never fall back to duration — they are
+    genuinely off this release."""
+    mapping: dict = {}
+    remaining = list(tracks)
+    silent, leftovers = [], []
+    for item in items:
+        recordings = set(recordings_by_item.get(item.id) or ())
+        if not recordings:
+            silent.append(item)
             continue
-        if abs(file_length - track_length) > _MAX_DURATION_DIFF_SECONDS:
-            return False
-    return True
-
-
-def _mapping_pairs(match) -> list[tuple[float | None, float | None]]:
-    return [
-        (float(item.length) if item.length else None, track.length)
-        for item, track in match.mapping.items()
-    ]
+        track = next((t for t in remaining if t.track_id in recordings), None)
+        if track is not None:
+            mapping[item] = track
+            remaining.remove(track)
+        else:
+            leftovers.append(item)
+    for item in silent:
+        file_length = float(item.length) if item.length else None
+        best = None
+        for track in remaining:
+            if not file_length or not track.length:
+                continue
+            diff = abs(file_length - track.length)
+            if diff <= _MAX_DURATION_DIFF_SECONDS and (best is None or diff < best[0]):
+                best = (diff, track)
+        if best is not None:
+            mapping[item] = best[1]
+            remaining.remove(best[1])
+        else:
+            leftovers.append(item)
+    return mapping, leftovers, remaining
 
 
 def _apply_hints(items, hints: dict, artist: str | None) -> None:
-    """In-memory only, never stored: without title/track hints the mapping
-    distance on empty tags degrades assign_items badly."""
+    """In-memory only, never stored: the text fallback's mapping distance on
+    empty tags degrades badly without title/track hints."""
     for item in items:
         hint = hints.get(item.id) or {}
         if hint.get("title"):
@@ -101,16 +150,15 @@ def _apply_hints(items, hints: dict, artist: str | None) -> None:
             item.track = int(hint["index"])
 
 
-def _vote_from_fingerprints(request_id: str, items, params: dict, pause: float) -> str | None:
-    plugin = metadata.mb_plugin()
-    n = len(items)
-    positions = sorted({0, n // 2, n - 1})[:_MAX_SAMPLES]
-    total = len(positions)
-    release_sets: list[list[dict]] = []
-    for done, pos in enumerate(positions):
-        item = items[pos]
+def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str]]:
+    """fpcalc + AcoustID lookup for every item: {item_id: [recording ids]}.
+    One bad file yields [] rather than sinking the batch."""
+    recordings: dict[int, list[str]] = {}
+    total = len(items)
+    for done, item in enumerate(items):
         path = enrich._decode_path(item)
         if not os.path.exists(path):
+            recordings[item.id] = []
             continue
         protocol.send_event(
             request_id,
@@ -124,12 +172,56 @@ def _vote_from_fingerprints(request_id: str, items, params: dict, pause: float) 
                 "enrich_progress",
                 {"stage": "lookup", "done": done, "total": total, "item_id": item.id},
             )
-            recordings = enrich._lookup_recordings(params["acoustid_key"], fingerprint, duration)
-        except Exception as exc:  # one bad sample must not sink the vote
-            protocol.log(f"enrich_album: sample {pos} fingerprint failed: {exc}")
-            recordings = []
+            recordings[item.id] = enrich._lookup_recordings(
+                params["acoustid_key"], fingerprint, duration
+            )
+        except Exception as exc:
+            protocol.log(f"enrich_album: item {item.id} fingerprint failed: {exc}")
+            recordings[item.id] = []
+        if done < total - 1:
+            time.sleep(_LOOKUP_PAUSE_SECONDS)
+    return recordings
+
+
+def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[list, dict[int, int]]:
+    """Delete items (file included) that duplicate an earlier item's recording.
+    Runs before matching so duplicates never fight over one track slot or one
+    destination path. Returns (kept items, {removed id: kept id})."""
+    duplicates = find_content_duplicates(
+        [(item.id, set(recordings.get(item.id) or ())) for item in items]
+    )
+    kept = [item for item in items if item.id not in duplicates]
+    for item in items:
+        if item.id not in duplicates:
+            continue
+        protocol.log(
+            f"enrich_album: item {item.id} duplicates item {duplicates[item.id]}, removing"
+        )
+        try:
+            item.remove(delete=True)
+        except Exception as exc:
+            protocol.log(f"enrich_album: duplicate removal failed: {exc}")
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "track_done", "item_id": item.id}
+        )
+    return kept, duplicates
+
+
+def _vote_release_id(request_id: str, items, recordings: dict, pause: float) -> str | None:
+    """Vote among the releases of a few sampled items' recordings. Samples
+    spread across the batch, skipping items AcoustID didn't identify."""
+    plugin = metadata.mb_plugin()
+    known = [item for item in items if recordings.get(item.id)]
+    if not known:
+        return None
+    n = len(known)
+    positions = sorted({0, n // 2, n - 1})[:_MAX_SAMPLES]
+    release_sets: list[list[dict]] = []
+    total = len(positions)
+    for done, pos in enumerate(positions):
+        item = known[pos]
         releases: list[dict] = []
-        for rec_id in recordings:
+        for rec_id in recordings[item.id]:
             try:
                 # MusicBrainz pacing is handled by beets' client (~1 req/s).
                 rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
@@ -138,64 +230,69 @@ def _vote_from_fingerprints(request_id: str, items, params: dict, pause: float) 
                 protocol.log(f"enrich_album: recording {rec_id} failed: {exc}")
         if releases:
             release_sets.append(releases)
-        # AcoustID has no strict limit but shares fate with every beets user;
-        # pace the batch the same way the genre recompute does.
         if pause > 0 and done < total - 1:
             time.sleep(pause)
-    return vote_release(release_sets, n)
+    return vote_release(release_sets, len(items))
 
 
-def _find_album_match(request_id: str, items, params: dict, pause: float):
+def _build_match(items, recordings: dict, release_id: str):
+    """(AlbumMatch, leftovers) on the voted release with a recording-exact
+    mapping, or (None, items) unless a majority of the files map onto it."""
+    from beets.autotag.distance import Distance
+    from beets.autotag.match import AlbumMatch
+
+    album_info = metadata.mb_plugin().album_for_id(release_id)
+    if album_info is None:
+        return None, list(items)
+    mapping, leftovers, extra_tracks = match_by_recordings(items, album_info.tracks, recordings)
+    if len(mapping) <= len(items) / 2:
+        protocol.log(
+            f"enrich_album: voted release rejected (only {len(mapping)} of "
+            f"{len(items)} tracks map onto it)"
+        )
+        return None, list(items)
+    if leftovers:
+        protocol.log(
+            f"enrich_album: {len(leftovers)} track(s) off the voted release"
+        )
+    match = AlbumMatch(
+        distance=Distance(),
+        info=album_info,
+        mapping=mapping,
+        extra_items=list(leftovers),
+        extra_tracks=extra_tracks,
+    )
+    return match, leftovers
+
+
+def _text_album_match(request_id: str, items, params: dict):
+    """All-or-nothing text search: without a fingerprint anchor, only a
+    complete, near-perfect release match is trusted."""
     from beets import autotag
-
-    track_count = len(items)
-    release_id = None
-    if params.get("acoustid_key"):
-        release_id = _vote_from_fingerprints(request_id, items, params, pause)
-    else:
-        protocol.log("enrich_album: no AcoustID key configured, text search only")
-
-    _apply_hints(items, {h["item_id"]: h for h in params.get("track_hints") or []},
-                 params.get("artist"))
-
-    if release_id:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
-        protocol.log(f"enrich_album: fingerprints voted release {release_id}")
-        _, _, proposal = autotag.tag_album(items, search_ids=[release_id])
-        for match in proposal.candidates[:1]:
-            # No textual distance gate here: the release identity is anchored
-            # by fingerprints and the hints (channel name, video titles) are
-            # untrusted, so distance only measures how junky YouTube data is.
-            # What must hold is the mapping itself: every file assigned to a
-            # track, at a believable duration.
-            if not match.extra_items and durations_plausible(_mapping_pairs(match)):
-                return match
-            protocol.log(
-                f"enrich_album: voted release rejected "
-                f"({len(match.extra_items)} unmapped, implausible durations)"
-            )
 
     album_title = params.get("album_title")
     artist = params.get("artist")
-    if album_title or artist:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
-        _, _, proposal = autotag.tag_album(
-            items, search_artist=artist, search_name=album_title
-        )
-        for match in proposal.candidates[:1]:
-            if (
-                not match.extra_items
-                and len(match.info.tracks) == track_count
-                and float(match.distance) <= _MAX_TEXT_ALBUM_DISTANCE
-            ):
-                return match
+    if not (album_title or artist):
+        return None
+    protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
+    _, _, proposal = autotag.tag_album(items, search_artist=artist, search_name=album_title)
+    for match in proposal.candidates[:1]:
+        if (
+            not match.extra_items
+            and len(match.info.tracks) == len(items)
+            and float(match.distance) <= _MAX_TEXT_ALBUM_DISTANCE
+        ):
+            return match
     return None
 
 
-def _apply_album(request_id: str, lib, items, match, pause: float) -> list[dict]:
+def _apply_album(request_id: str, lib, match, pause: float):
+    """Apply the match to its mapped items and build the album row. Returns
+    (album, mapped_items); covers and reports are the caller's (adopted bonus
+    tracks join the album afterwards and must share the same cover pass)."""
     protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
     match.apply_metadata()
-    mapped = match.items  # extra_items is empty here, so this is all of them
+    mapped = match.items
 
     # One real album row for the set (items were imported as singletons), built
     # from the now-populated item fields — the single-track path syncs a blank
@@ -236,10 +333,98 @@ def _apply_album(request_id: str, lib, items, match, pause: float) -> list[dict]
             {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
         )
 
-    # One cover fetch for the whole album, embedded into every file.
-    _fetch_album_cover(album, mapped, match.info.album_id)
+    return album, mapped
 
-    return _build_reports(lib, mapped)
+
+def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recordings: dict, pause: float) -> list:
+    """Adopt leftovers whose recording lives on a sibling edition of the voted
+    release's release-group (deluxe, regional): real title and track metadata
+    from their own edition, album identity and folder from the main one,
+    numbered after the last real slot. Returns the adopted items."""
+    group_id = match.info.releasegroup_id
+    if not group_id:
+        return []
+    plugin = metadata.mb_plugin()
+
+    # Which sibling releases could host each leftover.
+    candidates: dict[int, dict[str, tuple[dict, str]]] = {}  # item_id -> {release_id: (release, rec_id)}
+    by_item = {item.id: item for item in leftovers}
+    for item in leftovers:
+        found: dict[str, tuple[dict, str]] = {}
+        for rec_id in recordings.get(item.id) or []:
+            try:
+                rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
+            except Exception as exc:
+                protocol.log(f"enrich_album: recording {rec_id} failed: {exc}")
+                continue
+            for release in rec.get("releases", []) if isinstance(rec, dict) else []:
+                rg = release.get("release_group") or {}
+                if release.get("id") and rg.get("id") == group_id:
+                    found.setdefault(release["id"], (release, rec_id))
+        if found:
+            candidates[item.id] = found
+
+    # Prefer few editions over many: repeatedly pick the sibling covering the
+    # most still-pending leftovers (release_rank breaks ties).
+    assignments: dict[str, list[tuple]] = {}  # release_id -> [(item, rec_id)]
+    pending = set(candidates)
+    while pending:
+        counts: dict[str, dict] = {}
+        for item_id in pending:
+            for release_id, (release, _) in candidates[item_id].items():
+                counts.setdefault(release_id, {"n": 0, "release": release})
+                counts[release_id]["n"] += 1
+        best = sorted(
+            counts, key=lambda rid: (-counts[rid]["n"], metadata.release_rank(counts[rid]["release"]))
+        )[0]
+        for item_id in sorted(pending):
+            if best in candidates[item_id]:
+                _, rec_id = candidates[item_id][best]
+                assignments.setdefault(best, []).append((by_item[item_id], rec_id))
+                pending.discard(item_id)
+
+    adopted: list = []
+    lastgenre = metadata.lastgenre_plugin()
+    next_track = len(match.info.tracks)
+    for release_id, pairs in assignments.items():
+        try:
+            info = plugin.album_for_id(release_id)
+        except Exception as exc:
+            protocol.log(f"enrich_album: sibling release {release_id} failed: {exc}")
+            info = None
+        if info is None:
+            continue
+        tracks_by_id = {t.track_id: t for t in info.tracks}
+        protocol.log(f"enrich_album: adopting {len(pairs)} bonus track(s) from {info.album}")
+        pairs.sort(key=lambda p: tracks_by_id[p[1]].index or 0)
+        for item, rec_id in pairs:
+            track = tracks_by_id.get(rec_id)
+            if track is None:
+                continue
+            next_track += 1
+            # merge_with_album(match.info) is the adoption itself: track-level
+            # fields from the bonus edition, album-level from the main release.
+            item.update(track.merge_with_album(match.info))
+            item.track = next_track
+            item.album_id = album.id
+            genres, label = lastgenre._get_genre(item)
+            if genres:
+                item.genres = genres
+                protocol.log(f"enrich_album: genre {genres} ({label})")
+            item.store()
+            try:
+                item.write()
+            except Exception as exc:
+                protocol.log(f"enrich_album: tag write failed: {exc}")
+            try:
+                item.move()
+            except Exception as exc:
+                protocol.log(f"enrich_album: move failed: {exc}")
+            protocol.send_event(
+                request_id, "enrich_progress", {"stage": "track_done", "item_id": item.id}
+            )
+            adopted.append(item)
+    return adopted
 
 
 def _fetch_album_cover(album, items, release_id: str | None) -> None:
@@ -248,10 +433,11 @@ def _fetch_album_cover(album, items, release_id: str | None) -> None:
     try:
         cover = enrich.download_cover(release_id)
         if cover is not None:
-            data, is_png = cover
-            enrich.set_album_art(album, data, is_png)
+            hq, thumb = cover
+            enrich.set_album_art(album, *thumb)
+            enrich.save_hq_cover(album, *hq)
             for item in items:
-                enrich.embed_cover(item, data, is_png)
+                enrich.embed_cover(item, *thumb)
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"enrich_album: cover fetch failed: {exc}")
 
@@ -305,6 +491,42 @@ def _consolidate_fallback_albums(lib, items) -> list:
     return albums
 
 
+def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -> bool:
+    """Per-track enrichment loop (full batch or an album match's leftovers).
+    Covers are deferred to _finalize_fallback: tracks landing on the same
+    release share one album row and one Cover Art Archive fetch."""
+    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
+    any_matched = False
+    total = len(items)
+    for done, item in enumerate(items, start=1):
+        hint = hints.get(item.id) or {}
+        track_params = {**params, "title": hint.get("title"), "artist": params.get("artist")}
+        try:
+            result = enrich.enrich_one(request_id, lib, item, track_params, fetch_cover=False)
+        except Exception as exc:  # one bad track must not sink the rest
+            protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
+            result = {"matched": False}
+        any_matched = any_matched or bool(result.get("matched"))
+        protocol.send_event(
+            request_id,
+            "enrich_progress",
+            {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
+        )
+        if pause > 0 and done < total:
+            time.sleep(pause)
+    return any_matched
+
+
+def _finalize_fallback(lib, items) -> None:
+    """Regroup same-release rows, then fetch covers still missing (an album
+    already covered by the album-match path keeps its art, no second CAA hit)."""
+    for album in _consolidate_fallback_albums(lib, items):
+        artpath = enrich._decode(album.artpath) if album.artpath else None
+        if artpath and os.path.exists(artpath):
+            continue
+        _fetch_album_cover(album, list(album.items()), album.mb_albumid)
+
+
 def handle(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
@@ -325,39 +547,54 @@ def handle(request_id: str, params: dict) -> dict:
     metadata.ensure_plugins()
     pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
 
-    match = _find_album_match(request_id, items, params, pause)
+    duplicate_reports: list[dict] = []
+    recordings: dict[int, list[str]] = {}
+    if params.get("acoustid_key"):
+        recordings = _fingerprint_all(request_id, items, params)
+        items, duplicates = _remove_duplicates(request_id, lib, items, recordings)
+        duplicate_reports = [
+            {"item_id": item_id, "duplicate_of": kept_id, "report": None}
+            for item_id, kept_id in sorted(duplicates.items())
+        ]
+        if not items:
+            return {"matched": False, "mode": "none", "reports": duplicate_reports}
+    else:
+        protocol.log("enrich_album: no AcoustID key configured, text search only")
+
+    _apply_hints(items, {h["item_id"]: h for h in params.get("track_hints") or []},
+                 params.get("artist"))
+
+    match, leftovers = None, []
+    if recordings:
+        protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
+        release_id = _vote_release_id(request_id, items, recordings, pause)
+        if release_id:
+            protocol.log(f"enrich_album: fingerprints voted release {release_id}")
+            match, leftovers = _build_match(items, recordings, release_id)
+    if match is None:
+        match, leftovers = _text_album_match(request_id, items, params), []
+
     if match is not None:
-        reports = _apply_album(request_id, lib, items, match, pause)
+        album, mapped = _apply_album(request_id, lib, match, pause)
+        adopted = (
+            _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause)
+            if leftovers
+            else []
+        )
+        _fetch_album_cover(album, mapped + adopted, match.info.album_id)
+        rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
+        if rest:
+            protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
+            _enrich_per_track(request_id, lib, rest, params, pause)
+        _finalize_fallback(lib, mapped + adopted + rest)
+        reports = _build_reports(lib, mapped + adopted + rest) + duplicate_reports
         return {"matched": True, "mode": "album", "reports": reports}
 
     protocol.log("enrich_album: no album-level match, falling back per track")
-    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
-    any_matched = False
-    total = len(items)
-    for done, item in enumerate(items, start=1):
-        hint = hints.get(item.id) or {}
-        track_params = {**params, "title": hint.get("title"), "artist": params.get("artist")}
-        try:
-            # Covers are deferred: tracks landing on the same release share
-            # one album row and one Cover Art Archive fetch below.
-            result = enrich.enrich_one(request_id, lib, item, track_params, fetch_cover=False)
-        except Exception as exc:  # one bad track must not sink the rest
-            protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
-            result = {"matched": False}
-        any_matched = any_matched or bool(result.get("matched"))
-        protocol.send_event(
-            request_id,
-            "enrich_progress",
-            {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
-        )
-        if pause > 0 and done < total:
-            time.sleep(pause)
-
-    for album in _consolidate_fallback_albums(lib, items):
-        _fetch_album_cover(album, list(album.items()), album.mb_albumid)
-
+    any_matched = _enrich_per_track(request_id, lib, items, params, pause)
+    _finalize_fallback(lib, items)
     return {
         "matched": any_matched,
         "mode": "per_track" if any_matched else "none",
-        "reports": _build_reports(lib, items),
+        "reports": _build_reports(lib, items) + duplicate_reports,
     }

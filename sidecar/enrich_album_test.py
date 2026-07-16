@@ -3,7 +3,7 @@
 
 import unittest
 
-from enrich_album import durations_plausible, vote_release
+from enrich_album import find_content_duplicates, match_by_recordings, vote_release
 
 
 def _rel(release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"):
@@ -78,21 +78,89 @@ class VoteReleaseTest(unittest.TestCase):
         self.assertEqual(vote_release(sets, 11), "album")
 
 
-class DurationsPlausibleTest(unittest.TestCase):
-    def test_close_durations_pass(self):
-        # YouTube rips differ from studio lengths by trims/silence.
-        self.assertTrue(durations_plausible([(279.0, 281.5), (197.2, 190.0)]))
+class FindContentDuplicatesTest(unittest.TestCase):
+    def test_intersecting_sets_mark_later_item(self):
+        # Regression: a playlist carrying the same song under two different
+        # video titles produced "02 Ready to Run.1.m4a" and a %aunique folder.
+        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"}), (3, {"rec-a", "rec-c"})])
+        self.assertEqual(dups, {3: 1})
 
-    def test_one_outlier_rejects_the_mapping(self):
-        # Regression: junk-text distance used to be the gate; a wrong mapping
-        # (different song on the assigned slot) must fail on duration instead.
-        self.assertFalse(durations_plausible([(279.0, 281.0), (154.0, 412.0)]))
+    def test_disjoint_sets_keep_everything(self):
+        self.assertEqual(
+            find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"})]), {}
+        )
 
-    def test_missing_lengths_do_not_count_against(self):
-        self.assertTrue(durations_plausible([(None, 281.0), (279.0, None)]))
+    def test_unidentified_items_never_match(self):
+        # AcoustID silence (empty set) must not mark two unknowns as duplicates.
+        self.assertEqual(find_content_duplicates([(1, set()), (2, set())]), {})
 
-    def test_empty_is_fine(self):
-        self.assertTrue(durations_plausible([]))
+    def test_chain_points_to_first_kept(self):
+        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-a"}), (3, {"rec-a"})])
+        self.assertEqual(dups, {2: 1, 3: 1})
+
+
+class _Item:
+    """Hashable stand-in for a beets Item: only `.id` and `.length` matter."""
+
+    def __init__(self, item_id, length=None):
+        self.id = item_id
+        self.length = length
+
+
+class _Track:
+    def __init__(self, track_id, length=None):
+        self.track_id = track_id
+        self.length = length
+
+
+class MatchByRecordingsTest(unittest.TestCase):
+    def test_recording_identity_beats_junk_titles(self):
+        # Regression: the playlist's video titles were shuffled (video "Clouds"
+        # contained Steal My Girl…); the mapping must follow content, not tags.
+        a, b = _Item(1, 228.0), _Item(2, 196.0)
+        t_smg, t_rtr = _Track("rec-smg", 228.0), _Track("rec-rtr", 196.0)
+        mapping, leftovers, extra = match_by_recordings(
+            [a, b], [t_smg, t_rtr], {1: ["rec-smg"], 2: ["rec-rtr"]}
+        )
+        self.assertEqual(mapping, {a: t_smg, b: t_rtr})
+        self.assertEqual(leftovers, [])
+        self.assertEqual(extra, [])
+
+    def test_identified_off_release_item_is_leftover_not_duration_mapped(self):
+        # An item AcoustID identified as some other recording must not steal a
+        # free slot just because a duration happens to fit.
+        bonus = _Item(1, 200.0)
+        slot = _Track("rec-other", 201.0)
+        mapping, leftovers, extra = match_by_recordings([bonus], [slot], {1: ["rec-bonus"]})
+        self.assertEqual(mapping, {})
+        self.assertEqual(leftovers, [bonus])
+        self.assertEqual(extra, [slot])
+
+    def test_silent_item_rescued_by_nearest_duration(self):
+        silent = _Item(1, 256.0)
+        far, near = _Track("rec-a", 174.0), _Track("rec-b", 260.0)
+        mapping, leftovers, _ = match_by_recordings([silent], [far, near], {1: []})
+        self.assertEqual(mapping, {silent: near})
+        self.assertEqual(leftovers, [])
+
+    def test_silent_item_without_plausible_slot_is_leftover(self):
+        silent = _Item(1, 100.0)
+        mapping, leftovers, extra = match_by_recordings([silent], [_Track("rec-a", 300.0)], {1: []})
+        self.assertEqual(mapping, {})
+        self.assertEqual(leftovers, [silent])
+        self.assertEqual(extra[0].track_id, "rec-a")
+
+    def test_recording_pass_wins_slots_before_duration_pass(self):
+        # The identified item owns its slot even when a silent item's duration
+        # also fits it; the silent one takes what remains.
+        identified, silent = _Item(1, 228.0), _Item(2, 229.0)
+        slot_a, slot_b = _Track("rec-a", 228.0), _Track("rec-b", 231.0)
+        mapping, leftovers, _ = match_by_recordings(
+            [silent, identified], [slot_a, slot_b], {1: ["rec-a"], 2: []}
+        )
+        self.assertEqual(mapping[identified].track_id, "rec-a")
+        self.assertEqual(mapping[silent].track_id, "rec-b")
+        self.assertEqual(leftovers, [])
 
 
 if __name__ == "__main__":
