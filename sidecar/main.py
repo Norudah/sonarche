@@ -24,6 +24,7 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 def _handlers():
     import download
     import enrich
+    import genres
     import importer
     import library
 
@@ -34,6 +35,7 @@ def _handlers():
         "enrich": enrich.handle,
         "library_list": library.handle,
         "library_remove": library.remove,
+        "genres_recompute": genres.recompute,
     }
 
 

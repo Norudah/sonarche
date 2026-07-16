@@ -1,9 +1,10 @@
-import { Accordion, Alert, Chip, Spinner } from "@heroui/react";
+import { Accordion, Alert, Button, Chip, Spinner } from "@heroui/react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
-import { useLibrary } from "@/features/library/hooks";
+import { useLibrary, useRecomputeGenres } from "@/features/library/hooks";
 import { TrackList } from "@/features/library/TrackList";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -72,9 +73,22 @@ function groupByGenre(tracks: LibraryTrack[]): ParentGroup[] {
 export function GenresView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
+  const recompute = useRecomputeGenres();
   const [selected, setSelected] = useState<{ parent: string; sub: string | null } | null>(null);
 
   const parentGroups = useMemo(() => groupByGenre(library.data ?? []), [library.data]);
+
+  const recomputeFeedback = recompute.isError
+    ? { text: t("genres.recomputeFailed"), tone: "text-danger" }
+    : recompute.isSuccess
+      ? {
+          text: t("genres.recomputeDone", {
+            updated: recompute.data.updated,
+            total: recompute.data.total,
+          }),
+          tone: "text-success",
+        }
+      : null;
 
   const labelFor = (key: string) =>
     key === PARENT_OTHER || key === SUB_NONE ? t("genres.other") : key === PARENT_NONE ? t("genres.none") : key;
@@ -89,8 +103,34 @@ export function GenresView() {
 
   return (
     <PageContainer>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("views.genres")}</h1>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("views.genres")}</h1>
+          {library.data && library.data.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-xl"
+              isDisabled={recompute.isPending}
+              onPress={() => recompute.mutate()}
+            >
+              {recompute.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("genres.recomputing")}
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="size-4" />
+                  {t("genres.recompute")}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+        {recomputeFeedback && (
+          <p className={`text-sm ${recomputeFeedback.tone}`}>{recomputeFeedback.text}</p>
+        )}
       </div>
 
       {library.isPending && (

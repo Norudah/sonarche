@@ -12,7 +12,11 @@
     "none": "Sans genre",
     "allOf": "Tout {{parent}}",
     "clear": "Effacer",
-    "pickHint": "Choisis un genre pour voir les titres."
+    "pickHint": "Choisis un genre pour voir les titres.",
+    "recompute": "Recalculer les genres",
+    "recomputing": "Recalcul en cours…",
+    "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
+    "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant."
   },
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",

@@ -27,26 +27,16 @@ _UNWANTED_SECONDARY = frozenset({
 
 
 def ensure_plugins():
+    """Load the plugins declared in the beets config.
+
+    The Rust host sets BEETSDIR, so the in-process config is the very
+    config.yaml `write_beets_config()` regenerates on every launch — one
+    config site, nothing redefined programmatically here."""
     global _loaded
     if _loaded:
         return
-    from beets import config, plugins
+    from beets import plugins
 
-    config["plugins"] = ["musicbrainz", "lastgenre"]
-    # MB community genres ride along with the release; no extra service needed.
-    config["musicbrainz"]["genres"] = True
-    # auto=no: the import stage never runs lastgenre itself; enrich.py calls
-    # _get_genre() directly so it can skip entirely when MB gave no genre
-    # (no Last.fm fallback network call in the automatic pipeline).
-    lg = config["lastgenre"]
-    lg["auto"] = False
-    lg["cleanup_existing"] = True
-    lg["whitelist"] = True
-    lg["canonical"] = False
-    lg["prefer_specific"] = False
-    lg["source"] = "album"
-    lg["count"] = 1
-    lg["fallback"] = None
     plugins.load_plugins()
     _loaded = True
 

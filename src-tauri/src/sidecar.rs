@@ -68,10 +68,19 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         ));
     }
 
+    let beets_dir = paths
+        .beets_config
+        .parent()
+        .ok_or_else(|| AppError::EnvNotReady("beets config dir not found".into()))?;
+
     let mut child = Command::new(&venv_python)
         .arg("-u")
         .arg(&paths.sidecar_main)
         .env("PYTHONUNBUFFERED", "1")
+        // The in-process beets must read the same config.yaml the beet CLI
+        // gets via --config; otherwise it would pick up the user's own beets
+        // config (or none), drifting from write_beets_config().
+        .env("BEETSDIR", beets_dir)
         .current_dir(
             paths
                 .sidecar_main

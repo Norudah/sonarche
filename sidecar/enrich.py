@@ -124,12 +124,15 @@ def _apply(item, album_info, track_info) -> None:
     merged = track_info.merge_with_album(album_info)
     item.update(merged)
 
-    if item.get("genres"):
-        # Canonicalize the MB genre (whitelist + title-case) without a
-        # Last.fm fetch. If MB gave nothing, leave it empty rather than
-        # falling back to a network lookup in the automatic pipeline.
-        genres, _ = metadata.lastgenre_plugin()._get_genre(item)
+    # Genre: MB community tags ride along in `genres` and canonicalize against
+    # our tree offline; when MB gave nothing, _get_genre falls back to a
+    # Last.fm fetch (its client swallows network errors and returns []).
+    # An empty result means nothing resolved: keep the raw MB genre (it may
+    # simply be off-whitelist) rather than erasing it.
+    genres, label = metadata.lastgenre_plugin()._get_genre(item)
+    if genres:
         item.genres = genres
+        protocol.log(f"enrich: genre {genres} ({label})")
 
     item.store()
     try:

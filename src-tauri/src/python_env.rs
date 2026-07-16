@@ -47,6 +47,8 @@ pub struct AppPaths {
     pub library_dir: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
+    pub genres_tree: PathBuf,
+    pub genres_whitelist: PathBuf,
     pub tools_dir: PathBuf,
 }
 
@@ -69,6 +71,8 @@ impl AppPaths {
             library_dir,
             sidecar_main: sidecar_dir.join("main.py"),
             requirements: sidecar_dir.join("requirements.txt"),
+            genres_tree: sidecar_dir.join("genres-tree.yaml"),
+            genres_whitelist: sidecar_dir.join("genres-whitelist.txt"),
             tools_dir: data.join("tools"),
         })
     }
@@ -235,6 +239,8 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
     Ok(())
 }
 
+/// Single config site for beets: the CLI importer reads it via `--config` and
+/// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
     let config = format!(
         r#"directory: "{library}"
@@ -244,24 +250,32 @@ import:
   write: yes
   quiet_fallback: asis
 plugins: musicbrainz fetchart embedart lastgenre
+musicbrainz:
+  genres: yes
 fetchart:
   auto: yes
 embedart:
   auto: yes
+# auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
+# itself. Canonical tree + whitelist are ours (bundled sidecar resources):
+# the stored genre is the most specific tree node (count 3, specific first),
+# the browse bucket is derived by climbing the same tree.
 lastgenre:
   auto: no
-  whitelist: yes
-  canonical: no
+  source: track
+  count: 3
+  canonical: "{tree}"
+  whitelist: "{whitelist}"
+  prefer_specific: yes
   cleanup_existing: yes
-  prefer_specific: no
-  source: album
-  count: 1
   fallback: null
 ui:
   color: no
 "#,
         library = paths.library_dir.display(),
         db = paths.beets_db.display(),
+        tree = paths.genres_tree.display(),
+        whitelist = paths.genres_whitelist.display(),
     );
     tokio::fs::write(&paths.beets_config, config).await?;
     Ok(())

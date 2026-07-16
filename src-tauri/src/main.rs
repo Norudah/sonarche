@@ -2,6 +2,7 @@
 
 mod commands;
 mod error;
+mod genres;
 mod jobs;
 mod python_env;
 mod reenrich;
@@ -14,6 +15,7 @@ fn main() {
     tauri::Builder::default()
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
+        .manage(genres::RecomputeGenresState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
             app.manage(state);
@@ -28,6 +30,7 @@ fn main() {
             commands::clear_job_history,
             commands::list_library,
             commands::reenrich_track,
+            commands::recompute_genres,
             commands::delete_track,
             commands::list_api_keys,
             commands::set_api_key,

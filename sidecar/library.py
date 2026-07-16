@@ -2,7 +2,7 @@
 
 import os
 
-from genre_buckets import bucket_for
+from genre_tree import bucket_for
 
 
 def _decode(value):

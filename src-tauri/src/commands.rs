@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
 use crate::error::{AppError, AppResult};
+use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobsState};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
@@ -86,6 +87,14 @@ pub async fn reenrich_track(
     id: i64,
 ) -> AppResult<Value> {
     state.run(&app, id).await
+}
+
+#[tauri::command]
+pub async fn recompute_genres(
+    app: AppHandle,
+    state: State<'_, RecomputeGenresState>,
+) -> AppResult<Value> {
+    state.run(&app).await
 }
 
 #[tauri::command]

@@ -12,7 +12,11 @@
     "none": "No genre",
     "allOf": "All {{parent}}",
     "clear": "Clear",
-    "pickHint": "Pick a genre to see its tracks."
+    "pickHint": "Pick a genre to see its tracks.",
+    "recompute": "Recompute genres",
+    "recomputing": "Recomputing…",
+    "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
+    "recomputeFailed": "Recompute failed, try again in a moment."
   },
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",

@@ -46,6 +46,10 @@ export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
   return { matched: result.matched };
 }
 
+export async function recomputeGenres(): Promise<{ total: number; updated: number }> {
+  return invoke<{ total: number; updated: number }>("recompute_genres");
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({
