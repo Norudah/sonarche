@@ -7,7 +7,15 @@ watch URLs) to drive downloads one by one with its own pacing."""
 def summarize(info: dict, max_entries: int) -> dict:
     """Reduce a yt-dlp flat info dict to the wire shape. Pure — unit-tested."""
     if info.get("_type") == "playlist":
-        entries = [e for e in (info.get("entries") or []) if e]
+        # Dedupe by video id: playlists can list the same video twice, but both
+        # would stage to one file (title [id].m4a) — the first import moves it
+        # away and the second fails with "file not found".
+        entries, seen = [], set()
+        for e in info.get("entries") or []:
+            if not e or (e.get("id") and e["id"] in seen):
+                continue
+            seen.add(e.get("id"))
+            entries.append(e)
         if not entries:
             raise RuntimeError("playlist is empty")
         if len(entries) > max_entries:

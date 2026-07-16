@@ -51,6 +51,21 @@ class SummarizeTest(unittest.TestCase):
         out = summarize(info, max_entries=10)
         self.assertEqual(out["count"], 1)
 
+    def test_duplicate_video_ids_are_deduped(self):
+        # A playlist listing the same video twice stages both to one file: the
+        # first import moves it away, the second fails with "file not found".
+        info = _playlist(
+            [_entry("a1", "No Control"), _entry("a2", "18"), _entry("a1", "No Control")]
+        )
+        out = summarize(info, max_entries=10)
+        self.assertEqual(out["count"], 2)
+        self.assertEqual([e["id"] for e in out["entries"]], ["a1", "a2"])
+
+    def test_entries_without_id_are_kept(self):
+        info = _playlist([{"title": "Track 1"}, {"title": "Track 2"}])
+        out = summarize(info, max_entries=10)
+        self.assertEqual(out["count"], 2)
+
     def test_missing_duration_and_url_tolerated(self):
         # Flat extraction sometimes omits duration; url falls back to the watch URL.
         info = _playlist([{"id": "a1", "title": "Track 1"}])
