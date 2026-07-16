@@ -43,6 +43,7 @@
     "fields": {
       "title": "Titre",
       "artist": "Artiste",
+      "albumArtist": "Artiste de l'album",
       "album": "Album",
       "year": "Année",
       "track": "N° piste",
