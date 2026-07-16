@@ -45,6 +45,7 @@
     "retry": "Retry",
     "matched": "Match found",
     "matchNone": "None",
+    "duplicate": "Duplicate",
     "noReport": "No report",
     "clearHistory": "Clear history",
     "clearHistoryTitle": "Clear download history?",

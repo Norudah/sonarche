@@ -45,6 +45,7 @@
     "retry": "Réessayer",
     "matched": "Correspondance trouvée",
     "matchNone": "Aucune",
+    "duplicate": "Doublon",
     "noReport": "Pas de rapport",
     "clearHistory": "Vider l'historique",
     "clearHistoryTitle": "Vider l'historique des téléchargements ?",

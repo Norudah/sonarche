@@ -35,6 +35,7 @@ function albumTrack(over: Record<string, unknown>) {
     stagedPath: null,
     itemId: null,
     report: null,
+    duplicateOf: null,
     ...over,
   };
 }
@@ -101,6 +102,8 @@ const jobs = [
     tracks: [
       albumTrack({ index: 1, videoId: "b1", title: "Hero", duration: 187, status: "done", itemId: 2, report: trackReport(2, true) }),
       albumTrack({ index: 2, videoId: "b2", title: "Monster", duration: 178, status: "done", itemId: 9, report: trackReport(9, false) }),
+      // Content duplicate dropped by the enrich step (same recording as #1).
+      albumTrack({ index: 3, videoId: "b3", title: "Hero (Official Video)", duration: 187, status: "done", itemId: 11, duplicateOf: 2 }),
     ],
   }),
   job({ status: "failed", failedStep: "download", error: "yt-dlp: video unavailable", createdAt: now - 6000 }),

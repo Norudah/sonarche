@@ -208,9 +208,12 @@ function MatchCell({ job }: { job: DownloadJob }) {
     return <span className="text-sm text-muted">—</span>;
   }
   if (job.kind === "album" && job.tracks.length > 0) {
-    const matched = job.tracks.filter((track) => track.report?.mbMatched).length;
-    if (matched === job.tracks.length) {
-      const source = job.tracks.find((track) => track.report?.source)?.report?.source;
+    // Dropped duplicates have no report by design; they must not drag the
+    // album aggregate down to a warning state.
+    const real = job.tracks.filter((track) => track.duplicateOf == null);
+    const matched = real.filter((track) => track.report?.mbMatched).length;
+    if (real.length > 0 && matched === real.length) {
+      const source = real.find((track) => track.report?.source)?.report?.source;
       return (
         <Chip variant="soft" size="sm" color="success">
           {source ?? t("queue.matched")}
@@ -220,7 +223,7 @@ function MatchCell({ job }: { job: DownloadJob }) {
     if (matched > 0) {
       return (
         <Chip variant="soft" size="sm" color="warning">
-          {matched}/{job.tracks.length}
+          {matched}/{real.length}
         </Chip>
       );
     }
@@ -234,6 +237,14 @@ function MatchCell({ job }: { job: DownloadJob }) {
 }
 
 function TrackMatchCell({ track }: { track: AlbumTrackJob }) {
+  const { t } = useTranslation("download");
+  if (track.duplicateOf != null) {
+    return (
+      <Chip variant="soft" size="sm" color="default">
+        {t("queue.duplicate")}
+      </Chip>
+    );
+  }
   if (track.status !== "done") {
     return <span className="text-sm text-muted">—</span>;
   }
@@ -284,6 +295,10 @@ function MetadataStateCell({
 
 function TrackMetadataCell({ track, stage }: { track: AlbumTrackJob; stage?: EnrichStage }) {
   const { t } = useTranslation("download");
+  if (track.duplicateOf != null) {
+    // Dropped as a content duplicate: there is no item left to report on.
+    return <span className="text-sm text-muted">—</span>;
+  }
   if (track.status === "failed") {
     return <CircleAlert aria-label={t("queue.statusFailed")} className="size-5 text-danger" />;
   }
@@ -572,7 +587,12 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                             />
                           </Table.Cell>
                           <Table.Cell>
-                            {track.status === "done" && track.itemId != null && libraryLoaded ? (
+                            {/* A dropped duplicate's item no longer exists: the
+                             * "removed from library" chip would be misleading. */}
+                            {track.status === "done" &&
+                            track.itemId != null &&
+                            track.duplicateOf == null &&
+                            libraryLoaded ? (
                               <LibraryChip track={trackLibraryTrack} />
                             ) : (
                               <span className="text-sm text-muted">—</span>

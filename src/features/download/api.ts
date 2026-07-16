@@ -36,6 +36,9 @@ export interface AlbumTrackJob {
   error: string | null;
   itemId: number | null;
   report: MetadataReport | null;
+  /** Kept item id when the enrich step dropped this track as a content
+   * duplicate (same AcoustID recording under another video title). */
+  duplicateOf: number | null;
 }
 
 export interface DownloadJob {
@@ -76,6 +79,7 @@ interface WireTrack {
   stagedPath: string | null;
   itemId: number | null;
   report: WireReport | null;
+  duplicateOf?: number | null;
 }
 
 export interface WireJob {
@@ -118,6 +122,7 @@ function mapTrack(raw: WireTrack): AlbumTrackJob {
     error: raw.error,
     itemId: raw.itemId,
     report: mapReport(raw.report),
+    duplicateOf: raw.duplicateOf ?? null,
   };
 }
 

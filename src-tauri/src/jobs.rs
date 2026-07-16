@@ -93,6 +93,10 @@ pub struct AlbumTrack {
     pub item_id: Option<i64>,
     /// Per-track metadata report, verbatim from the sidecar.
     pub report: Option<Value>,
+    /// Kept item this track duplicated: the enrich step removed it from the
+    /// library (same AcoustID recording, so same audio under another title).
+    #[serde(default)]
+    pub duplicate_of: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -479,6 +483,7 @@ fn parse_probe_entries(probe: &Value) -> Vec<AlbumTrack> {
                 staged_path: None,
                 item_id: None,
                 report: None,
+                duplicate_of: None,
             })
         })
         .collect()
@@ -673,6 +678,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                             j.tracks.iter_mut().find(|t| t.item_id == Some(item_id))
                         {
                             track.report = entry.get("report").cloned().filter(|r| !r.is_null());
+                            track.duplicate_of = entry.get("duplicate_of").and_then(Value::as_i64);
                         }
                     }
                     for track in &mut j.tracks {
