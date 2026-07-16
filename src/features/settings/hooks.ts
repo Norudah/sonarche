@@ -4,6 +4,7 @@ import {
   type ApiKeyName,
   getPreferences,
   listApiKeys,
+  resetLibraryDev,
   setApiKey,
   setLastfmFetchDelay,
 } from "@/features/settings/api";
@@ -35,6 +36,18 @@ export function useSetLastfmFetchDelay() {
     mutationFn: setLastfmFetchDelay,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesKey });
+    },
+  });
+}
+
+export function useResetLibraryDev() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: resetLibraryDev,
+    onSuccess: () => {
+      // Everything derived from the library is stale after a wipe.
+      queryClient.invalidateQueries({ queryKey: ["library"] });
+      queryClient.invalidateQueries({ queryKey: ["download", "jobs"] });
     },
   });
 }

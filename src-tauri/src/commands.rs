@@ -111,6 +111,28 @@ pub async fn recompute_genres(
     state.run(&app).await
 }
 
+/// Dev-only: wipe the whole music library (audio files + beets DB) so bug-fix
+/// scenarios restart from a clean slate. Refused outright in release builds.
+#[tauri::command]
+pub async fn reset_library_dev(app: AppHandle) -> AppResult<()> {
+    if !cfg!(debug_assertions) {
+        return Err(AppError::InvalidInput(
+            "library reset is only available in dev builds".into(),
+        ));
+    }
+    let paths = AppPaths::resolve(&app)?;
+    if tokio::fs::try_exists(&paths.library_dir)
+        .await
+        .unwrap_or(false)
+    {
+        tokio::fs::remove_dir_all(&paths.library_dir).await?;
+    }
+    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    let _ = tokio::fs::remove_file(&paths.beets_db).await;
+    eprintln!("[dev] library reset: files and beets DB wiped");
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn delete_track(
     app: AppHandle,
