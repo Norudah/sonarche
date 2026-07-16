@@ -24,11 +24,14 @@ _MAX_TEXT_DISTANCE = 0.10
 _MAX_RECORDINGS = 3
 
 
+def _decode(value) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
 def _decode_path(item) -> str:
-    path = item.path
-    if isinstance(path, bytes):
-        path = path.decode("utf-8", errors="replace")
-    return path
+    return _decode(item.path)
 
 
 def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
@@ -117,7 +120,7 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
     return None
 
 
-def _apply(item, album_info, track_info) -> None:
+def _apply(lib, item, album_info, track_info) -> None:
     from beets import library
 
     # merge_with_album already carries the release's `genres` list along.
@@ -151,10 +154,15 @@ def _apply(item, album_info, track_info) -> None:
     #   2. beets' duplicate check keys on albumartist+album; two blank rows look
     #      like duplicates, making it skip every later untagged import.
     album = item.get_album()
-    if album is not None:
-        for key in library.Album.item_keys:
-            album[key] = item[key]
-        album.store()
+    if album is None:
+        # Singleton items (album-batch tracks that fell back to per-track
+        # enrich) have no album row at all: without one, the cover fetch
+        # bails out and the file lands under Non-Album/. Create it, exactly
+        # like a regular -A import would have.
+        album = lib.add_album([item])
+    for key in library.Album.item_keys:
+        album[key] = item[key]
+    album.store()
 
     try:
         # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
@@ -163,22 +171,36 @@ def _apply(item, album_info, track_info) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def _fetch_cover(item, release_id: str) -> None:
+def download_cover(release_id: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) cover images from the Cover Art Archive, each as (data, is_png),
+    or None. hq is CAA's original upload, kept on disk for Sonarche's own display;
+    thumb is CAA's 500px rendition — used as beets' artpath (cover.jpg) and
+    embedded into file tags, so the beets copy and the audio files stay light."""
     import requests
-    from mutagen.mp4 import MP4, MP4Cover
 
-    album = item.get_album()
-    if album is None:
-        return
-    resp = requests.get(
+    hq_resp = requests.get(
         f"https://coverartarchive.org/release/{release_id}/front", timeout=30
     )
-    if resp.status_code != 200:
-        protocol.log(f"enrich: no cover for release {release_id} (HTTP {resp.status_code})")
-        return
-    data = resp.content
-    is_png = data[:4] == b"\x89PNG"
+    if hq_resp.status_code != 200:
+        protocol.log(f"enrich: no cover for release {release_id} (HTTP {hq_resp.status_code})")
+        return None
+    hq_data = hq_resp.content
+    hq = (hq_data, hq_data[:4] == b"\x89PNG")
 
+    thumb_resp = requests.get(
+        f"https://coverartarchive.org/release/{release_id}/front-500", timeout=30
+    )
+    thumb = (
+        (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
+        if thumb_resp.status_code == 200
+        else hq  # CAA has no 500px rendition for this release: fall back to the original
+    )
+    return hq, thumb
+
+
+def set_album_art(album, data: bytes, is_png: bool) -> None:
+    """Set beets' artpath (cover.jpg) — expects the 500px thumb, so the beets
+    copy stays light."""
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -190,12 +212,41 @@ def _fetch_cover(item, release_id: str) -> None:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+
+def save_hq_cover(album, data: bytes, is_png: bool) -> None:
+    """Write the HQ cover next to beets' artpath as cover-hq.*, for Sonarche's
+    own display. Kept outside beets' management — call after set_album_art so
+    album.artpath already points at the album's directory."""
+    if not album.artpath:
+        return
+    art_dir = os.path.dirname(_decode(album.artpath))
+    ext = "png" if is_png else "jpg"
+    with open(os.path.join(art_dir, f"cover-hq.{ext}"), "wb") as f:
+        f.write(data)
+
+
+def embed_cover(item, data: bytes, is_png: bool) -> None:
+    from mutagen.mp4 import MP4, MP4Cover
+
     path = _decode_path(item)
     if path.endswith(".m4a") and os.path.exists(path):
         tags = MP4(path)
         fmt = MP4Cover.FORMAT_PNG if is_png else MP4Cover.FORMAT_JPEG
         tags["covr"] = [MP4Cover(data, imageformat=fmt)]
         tags.save()
+
+
+def _fetch_cover(item, release_id: str) -> None:
+    album = item.get_album()
+    if album is None:
+        return
+    cover = download_cover(release_id)
+    if cover is None:
+        return
+    hq, thumb = cover
+    set_album_art(album, *thumb)
+    save_hq_cover(album, *hq)
+    embed_cover(item, *thumb)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -205,18 +256,31 @@ def handle(request_id: str, params: dict) -> dict:
     item = lib.get_item(params["item_id"])
     if item is None:
         raise RuntimeError(f"item not found: {params['item_id']}")
+
+    metadata.ensure_plugins()
+    return enrich_one(request_id, lib, item, params)
+
+
+def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = True) -> dict:
+    """Fingerprint-first enrichment of one item. Caller owns the Library and
+    must have called metadata.ensure_plugins(). `params` carries fpcalc,
+    acoustid_key and the optional title/artist hints. `fetch_cover=False`
+    lets the album batch fetch one cover per album instead of per track."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
 
-    metadata.ensure_plugins()
-
     recordings: list[str] = []
     api_key = params.get("acoustid_key")
     if api_key:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "fingerprint"})
+        # item_id lets the album batch's UI animate the matching child row.
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
+        )
         duration, fingerprint = _fingerprint(params["fpcalc"], path)
-        protocol.send_event(request_id, "enrich_progress", {"stage": "lookup"})
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id}
+        )
         recordings = _lookup_recordings(api_key, fingerprint, duration)
         protocol.log(f"enrich: acoustid returned {len(recordings)} recording(s)")
     else:
@@ -253,13 +317,16 @@ def handle(request_id: str, params: dict) -> dict:
 
     matched = bool(album_info and track_info)
     if matched:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
-        _apply(item, album_info, track_info)
-        try:
-            _fetch_cover(item, album_info.album_id)
-        except Exception as exc:  # metadata landed; a missing cover is not a failure
-            protocol.log(f"enrich: cover fetch failed: {exc}")
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
+        )
+        _apply(lib, item, album_info, track_info)
+        if fetch_cover:
+            try:
+                _fetch_cover(item, album_info.album_id)
+            except Exception as exc:  # metadata landed; a missing cover is not a failure
+                protocol.log(f"enrich: cover fetch failed: {exc}")
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
-    fresh = lib.get_item(params["item_id"])
+    fresh = lib.get_item(item.id)
     return {"matched": matched, "report": build_report(fresh) if fresh else None}

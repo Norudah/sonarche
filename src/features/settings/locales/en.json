@@ -30,5 +30,19 @@
       "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
       "warning": "Below one second isn't recommended: stay polite to Last.fm and avoid hitting it with too many requests too close together."
     }
+  },
+  "developer": {
+    "category": "Developer",
+    "title": "Developer tools",
+    "description": "Only visible in development builds. These tools are destructive and meant for testing the app, not using it.",
+    "resetLibrary": {
+      "name": "Reset the library",
+      "why": "Deletes every audio file in the library and the beets database, for a clean slate between test runs.",
+      "action": "Wipe everything",
+      "confirm": "Click again to confirm",
+      "warning": "Every library file and the beets index will be permanently deleted.",
+      "resetting": "Wiping…",
+      "done": "Library reset."
+    }
   }
 }

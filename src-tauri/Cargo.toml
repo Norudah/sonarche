@@ -17,3 +17,5 @@ uuid = { version = "1", features = ["v4"] }
 url = "2"
 # OS keychain for API keys: secrets never land in a config file.
 keyring = { version = "3", features = ["apple-native"] }
+# Jitter between album batch downloads; tiny and dependency-free (rand is overkill).
+fastrand = "2"

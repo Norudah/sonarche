@@ -37,6 +37,7 @@ fn main() {
             commands::delete_track,
             commands::list_api_keys,
             commands::set_api_key,
+            commands::reset_library_dev,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

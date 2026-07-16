@@ -6,6 +6,7 @@ import {
   clearJobHistory,
   type DownloadJob,
   enqueueDownload,
+  type JobKind,
   listJobs,
   mapJob,
   retryJob,
@@ -48,7 +49,7 @@ export function useJobs() {
 export function useEnqueueDownload() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: enqueueDownload,
+    mutationFn: ({ url, kind }: { url: string; kind: JobKind }) => enqueueDownload(url, kind),
     onSuccess: (job) => upsertJob(queryClient, job),
   });
 }
@@ -68,6 +69,33 @@ export function useClearJobHistory() {
     mutationFn: clearJobHistory,
     onSuccess: (jobs) => queryClient.setQueryData(jobsKey, jobs),
   });
+}
+
+export type EnrichStage = "fingerprint" | "lookup" | "match" | "apply" | "track_done";
+
+/** Per-item enrich stage of the currently enriching job, keyed by beets item
+ * id. The queue is sequential, so at most one job is enriching at a time;
+ * the map lets an album's child rows animate one by one instead of staying
+ * mute until the album-wide request returns. */
+export function useEnrichProgress(active: boolean) {
+  const [stages, setStages] = useState<Record<number, EnrichStage>>({});
+  useEffect(() => {
+    if (!active) return;
+    setStages({});
+    const unlisten = listen<{ event: string; data: { stage?: EnrichStage; item_id?: number } }>(
+      "sidecar:event",
+      (event) => {
+        if (event.payload.event !== "enrich_progress") return;
+        const { stage, item_id: itemId } = event.payload.data;
+        if (stage == null || itemId == null) return;
+        setStages((prev) => ({ ...prev, [itemId]: stage }));
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [active]);
+  return stages;
 }
 
 /** Download percentage of the currently active job. The queue is strictly

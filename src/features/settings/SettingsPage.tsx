@@ -1,5 +1,5 @@
 import { Button, Spinner } from "@heroui/react";
-import { Gauge, KeyRound, X } from "lucide-react";
+import { Gauge, KeyRound, Wrench, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
@@ -7,10 +7,11 @@ import { useNavigate } from "react-router";
 import { paths } from "@/app/routes";
 import type { ApiKeyName } from "@/features/settings/api";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
+import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { useApiKeys, usePreferences, useSetApiKey, useSetLastfmFetchDelay } from "@/features/settings/hooks";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 
-type Category = "apiKeys" | "rateLimits";
+type Category = "apiKeys" | "rateLimits" | "developer";
 
 /** Standalone screen, outside the main app layout: category menu on the left,
  * category content on the right. API keys need an explicit save; rate limits
@@ -40,6 +41,10 @@ export function SettingsPage() {
   const categories: { key: Category; label: string; icon: typeof KeyRound }[] = [
     { key: "apiKeys", label: t("apiKeys.category"), icon: KeyRound },
     { key: "rateLimits", label: t("rateLimits.category"), icon: Gauge },
+    // Dev builds only; the backend command refuses to run in release anyway.
+    ...(import.meta.env.DEV
+      ? [{ key: "developer" as const, label: t("developer.category"), icon: Wrench }]
+      : []),
   ];
 
   return (
@@ -95,6 +100,7 @@ export function SettingsPage() {
                   onChangeDelay={(seconds) => setDelay.mutate(seconds)}
                 />
               ))}
+            {category === "developer" && <DeveloperSection />}
           </div>
           {category === "apiKeys" && (
             <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-separator px-6 py-4">

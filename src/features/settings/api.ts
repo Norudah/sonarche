@@ -27,3 +27,8 @@ export async function getPreferences(): Promise<Preferences> {
 export async function setLastfmFetchDelay(seconds: number): Promise<Preferences> {
   return invoke<Preferences>("set_lastfm_fetch_delay", { seconds });
 }
+
+/** Dev builds only — the backend refuses it in release. */
+export async function resetLibraryDev(): Promise<void> {
+  await invoke("reset_library_dev");
+}

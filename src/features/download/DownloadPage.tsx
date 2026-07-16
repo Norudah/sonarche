@@ -1,16 +1,26 @@
-import { Alert, Button, InputGroup } from "@heroui/react";
-import { Download, Link2, Trash2 } from "lucide-react";
+import { Alert, Button, Chip, InputGroup } from "@heroui/react";
+import { Disc3, Download, Link2, Music, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { JobKind } from "@/features/download/api";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { QueueTable } from "@/features/download/QueueTable";
-import { useActiveDownloadProgress, useEnqueueDownload, useJobs } from "@/features/download/hooks";
+import {
+  useActiveDownloadProgress,
+  useEnqueueDownload,
+  useEnrichProgress,
+  useJobs,
+} from "@/features/download/hooks";
+import { detectUrlKind } from "@/features/download/urlKind";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function DownloadPage() {
   const { t } = useTranslation("download");
   const [url, setUrl] = useState("");
+  // The mixed-URL choice is bound to the URL it was made for: editing the
+  // input invalidates it, no effect needed.
+  const [mixedChoice, setMixedChoice] = useState<{ url: string; kind: JobKind } | null>(null);
   const [clearingHistory, setClearingHistory] = useState(false);
   const jobs = useJobs();
   const enqueue = useEnqueueDownload();
@@ -20,10 +30,26 @@ export function DownloadPage() {
   const hasActiveDownload = jobs.data?.some((job) => job.status === "downloading") ?? false;
   const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
 
+  const hasActiveEnrich = jobs.data?.some((job) => job.status === "enriching") ?? false;
+  const enrichStages = useEnrichProgress(hasActiveEnrich);
+
+  const detected = detectUrlKind(url);
+  const chosenKind = mixedChoice?.url === url ? mixedChoice.kind : null;
+  const kind: JobKind | null =
+    detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
+
   const submit = () => {
     const trimmed = url.trim();
-    if (!trimmed || enqueue.isPending) return;
-    enqueue.mutate(trimmed, { onSuccess: () => setUrl("") });
+    if (!trimmed || kind == null || enqueue.isPending) return;
+    enqueue.mutate(
+      { url: trimmed, kind },
+      {
+        onSuccess: () => {
+          setUrl("");
+          setMixedChoice(null);
+        },
+      },
+    );
   };
 
   return (
@@ -67,12 +93,50 @@ export function DownloadPage() {
               variant="primary"
               size="lg"
               className="rounded-xl px-7"
-              isDisabled={!url.trim() || enqueue.isPending}
+              isDisabled={!url.trim() || kind == null || enqueue.isPending}
             >
               <Download className="size-4" />
               {t("download")}
             </Button>
           </form>
+
+          {detected === "single" && (
+            <Chip variant="soft" size="sm" className="self-start">
+              <Music className="size-3.5" />
+              {t("detected.single")}
+            </Chip>
+          )}
+          {detected === "album" && (
+            <Chip variant="soft" size="sm" color="accent" className="self-start">
+              <Disc3 className="size-3.5" />
+              {t("detected.album")}
+            </Chip>
+          )}
+          {detected === "mixed" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-muted">{t("detected.mixed")}</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={chosenKind === "single" ? "primary" : "secondary"}
+                  aria-pressed={chosenKind === "single"}
+                  onPress={() => setMixedChoice({ url, kind: "single" })}
+                >
+                  <Music className="size-4" />
+                  {t("detected.choiceTrack")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={chosenKind === "album" ? "primary" : "secondary"}
+                  aria-pressed={chosenKind === "album"}
+                  onPress={() => setMixedChoice({ url, kind: "album" })}
+                >
+                  <Disc3 className="size-4" />
+                  {t("detected.choicePlaylist")}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -98,7 +162,11 @@ export function DownloadPage() {
             {t("queue.clearHistory")}
           </Button>
         </div>
-        <QueueTable jobs={jobs.data ?? []} downloadPercent={downloadPercent} />
+        <QueueTable
+          jobs={jobs.data ?? []}
+          downloadPercent={downloadPercent}
+          enrichStages={enrichStages}
+        />
       </section>
 
       <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />

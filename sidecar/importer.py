@@ -9,9 +9,15 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 
 import protocol
 from report import build_report
+
+# Flexible attribute stamped (--set) on singleton imports so the item can be
+# looked up exactly. Batch imports land seconds apart with identical blank
+# tags — the single-path "newest added since" heuristic mis-attributes there.
+_MARKER_FIELD = "sonarche_import_id"
 
 
 def _beet_bin() -> str:
@@ -37,6 +43,23 @@ def _find_imported_item(db_path: str, library_dir: str, since: float):
     return newest
 
 
+def _find_marked_item(db_path: str, library_dir: str, marker: str):
+    """The item stamped with our marker, or None. Exact — no time window.
+    The marker is deleted once read: it never leaks into reports or files."""
+    from beets.library import Library
+
+    if not os.path.exists(db_path):
+        return None
+    lib = Library(db_path, directory=library_dir)
+    items = list(lib.items(f"{_MARKER_FIELD}:{marker}"))
+    if not items:
+        return None
+    item = items[0]
+    del item[_MARKER_FIELD]
+    item.store()
+    return item
+
+
 def handle(request_id: str, params: dict) -> dict:
     path = params["path"]
     config_path = params["beets_config"]
@@ -44,7 +67,13 @@ def handle(request_id: str, params: dict) -> dict:
         raise RuntimeError(f"file not found: {path}")
 
     started = time.time()
+    marker = None
     cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A", path]
+    if params.get("singleton"):
+        # Album tracks are imported file by file; -s avoids one junk 1-item
+        # album row per file (the real album row is created by enrich_album).
+        marker = uuid.uuid4().hex
+        cmd[-1:-1] = ["-s", f"--set={_MARKER_FIELD}={marker}"]
     protocol.send_event(request_id, "import_progress", {"stage": "matching"})
 
     # Separate process: beets' own stdout stays out of our protocol stream.
@@ -57,7 +86,10 @@ def handle(request_id: str, params: dict) -> dict:
 
     report = None
     try:
-        item = _find_imported_item(params["beets_db"], params["library_dir"], started)
+        if marker is not None:
+            item = _find_marked_item(params["beets_db"], params["library_dir"], marker)
+        else:
+            item = _find_imported_item(params["beets_db"], params["library_dir"], started)
         if item is not None:
             report = build_report(item)
     except Exception as exc:  # the import itself succeeded; a missing report must not fail it

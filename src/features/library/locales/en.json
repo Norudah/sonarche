@@ -40,9 +40,11 @@
     "reenrichFailed": "Match failed, try again in a moment.",
     "comingSoon": "Coming soon",
     "emptyValue": "—",
+    "bonusFrom": "Bonus track from “{{source}}”, filed with the main album.",
     "fields": {
       "title": "Title",
       "artist": "Artist",
+      "albumArtist": "Album artist",
       "album": "Album",
       "year": "Year",
       "track": "Track no.",

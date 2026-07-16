@@ -9,6 +9,7 @@ import { useReenrichTrack } from "@/features/library/hooks";
 interface FieldValues {
   title: string;
   artist: string;
+  albumArtist: string;
   album: string;
   year: string;
   track: string;
@@ -25,6 +26,7 @@ function toFieldValues(track: LibraryTrack): FieldValues {
   return {
     title: track.title,
     artist: track.artist,
+    albumArtist: track.albumArtist,
     album: track.album,
     year: track.year != null ? String(track.year) : "",
     track: trackNumber,
@@ -178,12 +180,26 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           isEditing={isEditing}
           onChange={setField("artist")}
         />
+        {/* Album-level field (shared by every track on the album): always read-only here. */}
+        <Field
+          label={t("metadata.fields.albumArtist")}
+          value={track.albumArtist}
+          isEditing={false}
+          onChange={() => {}}
+        />
         <Field
           label={t("metadata.fields.album")}
           value={shown.album}
           isEditing={isEditing}
           onChange={setField("album")}
         />
+        {track.bonusSource && (
+          // Adopted bonus track: filed with the main album for convenience
+          // (iTunes/Spotify-style) — keep the real origin explicit.
+          <p className="rounded-xl bg-default/40 px-3 py-2 text-xs text-muted">
+            {t("metadata.bonusFrom", { source: track.bonusSource })}
+          </p>
+        )}
         <div className="flex gap-3">
           <Field
             label={t("metadata.fields.year")}

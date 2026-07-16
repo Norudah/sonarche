@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 export type JobKind = "single" | "album";
 export type JobStatus = "queued" | "downloading" | "importing" | "enriching" | "done" | "failed";
 export type JobStep = "download" | "import" | "enrich";
+export type TrackStatus = "pending" | "downloading" | "downloaded" | "imported" | "done" | "failed";
 
 export interface MetadataReportFields {
   title: boolean;
@@ -23,6 +24,23 @@ export interface MetadataReport {
   coverSource: string | null;
 }
 
+/** One playlist entry of an album job. */
+export interface AlbumTrackJob {
+  /** 1-based playlist position. */
+  index: number;
+  videoId: string;
+  url: string;
+  title: string | null;
+  duration: number | null;
+  status: TrackStatus;
+  error: string | null;
+  itemId: number | null;
+  report: MetadataReport | null;
+  /** Kept item id when the enrich step dropped this track as a content
+   * duplicate (same AcoustID recording under another video title). */
+  duplicateOf: number | null;
+}
+
 export interface DownloadJob {
   id: string;
   url: string;
@@ -35,6 +53,8 @@ export interface DownloadJob {
   thumbnail: string | null;
   duration: number | null;
   report: MetadataReport | null;
+  /** Album jobs only; empty for singles. */
+  tracks: AlbumTrackJob[];
   createdAt: number;
   updatedAt: number;
 }
@@ -46,6 +66,20 @@ interface WireReport {
   fields: MetadataReportFields;
   cover: boolean;
   cover_source: string | null;
+}
+
+interface WireTrack {
+  index: number;
+  videoId: string;
+  url: string;
+  title: string | null;
+  duration: number | null;
+  status: TrackStatus;
+  error: string | null;
+  stagedPath: string | null;
+  itemId: number | null;
+  report: WireReport | null;
+  duplicateOf?: number | null;
 }
 
 export interface WireJob {
@@ -60,28 +94,48 @@ export interface WireJob {
   thumbnail: string | null;
   duration: number | null;
   report: WireReport | null;
+  tracks?: WireTrack[];
   createdAt: number;
   updatedAt: number;
+}
+
+function mapReport(raw: WireReport | null): MetadataReport | null {
+  if (!raw) return null;
+  return {
+    itemId: raw.item_id ?? null,
+    mbMatched: raw.mb_matched,
+    source: raw.source,
+    fields: raw.fields,
+    cover: raw.cover,
+    coverSource: raw.cover_source,
+  };
+}
+
+function mapTrack(raw: WireTrack): AlbumTrackJob {
+  return {
+    index: raw.index,
+    videoId: raw.videoId,
+    url: raw.url,
+    title: raw.title,
+    duration: raw.duration,
+    status: raw.status,
+    error: raw.error,
+    itemId: raw.itemId,
+    report: mapReport(raw.report),
+    duplicateOf: raw.duplicateOf ?? null,
+  };
 }
 
 export function mapJob(raw: WireJob): DownloadJob {
   return {
     ...raw,
-    report: raw.report
-      ? {
-          itemId: raw.report.item_id ?? null,
-          mbMatched: raw.report.mb_matched,
-          source: raw.report.source,
-          fields: raw.report.fields,
-          cover: raw.report.cover,
-          coverSource: raw.report.cover_source,
-        }
-      : null,
+    report: mapReport(raw.report),
+    tracks: (raw.tracks ?? []).map(mapTrack),
   };
 }
 
-export async function enqueueDownload(url: string): Promise<DownloadJob> {
-  return mapJob(await invoke<WireJob>("enqueue_download", { url }));
+export async function enqueueDownload(url: string, kind: JobKind): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind }));
 }
 
 export async function listJobs(): Promise<DownloadJob[]> {

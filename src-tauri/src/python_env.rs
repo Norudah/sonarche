@@ -249,6 +249,15 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
+  # Staged files are imported untagged by design, so beets' duplicate check
+  # can only ever collide blank-vs-blank (enriched items have real tags).
+  # `skip` (the quiet default) silently drops every album-batch track after
+  # the first one; real re-download duplicates never collide anyway.
+  duplicate_action: keep
+# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
+# cover.jpg); declaring it clutter lets beets prune a folder that only has
+# it left after an album is moved or merged away.
+clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
 plugins: musicbrainz fetchart embedart lastgenre
 musicbrainz:
   genres: yes
