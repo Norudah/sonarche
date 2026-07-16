@@ -249,6 +249,11 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
+  # Staged files are imported untagged by design, so beets' duplicate check
+  # can only ever collide blank-vs-blank (enriched items have real tags).
+  # `skip` (the quiet default) silently drops every album-batch track after
+  # the first one; real re-download duplicates never collide anyway.
+  duplicate_action: keep
 plugins: musicbrainz fetchart embedart lastgenre
 musicbrainz:
   genres: yes

@@ -117,7 +117,7 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
     return None
 
 
-def _apply(item, album_info, track_info) -> None:
+def _apply(lib, item, album_info, track_info) -> None:
     from beets import library
 
     # merge_with_album already carries the release's `genres` list along.
@@ -151,10 +151,15 @@ def _apply(item, album_info, track_info) -> None:
     #   2. beets' duplicate check keys on albumartist+album; two blank rows look
     #      like duplicates, making it skip every later untagged import.
     album = item.get_album()
-    if album is not None:
-        for key in library.Album.item_keys:
-            album[key] = item[key]
-        album.store()
+    if album is None:
+        # Singleton items (album-batch tracks that fell back to per-track
+        # enrich) have no album row at all: without one, the cover fetch
+        # bails out and the file lands under Non-Album/. Create it, exactly
+        # like a regular -A import would have.
+        album = lib.add_album([item])
+    for key in library.Album.item_keys:
+        album[key] = item[key]
+    album.store()
 
     try:
         # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
@@ -163,22 +168,21 @@ def _apply(item, album_info, track_info) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def _fetch_cover(item, release_id: str) -> None:
+def download_cover(release_id: str) -> tuple[bytes, bool] | None:
+    """Front cover bytes from the Cover Art Archive, or None. (data, is_png)."""
     import requests
-    from mutagen.mp4 import MP4, MP4Cover
 
-    album = item.get_album()
-    if album is None:
-        return
     resp = requests.get(
         f"https://coverartarchive.org/release/{release_id}/front", timeout=30
     )
     if resp.status_code != 200:
         protocol.log(f"enrich: no cover for release {release_id} (HTTP {resp.status_code})")
-        return
+        return None
     data = resp.content
-    is_png = data[:4] == b"\x89PNG"
+    return data, data[:4] == b"\x89PNG"
 
+
+def set_album_art(album, data: bytes, is_png: bool) -> None:
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -190,12 +194,28 @@ def _fetch_cover(item, release_id: str) -> None:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+
+def embed_cover(item, data: bytes, is_png: bool) -> None:
+    from mutagen.mp4 import MP4, MP4Cover
+
     path = _decode_path(item)
     if path.endswith(".m4a") and os.path.exists(path):
         tags = MP4(path)
         fmt = MP4Cover.FORMAT_PNG if is_png else MP4Cover.FORMAT_JPEG
         tags["covr"] = [MP4Cover(data, imageformat=fmt)]
         tags.save()
+
+
+def _fetch_cover(item, release_id: str) -> None:
+    album = item.get_album()
+    if album is None:
+        return
+    cover = download_cover(release_id)
+    if cover is None:
+        return
+    data, is_png = cover
+    set_album_art(album, data, is_png)
+    embed_cover(item, data, is_png)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -205,11 +225,18 @@ def handle(request_id: str, params: dict) -> dict:
     item = lib.get_item(params["item_id"])
     if item is None:
         raise RuntimeError(f"item not found: {params['item_id']}")
+
+    metadata.ensure_plugins()
+    return enrich_one(request_id, lib, item, params)
+
+
+def enrich_one(request_id: str, lib, item, params: dict) -> dict:
+    """Fingerprint-first enrichment of one item. Caller owns the Library and
+    must have called metadata.ensure_plugins(). `params` carries fpcalc,
+    acoustid_key and the optional title/artist hints."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
-
-    metadata.ensure_plugins()
 
     recordings: list[str] = []
     api_key = params.get("acoustid_key")
@@ -254,12 +281,12 @@ def handle(request_id: str, params: dict) -> dict:
     matched = bool(album_info and track_info)
     if matched:
         protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
-        _apply(item, album_info, track_info)
+        _apply(lib, item, album_info, track_info)
         try:
             _fetch_cover(item, album_info.album_id)
         except Exception as exc:  # metadata landed; a missing cover is not a failure
             protocol.log(f"enrich: cover fetch failed: {exc}")
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
-    fresh = lib.get_item(params["item_id"])
+    fresh = lib.get_item(item.id)
     return {"matched": matched, "report": build_report(fresh) if fresh else None}

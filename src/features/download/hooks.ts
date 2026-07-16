@@ -6,6 +6,7 @@ import {
   clearJobHistory,
   type DownloadJob,
   enqueueDownload,
+  type JobKind,
   listJobs,
   mapJob,
   retryJob,
@@ -48,7 +49,7 @@ export function useJobs() {
 export function useEnqueueDownload() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: enqueueDownload,
+    mutationFn: ({ url, kind }: { url: string; kind: JobKind }) => enqueueDownload(url, kind),
     onSuccess: (job) => upsertJob(queryClient, job),
   });
 }

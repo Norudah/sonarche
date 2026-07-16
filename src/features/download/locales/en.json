@@ -6,6 +6,13 @@
   "download": "Fetch",
   "enqueueFailed": "Could not add to the queue",
   "unknownArtist": "Unknown artist",
+  "detected": {
+    "single": "Single track",
+    "album": "Album · playlist",
+    "mixed": "This link points to a track inside a playlist — what should we fetch?",
+    "choiceTrack": "Track only",
+    "choicePlaylist": "Whole playlist"
+  },
   "queue": {
     "heading": "Activity",
     "empty": "No downloads yet. Paste a link to get started.",
@@ -22,6 +29,12 @@
     "delete": "Delete track",
     "kindSingle": "Single",
     "kindAlbum": "Album",
+    "tracks": "{{done}}/{{total}} tracks",
+    "expand": "Show tracks",
+    "collapse": "Hide tracks",
+    "statusPending": "Waiting",
+    "statusTrackDownloaded": "Downloaded",
+    "statusTrackImported": "Imported",
     "statusQueued": "Queued",
     "statusDownloading": "Downloading",
     "statusImporting": "Importing",

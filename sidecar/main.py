@@ -24,15 +24,19 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 def _handlers():
     import download
     import enrich
+    import enrich_album
     import genres
     import importer
     import library
+    import probe
 
     return {
         "ping": _handle_ping,
+        "probe": probe.handle,
         "download": download.handle,
         "import": importer.handle,
         "enrich": enrich.handle,
+        "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remove": library.remove,
         "genres_recompute": genres.recompute,

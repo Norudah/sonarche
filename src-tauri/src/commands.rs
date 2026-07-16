@@ -5,7 +5,7 @@ use tauri::{AppHandle, State};
 
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
-use crate::jobs::{Job, JobsState};
+use crate::jobs::{Job, JobKind, JobsState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
@@ -29,6 +29,7 @@ pub async fn enqueue_download(
     app: AppHandle,
     state: State<'_, JobsState>,
     url: String,
+    kind: Option<JobKind>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -37,7 +38,9 @@ pub async fn enqueue_download(
             "only http(s) URLs are allowed".into(),
         ));
     }
-    state.enqueue(&app, url).await
+    state
+        .enqueue(&app, url, kind.unwrap_or(JobKind::Single))
+        .await
 }
 
 #[tauri::command]
