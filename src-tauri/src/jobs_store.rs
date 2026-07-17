@@ -1,0 +1,499 @@
+//! Sonarche's application database (`sonarche.db`).
+//!
+//! This is the app's OWN store, deliberately separate from the beets library —
+//! beets (its own SQLite) stays the single source of truth for the music and its
+//! metadata; this DB never mirrors it. It holds Sonarche's operational and
+//! application state: today the download history, later anything that is app/user
+//! state rather than a fact about an audio file (e.g. a download ledger for
+//! dedup, user collections, play state). The boundary rule: if it's "facts about
+//! the audio and its tags" it belongs to beets; if it's "what Sonarche/the user
+//! did" it belongs here — never duplicate library truth into this file.
+//!
+//! History tables: `jobs` (one row per download) and `job_tracks` (album playlist
+//! entries). Nested/opaque payloads (`report`) are stored as JSON text; scalar
+//! fields get real columns so history stays queryable and indexable as features
+//! grow. `PRAGMA user_version` carries the schema version for future migrations.
+
+use std::path::Path;
+
+use rusqlite::{params, Connection, OptionalExtension, Row};
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::Value;
+
+use crate::error::{AppError, AppResult};
+use crate::jobs::{AlbumTrack, Job};
+
+/// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
+/// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
+/// EXISTS` don't need a bump.
+const SCHEMA_VERSION: i64 = 1;
+
+const SCHEMA: &str = "
+CREATE TABLE IF NOT EXISTS jobs (
+    id          TEXT PRIMARY KEY,
+    url         TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    failed_step TEXT,
+    error       TEXT,
+    title       TEXT,
+    artist      TEXT,
+    thumbnail   TEXT,
+    duration    REAL,
+    staged_path TEXT,
+    item_id     INTEGER,
+    report      TEXT,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS job_tracks (
+    job_id       TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    idx          INTEGER NOT NULL,
+    video_id     TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    title        TEXT,
+    duration     REAL,
+    status       TEXT NOT NULL,
+    error        TEXT,
+    staged_path  TEXT,
+    item_id      INTEGER,
+    report       TEXT,
+    duplicate_of INTEGER,
+    PRIMARY KEY (job_id, idx)
+);
+
+-- Read path ordering + the queryable columns future features (retry-all,
+-- URL/video dedup at enqueue, per-item lookup) will index against.
+CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_jobs_status  ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_url     ON jobs(url);
+CREATE INDEX IF NOT EXISTS idx_tracks_item  ON job_tracks(item_id);
+";
+
+/// Open (creating if needed) the history DB and ensure the schema is present.
+/// WAL keeps the worker's writes from blocking concurrent command reads.
+pub fn open(path: &Path) -> AppResult<Connection> {
+    let conn = Connection::open(path)?;
+    conn.pragma_update(None, "journal_mode", "WAL")?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
+    conn.execute_batch(SCHEMA)?;
+    // Establish the migration baseline on a fresh (or pre-versioning) file.
+    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version < SCHEMA_VERSION {
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    }
+    Ok(conn)
+}
+
+/// The enums all serialize to a lowercase string via serde; round-trip through
+/// serde_json so the DB text and the wire format never drift.
+fn enum_to_text<T: Serialize>(value: &T) -> AppResult<String> {
+    match serde_json::to_value(value)? {
+        Value::String(s) => Ok(s),
+        other => Err(AppError::Sidecar(format!(
+            "expected a string-valued enum, got {other}"
+        ))),
+    }
+}
+
+fn enum_from_text<T: DeserializeOwned>(text: &str) -> AppResult<T> {
+    Ok(serde_json::from_value(Value::String(text.to_string()))?)
+}
+
+fn report_to_text(report: &Option<Value>) -> AppResult<Option<String>> {
+    report
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(AppError::from)
+}
+
+fn report_from_text(text: Option<String>) -> AppResult<Option<Value>> {
+    text.map(|s| serde_json::from_str(&s))
+        .transpose()
+        .map_err(AppError::from)
+}
+
+fn row_to_job(row: &Row) -> AppResult<Job> {
+    Ok(Job {
+        id: row.get("id")?,
+        url: row.get("url")?,
+        kind: enum_from_text(&row.get::<_, String>("kind")?)?,
+        status: enum_from_text(&row.get::<_, String>("status")?)?,
+        failed_step: row
+            .get::<_, Option<String>>("failed_step")?
+            .map(|s| enum_from_text(&s))
+            .transpose()?,
+        error: row.get("error")?,
+        title: row.get("title")?,
+        artist: row.get("artist")?,
+        thumbnail: row.get("thumbnail")?,
+        duration: row.get("duration")?,
+        staged_path: row.get("staged_path")?,
+        item_id: row.get("item_id")?,
+        report: report_from_text(row.get("report")?)?,
+        tracks: Vec::new(),
+        created_at: row.get::<_, i64>("created_at")? as u64,
+        updated_at: row.get::<_, i64>("updated_at")? as u64,
+    })
+}
+
+fn row_to_track(row: &Row) -> AppResult<AlbumTrack> {
+    Ok(AlbumTrack {
+        index: row.get::<_, i64>("idx")? as u32,
+        video_id: row.get("video_id")?,
+        url: row.get("url")?,
+        title: row.get("title")?,
+        duration: row.get("duration")?,
+        status: enum_from_text(&row.get::<_, String>("status")?)?,
+        error: row.get("error")?,
+        staged_path: row.get("staged_path")?,
+        item_id: row.get("item_id")?,
+        report: report_from_text(row.get("report")?)?,
+        duplicate_of: row.get("duplicate_of")?,
+    })
+}
+
+fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO jobs (
+            id, url, kind, status, failed_step, error, title, artist, thumbnail,
+            duration, staged_path, item_id, report, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+        params![
+            job.id,
+            job.url,
+            enum_to_text(&job.kind)?,
+            enum_to_text(&job.status)?,
+            job.failed_step.map(|s| enum_to_text(&s)).transpose()?,
+            job.error,
+            job.title,
+            job.artist,
+            job.thumbnail,
+            job.duration,
+            job.staged_path,
+            job.item_id,
+            report_to_text(&job.report)?,
+            job.created_at as i64,
+            job.updated_at as i64,
+        ],
+    )?;
+    Ok(())
+}
+
+fn write_track_row(conn: &Connection, job_id: &str, track: &AlbumTrack) -> AppResult<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO job_tracks (
+            job_id, idx, video_id, url, title, duration, status, error,
+            staged_path, item_id, report, duplicate_of
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![
+            job_id,
+            track.index as i64,
+            track.video_id,
+            track.url,
+            track.title,
+            track.duration,
+            enum_to_text(&track.status)?,
+            track.error,
+            track.staged_path,
+            track.item_id,
+            report_to_text(&track.report)?,
+            track.duplicate_of,
+        ],
+    )?;
+    Ok(())
+}
+
+/// Full write of a job and all its tracks, in one transaction. Used whenever a
+/// mutation may have touched job-level fields or several tracks at once.
+pub fn upsert_job(conn: &Connection, job: &Job) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    write_job_row(&tx, job)?;
+    tx.execute("DELETE FROM job_tracks WHERE job_id = ?1", params![job.id])?;
+    for track in &job.tracks {
+        write_track_row(&tx, &job.id, track)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Targeted write of a single track plus the parent job's `updated_at`. The hot
+/// path during an album download: one row touched per transition, not the whole
+/// playlist.
+pub fn update_track(
+    conn: &Connection,
+    job_id: &str,
+    updated_at: u64,
+    track: &AlbumTrack,
+) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    write_track_row(&tx, job_id, track)?;
+    tx.execute(
+        "UPDATE jobs SET updated_at = ?2 WHERE id = ?1",
+        params![job_id, updated_at as i64],
+    )?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn load_tracks(conn: &Connection, job_id: &str) -> AppResult<Vec<AlbumTrack>> {
+    let mut stmt = conn.prepare("SELECT * FROM job_tracks WHERE job_id = ?1 ORDER BY idx ASC")?;
+    let rows = stmt.query_map(params![job_id], |row| Ok(row_to_track(row)))?;
+    let mut tracks = Vec::new();
+    for row in rows {
+        tracks.push(row??);
+    }
+    Ok(tracks)
+}
+
+pub fn get_job(conn: &Connection, id: &str) -> AppResult<Option<Job>> {
+    let mut job = conn
+        .query_row("SELECT * FROM jobs WHERE id = ?1", params![id], |row| {
+            Ok(row_to_job(row))
+        })
+        .optional()?
+        .transpose()?;
+    if let Some(job) = job.as_mut() {
+        job.tracks = load_tracks(conn, &job.id)?;
+    }
+    Ok(job)
+}
+
+/// All jobs, newest first, tracks attached. One extra query per job to gather
+/// tracks — history is human-scale; paginating this read is deferred backlog.
+pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
+    let mut stmt = conn.prepare("SELECT * FROM jobs ORDER BY created_at DESC")?;
+    let rows = stmt.query_map([], |row| Ok(row_to_job(row)))?;
+    let mut jobs = Vec::new();
+    for row in rows {
+        jobs.push(row??);
+    }
+    for job in &mut jobs {
+        job.tracks = load_tracks(conn, &job.id)?;
+    }
+    Ok(jobs)
+}
+
+/// Drop terminal (done/failed) jobs; their tracks go with them via cascade.
+pub fn delete_terminal(conn: &Connection) -> AppResult<()> {
+    conn.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
+    Ok(())
+}
+
+/// Startup recovery: whatever a previous run left mid-flight is failed, and any
+/// track caught downloading restarts from scratch. Returns whether anything was
+/// touched (only for logging). One SQL pass, no full rewrite.
+pub fn fail_interrupted(conn: &Connection, now: u64) -> AppResult<bool> {
+    let jobs = conn.execute(
+        "UPDATE jobs SET status = 'failed', error = 'interrupted by app restart', updated_at = ?1
+         WHERE status NOT IN ('done', 'failed')",
+        params![now as i64],
+    )?;
+    conn.execute(
+        "UPDATE job_tracks SET status = 'pending' WHERE status = 'downloading'",
+        [],
+    )?;
+    Ok(jobs > 0)
+}
+
+/// One-time import of the legacy `jobs.json` history into the fresh DB.
+pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    for job in jobs {
+        write_job_row(&tx, job)?;
+        for track in &job.tracks {
+            write_track_row(&tx, &job.id, track)?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::jobs::{JobKind, JobStatus, JobStep, TrackStatus};
+    use serde_json::json;
+
+    fn mem() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        conn
+    }
+
+    fn single(id: &str, status: JobStatus) -> Job {
+        Job {
+            id: id.into(),
+            url: "https://example.com/watch?v=abc".into(),
+            kind: JobKind::Single,
+            status,
+            failed_step: None,
+            error: None,
+            title: Some("Song".into()),
+            artist: Some("Artist".into()),
+            thumbnail: None,
+            duration: Some(212.5),
+            staged_path: None,
+            item_id: Some(42),
+            report: Some(json!({ "item_id": 42, "completion": 0.8 })),
+            tracks: Vec::new(),
+            created_at: 1000,
+            updated_at: 1000,
+        }
+    }
+
+    fn track(index: u32, status: TrackStatus) -> AlbumTrack {
+        AlbumTrack {
+            index,
+            video_id: format!("vid{index}"),
+            url: format!("https://example.com/watch?v=vid{index}"),
+            title: Some(format!("Track {index}")),
+            duration: Some(180.0),
+            status,
+            error: None,
+            staged_path: None,
+            item_id: Some(index as i64),
+            report: Some(json!({ "index": index })),
+            duplicate_of: None,
+        }
+    }
+
+    #[test]
+    fn round_trips_a_single_job_with_report() {
+        let conn = mem();
+        let job = single("a", JobStatus::Done);
+        upsert_job(&conn, &job).unwrap();
+
+        let read = get_job(&conn, "a").unwrap().unwrap();
+        assert_eq!(read.status, JobStatus::Done);
+        assert_eq!(read.item_id, Some(42));
+        assert_eq!(read.duration, Some(212.5));
+        assert_eq!(read.report, job.report);
+        assert!(read.tracks.is_empty());
+    }
+
+    #[test]
+    fn round_trips_album_tracks_in_order() {
+        let conn = mem();
+        let mut job = single("b", JobStatus::Enriching);
+        job.kind = JobKind::Album;
+        job.failed_step = None;
+        job.tracks = vec![
+            track(1, TrackStatus::Done),
+            track(2, TrackStatus::Imported),
+            track(3, TrackStatus::Failed),
+        ];
+        upsert_job(&conn, &job).unwrap();
+
+        let read = get_job(&conn, "b").unwrap().unwrap();
+        assert_eq!(read.kind, JobKind::Album);
+        let indices: Vec<u32> = read.tracks.iter().map(|t| t.index).collect();
+        assert_eq!(indices, vec![1, 2, 3]);
+        assert_eq!(read.tracks[1].status, TrackStatus::Imported);
+        assert_eq!(read.tracks[2].report, Some(json!({ "index": 3 })));
+    }
+
+    #[test]
+    fn failed_step_survives_the_round_trip() {
+        let conn = mem();
+        let mut job = single("c", JobStatus::Failed);
+        job.failed_step = Some(JobStep::Enrich);
+        job.error = Some("boom".into());
+        upsert_job(&conn, &job).unwrap();
+
+        let read = get_job(&conn, "c").unwrap().unwrap();
+        assert_eq!(read.failed_step, Some(JobStep::Enrich));
+        assert_eq!(read.error.as_deref(), Some("boom"));
+    }
+
+    #[test]
+    fn update_track_touches_one_row_and_bumps_updated_at() {
+        let conn = mem();
+        let mut job = single("d", JobStatus::Downloading);
+        job.kind = JobKind::Album;
+        job.tracks = vec![
+            track(1, TrackStatus::Pending),
+            track(2, TrackStatus::Pending),
+        ];
+        upsert_job(&conn, &job).unwrap();
+
+        let mut t2 = track(2, TrackStatus::Downloaded);
+        t2.staged_path = Some("/tmp/2.m4a".into());
+        update_track(&conn, "d", 2000, &t2).unwrap();
+
+        let read = get_job(&conn, "d").unwrap().unwrap();
+        assert_eq!(read.updated_at, 2000);
+        assert_eq!(read.tracks[0].status, TrackStatus::Pending);
+        assert_eq!(read.tracks[1].status, TrackStatus::Downloaded);
+        assert_eq!(read.tracks[1].staged_path.as_deref(), Some("/tmp/2.m4a"));
+    }
+
+    #[test]
+    fn fail_interrupted_only_touches_in_flight() {
+        let conn = mem();
+        let mut running = single("e", JobStatus::Downloading);
+        running.kind = JobKind::Album;
+        running.tracks = vec![
+            track(1, TrackStatus::Downloading),
+            track(2, TrackStatus::Done),
+        ];
+        upsert_job(&conn, &running).unwrap();
+        upsert_job(&conn, &single("f", JobStatus::Done)).unwrap();
+
+        assert!(fail_interrupted(&conn, 3000).unwrap());
+
+        let e = get_job(&conn, "e").unwrap().unwrap();
+        assert_eq!(e.status, JobStatus::Failed);
+        assert_eq!(e.updated_at, 3000);
+        assert_eq!(e.tracks[0].status, TrackStatus::Pending);
+        assert_eq!(e.tracks[1].status, TrackStatus::Done);
+
+        let f = get_job(&conn, "f").unwrap().unwrap();
+        assert_eq!(f.status, JobStatus::Done);
+    }
+
+    #[test]
+    fn delete_terminal_keeps_in_flight_and_cascades_tracks() {
+        let conn = mem();
+        let mut album = single("g", JobStatus::Done);
+        album.kind = JobKind::Album;
+        album.tracks = vec![track(1, TrackStatus::Done)];
+        upsert_job(&conn, &album).unwrap();
+        upsert_job(&conn, &single("h", JobStatus::Failed)).unwrap();
+        upsert_job(&conn, &single("i", JobStatus::Downloading)).unwrap();
+
+        delete_terminal(&conn).unwrap();
+
+        let remaining: Vec<String> = list_jobs(&conn)
+            .unwrap()
+            .into_iter()
+            .map(|j| j.id)
+            .collect();
+        assert_eq!(remaining, vec!["i".to_string()]);
+        let orphan_tracks: i64 = conn
+            .query_row("SELECT COUNT(*) FROM job_tracks", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(orphan_tracks, 0);
+    }
+
+    #[test]
+    fn list_jobs_is_newest_first() {
+        let conn = mem();
+        let mut older = single("old", JobStatus::Done);
+        older.created_at = 100;
+        let mut newer = single("new", JobStatus::Done);
+        newer.created_at = 200;
+        upsert_job(&conn, &older).unwrap();
+        upsert_job(&conn, &newer).unwrap();
+
+        let ids: Vec<String> = list_jobs(&conn)
+            .unwrap()
+            .into_iter()
+            .map(|j| j.id)
+            .collect();
+        assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+}

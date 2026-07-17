@@ -4,6 +4,7 @@ mod commands;
 mod error;
 mod genres;
 mod jobs;
+mod jobs_store;
 mod preferences;
 mod python_env;
 mod reenrich;

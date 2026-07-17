@@ -19,3 +19,6 @@ url = "2"
 keyring = { version = "3", features = ["apple-native"] }
 # Jitter between album batch downloads; tiny and dependency-free (rand is overkill).
 fastrand = "2"
+# Download-history store (our own DB, distinct from the beets library). `bundled`
+# ships SQLite with the binary — no system lib, matching the app's self-contained ethos.
+rusqlite = { version = "0.32", features = ["bundled"] }
