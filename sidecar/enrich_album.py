@@ -82,18 +82,28 @@ def _pair_plausible(file_length: float | None, track_length: float | None) -> bo
     return abs(file_length - track_length) <= _MAX_DURATION_DIFF_SECONDS
 
 
-def find_content_duplicates(recording_sets: list[tuple[int, set[str]]]) -> dict[int, int]:
-    """{duplicate item id: kept item id} for items whose AcoustID recording
-    sets intersect — same recording means same audio, whatever the video was
-    titled. Pure. First occurrence wins; items with no recordings never match."""
-    kept: list[tuple[int, set[str]]] = []
+def find_content_duplicates(recording_lists: list[tuple[int, list[str]]]) -> dict[int, int]:
+    """{duplicate item id: kept item id} for items sharing the same *primary*
+    AcoustID recording — the top, highest-confidence match, which is the audio's
+    real identity. Pure. First occurrence wins; items with no recordings never
+    match.
+
+    Only the primary counts, never the full candidate set: a fingerprint often
+    links to secondary recordings (lower-confidence, frequently mislinked user
+    submissions), and two genuinely different album tracks can share one of
+    those. Intersecting on secondaries flagged distinct tracks as duplicates and
+    deleted real files — a real duplicate always shares the *primary*, so the
+    secondaries add false positives without catching anything new."""
+    kept: dict[str, int] = {}  # primary recording id -> first item that had it
     duplicates: dict[int, int] = {}
-    for item_id, recordings in recording_sets:
-        kept_id = next((kid for kid, kset in kept if recordings & kset), None)
-        if kept_id is not None:
-            duplicates[item_id] = kept_id
+    for item_id, recordings in recording_lists:
+        primary = recordings[0] if recordings else None
+        if primary is None:
+            continue
+        if primary in kept:
+            duplicates[item_id] = kept[primary]
         else:
-            kept.append((item_id, recordings))
+            kept[primary] = item_id
     return duplicates
 
 
@@ -195,7 +205,7 @@ def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[l
     Runs before matching so duplicates never fight over one track slot or one
     destination path. Returns (kept items, {removed id: kept id})."""
     duplicates = find_content_duplicates(
-        [(item.id, set(recordings.get(item.id) or ())) for item in items]
+        [(item.id, list(recordings.get(item.id) or ())) for item in items]
     )
     kept = [item for item in items if item.id not in duplicates]
     for item in items:
@@ -441,12 +451,14 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
     return adopted
 
 
-def _fetch_album_cover(album, items, release_id: str | None) -> None:
+def _fetch_album_cover(
+    album, items, release_id: str | None, release_group_id: str | None = None
+) -> None:
     if not release_id:
         return
     try:
         protocol.log(f"enrich_album: fetching cover for release {release_id}")
-        cover = enrich.download_cover(release_id)
+        cover = enrich.download_cover(release_id, release_group_id)
         if cover is not None:
             hq, thumb = cover
             enrich.set_album_art(album, *thumb)
@@ -542,7 +554,9 @@ def _finalize_fallback(lib, items) -> None:
         artpath = enrich._decode(album.artpath) if album.artpath else None
         if artpath and os.path.exists(artpath):
             continue
-        _fetch_album_cover(album, list(album.items()), album.mb_albumid)
+        _fetch_album_cover(
+            album, list(album.items()), album.mb_albumid, album.mb_releasegroupid
+        )
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -599,7 +613,9 @@ def handle(request_id: str, params: dict) -> dict:
             if leftovers
             else []
         )
-        _fetch_album_cover(album, mapped + adopted, match.info.album_id)
+        _fetch_album_cover(
+            album, mapped + adopted, match.info.album_id, match.info.releasegroup_id
+        )
         rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
         if rest:
             protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")

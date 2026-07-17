@@ -171,31 +171,52 @@ def _apply(lib, item, album_info, track_info) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def download_cover(release_id: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) cover images from the Cover Art Archive, each as (data, is_png),
-    or None. hq is CAA's original upload, kept on disk for Sonarche's own display;
-    thumb is CAA's 500px rendition — used as beets' artpath (cover.jpg) and
-    embedded into file tags, so the beets copy and the audio files stay light."""
+def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) front cover from one Cover Art Archive entity
+    (`release/<id>` or `release-group/<id>`), each as (data, is_png), or None
+    when that entity carries no front art. hq is CAA's original upload; thumb is
+    its 500px rendition (or the original when CAA has no rendition)."""
     import requests
 
-    hq_resp = requests.get(
-        f"https://coverartarchive.org/release/{release_id}/front", timeout=30
-    )
+    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30)
     if hq_resp.status_code != 200:
-        protocol.log(f"enrich: no cover for release {release_id} (HTTP {hq_resp.status_code})")
         return None
     hq_data = hq_resp.content
     hq = (hq_data, hq_data[:4] == b"\x89PNG")
 
     thumb_resp = requests.get(
-        f"https://coverartarchive.org/release/{release_id}/front-500", timeout=30
+        f"https://coverartarchive.org/{entity_path}/front-500", timeout=30
     )
     thumb = (
         (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
         if thumb_resp.status_code == 200
-        else hq  # CAA has no 500px rendition for this release: fall back to the original
+        else hq
     )
     return hq, thumb
+
+
+def download_cover(
+    release_id: str, release_group_id: str | None = None
+) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) cover from the Cover Art Archive, or None. hq is CAA's
+    original upload, kept on disk for Sonarche's own display; thumb is the 500px
+    rendition — used as beets' artpath (cover.jpg) and embedded into file tags,
+    so the beets copy and the audio files stay light.
+
+    Tries the specific release first, then the release-group's designated cover.
+    Many streaming/regional releases carry no per-release art while their group
+    does — without this fallback, popular albums landed with no cover at all."""
+    cover = _caa_front(f"release/{release_id}")
+    if cover is not None:
+        return cover
+    protocol.log(f"enrich: no per-release cover for {release_id}")
+    if release_group_id:
+        cover = _caa_front(f"release-group/{release_group_id}")
+        if cover is not None:
+            protocol.log(f"enrich: cover found on release-group {release_group_id}")
+            return cover
+        protocol.log(f"enrich: no cover on release-group {release_group_id} either")
+    return None
 
 
 def set_album_art(album, data: bytes, is_png: bool) -> None:
@@ -236,11 +257,11 @@ def embed_cover(item, data: bytes, is_png: bool) -> None:
         tags.save()
 
 
-def _fetch_cover(item, release_id: str) -> None:
+def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> None:
     album = item.get_album()
     if album is None:
         return
-    cover = download_cover(release_id)
+    cover = download_cover(release_id, release_group_id)
     if cover is None:
         return
     hq, thumb = cover
@@ -323,7 +344,7 @@ def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = Tru
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
             try:
-                _fetch_cover(item, album_info.album_id)
+                _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
             except Exception as exc:  # metadata landed; a missing cover is not a failure
                 protocol.log(f"enrich: cover fetch failed: {exc}")
 

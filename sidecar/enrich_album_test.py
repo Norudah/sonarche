@@ -79,23 +79,32 @@ class VoteReleaseTest(unittest.TestCase):
 
 
 class FindContentDuplicatesTest(unittest.TestCase):
-    def test_intersecting_sets_mark_later_item(self):
+    def test_same_primary_marks_later_item(self):
         # Regression: a playlist carrying the same song under two different
         # video titles produced "02 Ready to Run.1.m4a" and a %aunique folder.
-        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"}), (3, {"rec-a", "rec-c"})])
+        # The same audio shares its primary (top-confidence) recording.
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"]), (3, ["rec-a", "rec-c"])])
         self.assertEqual(dups, {3: 1})
 
-    def test_disjoint_sets_keep_everything(self):
+    def test_shared_secondary_only_is_not_a_duplicate(self):
+        # Regression (Hail to the King): two distinct album tracks whose only
+        # overlap is a low-confidence *secondary* recording must NOT be deleted.
+        # Item 2's primary is rec-b; it merely carries rec-a as a noisy second
+        # candidate. Different primaries -> different audio -> both kept.
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b", "rec-a"])])
+        self.assertEqual(dups, {})
+
+    def test_disjoint_primaries_keep_everything(self):
         self.assertEqual(
-            find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"})]), {}
+            find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {}
         )
 
     def test_unidentified_items_never_match(self):
-        # AcoustID silence (empty set) must not mark two unknowns as duplicates.
-        self.assertEqual(find_content_duplicates([(1, set()), (2, set())]), {})
+        # AcoustID silence (empty list) must not mark two unknowns as duplicates.
+        self.assertEqual(find_content_duplicates([(1, []), (2, [])]), {})
 
     def test_chain_points_to_first_kept(self):
-        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-a"}), (3, {"rec-a"})])
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-a"]), (3, ["rec-a"])])
         self.assertEqual(dups, {2: 1, 3: 1})
 
 
