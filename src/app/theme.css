@@ -30,6 +30,12 @@
      yellow or gray. --background-secondary/-tertiary derive from this via
      color-mix, so they follow automatically. */
   --background: oklch(0.995 0.0012 75);
+
+  /* Tertiary hue — amber. Indigo + white alone reads duo-tone; this is the
+     only third color, reserved for "incomplete metadata" states and small
+     secondary accents. It rides HeroUI's `warning` scale so soft/foreground
+     variants and every warning-colored component follow for free. */
+  --warning: oklch(0.72 0.15 65);
 }
 
 [data-theme="dark"] {
