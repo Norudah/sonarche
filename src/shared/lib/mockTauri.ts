@@ -49,19 +49,23 @@ function albumTrack(over: Record<string, unknown>) {
   };
 }
 
-const trackReport = (item_id: number | null, mb_matched: boolean) => ({
+// `provisional`: nothing identified the file, so the sidecar guessed its tags
+// from the video and from the siblings' release — everything but the genre and
+// the track number, which are never guessed.
+const trackReport = (item_id: number | null, mb_matched: boolean, provisional = false) => ({
   item_id,
   mb_matched,
+  provisional,
   source: mb_matched ? "MusicBrainz" : null,
   fields: {
-    title: mb_matched,
-    artist: mb_matched,
-    album: mb_matched,
-    year: mb_matched,
+    title: mb_matched || provisional,
+    artist: mb_matched || provisional,
+    album: mb_matched || provisional,
+    year: mb_matched || provisional,
     track: mb_matched,
     genre: false,
   },
-  cover: mb_matched,
+  cover: mb_matched || provisional,
   cover_source: mb_matched ? "Cover Art Archive" : null,
 });
 
@@ -97,7 +101,7 @@ const jobs = [
   job({
     status: "done", title: "Commander's Theme", artist: "The Algorithm", duration: 201, createdAt: now - 5000,
     report: {
-      item_id: 5, mb_matched: false, source: null,
+      item_id: 5, mb_matched: false, provisional: true, source: null,
       fields: { title: true, artist: true, album: false, year: false, track: false, genre: false },
       cover: false, cover_source: null,
     },
@@ -112,7 +116,7 @@ const jobs = [
     createdAt: now - 5500,
     tracks: [
       albumTrack({ index: 1, videoId: "b1", title: "Hero", duration: 187, status: "done", itemId: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "b2", title: "Monster", duration: 178, status: "done", itemId: 9, report: trackReport(9, false) }),
+      albumTrack({ index: 2, videoId: "b2", title: "Monster", duration: 178, status: "done", itemId: 9, report: trackReport(9, false, true) }),
       // Content duplicate dropped by the enrich step (same recording as #1).
       albumTrack({ index: 3, videoId: "b3", title: "Hero (Official Video)", duration: 187, status: "done", itemId: 11, duplicateOf: 2 }),
     ],

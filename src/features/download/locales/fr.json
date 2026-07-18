@@ -39,17 +39,20 @@
         "active": "Import"
       },
       "enrich": {
-        "idle": "Enrichi",
-        "active": "Analyse"
+        "idle": "Identifié",
+        "active": "Identification"
       }
     },
     "stepState": {
       "pending": "en attente",
       "active": "en cours",
       "done": "terminé",
-      "empty": "Non enrichi",
+      "empty": "Non trouvé",
       "failed": "en échec"
     },
+    "provisional": "Tags devinés",
+    "provisionalHint": "Aucune identification : ces tags viennent du titre de la vidéo, pas de MusicBrainz. À revérifier.",
+    "copyUrl": "Copier le lien source",
     "attempts": "Tentatives de téléchargement",
     "inLibrary": "Présent",
     "partiallyInLibrary": "Partiel",

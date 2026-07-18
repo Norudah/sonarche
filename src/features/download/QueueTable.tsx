@@ -157,6 +157,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       {job.kind === "album" ? (
                         <AlbumRowActions
                           trackIds={albumTrackIds(job)}
+                          sourceUrl={job.url}
                           onDelete={() =>
                             setDeletingAlbum({
                               title: job.title ?? "",
@@ -171,6 +172,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       ) : (
                         <RowActions
                           track={jobLibraryTrack}
+                          sourceUrl={job.url}
                           onInspect={setInspected}
                           onDelete={setDeleting}
                           onRetry={
@@ -224,6 +226,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                           <Table.Cell>
                             <RowActions
                               track={trackLibraryTrack}
+                              sourceUrl={track.url}
                               onInspect={setInspected}
                               onDelete={setDeleting}
                             />

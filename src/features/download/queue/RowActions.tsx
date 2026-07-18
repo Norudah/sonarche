@@ -1,5 +1,5 @@
 import { Button, Dropdown } from "@heroui/react";
-import { Ellipsis, FileText, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
+import { Ellipsis, FileText, Link, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
@@ -10,9 +10,25 @@ import { usePlayer } from "@/shared/player/PlayerContext";
  * shifting sideways — when an album is expanded. */
 const ACTIONS_ROW = "flex min-w-[6.5rem] items-center justify-end gap-1";
 
+const TRIGGER =
+  "flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground";
+
+/** The video this row came from, so it can be pasted back into the input. */
+function CopySourceItem({ url }: { url: string }) {
+  const { t } = useTranslation("download");
+  return (
+    <Dropdown.Item id="copy-url" onAction={() => void navigator.clipboard.writeText(url)}>
+      <Link className="size-4" />
+      {t("queue.copyUrl")}
+    </Dropdown.Item>
+  );
+}
+
 interface RowActionsProps {
   /** The library item this row produced, once it exists. */
   track: LibraryTrack | undefined;
+  /** The video the row was downloaded from. */
+  sourceUrl: string;
   onInspect: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
   /** Retry is offered inline (not buried in the menu) on a failed row. */
@@ -20,7 +36,14 @@ interface RowActionsProps {
   isRetrying?: boolean;
 }
 
-export function RowActions({ track, onInspect, onDelete, onRetry, isRetrying }: RowActionsProps) {
+export function RowActions({
+  track,
+  sourceUrl,
+  onInspect,
+  onDelete,
+  onRetry,
+  isRetrying,
+}: RowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
@@ -63,24 +86,27 @@ export function RowActions({ track, onInspect, onDelete, onRetry, isRetrying }: 
           >
             <FileText className="size-4" />
           </Button>
-          <Dropdown.Root>
-            <Dropdown.Trigger
-              aria-label={t("queue.moreActions")}
-              className="flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground"
-            >
-              <Ellipsis className="size-4" />
-            </Dropdown.Trigger>
-            <Dropdown.Popover placement="bottom end">
-              <Dropdown.Menu>
-                <Dropdown.Item id="delete" onAction={() => onDelete(track)}>
-                  <Trash2 className="size-4" />
-                  {t("queue.delete")}
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
         </>
       )}
+      {/* Outside the `track` guard: a row that never reached the library — a
+       * failed download, a dropped duplicate — is precisely the one whose
+       * source URL the user wants back. */}
+      <Dropdown.Root>
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
+          <Ellipsis className="size-4" />
+        </Dropdown.Trigger>
+        <Dropdown.Popover placement="bottom end">
+          <Dropdown.Menu>
+            <CopySourceItem url={sourceUrl} />
+            {track && (
+              <Dropdown.Item id="delete" onAction={() => onDelete(track)}>
+                <Trash2 className="size-4" />
+                {t("queue.delete")}
+              </Dropdown.Item>
+            )}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
     </div>
   );
 }
@@ -88,6 +114,8 @@ export function RowActions({ track, onInspect, onDelete, onRetry, isRetrying }: 
 interface AlbumRowActionsProps {
   /** Library items the album produced; empty until its tracks are imported. */
   trackIds: number[];
+  /** The playlist the album was downloaded from. */
+  sourceUrl: string;
   onDelete: () => void;
   onRetry?: () => void;
   isRetrying?: boolean;
@@ -97,6 +125,7 @@ interface AlbumRowActionsProps {
  * action that applies to the whole batch rather than the per-track set. */
 export function AlbumRowActions({
   trackIds,
+  sourceUrl,
   onDelete,
   onRetry,
   isRetrying,
@@ -113,14 +142,12 @@ export function AlbumRowActions({
         </Button>
       )}
       <Dropdown.Root>
-        <Dropdown.Trigger
-          aria-label={t("queue.moreActions")}
-          className="flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground"
-        >
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
           <Ellipsis className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">
           <Dropdown.Menu>
+            <CopySourceItem url={sourceUrl} />
             <Dropdown.Item
               id="delete-album"
               isDisabled={trackIds.length === 0}

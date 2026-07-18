@@ -39,17 +39,20 @@
         "active": "Import"
       },
       "enrich": {
-        "idle": "Enriched",
-        "active": "Analysis"
+        "idle": "Identified",
+        "active": "Identification"
       }
     },
     "stepState": {
       "pending": "pending",
       "active": "in progress",
       "done": "done",
-      "empty": "Not enriched",
+      "empty": "Not found",
       "failed": "failed"
     },
+    "provisional": "Guessed tags",
+    "provisionalHint": "No identification: these tags come from the video title, not MusicBrainz. Worth a second pass.",
+    "copyUrl": "Copy source link",
     "attempts": "Download attempts",
     "inLibrary": "In library",
     "partiallyInLibrary": "Partial",

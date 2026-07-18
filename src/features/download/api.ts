@@ -18,6 +18,9 @@ export interface MetadataReport {
   /** beets item id — links the job to its library track (null if unknown). */
   itemId: number | null;
   mbMatched: boolean;
+  /** Tags were written but guessed from the video, not matched — never trust
+   * them without a second pass. See the sidecar's `provisional` module. */
+  provisional: boolean;
   source: string | null;
   fields: MetadataReportFields;
   cover: boolean;
@@ -66,6 +69,7 @@ export interface DownloadJob {
 interface WireReport {
   item_id: number | null;
   mb_matched: boolean;
+  provisional?: boolean;
   source: string | null;
   fields: MetadataReportFields;
   cover: boolean;
@@ -110,6 +114,9 @@ function mapReport(raw: WireReport | null): MetadataReport | null {
   return {
     itemId: raw.item_id ?? null,
     mbMatched: raw.mb_matched,
+    // Absent from reports stored before the flag existed: those jobs predate
+    // provisional tagging, so they never guessed anything.
+    provisional: raw.provisional ?? false,
     source: raw.source,
     fields: raw.fields,
     cover: raw.cover,

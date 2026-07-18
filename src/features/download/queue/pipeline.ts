@@ -5,11 +5,11 @@ import type {
   MetadataReport,
 } from "@/features/download/api";
 
-/** `empty` is a step that ran to completion and produced nothing: the enrich
- * pass found no MusicBrainz identity, so the file is on disk and in the library
- * but still carries the blank tags it was staged with. Distinct from `failed`
- * (the step errored) and from `done` — showing a check there claims a match the
- * Match column simultaneously reports as absent. */
+/** `empty` is a step that ran to completion without identifying anything: no
+ * MusicBrainz recording answered for the file. It may still have been tagged —
+ * the sidecar guesses from the video and flags it — but a guess is not an
+ * identity. Distinct from `failed` (the step errored) and from `done` — showing
+ * a check there claims a match the Match column reports as absent. */
 export type StepState = "pending" | "active" | "done" | "empty" | "failed";
 
 export interface PipelineStep {

@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
@@ -16,11 +17,26 @@ const DOT_TONE = {
 } as const;
 
 function TagBadge({ summary, label }: { summary: TagSummary; label: string }) {
+  const { t } = useTranslation("download");
   const text = formatTags(summary);
+  // The count alone would read as a success; the sign says the tags exist but
+  // were guessed from the video, so it replaces the tone dot rather than
+  // joining it.
+  const caption = summary.provisional ? t("queue.provisional") : text;
   return (
-    <span className="flex items-center gap-2 whitespace-nowrap" aria-label={`${label}: ${text}`}>
-      <span className={`size-2 shrink-0 rounded-full ${DOT_TONE[tagTone(summary)]}`} />
-      <span className="text-sm tabular-nums">{text}</span>
+    <span
+      className="flex items-center gap-2 whitespace-nowrap"
+      aria-label={`${label}: ${text} — ${caption}`}
+      title={summary.provisional ? t("queue.provisionalHint") : undefined}
+    >
+      {summary.provisional ? (
+        <TriangleAlert className="size-3.5 shrink-0 text-warning" />
+      ) : (
+        <span className={`size-2 shrink-0 rounded-full ${DOT_TONE[tagTone(summary)]}`} />
+      )}
+      <span className={`text-sm tabular-nums ${summary.provisional ? "text-warning" : ""}`}>
+        {text}
+      </span>
     </span>
   );
 }
