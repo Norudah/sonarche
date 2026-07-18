@@ -14,10 +14,11 @@
     "soon": "bientôt"
   },
   "detected": {
-    "mixed": "Lien de playlist détecté — que récupérer ?",
-    "choiceTrack": "Ce titre",
+    "mixed": "Ce lien ouvre un titre depuis une playlist. Que récupérer ?",
+    "choiceTrack": "Ce titre uniquement",
+    "choiceTrackHint": "Seule la vidéo ouverte",
     "choicePlaylist": "Toute la playlist",
-    "hint": "puis confirme avec Récupérer"
+    "choicePlaylistHint": "Importée comme un album"
   },
   "queue": {
     "heading": "Activité",
@@ -29,9 +30,18 @@
     "colLibrary": "Bibliothèque",
     "colActions": "Actions",
     "pipeline": {
-      "download": { "idle": "Téléchargé", "active": "Téléchargé" },
-      "import": { "idle": "Importé", "active": "Import" },
-      "enrich": { "idle": "Enrichi", "active": "Analyse" }
+      "download": {
+        "idle": "Téléchargé",
+        "active": "Téléchargé"
+      },
+      "import": {
+        "idle": "Importé",
+        "active": "Import"
+      },
+      "enrich": {
+        "idle": "Enrichi",
+        "active": "Analyse"
+      }
     },
     "stepState": {
       "pending": "en attente",
@@ -40,6 +50,7 @@
       "failed": "en échec"
     },
     "inLibrary": "Présent",
+    "partiallyInLibrary": "Partiel",
     "removedFromLibrary": "Retiré",
     "inspect": "Voir les métadonnées",
     "delete": "Supprimer le morceau",

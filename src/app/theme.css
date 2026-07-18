@@ -36,6 +36,14 @@
      secondary accents. It rides HeroUI's `warning` scale so soft/foreground
      variants and every warning-colored component follow for free. */
   --warning: oklch(0.72 0.15 65);
+
+  /* Success — HeroUI ships a very light, very saturated green (0.7329 0.1935)
+     whose foreground is therefore DARK: filled success shapes come out with a
+     black glyph, and soft chips read acid. Dropping the lightness lets white
+     ride on top and turns the soft pair into the calm pale-green/deep-green
+     we want. */
+  --success: oklch(0.62 0.15 157);
+  --success-foreground: var(--snow);
 }
 
 [data-theme="dark"] {
@@ -93,6 +101,12 @@
   --spacing-sidebar: 15rem;
   --spacing-topbar: 2.25rem;
   --spacing-player: 5.5rem;
+
+  /* Source brand colors — not semantic app colors: they identify a third
+     party, so they live outside the accent/success/warning scales and are
+     only ever used on that source's badge. */
+  --color-youtube: oklch(0.52 0.21 27);
+  --color-youtube-soft: oklch(0.95 0.03 27);
 
   /* Typography */
   --font-sans:

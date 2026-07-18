@@ -4,16 +4,21 @@ import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
-import { jobPipeline, type StepState, trackPipeline } from "@/features/download/queue/pipeline";
+import { jobPipeline, PIPELINE_STEPS, type StepState, trackPipeline } from "@/features/download/queue/pipeline";
 
 /** Fixed-width slots so an album row and its expanded track rows line their
  * stage markers up on the same three columns. */
-function Rail({ children }: { children: ReactNode[] }) {
+function Rail({ children, hasConnectors }: { children: ReactNode[]; hasConnectors: boolean }) {
   return (
     <div className="flex items-start">
       {children.map((node, index) => (
         <Fragment key={index}>
-          {index > 0 && <div className="mt-2.5 h-px w-3 shrink-0 bg-separator" />}
+          {index > 0 &&
+            (hasConnectors ? (
+              <div className="mt-[9px] h-0.5 w-3 shrink-0 rounded-full bg-separator" />
+            ) : (
+              <div className="w-3 shrink-0" />
+            ))}
           <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">{node}</div>
         </Fragment>
       ))}
@@ -21,6 +26,7 @@ function Rail({ children }: { children: ReactNode[] }) {
   );
 }
 
+/** Full marker for a job row: a filled disc that carries the stage's state. */
 function StepMarker({ state, label }: { state: StepState; label: string }) {
   switch (state) {
     case "done":
@@ -63,6 +69,36 @@ function StepMarker({ state, label }: { state: StepState; label: string }) {
   }
 }
 
+/** Lighter marker for a track row inside an expanded album: a bare glyph, so
+ * the child rows read as a summary of the parent instead of repeating it. */
+function TrackStepMarker({ state, label }: { state: StepState; label: string }) {
+  switch (state) {
+    case "done":
+      return <Check className="size-4 text-success" strokeWidth={3} aria-label={label} />;
+    case "active":
+      return (
+        <ProgressCircle isIndeterminate size="sm" color="accent" aria-label={label}>
+          <ProgressCircle.Track>
+            <ProgressCircle.TrackCircle />
+            <ProgressCircle.FillCircle />
+          </ProgressCircle.Track>
+        </ProgressCircle>
+      );
+    case "failed":
+      return (
+        <span
+          role="img"
+          aria-label={label}
+          className="flex size-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-danger-foreground"
+        >
+          !
+        </span>
+      );
+    case "pending":
+      return <span className="text-sm text-muted">—</span>;
+  }
+}
+
 const STATE_TEXT: Record<StepState, string> = {
   done: "text-foreground",
   active: "text-accent font-medium",
@@ -82,11 +118,13 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
   const { t } = useTranslation("download");
   const steps = jobPipeline(job, downloadPercent, enrichedCount);
   return (
-    <Rail>
+    <Rail hasConnectors>
       {steps.map((step) => {
         // "Import" while it runs, "Importé" once through — the marker carries
         // the state, the label only needs to name the stage.
-        const label = t(`queue.pipeline.${step.step}.${step.state === "active" ? "active" : "idle"}`);
+        const label = t(
+          `queue.pipeline.${step.step}.${step.state === "active" ? "active" : "idle"}`,
+        );
         return (
           <Fragment key={step.step}>
             <StepMarker
@@ -103,8 +141,6 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
   );
 }
 
-/** Compact rail for an expanded album track: markers only, labels stay on the
- * parent row that already names the stages. */
 export function TrackPipelineCell({
   track,
   isEnriched,
@@ -115,15 +151,11 @@ export function TrackPipelineCell({
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   return (
-    <Rail>
+    <Rail hasConnectors={false}>
       {states.map((state, index) => {
-        const step = (["download", "import", "enrich"] as const)[index];
-        return state === "pending" ? (
-          <span key={step} className="text-sm text-muted">
-            —
-          </span>
-        ) : (
-          <StepMarker
+        const step = PIPELINE_STEPS[index];
+        return (
+          <TrackStepMarker
             key={step}
             state={state}
             label={`${t(`queue.pipeline.${step}.idle`)} — ${t(`queue.stepState.${state}`)}`}

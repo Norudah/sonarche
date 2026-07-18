@@ -14,10 +14,11 @@
     "soon": "soon"
   },
   "detected": {
-    "mixed": "Playlist link detected — what should we fetch?",
-    "choiceTrack": "This track",
+    "mixed": "This link opens a track from inside a playlist. What should we fetch?",
+    "choiceTrack": "This track only",
+    "choiceTrackHint": "Just the video you opened",
     "choicePlaylist": "Whole playlist",
-    "hint": "then confirm with Fetch"
+    "choicePlaylistHint": "Imported as one album"
   },
   "queue": {
     "heading": "Activity",
@@ -29,9 +30,18 @@
     "colLibrary": "Library",
     "colActions": "Actions",
     "pipeline": {
-      "download": { "idle": "Downloaded", "active": "Downloaded" },
-      "import": { "idle": "Imported", "active": "Import" },
-      "enrich": { "idle": "Enriched", "active": "Analysis" }
+      "download": {
+        "idle": "Downloaded",
+        "active": "Downloaded"
+      },
+      "import": {
+        "idle": "Imported",
+        "active": "Import"
+      },
+      "enrich": {
+        "idle": "Enriched",
+        "active": "Analysis"
+      }
     },
     "stepState": {
       "pending": "pending",
@@ -40,6 +50,7 @@
       "failed": "failed"
     },
     "inLibrary": "In library",
+    "partiallyInLibrary": "Partial",
     "removedFromLibrary": "Removed",
     "inspect": "Inspect metadata",
     "delete": "Delete track",

@@ -3,6 +3,13 @@
 
 const now = Date.now();
 
+/** Stand-in for a YouTube thumbnail: 16:9 like the real thing, so the queue's
+ * square artwork slot is exercised with the aspect ratio it actually crops. */
+function thumb(from: string, to: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="320" height="180" fill="url(#g)"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 function job(over: Record<string, unknown>) {
   return {
     id: Math.random().toString(36).slice(2),
@@ -62,6 +69,7 @@ const jobs = [
     status: "downloading",
     url: "https://youtube.com/playlist?list=OLAK5uy_mock",
     title: "Hotline Miami 2: Wrong Number OST",
+    thumbnail: thumb("#f0a", "#60c"),
     artist: "Various Artists",
     createdAt: now - 500,
     tracks: [
@@ -72,12 +80,12 @@ const jobs = [
       albumTrack({ index: 5, videoId: "a5", title: "Rust", duration: 243 }),
     ],
   }),
-  job({ status: "downloading", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 1000 }),
+  job({ status: "downloading", title: "Nothing Else Matters", artist: "Metallica", duration: 386, thumbnail: thumb("#0bd", "#07a"), createdAt: now - 1000 }),
   job({ status: "queued", createdAt: now - 2000 }),
   job({ status: "importing", title: "Knock Knock", artist: "Scattle", duration: 213, createdAt: now - 3000 }),
   job({ status: "enriching", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 3500 }),
   job({
-    status: "done", title: "Monster", artist: "Skillet", duration: 178, createdAt: now - 4000,
+    status: "done", title: "Monster", artist: "Skillet", duration: 178, thumbnail: thumb("#fb0", "#e40"), createdAt: now - 4000,
     report: {
       item_id: 2, mb_matched: true, source: "MusicBrainz",
       fields: { title: true, artist: true, album: true, year: true, track: true, genre: false },
@@ -98,6 +106,7 @@ const jobs = [
     url: "https://youtube.com/playlist?list=OLAK5uy_done",
     title: "Awake",
     artist: "Skillet",
+    thumbnail: thumb("#2c8", "#083"),
     createdAt: now - 5500,
     tracks: [
       albumTrack({ index: 1, videoId: "b1", title: "Hero", duration: 187, status: "done", itemId: 2, report: trackReport(2, true) }),
@@ -130,7 +139,9 @@ const libraryTracks = [
     bitrate: 256000,
     format: "AAC",
     path: "/Users/dev/Music/Sonarche/Skillet/Monster.m4a",
-    art_path: null,
+    // Square cover art: the queue swaps the 16:9 YouTube thumbnail for this
+    // once the enrich step has filed the item.
+    art_path: thumb("#334", "#112"),
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
   },

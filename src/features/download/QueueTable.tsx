@@ -1,9 +1,10 @@
-import { Chip, Table } from "@heroui/react";
+import { Table } from "@heroui/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
 import { type EnrichStage, useRetryJob } from "@/features/download/hooks";
+import { JobLibraryCell, TrackLibraryCell } from "@/features/download/queue/LibraryCell";
 import { JobMatchCell, TrackMatchCell } from "@/features/download/queue/MatchCell";
 import { JobMediaCell, TrackMediaCell } from "@/features/download/queue/MediaCell";
 import { JobPipelineCell, TrackPipelineCell } from "@/features/download/queue/PipelineCell";
@@ -18,16 +19,6 @@ import { MetadataDrawer } from "@/features/library/MetadataDrawer";
  * has to read as the top band of one bordered card, hence the squared corners. */
 const COLUMN =
   "rounded-none! border-b border-separator/60 py-3 text-[11px] font-semibold tracking-wider uppercase";
-
-function LibraryCell({ track, isKnown }: { track: LibraryTrack | undefined; isKnown: boolean }) {
-  const { t } = useTranslation("download");
-  if (!isKnown) return <span className="text-sm text-muted">—</span>;
-  return (
-    <Chip variant="soft" size="sm" color={track ? "success" : "default"}>
-      {track ? t("queue.inLibrary") : t("queue.removedFromLibrary")}
-    </Chip>
-  );
-}
 
 interface QueueTableProps {
   jobs: DownloadJob[];
@@ -66,6 +57,18 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
   const libraryLoaded = library.data != null;
   const libraryTrackFor = (itemId: number | null) =>
     itemId != null && libraryLoaded ? trackById.get(itemId) : undefined;
+  const isInLibrary = (itemId: number) => trackById.has(itemId);
+
+  /** Cover art the enrich step produced, once any of the job's items carries
+   * one; until then the row keeps the YouTube thumbnail it was queued with. */
+  const coverFor = (job: DownloadJob): string | null => {
+    if (job.kind !== "album") return libraryTrackFor(job.report?.itemId ?? null)?.artUrl ?? null;
+    for (const track of job.tracks) {
+      const art = libraryTrackFor(track.itemId)?.artUrl;
+      if (art) return art;
+    }
+    return null;
+  };
 
   return (
     <>
@@ -115,6 +118,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                     <Table.Cell>
                       <JobMediaCell
                         job={job}
+                        coverUrl={coverFor(job)}
                         isExpanded={isExpanded}
                         onToggle={() => toggleExpanded(job.id)}
                       />
@@ -133,11 +137,10 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       <JobTagsCell job={job} />
                     </Table.Cell>
                     <Table.Cell>
-                      <LibraryCell
-                        track={jobLibraryTrack}
-                        isKnown={
-                          job.status === "done" && job.report?.itemId != null && libraryLoaded
-                        }
+                      <JobLibraryCell
+                        job={job}
+                        isInLibrary={isInLibrary}
+                        isLibraryLoaded={libraryLoaded}
                       />
                     </Table.Cell>
                     <Table.Cell>
@@ -184,16 +187,12 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                             <TrackTagsCell track={track} />
                           </Table.Cell>
                           <Table.Cell>
-                            {/* A dropped duplicate's item no longer exists: the
-                             * "removed from library" chip would be misleading. */}
-                            <LibraryCell
-                              track={trackLibraryTrack}
-                              isKnown={
-                                track.status === "done" &&
-                                track.itemId != null &&
-                                track.duplicateOf == null &&
-                                libraryLoaded
-                              }
+                            <TrackLibraryCell
+                              itemId={track.itemId}
+                              isDuplicate={track.duplicateOf != null}
+                              isDone={track.status === "done"}
+                              isInLibrary={isInLibrary}
+                              isLibraryLoaded={libraryLoaded}
                             />
                           </Table.Cell>
                           <Table.Cell>

@@ -5,9 +5,13 @@ import { useTranslation } from "react-i18next";
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
 import { formatDuration } from "@/shared/lib/format";
 
+/** The YouTube thumbnail is 16:9 and stands in until the real cover art lands
+ * with the enrich step; `object-cover` crops it to the square the row wants. */
 function Artwork({ src, isAlbum }: { src: string | null; isAlbum: boolean }) {
   if (src) {
-    return <img src={src} alt="" className="size-10 shrink-0 rounded-lg object-cover" />;
+    return (
+      <img src={src} alt="" className="size-10 shrink-0 rounded-lg bg-surface-secondary object-cover" />
+    );
   }
   return (
     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-secondary">
@@ -18,11 +22,14 @@ function Artwork({ src, isAlbum }: { src: string | null; isAlbum: boolean }) {
 
 interface JobMediaCellProps {
   job: DownloadJob;
+  /** Cover art from the library, once the enrich step produced one. Takes over
+   * from the YouTube thumbnail the row started with. */
+  coverUrl: string | null;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
-export function JobMediaCell({ job, isExpanded, onToggle }: JobMediaCellProps) {
+export function JobMediaCell({ job, coverUrl, isExpanded, onToggle }: JobMediaCellProps) {
   const { t } = useTranslation("download");
   const isAlbum = job.kind === "album";
   const subtitle = [
@@ -53,7 +60,7 @@ export function JobMediaCell({ job, isExpanded, onToggle }: JobMediaCellProps) {
           </Button>
         )}
       </div>
-      <Artwork src={job.thumbnail} isAlbum={isAlbum} />
+      <Artwork src={coverUrl ?? job.thumbnail} isAlbum={isAlbum} />
       <div className="min-w-0">
         <p className="max-w-52 truncate text-sm font-semibold">{job.title ?? job.url}</p>
         <p className="max-w-52 truncate text-xs text-muted">{subtitle.join(" · ")}</p>
