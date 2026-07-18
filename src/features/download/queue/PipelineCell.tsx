@@ -1,5 +1,5 @@
 import { ProgressCircle } from "@heroui/react";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -58,6 +58,16 @@ function StepMarker({ state, label }: { state: StepState; label: string }) {
           </ProgressCircle.Track>
         </ProgressCircle>
       );
+    case "empty":
+      return (
+        <span
+          role="img"
+          aria-label={label}
+          className="flex size-5 items-center justify-center rounded-full bg-warning text-warning-foreground"
+        >
+          <Minus className="size-3" strokeWidth={3} />
+        </span>
+      );
     case "failed":
       return (
         <span
@@ -94,6 +104,8 @@ function TrackStepMarker({ state, label }: { state: StepState; label: string }) 
           </ProgressCircle.Track>
         </ProgressCircle>
       );
+    case "empty":
+      return <Minus className="size-4 text-warning" strokeWidth={3} aria-label={label} />;
     case "failed":
       return (
         <span
@@ -136,6 +148,7 @@ function AttemptDots({ outcomes, label }: { outcomes: AttemptOutcome[]; label: s
 const STATE_TEXT: Record<StepState, string> = {
   done: "text-foreground",
   active: "text-accent font-medium",
+  empty: "text-warning font-medium",
   failed: "text-danger font-medium",
   pending: "text-muted/60",
 };
@@ -155,10 +168,13 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
     <Rail hasConnectors>
       {steps.map((step) => {
         // "Import" while it runs, "Importé" once through — the marker carries
-        // the state, the label only needs to name the stage.
-        const label = t(
-          `queue.pipeline.${step.step}.${step.state === "active" ? "active" : "idle"}`,
-        );
+        // the state, the label only needs to name the stage. The exception is
+        // `empty`, where the stage name would assert an enrichment that did not
+        // happen, so the outcome replaces it.
+        const label =
+          step.state === "empty"
+            ? t("queue.stepState.empty")
+            : t(`queue.pipeline.${step.step}.${step.state === "active" ? "active" : "idle"}`);
         return (
           <Fragment key={step.step}>
             <StepMarker

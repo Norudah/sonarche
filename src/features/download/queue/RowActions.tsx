@@ -5,6 +5,11 @@ import { useTranslation } from "react-i18next";
 import type { LibraryTrack } from "@/features/library/api";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
+/* Album rows carry one menu, track rows three controls. Reserving the width of
+ * the larger set on both keeps the column from resizing — and every row from
+ * shifting sideways — when an album is expanded. */
+const ACTIONS_ROW = "flex min-w-[6.5rem] items-center justify-end gap-1";
+
 interface RowActionsProps {
   /** The library item this row produced, once it exists. */
   track: LibraryTrack | undefined;
@@ -22,7 +27,7 @@ export function RowActions({ track, onInspect, onDelete, onRetry, isRetrying }: 
   const isCurrent = track != null && current?.id === track.id;
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div className={ACTIONS_ROW}>
       {onRetry && (
         <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
@@ -76,6 +81,57 @@ export function RowActions({ track, onInspect, onDelete, onRetry, isRetrying }: 
           </Dropdown.Root>
         </>
       )}
+    </div>
+  );
+}
+
+interface AlbumRowActionsProps {
+  /** Library items the album produced; empty until its tracks are imported. */
+  trackIds: number[];
+  onDelete: () => void;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+}
+
+/** An album row has no single library item behind it, so it offers the one
+ * action that applies to the whole batch rather than the per-track set. */
+export function AlbumRowActions({
+  trackIds,
+  onDelete,
+  onRetry,
+  isRetrying,
+}: AlbumRowActionsProps) {
+  const { t } = useTranslation("download");
+  const { t: tLibrary } = useTranslation("library");
+
+  return (
+    <div className={ACTIONS_ROW}>
+      {onRetry && (
+        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
+          <RotateCcw className="size-4" />
+          {t("queue.retry")}
+        </Button>
+      )}
+      <Dropdown.Root>
+        <Dropdown.Trigger
+          aria-label={t("queue.moreActions")}
+          className="flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground"
+        >
+          <Ellipsis className="size-4" />
+        </Dropdown.Trigger>
+        <Dropdown.Popover placement="bottom end">
+          <Dropdown.Menu>
+            <Dropdown.Item
+              id="delete-album"
+              isDisabled={trackIds.length === 0}
+              onAction={onDelete}
+            >
+              <Trash2 className="size-4" />
+              {tLibrary("deleteAlbum.action")}
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
     </div>
   );
 }

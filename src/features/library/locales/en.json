@@ -63,5 +63,11 @@
     "cancel": "Cancel",
     "confirm": "Delete",
     "failed": "Deletion failed."
+  },
+  "deleteAlbum": {
+    "title": "Delete this album?",
+    "body_one": "“{{title}}” and its track will be removed from your library and the file deleted from disk. This cannot be undone.",
+    "body_other": "“{{title}}” and its {{count}} tracks will be removed from your library and the files deleted from disk. This cannot be undone.",
+    "action": "Delete album"
   }
 }

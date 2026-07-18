@@ -1,6 +1,16 @@
-import type { AlbumTrackJob, DownloadJob, JobStep } from "@/features/download/api";
+import type {
+  AlbumTrackJob,
+  DownloadJob,
+  JobStep,
+  MetadataReport,
+} from "@/features/download/api";
 
-export type StepState = "pending" | "active" | "done" | "failed";
+/** `empty` is a step that ran to completion and produced nothing: the enrich
+ * pass found no MusicBrainz identity, so the file is on disk and in the library
+ * but still carries the blank tags it was staged with. Distinct from `failed`
+ * (the step errored) and from `done` — showing a check there claims a match the
+ * Match column simultaneously reports as absent. */
+export type StepState = "pending" | "active" | "done" | "empty" | "failed";
 
 export interface PipelineStep {
   step: JobStep;
@@ -69,7 +79,15 @@ export function jobPipeline(
   const current = currentIndex(job);
   const hasFailed = job.status === "failed";
   return PIPELINE_STEPS.map((step, index) => {
-    if (index < current) return { step, state: "done" as const, detail: null };
+    if (index < current) {
+      // An album's own report stays null (its tracks carry the reports), so the
+      // aggregate row is left alone — only a single can answer for itself here.
+      const state =
+        step === "enrich" && job.kind !== "album"
+          ? enrichOutcome(job.report, false)
+          : ("done" as const);
+      return { step, state, detail: null };
+    }
     if (index > current) return { step, state: "pending" as const, detail: null };
     if (hasFailed) return { step, state: "failed" as const, detail: null };
     return {
@@ -78,6 +96,13 @@ export function jobPipeline(
       detail: detailFor(job, step, downloadPercent, enrichedCount),
     };
   });
+}
+
+/** Outcome of a finished enrich step, from the report it left behind. A track
+ * dropped as a content duplicate was skipped on purpose, not missed. */
+function enrichOutcome(report: MetadataReport | null, isDuplicate: boolean): StepState {
+  if (isDuplicate) return "done";
+  return report?.mbMatched ? "done" : "empty";
 }
 
 /** Same three stages for one album track. Import and enrich run album-wide, so a
@@ -93,7 +118,7 @@ export function trackPipeline(track: AlbumTrackJob, isEnriched: boolean): StepSt
     case "imported":
       return ["done", "done", isEnriched ? "done" : "active"];
     case "done":
-      return ["done", "done", "done"];
+      return ["done", "done", enrichOutcome(track.report, track.duplicateOf != null)];
     case "failed":
       return ["failed", "pending", "pending"];
   }

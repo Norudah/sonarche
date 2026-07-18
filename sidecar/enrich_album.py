@@ -115,7 +115,8 @@ def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, 
     is among its AcoustID recordings. Second pass rescues the items AcoustID
     couldn't identify by nearest duration among the remaining slots. Items
     identified as some OTHER recording never fall back to duration — they are
-    genuinely off this release."""
+    genuinely off this release. Third pass pairs a lone survivor with a lone
+    empty slot, which no evidence but elimination can place."""
     mapping: dict = {}
     remaining = list(tracks)
     silent, leftovers = [], []
@@ -144,6 +145,18 @@ def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, 
             remaining.remove(best[1])
         else:
             leftovers.append(item)
+
+    # One file left, one slot left, and the release already carried by a
+    # majority of the batch: elimination places it even though the earlier
+    # passes could not. A music-video rip resolves to the single's recording
+    # rather than the album's, and can run a half-minute past the album master
+    # — so neither content identity nor duration reaches it. The majority guard
+    # is what keeps a genuine bonus track (which arrives with no mapping behind
+    # it) from being forced into an unrelated free slot.
+    if len(leftovers) == 1 and len(remaining) == 1 and len(mapping) > len(items) / 2:
+        mapping[leftovers[0]] = remaining[0]
+        leftovers, remaining = [], []
+
     return mapping, leftovers, remaining
 
 

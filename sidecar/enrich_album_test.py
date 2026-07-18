@@ -145,6 +145,37 @@ class MatchByRecordingsTest(unittest.TestCase):
         self.assertEqual(leftovers, [bonus])
         self.assertEqual(extra, [slot])
 
+    def test_lone_leftover_takes_the_lone_free_slot(self):
+        # Regression (Apocalyptic Love): the "You're a Lie [HD]" video rip ran
+        # 259s against the album master's 231s and AcoustID resolved it to the
+        # single's recording, so it matched neither by id nor by duration —
+        # and landed untagged outside the album folder. With every other track
+        # placed, the one empty slot is the only thing it can be.
+        placed = [_Item(i, 200.0) for i in range(1, 4)]
+        odd = _Item(4, 259.0)
+        slots = [_Track(f"rec-{i}", 200.0) for i in range(1, 4)]
+        gap = _Track("rec-album-lie", 231.0)
+        mapping, leftovers, extra = match_by_recordings(
+            [*placed, odd],
+            [*slots, gap],
+            {1: ["rec-1"], 2: ["rec-2"], 3: ["rec-3"], 4: ["rec-single-lie"]},
+        )
+        self.assertEqual(mapping[odd], gap)
+        self.assertEqual(leftovers, [])
+        self.assertEqual(extra, [])
+
+    def test_lone_leftover_stays_put_without_a_mapped_majority(self):
+        # Half the batch on the release is not enough to argue by elimination:
+        # a two-file batch where one is off-release must leave it alone.
+        mapped, odd = _Item(1, 200.0), _Item(2, 200.0)
+        slot, gap = _Track("rec-1", 200.0), _Track("rec-2", 200.0)
+        mapping, leftovers, extra = match_by_recordings(
+            [mapped, odd], [slot, gap], {1: ["rec-1"], 2: ["rec-elsewhere"]}
+        )
+        self.assertEqual(mapping, {mapped: slot})
+        self.assertEqual(leftovers, [odd])
+        self.assertEqual(extra, [gap])
+
     def test_silent_item_rescued_by_nearest_duration(self):
         silent = _Item(1, 256.0)
         far, near = _Track("rec-a", 174.0), _Track("rec-b", 260.0)

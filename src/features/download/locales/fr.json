@@ -47,6 +47,7 @@
       "pending": "en attente",
       "active": "en cours",
       "done": "terminé",
+      "empty": "Non enrichi",
       "failed": "en échec"
     },
     "attempts": "Tentatives de téléchargement",

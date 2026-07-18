@@ -47,6 +47,7 @@
       "pending": "pending",
       "active": "in progress",
       "done": "done",
+      "empty": "Not enriched",
       "failed": "failed"
     },
     "attempts": "Download attempts",

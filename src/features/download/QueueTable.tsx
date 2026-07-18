@@ -8,9 +8,10 @@ import { JobLibraryCell, TrackLibraryCell } from "@/features/download/queue/Libr
 import { JobMatchCell, TrackMatchCell } from "@/features/download/queue/MatchCell";
 import { JobMediaCell, TrackMediaCell } from "@/features/download/queue/MediaCell";
 import { JobPipelineCell, TrackPipelineCell } from "@/features/download/queue/PipelineCell";
-import { RowActions } from "@/features/download/queue/RowActions";
+import { AlbumRowActions, RowActions } from "@/features/download/queue/RowActions";
 import { JobTagsCell, TrackTagsCell } from "@/features/download/queue/TagsCell";
 import type { LibraryTrack } from "@/features/library/api";
+import { type AlbumDeletion, DeleteAlbumDialog } from "@/features/library/DeleteAlbumDialog";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
@@ -34,6 +35,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
   const library = useLibrary();
   const [inspected, setInspected] = useState<LibraryTrack | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const [deletingAlbum, setDeletingAlbum] = useState<AlbumDeletion | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (jobs.length === 0) {
@@ -58,6 +60,14 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
   const libraryTrackFor = (itemId: number | null) =>
     itemId != null && libraryLoaded ? trackById.get(itemId) : undefined;
   const isInLibrary = (itemId: number) => trackById.has(itemId);
+
+  /** The album's items that are still in the library — a track dropped as a
+   * duplicate or already deleted has nothing left to remove. */
+  const albumTrackIds = (job: DownloadJob) =>
+    job.tracks
+      .filter((track) => track.duplicateOf == null)
+      .map((track) => track.itemId)
+      .filter((itemId): itemId is number => itemId != null && isInLibrary(itemId));
 
   /** Cover art the enrich step produced, once any of the job's items carries
    * one; until then the row keeps the YouTube thumbnail it was queued with. */
@@ -144,15 +154,31 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       />
                     </Table.Cell>
                     <Table.Cell>
-                      <RowActions
-                        track={jobLibraryTrack}
-                        onInspect={setInspected}
-                        onDelete={setDeleting}
-                        onRetry={
-                          job.status === "failed" ? () => retry.mutate(job.id) : undefined
-                        }
-                        isRetrying={retry.isPending}
-                      />
+                      {job.kind === "album" ? (
+                        <AlbumRowActions
+                          trackIds={albumTrackIds(job)}
+                          onDelete={() =>
+                            setDeletingAlbum({
+                              title: job.title ?? "",
+                              trackIds: albumTrackIds(job),
+                            })
+                          }
+                          onRetry={
+                            job.status === "failed" ? () => retry.mutate(job.id) : undefined
+                          }
+                          isRetrying={retry.isPending}
+                        />
+                      ) : (
+                        <RowActions
+                          track={jobLibraryTrack}
+                          onInspect={setInspected}
+                          onDelete={setDeleting}
+                          onRetry={
+                            job.status === "failed" ? () => retry.mutate(job.id) : undefined
+                          }
+                          isRetrying={retry.isPending}
+                        />
+                      )}
                     </Table.Cell>
                   </Table.Row>,
                 ];
@@ -217,6 +243,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
 
       <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
+      <DeleteAlbumDialog album={deletingAlbum} onClose={() => setDeletingAlbum(null)} />
     </>
   );
 }
