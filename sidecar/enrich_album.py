@@ -545,7 +545,16 @@ def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -
         hint = hints.get(item.id) or {}
         track_params = {**params, "title": hint.get("title"), "artist": params.get("artist")}
         try:
-            result = enrich.enrich_one(request_id, lib, item, track_params, fetch_cover=False)
+            # Both the cover and the unidentified-file guess are deferred to the
+            # batch: it knows the album row and the release the siblings matched.
+            result = enrich.enrich_one(
+                request_id,
+                lib,
+                item,
+                track_params,
+                fetch_cover=False,
+                provisional_fallback=False,
+            )
         except Exception as exc:  # one bad track must not sink the rest
             protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
             result = {"matched": False}
@@ -570,6 +579,41 @@ def _finalize_fallback(lib, items) -> None:
         _fetch_album_cover(
             album, list(album.items()), album.mb_albumid, album.mb_releasegroupid
         )
+
+
+def _embed_album_cover(album, item) -> None:
+    """Give a provisionally-tagged track the album's existing cover. The CAA
+    fetch already ran for the batch, so this is a local copy — no second hit."""
+    if album is None or not album.artpath:
+        return
+    path = enrich._decode(album.artpath)
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        enrich.embed_cover(item, data, data[:4] == b"\x89PNG")
+    except Exception as exc:
+        protocol.log(f"enrich_album: cover embed failed: {exc}")
+
+
+def _tag_unidentified(lib, album, items, params: dict) -> None:
+    """Fill and flag whatever survived the per-track fallback unidentified.
+
+    With an album row in hand the guess borrows the release the siblings did
+    match — album, artist, date, cover — so the orphan files itself next to the
+    tracks it arrived with instead of landing blank under Non-Album/. Runs last,
+    after the album rows have been consolidated: these items claim the release's
+    mb_albumid and must not be regrouped on the strength of a guess."""
+    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
+    for item in items:
+        fresh = lib.get_item(item.id)
+        if fresh is None or fresh.mb_trackid:
+            continue
+        hint = hints.get(item.id) or {}
+        track_params = {"title": hint.get("title"), "artist": params.get("artist")}
+        if enrich.apply_provisional(lib, fresh, track_params, album=album):
+            _embed_album_cover(album, fresh)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -634,12 +678,17 @@ def handle(request_id: str, params: dict) -> dict:
             protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
             _enrich_per_track(request_id, lib, rest, params, pause)
         _finalize_fallback(lib, mapped + adopted + rest)
+        if rest:
+            _tag_unidentified(lib, album, rest, params)
         reports = _build_reports(lib, mapped + adopted + rest) + duplicate_reports
         return {"matched": True, "mode": "album", "reports": reports}
 
     protocol.log("enrich_album: no album-level match, falling back per track")
     any_matched = _enrich_per_track(request_id, lib, items, params, pause)
     _finalize_fallback(lib, items)
+    # No release was ever voted, so there is nothing to borrow: each survivor
+    # gets only what its own video knew.
+    _tag_unidentified(lib, None, items, params)
     return {
         "matched": any_matched,
         "mode": "per_track" if any_matched else "none",
