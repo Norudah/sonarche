@@ -5,11 +5,17 @@ import { useTranslation } from "react-i18next";
 import type { JobKind } from "@/features/download/api";
 
 /* HeroUI's `.radio` is a column whose `.radio__content` row is the only
- * clickable area — so the card frame goes on the root and every visual goes
- * inside Content, never as its sibling. */
-const CARD =
-  "flex-1 rounded-xl border border-separator bg-surface px-4 py-3 transition-colors " +
-  "hover:border-accent/50 data-[selected]:border-accent data-[selected]:bg-accent-soft";
+ * clickable area — so the pill shape goes on the root while the padding that
+ * makes it a real target lives on Content. */
+/* `.radio` carries a 16px top margin for HeroUI's stacked layout — useless
+ * here, and it is what pads the pill open at the top. */
+const SEGMENT =
+  "mt-0 rounded-full transition-colors data-[selected]:bg-surface data-[selected]:shadow-xs";
+/* HeroUI's `.radio__content` sets its own color, so the text state has to be
+ * declared here rather than inherited from the root. */
+const SEGMENT_CONTENT =
+  "gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
+  "text-muted hover:text-foreground data-[selected]:text-accent";
 
 /** Shown only for a video opened from inside a playlist, where the URL alone
  * cannot say whether the user wants the set or the one track. */
@@ -22,39 +28,30 @@ export function KindChoice({
 }) {
   const { t } = useTranslation("download");
   return (
-    <RadioGroup
-      value={value ?? ""}
-      onChange={(next) => onChange(next as JobKind)}
-      aria-label={t("detected.mixed")}
-      className="flex flex-col gap-2"
-    >
-      <span className="text-sm text-muted">{t("detected.mixed")}</span>
-      <div className="flex flex-wrap gap-3">
-        <Radio.Root value="album" className={CARD}>
-          <Radio.Content className="w-full">
-            <Radio.Control />
-            <Disc3 className="size-5 shrink-0 text-muted" />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{t("detected.choicePlaylist")}</span>
-              <span className="text-xs font-normal text-muted">
-                {t("detected.choicePlaylistHint")}
-              </span>
-            </span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted">{t("detected.mixedLabel")}</span>
+
+      <RadioGroup
+        value={value ?? ""}
+        onChange={(next) => onChange(next as JobKind)}
+        aria-label={t("detected.mixed")}
+        className="flex flex-row gap-0.5 rounded-full bg-default/60 p-0.5"
+      >
+        <Radio.Root value="album" className={SEGMENT}>
+          <Radio.Content className={SEGMENT_CONTENT}>
+            <Disc3 className="size-3.5 shrink-0" />
+            {t("detected.choicePlaylist")}
           </Radio.Content>
         </Radio.Root>
-        <Radio.Root value="single" className={CARD}>
-          <Radio.Content className="w-full">
-            <Radio.Control />
-            <Music className="size-5 shrink-0 text-muted" />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{t("detected.choiceTrack")}</span>
-              <span className="text-xs font-normal text-muted">
-                {t("detected.choiceTrackHint")}
-              </span>
-            </span>
+        <Radio.Root value="single" className={SEGMENT}>
+          <Radio.Content className={SEGMENT_CONTENT}>
+            <Music className="size-3.5 shrink-0" />
+            {t("detected.choiceTrack")}
           </Radio.Content>
         </Radio.Root>
-      </div>
-    </RadioGroup>
+      </RadioGroup>
+
+      <span className="text-xs text-muted/70">{t("detected.confirmHint")}</span>
+    </div>
   );
 }

@@ -15,10 +15,10 @@
   },
   "detected": {
     "mixed": "Ce lien ouvre un titre depuis une playlist. Que récupérer ?",
+    "mixedLabel": "Playlist détectée :",
     "choiceTrack": "Ce titre uniquement",
-    "choiceTrackHint": "Seule la vidéo ouverte",
-    "choicePlaylist": "Toute la playlist",
-    "choicePlaylistHint": "Importée comme un album"
+    "choicePlaylist": "Album entier",
+    "confirmHint": "→ confirme avec Récupérer"
   },
   "queue": {
     "heading": "Activité",

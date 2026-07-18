@@ -15,10 +15,10 @@
   },
   "detected": {
     "mixed": "This link opens a track from inside a playlist. What should we fetch?",
+    "mixedLabel": "Playlist detected:",
     "choiceTrack": "This track only",
-    "choiceTrackHint": "Just the video you opened",
     "choicePlaylist": "Whole playlist",
-    "choicePlaylistHint": "Imported as one album"
+    "confirmHint": "→ confirm with Fetch"
   },
   "queue": {
     "heading": "Activity",

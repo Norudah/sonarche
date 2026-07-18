@@ -36,13 +36,13 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   const canSubmit = url.trim() !== "" && kind != null && !isPending;
 
   return (
-    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-12">
+    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-4">
       {/* Vertical fade so the hero dissolves into the page instead of ending on
        * a hard edge; the amber halo keeps the panel from reading duo-tone. */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent/12 via-accent/5 to-transparent" />
       <div className="pointer-events-none absolute -top-32 -right-24 size-96 rounded-full bg-warning/12 blur-3xl" />
 
-      <div className="relative flex flex-col gap-5">
+      <div className="relative flex flex-col gap-4">
         <p className="text-xs font-semibold tracking-widest text-accent uppercase">{t("eyebrow")}</p>
         <h1 className="text-4xl font-bold tracking-tight text-balance whitespace-pre-line">
           {t("title")}

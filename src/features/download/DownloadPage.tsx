@@ -1,4 +1,4 @@
-import { Alert, Button } from "@heroui/react";
+import { Alert } from "@heroui/react";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -53,15 +53,15 @@ export function DownloadPage() {
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
-          <Button
-            variant="tertiary"
-            size="sm"
-            onPress={() => setClearingHistory(true)}
-            isDisabled={!hasHistory}
+          <button
+            type="button"
+            onClick={() => setClearingHistory(true)}
+            disabled={!hasHistory}
+            className="flex items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
             {t("queue.clearHistory")}
-          </Button>
+          </button>
         </div>
         <QueueTable
           jobs={jobs.data ?? []}
