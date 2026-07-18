@@ -2,7 +2,6 @@ import { createMemoryRouter, Navigate } from "react-router";
 
 import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
-import { HomePage } from "@/features/home/HomePage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
 import { ArtistsView } from "@/features/library/views/ArtistsView";
@@ -12,11 +11,10 @@ import { MetadataPage } from "@/features/metadata/MetadataPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 
 /**
- * Route ids stay technical (home / download / library); the visual identity
- * ("Explorer" / "Arche") is only i18n labels. Explorer is the default landing.
+ * Route ids stay technical (download / library); the visual identity
+ * ("Explorer" / "Arche") is only i18n labels. Download is the default landing.
  */
 export const paths = {
-  home: "/home",
   download: "/",
   metadata: "/metadata",
   library: "/library",
@@ -33,7 +31,6 @@ export const router = createMemoryRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: paths.home, element: <HomePage /> },
       { path: paths.download, element: <DownloadPage /> },
       { path: paths.metadata, element: <MetadataPage /> },
       {

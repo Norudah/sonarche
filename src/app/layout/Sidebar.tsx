@@ -1,5 +1,5 @@
 import { cn } from "@heroui/react";
-import { AudioLines, Disc, Download, FileText, Home, Layers, Mic2, Music, Plus } from "lucide-react";
+import { AudioLines, Disc, Download, FileText, Layers, Mic2, Music, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,7 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
           isActive ? "bg-accent/15 text-accent" : "text-muted hover:bg-default/40",
         )
       }
@@ -45,12 +45,12 @@ function NavSection({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between px-3">
-        <p className="text-xs font-semibold tracking-widest text-muted uppercase">{label}</p>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between px-2.5 pb-0.5">
+        <p className="text-[11px] font-semibold tracking-widest text-muted uppercase">{label}</p>
         {action}
       </div>
-      {children && <nav className="flex flex-col gap-1">{children}</nav>}
+      {children && <nav className="flex flex-col gap-0.5">{children}</nav>}
     </div>
   );
 }
@@ -69,7 +69,7 @@ function AddPlaylistButton({ label }: { label: string }) {
 }
 
 function Divider() {
-  return <div className="mx-3 border-t border-separator" />;
+  return <div className="mx-2.5 border-t border-separator" />;
 }
 
 export function Sidebar() {
@@ -78,19 +78,13 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
-      <div className="flex flex-col gap-6 px-4 pt-8 pb-4">
-        <div className="flex items-center gap-2.5 px-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-            <AudioLines className="size-5" />
+      <div className="flex flex-col gap-4 px-3 pt-7 pb-4">
+        <div className="mb-5 flex items-center gap-2.5 px-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <AudioLines className="size-4.5" />
           </div>
-          <span className="text-base font-semibold tracking-tight">{t("appName")}</span>
+          <span className="text-[15px] font-semibold tracking-tight">{t("appName")}</span>
         </div>
-
-        <nav className="flex flex-col gap-1">
-          <NavItem to={paths.home} label={t("nav.home")} icon={Home} end />
-        </nav>
-
-        <Divider />
 
         <NavSection label={t("nav.sections.explorer")}>
           <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />

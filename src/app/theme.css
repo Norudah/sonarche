@@ -98,7 +98,7 @@
 @theme {
   /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
      Centralized so the shell layout never carries magic numbers. */
-  --spacing-sidebar: 15rem;
+  --spacing-sidebar: 13.5rem;
   --spacing-topbar: 2.25rem;
   --spacing-player: 5.5rem;
 
