@@ -49,6 +49,7 @@
       "done": "done",
       "failed": "failed"
     },
+    "attempts": "Download attempts",
     "inLibrary": "In library",
     "partiallyInLibrary": "Partial",
     "removedFromLibrary": "Removed",

@@ -26,7 +26,7 @@ use crate::jobs::{AlbumTrack, Job};
 /// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
 /// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
 /// EXISTS` don't need a bump.
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     staged_path TEXT,
     item_id     INTEGER,
     report      TEXT,
+    download_attempts INTEGER NOT NULL DEFAULT 0,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS job_tracks (
     item_id      INTEGER,
     report       TEXT,
     duplicate_of INTEGER,
+    download_attempts INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (job_id, idx)
 );
 
@@ -81,9 +83,47 @@ pub fn open(path: &Path) -> AppResult<Connection> {
     // Establish the migration baseline on a fresh (or pre-versioning) file.
     let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if version < SCHEMA_VERSION {
+        migrate(&conn)?;
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
     Ok(conn)
+}
+
+/// `CREATE TABLE IF NOT EXISTS` leaves an existing table exactly as it was, so
+/// columns added to SCHEMA never reach a file created by an older build. Each
+/// step is written to be idempotent rather than keyed on the version it came
+/// from: a fresh file is created at SCHEMA_VERSION but still stamped 0, so it
+/// runs through here too.
+fn migrate(conn: &Connection) -> AppResult<()> {
+    add_column(
+        conn,
+        "jobs",
+        "download_attempts",
+        "INTEGER NOT NULL DEFAULT 0",
+    )?;
+    add_column(
+        conn,
+        "job_tracks",
+        "download_attempts",
+        "INTEGER NOT NULL DEFAULT 0",
+    )?;
+    Ok(())
+}
+
+fn add_column(conn: &Connection, table: &str, column: &str, decl: &str) -> AppResult<()> {
+    let exists = conn
+        .prepare(&format!("PRAGMA table_info({table})"))?
+        .query_map([], |row| row.get::<_, String>("name"))?
+        .collect::<Result<Vec<_>, _>>()?
+        .iter()
+        .any(|name| name == column);
+    if !exists {
+        conn.execute(
+            &format!("ALTER TABLE {table} ADD COLUMN {column} {decl}"),
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 /// The enums all serialize to a lowercase string via serde; round-trip through
@@ -134,6 +174,7 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
         item_id: row.get("item_id")?,
         report: report_from_text(row.get("report")?)?,
         tracks: Vec::new(),
+        download_attempts: row.get::<_, i64>("download_attempts")? as u32,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -152,6 +193,7 @@ fn row_to_track(row: &Row) -> AppResult<AlbumTrack> {
         item_id: row.get("item_id")?,
         report: report_from_text(row.get("report")?)?,
         duplicate_of: row.get("duplicate_of")?,
+        download_attempts: row.get::<_, i64>("download_attempts")? as u32,
     })
 }
 
@@ -159,8 +201,9 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
     conn.execute(
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
-            duration, staged_path, item_id, report, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            duration, staged_path, item_id, report, download_attempts,
+            created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             job.id,
             job.url,
@@ -175,6 +218,7 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
             job.staged_path,
             job.item_id,
             report_to_text(&job.report)?,
+            job.download_attempts as i64,
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -186,8 +230,8 @@ fn write_track_row(conn: &Connection, job_id: &str, track: &AlbumTrack) -> AppRe
     conn.execute(
         "INSERT OR REPLACE INTO job_tracks (
             job_id, idx, video_id, url, title, duration, status, error,
-            staged_path, item_id, report, duplicate_of
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            staged_path, item_id, report, duplicate_of, download_attempts
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             job_id,
             track.index as i64,
@@ -201,6 +245,7 @@ fn write_track_row(conn: &Connection, job_id: &str, track: &AlbumTrack) -> AppRe
             track.item_id,
             report_to_text(&track.report)?,
             track.duplicate_of,
+            track.download_attempts as i64,
         ],
     )?;
     Ok(())
@@ -324,6 +369,65 @@ mod tests {
         conn
     }
 
+    /// The v1 tables, before `download_attempts` existed — what a file written
+    /// by an older build actually looks like on disk.
+    const SCHEMA_V1: &str = "
+    CREATE TABLE jobs (
+        id TEXT PRIMARY KEY, url TEXT NOT NULL, kind TEXT NOT NULL,
+        status TEXT NOT NULL, failed_step TEXT, error TEXT, title TEXT,
+        artist TEXT, thumbnail TEXT, duration REAL, staged_path TEXT,
+        item_id INTEGER, report TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE job_tracks (
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        idx INTEGER NOT NULL, video_id TEXT NOT NULL, url TEXT NOT NULL,
+        title TEXT, duration REAL, status TEXT NOT NULL, error TEXT,
+        staged_path TEXT, item_id INTEGER, report TEXT, duplicate_of INTEGER,
+        PRIMARY KEY (job_id, idx)
+    );";
+
+    fn column_names(conn: &Connection, table: &str) -> Vec<String> {
+        conn.prepare(&format!("PRAGMA table_info({table})"))
+            .unwrap()
+            .query_map([], |row| row.get::<_, String>("name"))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn migrate_adds_the_attempts_columns_to_a_v1_file() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA_V1).unwrap();
+        assert!(!column_names(&conn, "jobs").contains(&"download_attempts".to_string()));
+
+        migrate(&conn).unwrap();
+
+        for table in ["jobs", "job_tracks"] {
+            assert!(
+                column_names(&conn, table).contains(&"download_attempts".to_string()),
+                "{table} still lacks download_attempts"
+            );
+        }
+    }
+
+    #[test]
+    fn migrate_is_idempotent_on_a_current_file() {
+        // A fresh file already has the column but is stamped user_version 0, so
+        // open() runs the migration over it: it must not fail on a duplicate.
+        let conn = mem();
+        migrate(&conn).unwrap();
+        migrate(&conn).unwrap();
+        assert_eq!(
+            column_names(&conn, "jobs")
+                .iter()
+                .filter(|name| *name == "download_attempts")
+                .count(),
+            1
+        );
+    }
+
     fn single(id: &str, status: JobStatus) -> Job {
         Job {
             id: id.into(),
@@ -340,6 +444,7 @@ mod tests {
             item_id: Some(42),
             report: Some(json!({ "item_id": 42, "completion": 0.8 })),
             tracks: Vec::new(),
+            download_attempts: 1,
             created_at: 1000,
             updated_at: 1000,
         }
@@ -358,6 +463,7 @@ mod tests {
             item_id: Some(index as i64),
             report: Some(json!({ "index": index })),
             duplicate_of: None,
+            download_attempts: 2,
         }
     }
 

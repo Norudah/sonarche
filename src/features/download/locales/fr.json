@@ -49,6 +49,7 @@
       "done": "terminé",
       "failed": "en échec"
     },
+    "attempts": "Tentatives de téléchargement",
     "inLibrary": "Présent",
     "partiallyInLibrary": "Partiel",
     "removedFromLibrary": "Retiré",

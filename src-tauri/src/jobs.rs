@@ -96,6 +96,11 @@ pub struct AlbumTrack {
     /// library (same AcoustID recording, so same audio under another title).
     #[serde(default)]
     pub duplicate_of: Option<i64>,
+    /// How many download attempts have been started (0 before the first, up to
+    /// DOWNLOAD_ATTEMPTS). Combined with `status` it says which tries failed:
+    /// every attempt before the last one did, by construction.
+    #[serde(default)]
+    pub download_attempts: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +126,9 @@ pub struct Job {
     /// `report` stays None on album jobs — the frontend aggregates per track.
     #[serde(default)]
     pub tracks: Vec<AlbumTrack>,
+    /// Download attempts started for a single job; album jobs count per track.
+    #[serde(default)]
+    pub download_attempts: u32,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -386,10 +394,44 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
         .await
 }
 
+/// Which row carries the attempt counter for a download: a single's own job row,
+/// or one track of an album playlist.
+#[derive(Clone, Copy)]
+enum AttemptTarget {
+    Job,
+    Track(u32),
+}
+
+/// Publish "we are now on attempt N" so the UI can light its attempt dots while
+/// the retry pauses run — those pauses last 6s then 12s, far too long to leave
+/// the row looking idle.
+async fn record_attempt(
+    app: &AppHandle,
+    inner: &JobsInner,
+    job_id: &str,
+    target: AttemptTarget,
+    attempt: u32,
+) {
+    match target {
+        AttemptTarget::Job => {
+            update_job(app, inner, job_id, |j| j.download_attempts = attempt).await;
+        }
+        AttemptTarget::Track(index) => {
+            update_track(app, inner, job_id, index, |t| t.download_attempts = attempt).await;
+        }
+    };
+}
+
 /// One URL through the retry policy: transient failures (YouTube 403s, network
 /// blips) get DOWNLOAD_ATTEMPTS tries with growing pauses; the row keeps its
-/// live status, the terminal log carries the attempt trail.
-async fn download_with_retry(app: &AppHandle, job_id: &str, url: &str) -> AppResult<Value> {
+/// live status and its attempt count, the terminal log carries the full trail.
+async fn download_with_retry(
+    app: &AppHandle,
+    inner: &JobsInner,
+    job_id: &str,
+    url: &str,
+    target: AttemptTarget,
+) -> AppResult<Value> {
     let mut pause = DOWNLOAD_RETRY_PAUSE_SECS;
     let mut attempt = 1;
     loop {
@@ -397,6 +439,7 @@ async fn download_with_retry(app: &AppHandle, job_id: &str, url: &str) -> AppRes
             job_id,
             &format!("attempt {attempt}/{DOWNLOAD_ATTEMPTS}: {url}"),
         );
+        record_attempt(app, inner, job_id, target, attempt).await;
         match download_request(app, url).await {
             Ok(result) => {
                 job_log(job_id, "downloaded ok");
@@ -428,7 +471,7 @@ async fn run_download(
 ) -> AppResult<String> {
     job_log(id, "━━ download phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Downloading).await;
-    let result = download_with_retry(app, id, url).await?;
+    let result = download_with_retry(app, inner, id, url, AttemptTarget::Job).await?;
 
     let path = result
         .get("path")
@@ -548,6 +591,7 @@ fn parse_probe_entries(probe: &Value) -> Vec<AlbumTrack> {
                 item_id: None,
                 report: None,
                 duplicate_of: None,
+                download_attempts: 0,
             })
         })
         .collect()
@@ -647,7 +691,15 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         })
         .await;
         job_log(id, &format!("track {}/{total}", track.index));
-        match download_with_retry(app, id, &track.url).await {
+        match download_with_retry(
+            app,
+            inner,
+            id,
+            &track.url,
+            AttemptTarget::Track(track.index),
+        )
+        .await
+        {
             Ok(result) => {
                 let as_string =
                     |key: &str| result.get(key).and_then(Value::as_str).map(str::to_string);
@@ -893,6 +945,7 @@ impl JobsState {
             item_id: None,
             report: None,
             tracks: Vec::new(),
+            download_attempts: 0,
             created_at: now,
             updated_at: now,
         };

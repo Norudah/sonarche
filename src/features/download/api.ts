@@ -39,6 +39,8 @@ export interface AlbumTrackJob {
   /** Kept item id when the enrich step dropped this track as a content
    * duplicate (same AcoustID recording under another video title). */
   duplicateOf: number | null;
+  /** Download attempts started, 0 before the first. See DOWNLOAD_ATTEMPTS. */
+  downloadAttempts: number;
 }
 
 export interface DownloadJob {
@@ -55,6 +57,8 @@ export interface DownloadJob {
   report: MetadataReport | null;
   /** Album jobs only; empty for singles. */
   tracks: AlbumTrackJob[];
+  /** Download attempts started for a single; album jobs count per track. */
+  downloadAttempts: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -80,6 +84,7 @@ interface WireTrack {
   itemId: number | null;
   report: WireReport | null;
   duplicateOf?: number | null;
+  downloadAttempts?: number;
 }
 
 export interface WireJob {
@@ -95,6 +100,7 @@ export interface WireJob {
   duration: number | null;
   report: WireReport | null;
   tracks?: WireTrack[];
+  downloadAttempts?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -123,6 +129,7 @@ function mapTrack(raw: WireTrack): AlbumTrackJob {
     itemId: raw.itemId,
     report: mapReport(raw.report),
     duplicateOf: raw.duplicateOf ?? null,
+    downloadAttempts: raw.downloadAttempts ?? 0,
   };
 }
 
@@ -131,6 +138,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     ...raw,
     report: mapReport(raw.report),
     tracks: (raw.tracks ?? []).map(mapTrack),
+    downloadAttempts: raw.downloadAttempts ?? 0,
   };
 }
 

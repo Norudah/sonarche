@@ -24,6 +24,7 @@ function job(over: Record<string, unknown>) {
     duration: null,
     report: null,
     tracks: [],
+    downloadAttempts: 1,
     createdAt: now,
     updatedAt: now,
     ...over,
@@ -43,6 +44,7 @@ function albumTrack(over: Record<string, unknown>) {
     itemId: null,
     report: null,
     duplicateOf: null,
+    downloadAttempts: 0,
     ...over,
   };
 }
@@ -73,10 +75,10 @@ const jobs = [
     artist: "Various Artists",
     createdAt: now - 500,
     tracks: [
-      albumTrack({ index: 1, videoId: "a1", title: "Intro (Blizzard)", duration: 154, status: "done", itemId: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "a2", title: "Hollywood Heights", duration: 231, status: "imported", itemId: 8, report: trackReport(8, false) }),
-      albumTrack({ index: 3, videoId: "a3", title: "Java", duration: 197, status: "downloading" }),
-      albumTrack({ index: 4, videoId: "a4", title: "Untitled (Deleted Video)", status: "failed", error: "yt-dlp: video unavailable" }),
+      albumTrack({ index: 1, videoId: "a1", title: "Intro (Blizzard)", duration: 154, status: "done", itemId: 2, downloadAttempts: 2, report: trackReport(2, true) }),
+      albumTrack({ index: 2, videoId: "a2", title: "Hollywood Heights", duration: 231, status: "imported", itemId: 8, downloadAttempts: 1, report: trackReport(8, false) }),
+      albumTrack({ index: 3, videoId: "a3", title: "Java", duration: 197, status: "downloading", downloadAttempts: 2 }),
+      albumTrack({ index: 4, videoId: "a4", title: "Untitled (Deleted Video)", status: "failed", error: "yt-dlp: video unavailable", downloadAttempts: 3 }),
       albumTrack({ index: 5, videoId: "a5", title: "Rust", duration: 243 }),
     ],
   }),
@@ -115,7 +117,7 @@ const jobs = [
       albumTrack({ index: 3, videoId: "b3", title: "Hero (Official Video)", duration: 187, status: "done", itemId: 11, duplicateOf: 2 }),
     ],
   }),
-  job({ status: "failed", failedStep: "download", error: "yt-dlp: video unavailable", createdAt: now - 6000 }),
+  job({ status: "failed", failedStep: "download", error: "yt-dlp: video unavailable", downloadAttempts: 3, createdAt: now - 6000 }),
   job({ status: "failed", failedStep: "import", title: "Some Track", artist: "Someone", error: "beet import failed (exit 1)", createdAt: now - 7000 }),
 ];
 

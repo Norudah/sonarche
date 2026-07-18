@@ -4,7 +4,17 @@ import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
-import { jobPipeline, PIPELINE_STEPS, type StepState, trackPipeline } from "@/features/download/queue/pipeline";
+import {
+  type AttemptOutcome,
+  jobAttempts,
+  trackAttempts,
+} from "@/features/download/queue/attempts";
+import {
+  jobPipeline,
+  PIPELINE_STEPS,
+  type StepState,
+  trackPipeline,
+} from "@/features/download/queue/pipeline";
 
 /** Fixed-width slots so an album row and its expanded track rows line their
  * stage markers up on the same three columns. */
@@ -99,6 +109,30 @@ function TrackStepMarker({ state, label }: { state: StepState; label: string }) 
   }
 }
 
+const ATTEMPT_DOT: Record<AttemptOutcome, string> = {
+  success: "bg-success",
+  failure: "bg-danger",
+  running: "bg-accent animate-pulse",
+  untried: "bg-separator",
+};
+
+/** One dot per allowed download attempt, under the download stage: it shows at
+ * a glance whether a file came down first try or only after YouTube 403s. */
+function AttemptDots({ outcomes, label }: { outcomes: AttemptOutcome[]; label: string }) {
+  const tried = outcomes.filter((outcome) => outcome !== "untried").length;
+  if (tried === 0) return null;
+  return (
+    <span
+      className="flex items-center gap-1"
+      aria-label={`${label}: ${tried}/${outcomes.length}`}
+    >
+      {outcomes.map((outcome, index) => (
+        <span key={index} className={`size-1.5 rounded-full ${ATTEMPT_DOT[outcome]}`} />
+      ))}
+    </span>
+  );
+}
+
 const STATE_TEXT: Record<StepState, string> = {
   done: "text-foreground",
   active: "text-accent font-medium",
@@ -134,6 +168,9 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
             <span className={`text-center text-[11px] leading-tight ${STATE_TEXT[step.state]}`}>
               {step.detail ? `${label} ${step.detail}` : label}
             </span>
+            {step.step === "download" && job.kind !== "album" && (
+              <AttemptDots outcomes={jobAttempts(job)} label={t("queue.attempts")} />
+            )}
           </Fragment>
         );
       })}
@@ -155,11 +192,15 @@ export function TrackPipelineCell({
       {states.map((state, index) => {
         const step = PIPELINE_STEPS[index];
         return (
-          <TrackStepMarker
-            key={step}
-            state={state}
-            label={`${t(`queue.pipeline.${step}.idle`)} — ${t(`queue.stepState.${state}`)}`}
-          />
+          <Fragment key={step}>
+            <TrackStepMarker
+              state={state}
+              label={`${t(`queue.pipeline.${step}.idle`)} — ${t(`queue.stepState.${state}`)}`}
+            />
+            {step === "download" && (
+              <AttemptDots outcomes={trackAttempts(track)} label={t("queue.attempts")} />
+            )}
+          </Fragment>
         );
       })}
     </Rail>
