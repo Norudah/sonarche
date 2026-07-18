@@ -34,7 +34,7 @@ fn main() {
             commands::reenrich_track,
             commands::recompute_genres,
             commands::get_preferences,
-            commands::set_lastfm_fetch_delay,
+            commands::set_rate_limit_delay,
             commands::delete_track,
             commands::list_api_keys,
             commands::set_api_key,

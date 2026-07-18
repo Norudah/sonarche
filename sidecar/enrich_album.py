@@ -31,7 +31,7 @@ _MAX_TEXT_ALBUM_DISTANCE = 0.15
 
 _DEFAULT_FETCH_PAUSE_SECONDS = 1.0
 # AcoustID allows 3 req/s per application key; fpcalc adds natural headroom.
-_LOOKUP_PAUSE_SECONDS = 0.4
+_DEFAULT_LOOKUP_PAUSE_SECONDS = 0.5
 
 
 def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None:
@@ -178,6 +178,9 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
     One bad file yields [] rather than sinking the batch."""
     recordings: dict[int, list[str]] = {}
     total = len(items)
+    lookup_pause = max(
+        0.0, float(params.get("lookup_pause_seconds", _DEFAULT_LOOKUP_PAUSE_SECONDS))
+    )
     protocol.log(f"enrich_album: fingerprinting {total} file(s)")
     for done, item in enumerate(items):
         path = enrich._decode_path(item)
@@ -208,8 +211,8 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
         except Exception as exc:
             protocol.log(f"enrich_album: item {item.id} fingerprint failed: {exc}")
             recordings[item.id] = []
-        if done < total - 1:
-            time.sleep(_LOOKUP_PAUSE_SECONDS)
+        if lookup_pause > 0 and done < total - 1:
+            time.sleep(lookup_pause)
     return recordings
 
 

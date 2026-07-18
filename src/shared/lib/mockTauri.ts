@@ -126,7 +126,17 @@ const jobs = [
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
-const preferences = { lastfmFetchDelaySeconds: 1 };
+const preferences = {
+  lastfmFetchDelaySeconds: 1,
+  acoustidLookupDelaySeconds: 0.5,
+  downloadDelaySeconds: 3,
+};
+
+const preferenceFields: Record<string, keyof typeof preferences> = {
+  lastfm: "lastfmFetchDelaySeconds",
+  acoustid: "acoustidLookupDelaySeconds",
+  download: "downloadDelaySeconds",
+};
 
 // One track matching the "Monster" job's item_id; the other done job's item is
 // deliberately absent so the "removed from library" state is visible too.
@@ -180,8 +190,9 @@ export function installMockTauri() {
         if (key) key.configured = String(payload?.value ?? "").trim() !== "";
         return key;
       }
-      if (cmd === "set_lastfm_fetch_delay") {
-        preferences.lastfmFetchDelaySeconds = Number(payload?.seconds ?? preferences.lastfmFetchDelaySeconds);
+      if (cmd === "set_rate_limit_delay") {
+        const field = preferenceFields[String(payload?.key)];
+        if (field) preferences[field] = Number(payload?.seconds ?? preferences[field]);
         return preferences;
       }
       return responses[cmd] ?? {};

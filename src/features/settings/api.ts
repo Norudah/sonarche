@@ -16,16 +16,23 @@ export async function setApiKey(name: ApiKeyName, value: string): Promise<ApiKey
   return invoke<ApiKeyStatus>("set_api_key", { name, value });
 }
 
+export type RateLimitKey = "lastfm" | "acoustid" | "download";
+
 export interface Preferences {
   lastfmFetchDelaySeconds: number;
+  acoustidLookupDelaySeconds: number;
+  downloadDelaySeconds: number;
 }
 
 export async function getPreferences(): Promise<Preferences> {
   return invoke<Preferences>("get_preferences");
 }
 
-export async function setLastfmFetchDelay(seconds: number): Promise<Preferences> {
-  return invoke<Preferences>("set_lastfm_fetch_delay", { seconds });
+export async function setRateLimitDelay(
+  key: RateLimitKey,
+  seconds: number,
+): Promise<Preferences> {
+  return invoke<Preferences>("set_rate_limit_delay", { key, seconds });
 }
 
 /** Dev builds only — the backend refuses it in release. */

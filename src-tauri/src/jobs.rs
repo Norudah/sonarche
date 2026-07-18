@@ -25,9 +25,9 @@ const ENRICH_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3 * 60);
 /// One request covers the whole album: N fingerprints + MB calls + covers.
 const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
-/// Random pause between two YouTube downloads of an album batch. Sequential
-/// same-IP hammering is exactly what gets clients throttled or flagged.
-const TRACK_SLEEP_RANGE_SECS: (f64, f64) = (3.0, 6.0);
+/// The configured download delay is a floor, not a metronome: jittering it up
+/// to 2x keeps the batch from looking like a scripted, perfectly-timed loop.
+const TRACK_SLEEP_JITTER: f64 = 1.0;
 /// YouTube 403s are transient flow protection, not permanent failures: retry
 /// each URL a few times before giving up on it. A handful of polite, spaced
 /// attempts doesn't escalate throttling; hammering without pause does.
@@ -653,6 +653,10 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .map(|j| j.tracks)
         .unwrap_or_default();
     let total = tracks.len();
+    let track_delay = preferences::load(app)
+        .await
+        .unwrap_or_default()
+        .download_delay_seconds;
     let mut downloaded_before = false;
     for track in &tracks {
         if track.status == TrackStatus::Done {
@@ -679,9 +683,8 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             continue;
         }
 
-        if downloaded_before {
-            let (lo, hi) = TRACK_SLEEP_RANGE_SECS;
-            let pause = lo + fastrand::f64() * (hi - lo);
+        if downloaded_before && track_delay > 0.0 {
+            let pause = track_delay * (1.0 + fastrand::f64() * TRACK_SLEEP_JITTER);
             tokio::time::sleep(Duration::from_secs_f64(pause)).await;
         }
         downloaded_before = true;
@@ -921,6 +924,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
                 "artist": job.artist,
                 "track_hints": track_hints,
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
+                "lookup_pause_seconds": prefs.acoustid_lookup_delay_seconds,
             }),
             ENRICH_ALBUM_TIMEOUT,
         )

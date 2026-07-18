@@ -22,13 +22,27 @@
   "rateLimits": {
     "category": "Limitations appels API",
     "title": "Limitations appels API",
-    "description": "Contrôle la prudence avec laquelle l'app sollicite les services externes lors de traitements par lots sur toute la bibliothèque.",
-    "lastfmDelay": {
-      "name": "Délai entre les requêtes Last.fm",
-      "instant": "Instantané",
-      "why": "Quand un morceau n'a aucun genre MusicBrainz, l'action « Recalculer les genres » interroge Last.fm pour le retrouver. Cette clef API est partagée par tous les utilisateurs de beets dans le monde : un délai entre chaque requête évite de la faire bloquer temporairement pour tout le monde.",
-      "estimate": "Pour {{count}} titres sans genre à ce rythme : environ {{duration}}.",
-      "warning": "En dessous d'une seconde, ce n'est pas recommandé : il faut rester poli envers Last.fm et éviter de la solliciter avec un trop grand nombre de requêtes rapprochées."
+    "description": "Contrôle la prudence avec laquelle l'app sollicite les services externes. Chaque service a ses propres règles : rester poli évite de se faire bloquer.",
+    "instant": "Instantané",
+    "delays": {
+      "download": {
+        "name": "Délai entre deux téléchargements",
+        "why": "Sur une playlist, l'app télécharge les pistes une par une depuis YouTube. Enchaîner les requêtes depuis la même IP est exactement ce qui déclenche les blocages : une pause entre chaque piste fait passer le lot pour une écoute normale. Le délai réel est tiré au hasard entre cette valeur et son double.",
+        "estimate": "Pour une playlist de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
+        "warning": "En dessous de 3 secondes, le risque de se faire limiter (erreurs 403) augmente nettement sur les longues playlists."
+      },
+      "acoustid": {
+        "name": "Délai entre les requêtes AcoustID",
+        "why": "Chaque piste importée est identifiée par son empreinte acoustique via AcoustID. Le service autorise 3 requêtes par seconde et par clef : sur un album, les recherches s'enchaînent, d'où cette pause.",
+        "estimate": "Pour un album de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
+        "warning": "En dessous de 0,34 s, on dépasse la limite documentée de 3 requêtes/seconde et la clef peut être bridée."
+      },
+      "lastfm": {
+        "name": "Délai entre les requêtes Last.fm",
+        "why": "Quand un morceau n'a aucun genre MusicBrainz, l'action « Recalculer les genres » interroge Last.fm pour le retrouver. Cette clef API est partagée par tous les utilisateurs de beets dans le monde : un délai entre chaque requête évite de la faire bloquer temporairement pour tout le monde.",
+        "estimate": "Pour {{count}} titres sans genre à ce rythme : environ {{duration}}.",
+        "warning": "En dessous d'une seconde, ce n'est pas recommandé : il faut rester poli envers Last.fm et éviter de la solliciter avec un trop grand nombre de requêtes rapprochées."
+      }
     }
   },
   "developer": {
