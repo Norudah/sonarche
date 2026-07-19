@@ -20,7 +20,23 @@
   },
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
-  "refresh": "Refresh",
+  "totalPlaytime": "{{hours}} hr {{minutes}}",
+  "totalPlaytimeMinutes": "{{minutes}} min",
+  "playAll": "Play all",
+  "columns": {
+    "title": "Title",
+    "artist": "Artist",
+    "album": "Album",
+    "genre": "Genre",
+    "duration": "Duration",
+    "actions": "Actions"
+  },
+  "search": {
+    "placeholder": "Search…",
+    "label": "Search tracks",
+    "noResults": "No track matches “{{query}}”.",
+    "clear": "Clear search"
+  },
   "loadFailed": "Unable to load the library",
   "empty": "Your library is empty for now.",
   "goToDownload": "Download a first track →",

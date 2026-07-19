@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { useLibrary, useRecomputeGenres } from "@/features/library/hooks";
-import { TrackList } from "@/features/library/TrackList";
+import { TrackTable } from "@/features/library/tracks/TrackTable";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 const PARENT_OTHER = "__other__";
@@ -174,7 +174,7 @@ export function GenresView() {
                     type="button"
                     onClick={() => setSelected({ parent: group.key, sub: null })}
                     className={
-                      "flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition-colors hover:bg-default/40" +
+                      "cursor-pointer flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition-colors hover:bg-default/40" +
                       (selected?.parent === group.key && selected.sub == null
                         ? " bg-accent/15 text-accent"
                         : "")
@@ -188,7 +188,7 @@ export function GenresView() {
                       type="button"
                       onClick={() => setSelected({ parent: group.key, sub: sub.key })}
                       className={
-                        "flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition-colors hover:bg-default/40" +
+                        "cursor-pointer flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition-colors hover:bg-default/40" +
                         (selected?.parent === group.key && selected.sub === sub.key
                           ? " bg-accent/15 text-accent"
                           : "")
@@ -219,12 +219,15 @@ export function GenresView() {
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="text-sm text-accent underline-offset-4 hover:underline"
+              className="cursor-pointer text-sm text-accent underline-offset-4 hover:underline"
             >
               {t("genres.clear")}
             </button>
           </div>
-          <TrackList tracks={filtered} />
+          <TrackTable
+            tracks={filtered}
+            animationKey={`${selected.parent}:${selected.sub ?? ""}`}
+          />
         </div>
       )}
     </PageContainer>

@@ -211,3 +211,15 @@
     animation-fill-mode: backwards;
   }
 }
+
+/* MotionProvider's `reducedMotion="user"` only governs Motion components; these
+   two are plain CSS and have to opt out on their own. Opacity is kept (it reads
+   as responsive without moving anything), only the travel is dropped. */
+@media (prefers-reduced-motion: reduce) {
+  .row-reveal > td,
+  .row-reveal > th,
+  .row-cascade > td > *,
+  .row-cascade > th > * {
+    animation: none;
+  }
+}

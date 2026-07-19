@@ -161,6 +161,34 @@ const libraryTracks = [
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
   },
+  ...[
+    ["Night Changes", "One Direction", "Four", "Teen Pop", 226],
+    ["Steal My Girl", "One Direction", "Four", "Teen Pop", 228],
+    ["Digital Love", "Daft Punk", "Discovery", "French House", 298],
+    ["The Less I Know the Better", "Tame Impala", "Currents", "Psych Pop", 216],
+    ["Nights", "Frank Ocean", "Blonde", null, 307],
+    ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", 318],
+    ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", 203],
+    ["Come as You Are", "Nirvana", "Nevermind", "Grunge", 219],
+    ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", 243],
+  ].map(([title, artist, album, genre, length], index) => ({
+    id: 100 + index,
+    title: title as string,
+    artist: artist as string,
+    album: album as string,
+    album_artist: artist as string,
+    year: 2014,
+    genre: genre as string | null,
+    genre_bucket: genre as string | null,
+    track: index + 1,
+    track_total: 12,
+    length: length as number,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/${artist as string}/${title as string}.m4a`,
+    art_path: thumb("#8b5cf6", "#6366f1"),
+    bonus_source: null,
+  })),
 ];
 
 const responses: Record<string, unknown> = {

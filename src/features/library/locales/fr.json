@@ -20,7 +20,23 @@
   },
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
-  "refresh": "Actualiser",
+  "totalPlaytime": "{{hours}} h {{minutes}}",
+  "totalPlaytimeMinutes": "{{minutes}} min",
+  "playAll": "Tout lire",
+  "columns": {
+    "title": "Titre",
+    "artist": "Artiste",
+    "album": "Album",
+    "genre": "Genre",
+    "duration": "Durée",
+    "actions": "Actions"
+  },
+  "search": {
+    "placeholder": "Rechercher…",
+    "label": "Rechercher un morceau",
+    "noResults": "Aucun morceau ne correspond à « {{query}} ».",
+    "clear": "Effacer la recherche"
+  },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": "Ta bibliothèque est vide pour l'instant.",
   "goToDownload": "Télécharger un premier titre →",
