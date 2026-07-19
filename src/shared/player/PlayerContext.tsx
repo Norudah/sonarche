@@ -1,13 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import type { PlayableTrack } from "@/shared/player/types";
 
-interface PlayerContextValue {
+/**
+ * What the player is doing. Changes only when the user acts — a new track, a
+ * play/pause, a volume drag.
+ */
+interface PlayerControls {
   current: PlayableTrack | null;
   isPlaying: boolean;
-  currentTime: number;
-  duration: number;
   volume: number;
   play: (track: PlayableTrack) => void;
   toggle: () => void;
@@ -15,7 +17,26 @@ interface PlayerContextValue {
   setVolume: (value: number) => void;
 }
 
-const PlayerContext = createContext<PlayerContextValue | null>(null);
+/** Where the playhead is. Changes several times a second during playback. */
+interface PlayerProgress {
+  currentTime: number;
+  duration: number;
+}
+
+/**
+ * Two contexts rather than one, and the split is the whole point.
+ *
+ * `timeupdate` fires about four times a second, so a single context value
+ * carrying `currentTime` changed four times a second — and re-rendered every
+ * consumer with it. Every track row calls `usePlayer()` for `current` and
+ * `isPlaying` alone, so a 300-track library was re-rendering 300 rows four
+ * times a second to redraw a playhead none of them display.
+ *
+ * Only the seek bar subscribes to progress now. Rows and transport controls sit
+ * on the stable half and re-render when something they actually show changes.
+ */
+const ControlsContext = createContext<PlayerControls | null>(null);
+const ProgressContext = createContext<PlayerProgress | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -53,10 +74,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const play = (track: PlayableTrack) => {
+  // Read through a ref so `play` never has to list the playing track as a
+  // dependency: a new identity here would ripple out to every row.
+  const currentIdRef = useRef<PlayableTrack["id"] | null>(null);
+  currentIdRef.current = current?.id ?? null;
+
+  const play = useCallback((track: PlayableTrack) => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (current?.id === track.id) {
+    if (currentIdRef.current === track.id) {
       if (audio.paused) void audio.play();
       else audio.pause();
       return;
@@ -67,44 +93,61 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setDuration(track.duration ?? 0);
     audio.src = track.src;
     void audio.play();
-  };
+  }, []);
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !current) return;
+    if (!audio || currentIdRef.current == null) return;
     if (audio.paused) void audio.play();
     else audio.pause();
-  };
+  }, []);
 
-  const seek = (time: number) => {
+  const seek = useCallback((time: number) => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = time;
     setCurrentTime(time);
-  };
+  }, []);
 
-  const setVolume = (value: number) => {
+  const setVolume = useCallback((value: number) => {
     const audio = audioRef.current;
     if (audio) audio.volume = value;
     setVolumeState(value);
-  };
+  }, []);
 
-  const value = useMemo<PlayerContextValue>(
-    () => ({ current, isPlaying, currentTime, duration, volume, play, toggle, seek, setVolume }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [current, isPlaying, currentTime, duration, volume],
+  const controls = useMemo<PlayerControls>(
+    () => ({ current, isPlaying, volume, play, toggle, seek, setVolume }),
+    [current, isPlaying, volume, play, toggle, seek, setVolume],
+  );
+
+  const progress = useMemo<PlayerProgress>(
+    () => ({ currentTime, duration }),
+    [currentTime, duration],
   );
 
   return (
-    <PlayerContext.Provider value={value}>
-      {children}
-      <audio ref={audioRef} onVolumeChange={() => setVolumeState(audioRef.current?.volume ?? 1)} />
-    </PlayerContext.Provider>
+    <ControlsContext.Provider value={controls}>
+      <ProgressContext.Provider value={progress}>
+        {children}
+        <audio ref={audioRef} onVolumeChange={() => setVolumeState(audioRef.current?.volume ?? 1)} />
+      </ProgressContext.Provider>
+    </ControlsContext.Provider>
   );
 }
 
-export function usePlayer(): PlayerContextValue {
-  const ctx = useContext(PlayerContext);
+/** What is playing and how to drive it. Safe to call from a list row. */
+export function usePlayer(): PlayerControls {
+  const ctx = useContext(ControlsContext);
   if (!ctx) throw new Error("usePlayer must be used within a PlayerProvider");
+  return ctx;
+}
+
+/**
+ * The playhead. Only call this from something that draws the position — it
+ * updates several times a second, and every caller re-renders with it.
+ */
+export function usePlayerProgress(): PlayerProgress {
+  const ctx = useContext(ProgressContext);
+  if (!ctx) throw new Error("usePlayerProgress must be used within a PlayerProvider");
   return ctx;
 }
