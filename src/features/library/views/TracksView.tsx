@@ -9,14 +9,14 @@ import { useLibrary } from "@/features/library/hooks";
 import { filterTracks, totalPlaytime } from "@/features/library/tracks/filter";
 import { TracksHeader } from "@/features/library/tracks/TracksHeader";
 import { TrackTable } from "@/features/library/tracks/TrackTable";
+import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { fade } from "@/shared/motion/tokens";
-import { usePlayer } from "@/shared/player/PlayerContext";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const { play } = usePlayer();
+  const playTrack = usePlayTrack();
   const [query, setQuery] = useState("");
 
   const tracks = library.data ?? [];
@@ -25,15 +25,7 @@ export function TracksView() {
 
   const playAll = () => {
     const first = visible[0];
-    if (!first) return;
-    play({
-      id: first.id,
-      src: first.audioUrl,
-      title: first.title || t("unknownTitle"),
-      subtitle: first.artist || t("unknownArtist"),
-      artUrl: first.artUrl,
-      duration: first.length,
-    });
+    if (first) playTrack(first);
   };
 
   return (

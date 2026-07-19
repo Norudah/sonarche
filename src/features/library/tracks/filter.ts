@@ -1,11 +1,5 @@
 import type { LibraryTrack } from "@/features/library/api";
-
-function normalize(value: string): string {
-  return value
-    .toLocaleLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
+import { normalize } from "@/shared/lib/text";
 
 /** Free-text search over the fields the list actually shows. Every whitespace
  * separated term must match somewhere, so "daft disc" finds Digital Love. */

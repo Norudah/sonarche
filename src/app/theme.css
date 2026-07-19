@@ -212,6 +212,17 @@
   }
 }
 
+/** Same staggered entrance for a plain element rather than a table row — an
+    album card in a grid. `row-cascade` has to reach *into* a `<tr>` because a
+    transform on a table-cell is unreliable; outside a table the element can
+    carry the animation itself. Both read `--row-stagger`, so a grid and a
+    table filtered by the same query unfold at the same rhythm. */
+@utility cascade-item {
+  animation: var(--animate-row-rise);
+  animation-delay: var(--row-stagger, 0s);
+  animation-fill-mode: backwards;
+}
+
 /* MotionProvider's `reducedMotion="user"` only governs Motion components; these
    two are plain CSS and have to opt out on their own. Opacity is kept (it reads
    as responsive without moving anything), only the travel is dropped. */
@@ -219,7 +230,8 @@
   .row-reveal > td,
   .row-reveal > th,
   .row-cascade > td > *,
-  .row-cascade > th > * {
+  .row-cascade > th > *,
+  .cascade-item {
     animation: none;
   }
 }

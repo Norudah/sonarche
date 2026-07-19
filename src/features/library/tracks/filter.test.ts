@@ -1,30 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { LibraryTrack } from "@/features/library/api";
+import { track } from "@/features/library/testFixtures";
 import { filterTracks, totalPlaytime } from "@/features/library/tracks/filter";
-
-function track(over: Partial<LibraryTrack>): LibraryTrack {
-  return {
-    id: 1,
-    title: "",
-    artist: "",
-    album: "",
-    albumArtist: "",
-    year: null,
-    genre: null,
-    genreBucket: null,
-    track: null,
-    trackTotal: null,
-    length: null,
-    bitrate: null,
-    format: "AAC",
-    path: "",
-    audioUrl: "",
-    artUrl: null,
-    bonusSource: null,
-    ...over,
-  };
-}
 
 const library = [
   track({ id: 1, title: "Digital Love", artist: "Daft Punk", album: "Discovery", genre: "French House" }),

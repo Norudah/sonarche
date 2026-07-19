@@ -18,6 +18,24 @@
     "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
     "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant."
   },
+  "albums": {
+    "eyebrow": "Album",
+    "back": "Albums",
+    "empty": "Aucun album dans ta bibliothèque pour l'instant.",
+    "noResults": "Aucun album ne correspond à « {{query}} ».",
+    "completeness": "{{percent}} %",
+    "completenessHint": "Métadonnées incomplètes sur cet album",
+    "bonusFrom": "Bonus — « {{source}} »",
+    "sort": {
+      "label": "Trier par",
+      "recent": "Ajout récent",
+      "artist": "Artiste",
+      "title": "Titre",
+      "year": "Année"
+    }
+  },
+  "albumCount_one": "{{count}} album",
+  "albumCount_other": "{{count}} albums",
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
   "totalPlaytime": "{{hours}} h {{minutes}}",

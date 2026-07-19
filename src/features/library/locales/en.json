@@ -18,6 +18,24 @@
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
     "recomputeFailed": "Recompute failed, try again in a moment."
   },
+  "albums": {
+    "eyebrow": "Album",
+    "back": "Albums",
+    "empty": "No album in your library yet.",
+    "noResults": "No album matches “{{query}}”.",
+    "completeness": "{{percent}}%",
+    "completenessHint": "Incomplete metadata on this album",
+    "bonusFrom": "Bonus — “{{source}}”",
+    "sort": {
+      "label": "Sort by",
+      "recent": "Recently added",
+      "artist": "Artist",
+      "title": "Title",
+      "year": "Year"
+    }
+  },
+  "albumCount_one": "{{count}} album",
+  "albumCount_other": "{{count}} albums",
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
   "totalPlaytime": "{{hours}} hr {{minutes}}",

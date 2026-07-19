@@ -161,32 +161,78 @@ const libraryTracks = [
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
   },
-  ...[
-    ["Night Changes", "One Direction", "Four", "Teen Pop", 226],
-    ["Steal My Girl", "One Direction", "Four", "Teen Pop", 228],
-    ["Digital Love", "Daft Punk", "Discovery", "French House", 298],
-    ["The Less I Know the Better", "Tame Impala", "Currents", "Psych Pop", 216],
-    ["Nights", "Frank Ocean", "Blonde", null, 307],
-    ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", 318],
-    ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", 203],
-    ["Come as You Are", "Nirvana", "Nevermind", "Grunge", 219],
-    ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", 243],
-  ].map(([title, artist, album, genre, length], index) => ({
+  // [title, artist, album, genre, length, year, track, cover]. Deliberately
+  // uneven so the albums grid meets what a real library throws at it: several
+  // tracks per album, a compilation whose artists differ from the album artist,
+  // an album with no cover, and albums with missing genres or years (which is
+  // what the completeness badge is there to surface).
+  ...(
+    [
+      ["Night Changes", "One Direction", "Four", "Teen Pop", 226, 2014, 1, "#a78bfa|#7c3aed"],
+      ["Steal My Girl", "One Direction", "Four", "Teen Pop", 228, 2014, 2, "#a78bfa|#7c3aed"],
+      ["Fireproof", "One Direction", "Four", null, 202, 2014, 3, "#a78bfa|#7c3aed"],
+      ["One More Night", "Daft Punk", "Discovery", "French House", 238, 2001, 1, "#22d3ee|#0e7490"],
+      ["Digital Love", "Daft Punk", "Discovery", "French House", 298, 2001, 2, "#22d3ee|#0e7490"],
+      ["Harder Better Faster", "Daft Punk", "Discovery", "French House", 224, 2001, 3, "#22d3ee|#0e7490"],
+      ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", 369, 2013, 8, "#1f2937|#111827"],
+      ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", 337, 2013, 5, "#1f2937|#111827"],
+      ["The Less I Know the Better", "Tame Impala", "Currents", "Psych Pop", 216, 2015, 4, "#fb923c|#c2410c"],
+      ["Let It Happen", "Tame Impala", "Currents", "Psych Pop", 467, 2015, 1, "#fb923c|#c2410c"],
+      ["Nights", "Frank Ocean", "Blonde", null, 307, 2016, 5, "#bef264|#84cc16"],
+      ["Ivy", "Frank Ocean", "Blonde", null, 249, 2016, 3, "#bef264|#84cc16"],
+      ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", 318, 2007, 4, "#f472b6|#9333ea"],
+      ["Nude", "Radiohead", "In Rainbows", "Art Rock", 255, 2007, 3, "#f472b6|#9333ea"],
+      ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", 203, 2020, 4, "#6d28d9|#4c1d95"],
+      ["Physical", "Dua Lipa", "Future Nostalgia", null, 194, 2020, 3, "#6d28d9|#4c1d95"],
+      ["Come as You Are", "Nirvana", "Nevermind", "Grunge", 219, 1991, 3, "#38bdf8|#0369a1"],
+      ["Lithium", "Nirvana", "Nevermind", "Grunge", 257, 1991, 5, "#38bdf8|#0369a1"],
+      // No cover at all: exercises the fallback in the card and the hero.
+      ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", 243, 2011, 4, null],
+      ["Wait", "M83", "Hurry Up, We're Dreaming", null, 322, 2011, 8, null],
+    ] as const
+  ).map(([title, artist, album, genre, length, year, trackNo, cover], index) => ({
     id: 100 + index,
-    title: title as string,
-    artist: artist as string,
-    album: album as string,
-    album_artist: artist as string,
-    year: 2014,
-    genre: genre as string | null,
-    genre_bucket: genre as string | null,
-    track: index + 1,
+    title,
+    artist,
+    album,
+    album_artist: artist,
+    year,
+    genre,
+    genre_bucket: genre,
+    track: trackNo,
     track_total: 12,
-    length: length as number,
+    length,
     bitrate: 256000,
     format: "AAC",
-    path: `/Users/dev/Music/Sonarche/${artist as string}/${title as string}.m4a`,
-    art_path: thumb("#8b5cf6", "#6366f1"),
+    path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
+    art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
+    bonus_source: null,
+  })),
+
+  // Compilation: the album artist is "Various Artists" while every track has
+  // its own — the case that makes the tracklist grow an artist column.
+  ...(
+    [
+      ["Hydrogen", "M|O|O|N", 1, 269],
+      ["Roller Mobster", "Carpenter Brut", 2, 231],
+      ["Knock Knock", "Scattle", 3, 213],
+    ] as const
+  ).map(([title, artist, trackNo, length], index) => ({
+    id: 200 + index,
+    title,
+    artist,
+    album: "Hotline Miami OST",
+    album_artist: "Various Artists",
+    year: 2012,
+    genre: "Synthwave",
+    genre_bucket: "Electronic",
+    track: trackNo,
+    track_total: 3,
+    length,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
+    art_path: thumb("#f43f5e", "#7c2d12"),
     bonus_source: null,
   })),
 ];
