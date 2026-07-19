@@ -29,6 +29,9 @@ export function AlbumCard({ album, style, onPlay }: AlbumCardProps) {
     <div style={style} className="group/card cascade-item relative">
       <Link
         to={albumPath(album.artist, album.title)}
+        // Lets the album page know it can go *back* rather than pushing a fresh
+        // entry, which is what makes the grid's scroll position survive.
+        state={{ fromGrid: true }}
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">

@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 import { paths } from "@/app/routes";
 import type { Album } from "@/features/library/albums/albums";
@@ -18,6 +18,31 @@ import { formatDuration } from "@/shared/lib/format";
  * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
+/**
+ * Steps back through history when we arrived from the grid, so the shelf comes
+ * back exactly as it was left — scroll, search and sort intact. A plain
+ * `<Link>` would push a new entry and rebuild the grid from the top, which is
+ * the most irritating way to lose someone's place. Falls back to a normal
+ * navigation when the album page was opened cold and there is nothing behind it.
+ */
+function BackToAlbums() {
+  const { t } = useTranslation("library");
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const cameFromGrid = (state as { fromGrid?: boolean } | null)?.fromGrid === true;
+
+  return (
+    <button
+      type="button"
+      onClick={() => (cameFromGrid ? navigate(-1) : navigate(paths.libraryAlbums))}
+      className="relative flex w-fit cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-[0.8125rem] text-white/70 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
+    >
+      <ArrowLeft className="size-4" />
+      {t("albums.back")}
+    </button>
+  );
+}
+
 export function AlbumHero({ album }: { album: Album }) {
   const { t } = useTranslation("library");
 
@@ -48,13 +73,7 @@ export function AlbumHero({ album }: { album: Album }) {
       {/* Inside the band rather than above it: the hero is full-bleed and
        * starts at the very top of the scroll area, so a back link placed
        * before it would push the whole treatment down the page. */}
-      <Link
-        to={paths.libraryAlbums}
-        className="relative flex w-fit items-center gap-1.5 rounded-md py-1 pr-2 text-[0.8125rem] text-white/70 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
-      >
-        <ArrowLeft className="size-4" />
-        {t("albums.back")}
-      </Link>
+      <BackToAlbums />
 
       {/* items-end: the text sits on the artwork's baseline rather than
        * floating at its centre. */}

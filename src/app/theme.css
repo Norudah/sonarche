@@ -125,6 +125,19 @@
   --color-metadata-header-from: oklch(0.3 0.16 277);
   --color-metadata-header-to: var(--accent);
 
+  /* Hover and press feedback is plain CSS, not Motion, so Tailwind's defaults —
+     not our tokens — were deciding how the app felt. Tailwind ships 150ms on
+     `cubic-bezier(0.4, 0, 0.2, 1)`, an ease-IN-out: it starts slow, so a row
+     under the cursor produced almost no visible change for the first ~50ms and
+     read as lag rather than as a transition.
+
+     These two lines make every bare `transition-*` utility match the motion
+     tokens' `instant` + `out` pair (see shared/motion/tokens.ts), so CSS and
+     Motion finally agree on what "immediate" means. A site that genuinely needs
+     longer still opts in with an explicit duration- utility. */
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: var(--ease-out-fluid);
+
   /* Typography */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
