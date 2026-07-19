@@ -6,6 +6,12 @@
       "runtimeExecutable": "/Users/rpierucci/.nvm/versions/node/v24.14.1/bin/node",
       "runtimeArgs": ["node_modules/vite/bin/vite.js"],
       "port": 1420
+    },
+    {
+      "name": "vite-agent",
+      "runtimeExecutable": "/Users/rpierucci/.nvm/versions/node/v24.14.1/bin/node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "1421"],
+      "port": 1421
     }
   ]
 }
