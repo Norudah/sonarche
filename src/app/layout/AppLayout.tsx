@@ -15,21 +15,24 @@ export function AppLayout() {
   useScrollRestoration(scrollRef);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1">
-        <Sidebar />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Topbar />
-          <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background p-8">
-            <SetupGate>
+    // The gate is outside the chrome on purpose: while the environment check is
+    // in flight no route can render, so a live sidebar would only let the user
+    // click nav items that appear to do nothing.
+    <SetupGate>
+      <div className="flex h-full flex-col">
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Topbar />
+            <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background p-8">
               <RouteTransition>
                 <Outlet />
               </RouteTransition>
-            </SetupGate>
-          </main>
+            </main>
+          </div>
         </div>
+        <PlayerBar />
       </div>
-      <PlayerBar />
-    </div>
+    </SetupGate>
   );
 }

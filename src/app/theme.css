@@ -178,6 +178,19 @@
     }
   }
 
+  /* Startup splash — an indeterminate sliver crossing its track. Ends off the
+     right edge and restarts off the left, so there is no visible snap back. */
+  --animate-splash-bar: sonarche-splash-bar 1.4s ease-in-out infinite;
+
+  @keyframes sonarche-splash-bar {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
+    }
+  }
+
   /* Now-playing equalizer — used by the player when audio is playing. */
   --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
 
@@ -246,5 +259,11 @@
   .row-cascade > th > *,
   .cascade-item {
     animation: none;
+  }
+
+  /* The splash bar keeps moving: it is the only signal that the app is still
+     working, so removing it would leave a frozen screen with no explanation. */
+  .animate-splash-bar {
+    animation-duration: 2.4s;
   }
 }
