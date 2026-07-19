@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.6.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.5.0...sonarche-v0.6.0) (2026-07-19)
+
+
+### Features
+
+* **download:** animate the queue table and the URL composer ([f693e03](https://github.com/Norudah/sonarche/commit/f693e03f6e34994ce5fd77b8251b9ab3e949a41c))
+* **download:** replace dash placeholders with a neutral empty-cell marker ([97e3e93](https://github.com/Norudah/sonarche/commit/97e3e93966ae45c66d8a4101cbd1e80a1b96acd9))
+* motion polish, download pipeline improvements, and library management ([1abb00d](https://github.com/Norudah/sonarche/commit/1abb00dd008728d88e48e545ca3ec3168be46d1c))
+* **player:** animate the transport button and now-playing swaps ([6f6cf8c](https://github.com/Norudah/sonarche/commit/6f6cf8c17cc99cc66f76b3f7132ed0bf353fdae7))
+* **shell:** animate route transitions and the sidebar nav indicator ([9e004fa](https://github.com/Norudah/sonarche/commit/9e004fa853afbd36cd6aa8be033c3146ef15eda2))
+* **shell:** drop the home page and condense the sidebar ([8334a6e](https://github.com/Norudah/sonarche/commit/8334a6e5d68f9d77ff00bc036f4444558f78268d))
+* **shell:** move download history to SQLite as sonarche.db ([b713f91](https://github.com/Norudah/sonarche/commit/b713f91860381292af324eee6c0f01c534516229))
+* **shell:** surface download attempts per track ([7260db9](https://github.com/Norudah/sonarche/commit/7260db948c9fb96f4dc9c39179a91f3a52df2360))
+* **sidecar:** add configurable rate limits for AcoustID and downloads ([f586b57](https://github.com/Norudah/sonarche/commit/f586b57a6cf1bd6492c25da3529ccb8d1aeac214))
+* **sidecar:** tag unidentified tracks provisionally instead of leaving them blank ([7364f91](https://github.com/Norudah/sonarche/commit/7364f919b749eeffafc785d543750bea02bab5ba))
+* **ui:** add motion design tokens and reduced-motion support ([bec132d](https://github.com/Norudah/sonarche/commit/bec132dac607ea566251190c626d6925a98ce013))
+* **ui:** rebuild the download page around a pipeline table ([b855ffd](https://github.com/Norudah/sonarche/commit/b855ffdfcaeab7bdddb0bca5fef90a88dbd52f67))
+* **ui:** restyle the playlist/track choice and tighten the download page ([74fb236](https://github.com/Norudah/sonarche/commit/74fb2369907ae19ca5c67a3e10fd0f3c2c42d953))
+* **ui:** surface provisional tags, rename enrich to identify, add copy source link ([b985c76](https://github.com/Norudah/sonarche/commit/b985c762fb410771518d82767e423d450fc9aa5d))
+
+
+### Bug Fixes
+
+* **download:** mock enqueue_download and retry_job in the dev Tauri stub ([d025a61](https://github.com/Norudah/sonarche/commit/d025a61de1ed4b954fc99d140040a5d547adbe5a))
+* **sidecar:** dedupe on primary recording, fall back to release-group cover ([c62ad34](https://github.com/Norudah/sonarche/commit/c62ad342e41a69fd9ccdca7b8e7465d54db2b5fb))
+* **sidecar:** place the last unmatched track by elimination ([2c25af9](https://github.com/Norudah/sonarche/commit/2c25af95799829d98f744d9991fe6b9911bef9ca))
+* **ui:** tune the download queue's colors, artwork and playlist picker ([4b6fba5](https://github.com/Norudah/sonarche/commit/4b6fba56340355d319fcb6be0f12c97fd19e3f89))
+
 ## [0.5.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.4.0...sonarche-v0.5.0) (2026-07-16)
 
 
