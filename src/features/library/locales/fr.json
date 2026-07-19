@@ -29,10 +29,7 @@
   "metadata": {
     "title": "Métadonnées",
     "inspect": "Inspecter les métadonnées",
-    "artwork": "Pochette",
     "changeArtwork": "Changer l'image",
-    "matchTitle": "Correspondance MusicBrainz",
-    "reenrichHint": "Relance l'identification acoustique pour corriger album, pochette et tags.",
     "reenrich": "Relancer l'auto-correspondance",
     "reenriching": "Correspondance en cours…",
     "reenrichMatched": "Métadonnées mises à jour.",
@@ -54,7 +51,10 @@
     "close": "Fermer",
     "edit": "Modifier",
     "cancel": "Annuler",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "completeness": "Complétude — {{filled}}/{{total}} champs",
+    "derived": "dérivé",
+    "viewAlbum": "Voir l'album"
   },
   "delete": {
     "action": "Supprimer le morceau",

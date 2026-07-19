@@ -9,9 +9,13 @@ import { useDeleteTrack } from "@/features/library/hooks";
 export function DeleteTrackDialog({
   track,
   onClose,
+  onDeleted,
 }: {
   track: LibraryTrack | null;
   onClose: () => void;
+  /** Fired only on a confirmed deletion — lets callers dismiss anything still
+   * showing the now-gone track (the metadata drawer). */
+  onDeleted?: () => void;
 }) {
   const { t } = useTranslation("library");
   const remove = useDeleteTrack();
@@ -23,7 +27,12 @@ export function DeleteTrackDialog({
 
   const confirm = () => {
     if (!track) return;
-    remove.mutate(track.id, { onSuccess: onClose });
+    remove.mutate(track.id, {
+      onSuccess: () => {
+        onDeleted?.();
+        onClose();
+      },
+    });
   };
 
   return (

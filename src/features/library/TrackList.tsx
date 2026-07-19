@@ -111,7 +111,11 @@ export function TrackList({ tracks }: { tracks: LibraryTrack[] }) {
         ))}
       </ul>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
+      <MetadataDrawer
+        track={inspected}
+        onClose={() => setInspectedId(null)}
+        onDelete={setDeleting}
+      />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

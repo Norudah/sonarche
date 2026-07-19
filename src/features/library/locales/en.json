@@ -29,10 +29,7 @@
   "metadata": {
     "title": "Metadata",
     "inspect": "Inspect metadata",
-    "artwork": "Artwork",
     "changeArtwork": "Change image",
-    "matchTitle": "MusicBrainz match",
-    "reenrichHint": "Re-run acoustic identification to fix album, artwork and tags.",
     "reenrich": "Re-run auto-match",
     "reenriching": "Matching…",
     "reenrichMatched": "Metadata updated.",
@@ -54,7 +51,10 @@
     "close": "Close",
     "edit": "Edit",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "completeness": "Completeness — {{filled}}/{{total}} fields",
+    "derived": "derived",
+    "viewAlbum": "View album"
   },
   "delete": {
     "action": "Delete track",

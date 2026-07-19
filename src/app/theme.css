@@ -41,15 +41,25 @@
      whose foreground is therefore DARK: filled success shapes come out with a
      black glyph, and soft chips read acid. Dropping the lightness lets white
      ride on top and turns the soft pair into the calm pale-green/deep-green
-     we want. */
-  --success: oklch(0.62 0.15 157);
+     we want. Lightness dialed down again from 0.62: the tag-status dot in
+     the download queue read as too pale next to its warning/danger siblings. */
+  --success: oklch(0.52 0.15 157);
   --success-foreground: var(--snow);
+
+  /* Danger — HeroUI's default (chroma 0.2328) is the most saturated color in
+     the whole palette and reads as alarm-red next to the calmer accent/
+     success/warning scale. Dialed down to match their chroma. */
+  --danger: oklch(0.6 0.17 25);
+  --danger-foreground: var(--snow);
 }
 
 [data-theme="dark"] {
   /* Slightly lighter accent for contrast on dark surfaces */
   --accent: oklch(0.66 0.2 277);
   --accent-foreground: var(--snow);
+
+  --danger: oklch(0.65 0.17 25);
+  --danger-foreground: var(--snow);
 }
 
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
@@ -107,6 +117,13 @@
      only ever used on that source's badge. */
   --color-youtube: oklch(0.52 0.21 27);
   --color-youtube-soft: oklch(0.95 0.03 27);
+
+  /* Metadata drawer header — a decorative gradient, same hue as the app's
+     indigo accent but starting darker so it resolves into --accent rather
+     than sitting flat on it. Not semantic (single consumer), so it lives
+     here rather than in the theme-swapped accent/success/warning block. */
+  --color-metadata-header-from: oklch(0.3 0.16 277);
+  --color-metadata-header-to: var(--accent);
 
   /* Typography */
   --font-sans:
