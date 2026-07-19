@@ -195,6 +195,24 @@ export function installMockTauri() {
         if (field) preferences[field] = Number(payload?.seconds ?? preferences[field]);
         return preferences;
       }
+      // These two must mint a real job: the unhandled `{}` fallback used to
+      // yield a job with no `id`, which React then rendered as a keyless row.
+      if (cmd === "enqueue_download") {
+        const queued = job({
+          url: String(payload?.url ?? ""),
+          kind: String(payload?.kind ?? "single"),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        jobs.unshift(queued);
+        return queued;
+      }
+      if (cmd === "retry_job") {
+        const target = jobs.find((j) => j.id === payload?.id);
+        if (!target) return {};
+        Object.assign(target, { status: "queued", error: null, failedStep: null });
+        return target;
+      }
       return responses[cmd] ?? {};
     },
   };
