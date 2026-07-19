@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import { trackDuration } from "@/shared/player/duration";
 import type { PlayableTrack } from "@/shared/player/types";
 
 /**
@@ -45,29 +46,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
-  // True once a known (library metadata) duration has been set for the current track,
-  // so the browser's own (unreliable, for asset:// AAC streams) estimate doesn't override it.
-  const knownDurationRef = useRef(false);
+  // The playing track's library duration, read from the element's own listeners.
+  // A ref, not state, so the listeners stay attached once for the app's life.
+  const knownDurationRef = useRef<number | null>(null);
 
   // Sync React state with the <audio> element, the external system that owns playback.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMetadata = () => {
-      if (!knownDurationRef.current) setDuration(audio.duration || 0);
+    const onDurationChange = () => {
+      setDuration(trackDuration(knownDurationRef.current, audio.duration) ?? 0);
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onEnded = () => setIsPlaying(false);
     audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("loadedmetadata", onDurationChange);
+    audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("loadedmetadata", onDurationChange);
+      audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
@@ -89,7 +92,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     setCurrent(track);
     setCurrentTime(0);
-    knownDurationRef.current = track.duration != null;
+    knownDurationRef.current = track.duration ?? null;
     setDuration(track.duration ?? 0);
     audio.src = track.src;
     void audio.play();

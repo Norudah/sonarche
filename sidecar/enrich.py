@@ -121,6 +121,30 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
     return None
 
 
+# Fields a TrackInfo carries that describe the *file*, not the work. beets fills
+# these from the audio itself at import time and they must survive tagging.
+_FILE_FIELDS = ("length",)
+
+
+def work_fields(merged) -> dict:
+    """A matched TrackInfo, stripped of anything that describes the audio file.
+
+    `length` on a TrackInfo is MusicBrainz' duration for the recording, and the
+    file we downloaded from YouTube is never quite that: measured across the
+    library the two disagree by anywhere from a few tenths of a second to half a
+    minute, in both directions — different masters, a trailing outro, silence at
+    the end of a video. Copying it over `item.length` replaced a fact about our
+    file with a fact about someone else's, and everything downstream inherited
+    the lie: tracklist durations, the player's seek bar, and `_pair_plausible` in
+    enrich_album, which compares a file's length against a candidate track's and
+    whose own variable is called `file_length`.
+
+    The item's own `length` is read from the audio at import and is correct.
+    Nothing about matching a release should overwrite it.
+    """
+    return {key: value for key, value in dict(merged).items() if key not in _FILE_FIELDS}
+
+
 def store_and_file(lib, item, sync_album: bool = True) -> None:
     """Persist the item, push its tags to the file, make sure it belongs to an
     album row, and move it to the path its metadata now dictates.
@@ -189,7 +213,7 @@ def apply_provisional(lib, item, params: dict, album=None) -> bool:
 def _apply(lib, item, album_info, track_info) -> None:
     # merge_with_album already carries the release's `genres` list along.
     merged = track_info.merge_with_album(album_info)
-    item.update(merged)
+    item.update(work_fields(merged))
 
     # Genre: MB community tags ride along in `genres` and canonicalize against
     # our tree offline; when MB gave nothing, _get_genre falls back to a
