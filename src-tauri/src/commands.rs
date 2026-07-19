@@ -99,8 +99,12 @@ pub async fn get_preferences(app: AppHandle) -> AppResult<Preferences> {
 }
 
 #[tauri::command]
-pub async fn set_lastfm_fetch_delay(app: AppHandle, seconds: f64) -> AppResult<Preferences> {
-    preferences::set_lastfm_fetch_delay(&app, seconds).await
+pub async fn set_rate_limit_delay(
+    app: AppHandle,
+    key: String,
+    seconds: f64,
+) -> AppResult<Preferences> {
+    preferences::set_rate_limit_delay(&app, &key, seconds).await
 }
 
 #[tauri::command]

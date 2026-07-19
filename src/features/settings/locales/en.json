@@ -22,13 +22,27 @@
   "rateLimits": {
     "category": "API rate limits",
     "title": "API rate limits",
-    "description": "Controls how cautious the app is when calling external services during library-wide batch operations.",
-    "lastfmDelay": {
-      "name": "Delay between Last.fm requests",
-      "instant": "Instant",
-      "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
-      "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
-      "warning": "Below one second isn't recommended: stay polite to Last.fm and avoid hitting it with too many requests too close together."
+    "description": "Controls how cautious the app is when calling external services. Every service has its own rules: staying polite is what keeps you from getting blocked.",
+    "instant": "Instant",
+    "delays": {
+      "download": {
+        "name": "Delay between two downloads",
+        "why": "On a playlist, the app downloads tracks one by one from YouTube. Back-to-back requests from the same IP are exactly what triggers throttling: a pause between tracks makes the batch look like normal listening. The real delay is randomised between this value and twice it.",
+        "estimate": "For a {{count}}-track playlist, the pauses add about {{duration}}.",
+        "warning": "Below 3 seconds, the risk of being rate-limited (403 errors) rises sharply on long playlists."
+      },
+      "acoustid": {
+        "name": "Delay between AcoustID requests",
+        "why": "Every imported track is identified by its acoustic fingerprint through AcoustID. The service allows 3 requests per second per key, and an album runs its lookups back to back — hence this pause.",
+        "estimate": "For a {{count}}-track album, the pauses add about {{duration}}.",
+        "warning": "Below 0.34s you exceed the documented 3 requests/second limit and the key may get throttled."
+      },
+      "lastfm": {
+        "name": "Delay between Last.fm requests",
+        "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
+        "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
+        "warning": "Below one second isn't recommended: stay polite to Last.fm and avoid hitting it with too many requests too close together."
+      }
     }
   },
   "developer": {

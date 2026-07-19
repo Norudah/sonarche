@@ -4,9 +4,10 @@ import {
   type ApiKeyName,
   getPreferences,
   listApiKeys,
+  type RateLimitKey,
   resetLibraryDev,
   setApiKey,
-  setLastfmFetchDelay,
+  setRateLimitDelay,
 } from "@/features/settings/api";
 
 export const apiKeysKey = ["settings", "apiKeys"];
@@ -30,10 +31,11 @@ export function usePreferences() {
   return useQuery({ queryKey: preferencesKey, queryFn: getPreferences });
 }
 
-export function useSetLastfmFetchDelay() {
+export function useSetRateLimitDelay() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: setLastfmFetchDelay,
+    mutationFn: ({ key, seconds }: { key: RateLimitKey; seconds: number }) =>
+      setRateLimitDelay(key, seconds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesKey });
     },

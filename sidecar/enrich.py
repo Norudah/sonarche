@@ -13,6 +13,7 @@ import tempfile
 
 import metadata
 import protocol
+import provisional
 from report import build_report
 
 _ACOUSTID_LOOKUP = "https://api.acoustid.org/v2/lookup"
@@ -120,22 +121,14 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
     return None
 
 
-def _apply(lib, item, album_info, track_info) -> None:
+def store_and_file(lib, item, sync_album: bool = True) -> None:
+    """Persist the item, push its tags to the file, make sure it belongs to an
+    album row, and move it to the path its metadata now dictates.
+
+    `sync_album=False` is for an item joining an album row that already carries
+    trusted metadata (a provisional track filed next to its matched siblings):
+    the row must not be rewritten from the item that borrowed it."""
     from beets import library
-
-    # merge_with_album already carries the release's `genres` list along.
-    merged = track_info.merge_with_album(album_info)
-    item.update(merged)
-
-    # Genre: MB community tags ride along in `genres` and canonicalize against
-    # our tree offline; when MB gave nothing, _get_genre falls back to a
-    # Last.fm fetch (its client swallows network errors and returns []).
-    # An empty result means nothing resolved: keep the raw MB genre (it may
-    # simply be off-whitelist) rather than erasing it.
-    genres, label = metadata.lastgenre_plugin()._get_genre(item)
-    if genres:
-        item.genres = genres
-        protocol.log(f"enrich: genre {genres} ({label})")
 
     item.store()
     try:
@@ -160,9 +153,10 @@ def _apply(lib, item, album_info, track_info) -> None:
         # bails out and the file lands under Non-Album/. Create it, exactly
         # like a regular -A import would have.
         album = lib.add_album([item])
-    for key in library.Album.item_keys:
-        album[key] = item[key]
-    album.store()
+    if sync_album:
+        for key in library.Album.item_keys:
+            album[key] = item[key]
+        album.store()
 
     try:
         # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
@@ -171,31 +165,91 @@ def _apply(lib, item, album_info, track_info) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def download_cover(release_id: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) cover images from the Cover Art Archive, each as (data, is_png),
-    or None. hq is CAA's original upload, kept on disk for Sonarche's own display;
-    thumb is CAA's 500px rendition — used as beets' artpath (cover.jpg) and
-    embedded into file tags, so the beets copy and the audio files stay light."""
+def apply_provisional(lib, item, params: dict, album=None) -> bool:
+    """Nothing identified this file: fill it from the download's own hints (and
+    from `album`, when its siblings matched a release) and flag it as a guess,
+    so it lands with its album instead of staying blank outside every folder.
+
+    Returns whether anything was written."""
+    fields = provisional.guess_fields(
+        title=params.get("title"),
+        artist=params.get("artist"),
+        album_fields=provisional.album_fields(album) if album is not None else None,
+    )
+    if not provisional.apply(item, fields):
+        protocol.log(f"enrich: item {item.id} unidentified and no hint to guess from")
+        return False
+    protocol.log(f"enrich: item {item.id} provisionally tagged from {sorted(fields)}")
+    if album is not None:
+        item.album_id = album.id
+    store_and_file(lib, item, sync_album=album is None)
+    return True
+
+
+def _apply(lib, item, album_info, track_info) -> None:
+    # merge_with_album already carries the release's `genres` list along.
+    merged = track_info.merge_with_album(album_info)
+    item.update(merged)
+
+    # Genre: MB community tags ride along in `genres` and canonicalize against
+    # our tree offline; when MB gave nothing, _get_genre falls back to a
+    # Last.fm fetch (its client swallows network errors and returns []).
+    # An empty result means nothing resolved: keep the raw MB genre (it may
+    # simply be off-whitelist) rather than erasing it.
+    genres, label = metadata.lastgenre_plugin()._get_genre(item)
+    if genres:
+        item.genres = genres
+        protocol.log(f"enrich: genre {genres} ({label})")
+
+    store_and_file(lib, item)
+
+
+def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) front cover from one Cover Art Archive entity
+    (`release/<id>` or `release-group/<id>`), each as (data, is_png), or None
+    when that entity carries no front art. hq is CAA's original upload; thumb is
+    its 500px rendition (or the original when CAA has no rendition)."""
     import requests
 
-    hq_resp = requests.get(
-        f"https://coverartarchive.org/release/{release_id}/front", timeout=30
-    )
+    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30)
     if hq_resp.status_code != 200:
-        protocol.log(f"enrich: no cover for release {release_id} (HTTP {hq_resp.status_code})")
         return None
     hq_data = hq_resp.content
     hq = (hq_data, hq_data[:4] == b"\x89PNG")
 
     thumb_resp = requests.get(
-        f"https://coverartarchive.org/release/{release_id}/front-500", timeout=30
+        f"https://coverartarchive.org/{entity_path}/front-500", timeout=30
     )
     thumb = (
         (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
         if thumb_resp.status_code == 200
-        else hq  # CAA has no 500px rendition for this release: fall back to the original
+        else hq
     )
     return hq, thumb
+
+
+def download_cover(
+    release_id: str, release_group_id: str | None = None
+) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
+    """(hq, thumb) cover from the Cover Art Archive, or None. hq is CAA's
+    original upload, kept on disk for Sonarche's own display; thumb is the 500px
+    rendition — used as beets' artpath (cover.jpg) and embedded into file tags,
+    so the beets copy and the audio files stay light.
+
+    Tries the specific release first, then the release-group's designated cover.
+    Many streaming/regional releases carry no per-release art while their group
+    does — without this fallback, popular albums landed with no cover at all."""
+    cover = _caa_front(f"release/{release_id}")
+    if cover is not None:
+        return cover
+    protocol.log(f"enrich: no per-release cover for {release_id}")
+    if release_group_id:
+        cover = _caa_front(f"release-group/{release_group_id}")
+        if cover is not None:
+            protocol.log(f"enrich: cover found on release-group {release_group_id}")
+            return cover
+        protocol.log(f"enrich: no cover on release-group {release_group_id} either")
+    return None
 
 
 def set_album_art(album, data: bytes, is_png: bool) -> None:
@@ -236,11 +290,11 @@ def embed_cover(item, data: bytes, is_png: bool) -> None:
         tags.save()
 
 
-def _fetch_cover(item, release_id: str) -> None:
+def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> None:
     album = item.get_album()
     if album is None:
         return
-    cover = download_cover(release_id)
+    cover = download_cover(release_id, release_group_id)
     if cover is None:
         return
     hq, thumb = cover
@@ -261,11 +315,20 @@ def handle(request_id: str, params: dict) -> dict:
     return enrich_one(request_id, lib, item, params)
 
 
-def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = True) -> dict:
+def enrich_one(
+    request_id: str,
+    lib,
+    item,
+    params: dict,
+    fetch_cover: bool = True,
+    provisional_fallback: bool = True,
+) -> dict:
     """Fingerprint-first enrichment of one item. Caller owns the Library and
     must have called metadata.ensure_plugins(). `params` carries fpcalc,
     acoustid_key and the optional title/artist hints. `fetch_cover=False`
-    lets the album batch fetch one cover per album instead of per track."""
+    lets the album batch fetch one cover per album instead of per track;
+    `provisional_fallback=False` likewise defers the unidentified-file guess to
+    the album batch, which can borrow its siblings' release."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
@@ -323,9 +386,11 @@ def enrich_one(request_id: str, lib, item, params: dict, fetch_cover: bool = Tru
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
             try:
-                _fetch_cover(item, album_info.album_id)
+                _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
             except Exception as exc:  # metadata landed; a missing cover is not a failure
                 protocol.log(f"enrich: cover fetch failed: {exc}")
+    elif provisional_fallback:
+        apply_provisional(lib, item, params)
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
     fresh = lib.get_item(item.id)

@@ -21,6 +21,21 @@ export function useDeleteTrack() {
   });
 }
 
+/** Delete a whole album's items as one unit. Sequential rather than parallel:
+ * each delete_track call has beets rewrite the same library file, and the
+ * cache is invalidated once at the end instead of N times mid-flight. */
+export function useDeleteTracks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      for (const id of ids) await deleteTrack(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
 export function useReenrichTrack() {
   const queryClient = useQueryClient();
   return useMutation({

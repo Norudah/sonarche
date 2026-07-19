@@ -79,23 +79,32 @@ class VoteReleaseTest(unittest.TestCase):
 
 
 class FindContentDuplicatesTest(unittest.TestCase):
-    def test_intersecting_sets_mark_later_item(self):
+    def test_same_primary_marks_later_item(self):
         # Regression: a playlist carrying the same song under two different
         # video titles produced "02 Ready to Run.1.m4a" and a %aunique folder.
-        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"}), (3, {"rec-a", "rec-c"})])
+        # The same audio shares its primary (top-confidence) recording.
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"]), (3, ["rec-a", "rec-c"])])
         self.assertEqual(dups, {3: 1})
 
-    def test_disjoint_sets_keep_everything(self):
+    def test_shared_secondary_only_is_not_a_duplicate(self):
+        # Regression (Hail to the King): two distinct album tracks whose only
+        # overlap is a low-confidence *secondary* recording must NOT be deleted.
+        # Item 2's primary is rec-b; it merely carries rec-a as a noisy second
+        # candidate. Different primaries -> different audio -> both kept.
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b", "rec-a"])])
+        self.assertEqual(dups, {})
+
+    def test_disjoint_primaries_keep_everything(self):
         self.assertEqual(
-            find_content_duplicates([(1, {"rec-a"}), (2, {"rec-b"})]), {}
+            find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {}
         )
 
     def test_unidentified_items_never_match(self):
-        # AcoustID silence (empty set) must not mark two unknowns as duplicates.
-        self.assertEqual(find_content_duplicates([(1, set()), (2, set())]), {})
+        # AcoustID silence (empty list) must not mark two unknowns as duplicates.
+        self.assertEqual(find_content_duplicates([(1, []), (2, [])]), {})
 
     def test_chain_points_to_first_kept(self):
-        dups = find_content_duplicates([(1, {"rec-a"}), (2, {"rec-a"}), (3, {"rec-a"})])
+        dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-a"]), (3, ["rec-a"])])
         self.assertEqual(dups, {2: 1, 3: 1})
 
 
@@ -135,6 +144,37 @@ class MatchByRecordingsTest(unittest.TestCase):
         self.assertEqual(mapping, {})
         self.assertEqual(leftovers, [bonus])
         self.assertEqual(extra, [slot])
+
+    def test_lone_leftover_takes_the_lone_free_slot(self):
+        # Regression (Apocalyptic Love): the "You're a Lie [HD]" video rip ran
+        # 259s against the album master's 231s and AcoustID resolved it to the
+        # single's recording, so it matched neither by id nor by duration —
+        # and landed untagged outside the album folder. With every other track
+        # placed, the one empty slot is the only thing it can be.
+        placed = [_Item(i, 200.0) for i in range(1, 4)]
+        odd = _Item(4, 259.0)
+        slots = [_Track(f"rec-{i}", 200.0) for i in range(1, 4)]
+        gap = _Track("rec-album-lie", 231.0)
+        mapping, leftovers, extra = match_by_recordings(
+            [*placed, odd],
+            [*slots, gap],
+            {1: ["rec-1"], 2: ["rec-2"], 3: ["rec-3"], 4: ["rec-single-lie"]},
+        )
+        self.assertEqual(mapping[odd], gap)
+        self.assertEqual(leftovers, [])
+        self.assertEqual(extra, [])
+
+    def test_lone_leftover_stays_put_without_a_mapped_majority(self):
+        # Half the batch on the release is not enough to argue by elimination:
+        # a two-file batch where one is off-release must leave it alone.
+        mapped, odd = _Item(1, 200.0), _Item(2, 200.0)
+        slot, gap = _Track("rec-1", 200.0), _Track("rec-2", 200.0)
+        mapping, leftovers, extra = match_by_recordings(
+            [mapped, odd], [slot, gap], {1: ["rec-1"], 2: ["rec-elsewhere"]}
+        )
+        self.assertEqual(mapping, {mapped: slot})
+        self.assertEqual(leftovers, [odd])
+        self.assertEqual(extra, [gap])
 
     def test_silent_item_rescued_by_nearest_duration(self):
         silent = _Item(1, 256.0)

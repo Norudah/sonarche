@@ -2,6 +2,8 @@
 
 import os
 
+import provisional
+
 
 def build_report(item) -> dict:
     """Which metadata fields are actually filled; the frontend derives a
@@ -20,6 +22,8 @@ def build_report(item) -> dict:
         "item_id": item.id,
         # Empty mb_trackid means no trusted match was ever applied.
         "mb_matched": bool(item.mb_trackid),
+        # Tags were written, but guessed from the video rather than matched.
+        "provisional": bool(item.get(provisional.FLAG)),
         "source": item.get("data_source") or None,
         "fields": {
             "title": bool(item.title),

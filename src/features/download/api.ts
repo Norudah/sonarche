@@ -18,6 +18,9 @@ export interface MetadataReport {
   /** beets item id — links the job to its library track (null if unknown). */
   itemId: number | null;
   mbMatched: boolean;
+  /** Tags were written but guessed from the video, not matched — never trust
+   * them without a second pass. See the sidecar's `provisional` module. */
+  provisional: boolean;
   source: string | null;
   fields: MetadataReportFields;
   cover: boolean;
@@ -39,6 +42,8 @@ export interface AlbumTrackJob {
   /** Kept item id when the enrich step dropped this track as a content
    * duplicate (same AcoustID recording under another video title). */
   duplicateOf: number | null;
+  /** Download attempts started, 0 before the first. See DOWNLOAD_ATTEMPTS. */
+  downloadAttempts: number;
 }
 
 export interface DownloadJob {
@@ -55,6 +60,8 @@ export interface DownloadJob {
   report: MetadataReport | null;
   /** Album jobs only; empty for singles. */
   tracks: AlbumTrackJob[];
+  /** Download attempts started for a single; album jobs count per track. */
+  downloadAttempts: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -62,6 +69,7 @@ export interface DownloadJob {
 interface WireReport {
   item_id: number | null;
   mb_matched: boolean;
+  provisional?: boolean;
   source: string | null;
   fields: MetadataReportFields;
   cover: boolean;
@@ -80,6 +88,7 @@ interface WireTrack {
   itemId: number | null;
   report: WireReport | null;
   duplicateOf?: number | null;
+  downloadAttempts?: number;
 }
 
 export interface WireJob {
@@ -95,6 +104,7 @@ export interface WireJob {
   duration: number | null;
   report: WireReport | null;
   tracks?: WireTrack[];
+  downloadAttempts?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -104,6 +114,9 @@ function mapReport(raw: WireReport | null): MetadataReport | null {
   return {
     itemId: raw.item_id ?? null,
     mbMatched: raw.mb_matched,
+    // Absent from reports stored before the flag existed: those jobs predate
+    // provisional tagging, so they never guessed anything.
+    provisional: raw.provisional ?? false,
     source: raw.source,
     fields: raw.fields,
     cover: raw.cover,
@@ -123,6 +136,7 @@ function mapTrack(raw: WireTrack): AlbumTrackJob {
     itemId: raw.itemId,
     report: mapReport(raw.report),
     duplicateOf: raw.duplicateOf ?? null,
+    downloadAttempts: raw.downloadAttempts ?? 0,
   };
 }
 
@@ -131,6 +145,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     ...raw,
     report: mapReport(raw.report),
     tracks: (raw.tracks ?? []).map(mapTrack),
+    downloadAttempts: raw.downloadAttempts ?? 0,
   };
 }
 

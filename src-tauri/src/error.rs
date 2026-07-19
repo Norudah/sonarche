@@ -18,6 +18,8 @@ pub enum AppError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error("jobs database error: {0}")]
+    Db(#[from] rusqlite::Error),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
 }

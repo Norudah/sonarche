@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router";
 
 import { router } from "@/app/routes";
+import { MotionProvider } from "@/shared/motion/MotionProvider";
 import { PlayerProvider } from "@/shared/player/PlayerContext";
 
 const queryClient = new QueryClient({
@@ -16,9 +17,11 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <PlayerProvider>
-        <RouterProvider router={router} />
-      </PlayerProvider>
+      <MotionProvider>
+        <PlayerProvider>
+          <RouterProvider router={router} />
+        </PlayerProvider>
+      </MotionProvider>
     </QueryClientProvider>
   );
 }

@@ -30,6 +30,20 @@
      yellow or gray. --background-secondary/-tertiary derive from this via
      color-mix, so they follow automatically. */
   --background: oklch(0.995 0.0012 75);
+
+  /* Tertiary hue — amber. Indigo + white alone reads duo-tone; this is the
+     only third color, reserved for "incomplete metadata" states and small
+     secondary accents. It rides HeroUI's `warning` scale so soft/foreground
+     variants and every warning-colored component follow for free. */
+  --warning: oklch(0.72 0.15 65);
+
+  /* Success — HeroUI ships a very light, very saturated green (0.7329 0.1935)
+     whose foreground is therefore DARK: filled success shapes come out with a
+     black glyph, and soft chips read acid. Dropping the lightness lets white
+     ride on top and turns the soft pair into the calm pale-green/deep-green
+     we want. */
+  --success: oklch(0.62 0.15 157);
+  --success-foreground: var(--snow);
 }
 
 [data-theme="dark"] {
@@ -84,14 +98,55 @@
 @theme {
   /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
      Centralized so the shell layout never carries magic numbers. */
-  --spacing-sidebar: 15rem;
+  --spacing-sidebar: 13.5rem;
   --spacing-topbar: 2.25rem;
   --spacing-player: 5.5rem;
+
+  /* Source brand colors — not semantic app colors: they identify a third
+     party, so they live outside the accent/success/warning scales and are
+     only ever used on that source's badge. */
+  --color-youtube: oklch(0.52 0.21 27);
+  --color-youtube-soft: oklch(0.95 0.03 27);
 
   /* Typography */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+
+  /* A queue row that just landed. Two animations, because the two properties
+     have to live on different elements:
+
+     - the accent wash goes on the CELL (`td`), which is the full-bleed surface;
+     - the fade + slide goes on the cell's direct CHILD, because a transform on
+       `display: table-cell` is not reliably applied, while the div inside it is
+       an ordinary block and animates properly.
+
+     CSS rather than Motion on purpose: the rows live inside HeroUI's Table, a
+     react-aria collection that parses its children to build the row model, so
+     wrapping them in <AnimatePresence> breaks the table outright. A class on the
+     cells sidesteps the collection entirely. */
+  --animate-row-wash: sonarche-row-wash 0.55s var(--ease-out-fluid);
+  --animate-row-rise: sonarche-row-rise 0.4s var(--ease-out-fluid);
+
+  @keyframes sonarche-row-wash {
+    from {
+      background-color: var(--color-accent-soft);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes sonarche-row-rise {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 
   /* Now-playing equalizer — used by the player when audio is playing. */
   --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
@@ -104,5 +159,38 @@
     50% {
       transform: scaleY(1);
     }
+  }
+}
+
+/* --- Queue row entrances -------------------------------------------------- */
+
+/* Applied on a <tr>, driven from QueueTable. Utilities rather than a stack of
+   arbitrary variants at the call site, because both of these have to reach two
+   different descendants with two different animations — expressing that inline
+   made the className longer than the row it decorated. */
+
+/** A job the user just queued: an accent wash that drains as the content rises. */
+@utility row-reveal {
+  & > td,
+  & > th {
+    animation: var(--animate-row-wash);
+  }
+
+  & > td > *,
+  & > th > * {
+    animation: var(--animate-row-rise);
+  }
+}
+
+/** A track row revealed by expanding its album. No wash — the row is not new,
+    it was only hidden — and a per-row delay so the tracks cascade instead of
+    appearing as one block. `backwards` keeps a row invisible during its delay;
+    without it every row would flash at full opacity before starting. */
+@utility row-cascade {
+  & > td > *,
+  & > th > * {
+    animation: var(--animate-row-rise);
+    animation-delay: var(--row-stagger, 0s);
+    animation-fill-mode: backwards;
   }
 }

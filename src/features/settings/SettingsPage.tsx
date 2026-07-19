@@ -8,7 +8,7 @@ import { paths } from "@/app/routes";
 import type { ApiKeyName } from "@/features/settings/api";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
-import { useApiKeys, usePreferences, useSetApiKey, useSetLastfmFetchDelay } from "@/features/settings/hooks";
+import { useApiKeys, usePreferences, useSetApiKey, useSetRateLimitDelay } from "@/features/settings/hooks";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 
 type Category = "apiKeys" | "rateLimits" | "developer";
@@ -27,7 +27,7 @@ export function SettingsPage() {
   const dirty = Object.values(drafts).some((value) => value.trim() !== "");
 
   const preferences = usePreferences();
-  const setDelay = useSetLastfmFetchDelay();
+  const setDelay = useSetRateLimitDelay();
 
   const save = async () => {
     for (const [name, value] of Object.entries(drafts)) {
@@ -97,7 +97,7 @@ export function SettingsPage() {
               ) : (
                 <RateLimitsSection
                   preferences={preferences.data!}
-                  onChangeDelay={(seconds) => setDelay.mutate(seconds)}
+                  onChangeDelay={(key, seconds) => setDelay.mutate({ key, seconds })}
                 />
               ))}
             {category === "developer" && <DeveloperSection />}

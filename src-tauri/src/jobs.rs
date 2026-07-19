@@ -2,17 +2,18 @@
 //! `download → import`, persists state to app data, and pushes every
 //! transition to the webview as a `jobs:updated` event.
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
+use crate::jobs_store;
 use crate::preferences;
 use crate::python_env::{self, AppPaths};
 use crate::settings;
@@ -24,9 +25,9 @@ const ENRICH_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3 * 60);
 /// One request covers the whole album: N fingerprints + MB calls + covers.
 const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
-/// Random pause between two YouTube downloads of an album batch. Sequential
-/// same-IP hammering is exactly what gets clients throttled or flagged.
-const TRACK_SLEEP_RANGE_SECS: (f64, f64) = (3.0, 6.0);
+/// The configured download delay is a floor, not a metronome: jittering it up
+/// to 2x keeps the batch from looking like a scripted, perfectly-timed loop.
+const TRACK_SLEEP_JITTER: f64 = 1.0;
 /// YouTube 403s are transient flow protection, not permanent failures: retry
 /// each URL a few times before giving up on it. A handful of polite, spaced
 /// attempts doesn't escalate throttling; hammering without pause does.
@@ -34,8 +35,6 @@ const DOWNLOAD_ATTEMPTS: u32 = 3;
 /// Pause before the first retry; doubles per attempt (6s, then 12s).
 const DOWNLOAD_RETRY_PAUSE_SECS: u64 = 6;
 const MAX_ALBUM_TRACKS: u64 = 100;
-/// Persisted history cap; oldest terminal jobs are dropped past this.
-const MAX_JOBS: usize = 200;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -53,12 +52,6 @@ pub enum JobStatus {
     Enriching,
     Done,
     Failed,
-}
-
-impl JobStatus {
-    fn is_terminal(self) -> bool {
-        matches!(self, JobStatus::Done | JobStatus::Failed)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,6 +96,11 @@ pub struct AlbumTrack {
     /// library (same AcoustID recording, so same audio under another title).
     #[serde(default)]
     pub duplicate_of: Option<i64>,
+    /// How many download attempts have been started (0 before the first, up to
+    /// DOWNLOAD_ATTEMPTS). Combined with `status` it says which tries failed:
+    /// every attempt before the last one did, by construction.
+    #[serde(default)]
+    pub download_attempts: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,14 +126,18 @@ pub struct Job {
     /// `report` stays None on album jobs — the frontend aggregates per track.
     #[serde(default)]
     pub tracks: Vec<AlbumTrack>,
+    /// Download attempts started for a single job; album jobs count per track.
+    #[serde(default)]
+    pub download_attempts: u32,
     pub created_at: u64,
     pub updated_at: u64,
 }
 
 struct JobsInner {
-    jobs: Mutex<Vec<Job>>,
+    /// Our own history DB (jobs.db), guarded for serialized access. rusqlite is
+    /// sync, so every touch runs inside `spawn_blocking` via `with_conn`.
+    conn: Arc<StdMutex<Connection>>,
     tx: mpsc::UnboundedSender<String>,
-    store_path: PathBuf,
 }
 
 pub struct JobsState(Arc<JobsInner>);
@@ -147,68 +149,66 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-fn load_jobs(store_path: &PathBuf) -> Vec<Job> {
-    let Ok(raw) = std::fs::read_to_string(store_path) else {
-        return Vec::new();
-    };
-    match serde_json::from_str::<Vec<Job>>(&raw) {
-        Ok(jobs) => jobs,
-        Err(err) => {
-            eprintln!(
-                "[jobs] discarding unreadable {}: {err}",
-                store_path.display()
-            );
-            Vec::new()
-        }
-    }
+/// Run a blocking DB operation off the async runtime. The connection mutex is
+/// only ever held on the blocking thread, never across an await.
+async fn with_conn<T, F>(inner: &JobsInner, f: F) -> AppResult<T>
+where
+    T: Send + 'static,
+    F: FnOnce(&Connection) -> AppResult<T> + Send + 'static,
+{
+    let conn = inner.conn.clone();
+    tokio::task::spawn_blocking(move || {
+        let guard = conn.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        f(&guard)
+    })
+    .await
+    .map_err(|err| AppError::Sidecar(format!("jobs db task panicked: {err}")))?
 }
 
-async fn persist(store_path: &PathBuf, jobs: &[Job]) {
-    match serde_json::to_vec_pretty(jobs) {
-        Ok(bytes) => {
-            if let Err(err) = tokio::fs::write(store_path, bytes).await {
-                eprintln!("[jobs] failed to persist queue: {err}");
-            }
-        }
-        Err(err) => eprintln!("[jobs] failed to serialize queue: {err}"),
-    }
-}
-
-/// Load persisted jobs, fail anything the previous run left unfinished,
-/// and start the single worker task. Called once from Tauri setup.
+/// Open the history DB, migrate any legacy `jobs.json`, fail whatever the
+/// previous run left unfinished, and start the single worker task. Called once
+/// from Tauri setup.
 pub fn init(app: &AppHandle) -> AppResult<JobsState> {
     let data_dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
-    let store_path = data_dir.join("jobs.json");
+    let db_path = data_dir.join("sonarche.db");
+    let legacy_json = data_dir.join("jobs.json");
 
-    let mut jobs = load_jobs(&store_path);
-    let mut interrupted = false;
-    for job in &mut jobs {
-        if !job.status.is_terminal() {
-            job.status = JobStatus::Failed;
-            job.error = Some("interrupted by app restart".into());
-            job.updated_at = now_ms();
-            interrupted = true;
-            // A track caught mid-download restarts from scratch; its
-            // staged_path/item_id still encode any real progress.
-            for track in &mut job.tracks {
-                if track.status == TrackStatus::Downloading {
-                    track.status = TrackStatus::Pending;
+    // The DB shipped briefly as jobs.db before it became the app-wide store;
+    // adopt any such file in place rather than starting empty.
+    let legacy_db = data_dir.join("jobs.db");
+    if legacy_db.exists() && !db_path.exists() {
+        let _ = std::fs::rename(&legacy_db, &db_path);
+    }
+
+    let conn = jobs_store::open(&db_path)?;
+
+    // One-time import of the pre-SQLite history, then retire the JSON file.
+    // INSERT OR REPLACE keeps it idempotent if a prior attempt half-finished.
+    if legacy_json.exists() {
+        match std::fs::read_to_string(&legacy_json)
+            .ok()
+            .and_then(|raw| serde_json::from_str::<Vec<Job>>(&raw).ok())
+        {
+            Some(jobs) => match jobs_store::import_jobs(&conn, &jobs) {
+                Ok(()) => {
+                    let _ = std::fs::rename(&legacy_json, data_dir.join("jobs.json.migrated"));
+                    eprintln!("[jobs] migrated {} job(s) from jobs.json", jobs.len());
                 }
-            }
+                Err(err) => eprintln!("[jobs] legacy import failed, keeping jobs.json: {err}"),
+            },
+            None => eprintln!("[jobs] could not read legacy jobs.json; leaving it in place"),
         }
     }
-    if interrupted {
-        if let Ok(bytes) = serde_json::to_vec_pretty(&jobs) {
-            let _ = std::fs::write(&store_path, bytes);
-        }
+
+    if let Ok(true) = jobs_store::fail_interrupted(&conn, now_ms()) {
+        eprintln!("[jobs] marked interrupted job(s) as failed");
     }
 
     let (tx, rx) = mpsc::unbounded_channel();
     let inner = Arc::new(JobsInner {
-        jobs: Mutex::new(jobs),
+        conn: Arc::new(StdMutex::new(conn)),
         tx,
-        store_path,
     });
     spawn_worker(app.clone(), inner.clone(), rx);
     Ok(JobsState(inner))
@@ -222,29 +222,41 @@ fn spawn_worker(app: AppHandle, inner: Arc<JobsInner>, mut rx: mpsc::UnboundedRe
     });
 }
 
-/// Apply a mutation to one job, persist the queue and broadcast the new state.
+async fn snapshot(inner: &JobsInner, id: &str) -> Option<Job> {
+    let id = id.to_string();
+    match with_conn(inner, move |c| jobs_store::get_job(c, &id)).await {
+        Ok(job) => job,
+        Err(err) => {
+            eprintln!("[jobs] snapshot failed: {err}");
+            None
+        }
+    }
+}
+
+/// Apply a mutation to one job, persist it (job row + all its tracks) and
+/// broadcast the new state. Use this whenever job-level fields or several
+/// tracks may change at once.
 async fn update_job(
     app: &AppHandle,
     inner: &JobsInner,
     id: &str,
     mutate: impl FnOnce(&mut Job),
 ) -> Option<Job> {
-    let mut jobs = inner.jobs.lock().await;
-    let job = jobs.iter_mut().find(|j| j.id == id)?;
-    mutate(job);
+    let mut job = snapshot(inner, id).await?;
+    mutate(&mut job);
     job.updated_at = now_ms();
-    let snapshot = job.clone();
-    persist(&inner.store_path, &jobs).await;
-    drop(jobs);
-    let _ = app.emit("jobs:updated", &snapshot);
-    Some(snapshot)
+    let to_write = job.clone();
+    if let Err(err) = with_conn(inner, move |c| jobs_store::upsert_job(c, &to_write)).await {
+        eprintln!("[jobs] persist failed: {err}");
+        return None;
+    }
+    let _ = app.emit("jobs:updated", &job);
+    Some(job)
 }
 
-async fn snapshot(inner: &JobsInner, id: &str) -> Option<Job> {
-    inner.jobs.lock().await.iter().find(|j| j.id == id).cloned()
-}
-
-/// Apply a mutation to one track of an album job (persists + broadcasts).
+/// Apply a mutation to one track of an album job, writing only that row plus the
+/// parent's `updated_at` — the hot path during a download loop, so it never
+/// rewrites the whole playlist. Still broadcasts the full job snapshot.
 async fn update_track(
     app: &AppHandle,
     inner: &JobsInner,
@@ -252,12 +264,25 @@ async fn update_track(
     index: u32,
     mutate: impl FnOnce(&mut AlbumTrack),
 ) -> Option<Job> {
-    update_job(app, inner, id, |j| {
-        if let Some(track) = j.tracks.iter_mut().find(|t| t.index == index) {
-            mutate(track);
-        }
+    let mut job = snapshot(inner, id).await?;
+    let updated_at = now_ms();
+    let updated_track = {
+        let track = job.tracks.iter_mut().find(|t| t.index == index)?;
+        mutate(track);
+        track.clone()
+    };
+    job.updated_at = updated_at;
+    let id = id.to_string();
+    if let Err(err) = with_conn(inner, move |c| {
+        jobs_store::update_track(c, &id, updated_at, &updated_track)
     })
     .await
+    {
+        eprintln!("[jobs] track persist failed: {err}");
+        return None;
+    }
+    let _ = app.emit("jobs:updated", &job);
+    Some(job)
 }
 
 async fn run_job(app: &AppHandle, inner: &JobsInner, id: &str) {
@@ -369,10 +394,44 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
         .await
 }
 
+/// Which row carries the attempt counter for a download: a single's own job row,
+/// or one track of an album playlist.
+#[derive(Clone, Copy)]
+enum AttemptTarget {
+    Job,
+    Track(u32),
+}
+
+/// Publish "we are now on attempt N" so the UI can light its attempt dots while
+/// the retry pauses run — those pauses last 6s then 12s, far too long to leave
+/// the row looking idle.
+async fn record_attempt(
+    app: &AppHandle,
+    inner: &JobsInner,
+    job_id: &str,
+    target: AttemptTarget,
+    attempt: u32,
+) {
+    match target {
+        AttemptTarget::Job => {
+            update_job(app, inner, job_id, |j| j.download_attempts = attempt).await;
+        }
+        AttemptTarget::Track(index) => {
+            update_track(app, inner, job_id, index, |t| t.download_attempts = attempt).await;
+        }
+    };
+}
+
 /// One URL through the retry policy: transient failures (YouTube 403s, network
 /// blips) get DOWNLOAD_ATTEMPTS tries with growing pauses; the row keeps its
-/// live status, the terminal log carries the attempt trail.
-async fn download_with_retry(app: &AppHandle, job_id: &str, url: &str) -> AppResult<Value> {
+/// live status and its attempt count, the terminal log carries the full trail.
+async fn download_with_retry(
+    app: &AppHandle,
+    inner: &JobsInner,
+    job_id: &str,
+    url: &str,
+    target: AttemptTarget,
+) -> AppResult<Value> {
     let mut pause = DOWNLOAD_RETRY_PAUSE_SECS;
     let mut attempt = 1;
     loop {
@@ -380,6 +439,7 @@ async fn download_with_retry(app: &AppHandle, job_id: &str, url: &str) -> AppRes
             job_id,
             &format!("attempt {attempt}/{DOWNLOAD_ATTEMPTS}: {url}"),
         );
+        record_attempt(app, inner, job_id, target, attempt).await;
         match download_request(app, url).await {
             Ok(result) => {
                 job_log(job_id, "downloaded ok");
@@ -411,7 +471,7 @@ async fn run_download(
 ) -> AppResult<String> {
     job_log(id, "━━ download phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Downloading).await;
-    let result = download_with_retry(app, id, url).await?;
+    let result = download_with_retry(app, inner, id, url, AttemptTarget::Job).await?;
 
     let path = result
         .get("path")
@@ -436,13 +496,9 @@ async fn run_enrich(
     id: &str,
     item_id: i64,
 ) -> AppResult<Value> {
-    let (title, artist) = inner
-        .jobs
-        .lock()
+    let (title, artist) = snapshot(inner, id)
         .await
-        .iter()
-        .find(|j| j.id == id)
-        .map(|j| (j.title.clone(), j.artist.clone()))
+        .map(|j| (j.title, j.artist))
         .unwrap_or((None, None));
     enrich_item(app, item_id, title, artist).await
 }
@@ -535,6 +591,7 @@ fn parse_probe_entries(probe: &Value) -> Vec<AlbumTrack> {
                 item_id: None,
                 report: None,
                 duplicate_of: None,
+                download_attempts: 0,
             })
         })
         .collect()
@@ -596,6 +653,10 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .map(|j| j.tracks)
         .unwrap_or_default();
     let total = tracks.len();
+    let track_delay = preferences::load(app)
+        .await
+        .unwrap_or_default()
+        .download_delay_seconds;
     let mut downloaded_before = false;
     for track in &tracks {
         if track.status == TrackStatus::Done {
@@ -622,9 +683,8 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             continue;
         }
 
-        if downloaded_before {
-            let (lo, hi) = TRACK_SLEEP_RANGE_SECS;
-            let pause = lo + fastrand::f64() * (hi - lo);
+        if downloaded_before && track_delay > 0.0 {
+            let pause = track_delay * (1.0 + fastrand::f64() * TRACK_SLEEP_JITTER);
             tokio::time::sleep(Duration::from_secs_f64(pause)).await;
         }
         downloaded_before = true;
@@ -634,7 +694,15 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         })
         .await;
         job_log(id, &format!("track {}/{total}", track.index));
-        match download_with_retry(app, id, &track.url).await {
+        match download_with_retry(
+            app,
+            inner,
+            id,
+            &track.url,
+            AttemptTarget::Track(track.index),
+        )
+        .await
+        {
             Ok(result) => {
                 let as_string =
                     |key: &str| result.get(key).and_then(Value::as_str).map(str::to_string);
@@ -856,6 +924,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
                 "artist": job.artist,
                 "track_hints": track_hints,
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
+                "lookup_pause_seconds": prefs.acoustid_lookup_delay_seconds,
             }),
             ENRICH_ALBUM_TIMEOUT,
         )
@@ -880,15 +949,13 @@ impl JobsState {
             item_id: None,
             report: None,
             tracks: Vec::new(),
+            download_attempts: 0,
             created_at: now,
             updated_at: now,
         };
 
-        let mut jobs = self.0.jobs.lock().await;
-        jobs.push(job.clone());
-        trim_history(&mut jobs);
-        persist(&self.0.store_path, &jobs).await;
-        drop(jobs);
+        let to_write = job.clone();
+        with_conn(&self.0, move |c| jobs_store::upsert_job(c, &to_write)).await?;
 
         let _ = app.emit("jobs:updated", &job);
         self.0
@@ -899,17 +966,13 @@ impl JobsState {
     }
 
     pub async fn retry(&self, app: &AppHandle, id: &str) -> AppResult<Job> {
-        {
-            let jobs = self.0.jobs.lock().await;
-            let job = jobs
-                .iter()
-                .find(|j| j.id == id)
-                .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
-            if job.status != JobStatus::Failed {
-                return Err(AppError::InvalidInput(
-                    "job is not in a failed state".into(),
-                ));
-            }
+        let current = snapshot(&self.0, id)
+            .await
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
+        if current.status != JobStatus::Failed {
+            return Err(AppError::InvalidInput(
+                "job is not in a failed state".into(),
+            ));
         }
         let job = update_job(app, &self.0, id, |j| {
             j.status = JobStatus::Queued;
@@ -934,36 +997,20 @@ impl JobsState {
     }
 
     pub async fn list(&self) -> Vec<Job> {
-        let mut jobs = self.0.jobs.lock().await.clone();
-        jobs.sort_by_key(|j| std::cmp::Reverse(j.created_at));
-        jobs
+        match with_conn(&self.0, jobs_store::list_jobs).await {
+            Ok(jobs) => jobs,
+            Err(err) => {
+                eprintln!("[jobs] list failed: {err}");
+                Vec::new()
+            }
+        }
     }
 
     /// Drop terminal (done/failed) jobs from the history; in-flight jobs are untouched.
     pub async fn clear_history(&self) -> Vec<Job> {
-        let mut jobs = self.0.jobs.lock().await;
-        jobs.retain(|j| !j.status.is_terminal());
-        persist(&self.0.store_path, &jobs).await;
-        let mut remaining = jobs.clone();
-        remaining.sort_by_key(|j| std::cmp::Reverse(j.created_at));
-        remaining
-    }
-}
-
-/// Drop the oldest terminal jobs once the history exceeds the cap.
-fn trim_history(jobs: &mut Vec<Job>) {
-    while jobs.len() > MAX_JOBS {
-        let oldest_terminal = jobs
-            .iter()
-            .enumerate()
-            .filter(|(_, j)| j.status.is_terminal())
-            .min_by_key(|(_, j)| j.created_at)
-            .map(|(i, _)| i);
-        match oldest_terminal {
-            Some(index) => {
-                jobs.remove(index);
-            }
-            None => break,
+        if let Err(err) = with_conn(&self.0, jobs_store::delete_terminal).await {
+            eprintln!("[jobs] clear history failed: {err}");
         }
+        self.list().await
     }
 }

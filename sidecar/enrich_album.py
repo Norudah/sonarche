@@ -31,7 +31,7 @@ _MAX_TEXT_ALBUM_DISTANCE = 0.15
 
 _DEFAULT_FETCH_PAUSE_SECONDS = 1.0
 # AcoustID allows 3 req/s per application key; fpcalc adds natural headroom.
-_LOOKUP_PAUSE_SECONDS = 0.4
+_DEFAULT_LOOKUP_PAUSE_SECONDS = 0.5
 
 
 def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None:
@@ -82,18 +82,28 @@ def _pair_plausible(file_length: float | None, track_length: float | None) -> bo
     return abs(file_length - track_length) <= _MAX_DURATION_DIFF_SECONDS
 
 
-def find_content_duplicates(recording_sets: list[tuple[int, set[str]]]) -> dict[int, int]:
-    """{duplicate item id: kept item id} for items whose AcoustID recording
-    sets intersect — same recording means same audio, whatever the video was
-    titled. Pure. First occurrence wins; items with no recordings never match."""
-    kept: list[tuple[int, set[str]]] = []
+def find_content_duplicates(recording_lists: list[tuple[int, list[str]]]) -> dict[int, int]:
+    """{duplicate item id: kept item id} for items sharing the same *primary*
+    AcoustID recording — the top, highest-confidence match, which is the audio's
+    real identity. Pure. First occurrence wins; items with no recordings never
+    match.
+
+    Only the primary counts, never the full candidate set: a fingerprint often
+    links to secondary recordings (lower-confidence, frequently mislinked user
+    submissions), and two genuinely different album tracks can share one of
+    those. Intersecting on secondaries flagged distinct tracks as duplicates and
+    deleted real files — a real duplicate always shares the *primary*, so the
+    secondaries add false positives without catching anything new."""
+    kept: dict[str, int] = {}  # primary recording id -> first item that had it
     duplicates: dict[int, int] = {}
-    for item_id, recordings in recording_sets:
-        kept_id = next((kid for kid, kset in kept if recordings & kset), None)
-        if kept_id is not None:
-            duplicates[item_id] = kept_id
+    for item_id, recordings in recording_lists:
+        primary = recordings[0] if recordings else None
+        if primary is None:
+            continue
+        if primary in kept:
+            duplicates[item_id] = kept[primary]
         else:
-            kept.append((item_id, recordings))
+            kept[primary] = item_id
     return duplicates
 
 
@@ -105,7 +115,8 @@ def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, 
     is among its AcoustID recordings. Second pass rescues the items AcoustID
     couldn't identify by nearest duration among the remaining slots. Items
     identified as some OTHER recording never fall back to duration — they are
-    genuinely off this release."""
+    genuinely off this release. Third pass pairs a lone survivor with a lone
+    empty slot, which no evidence but elimination can place."""
     mapping: dict = {}
     remaining = list(tracks)
     silent, leftovers = [], []
@@ -134,6 +145,18 @@ def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, 
             remaining.remove(best[1])
         else:
             leftovers.append(item)
+
+    # One file left, one slot left, and the release already carried by a
+    # majority of the batch: elimination places it even though the earlier
+    # passes could not. A music-video rip resolves to the single's recording
+    # rather than the album's, and can run a half-minute past the album master
+    # — so neither content identity nor duration reaches it. The majority guard
+    # is what keeps a genuine bonus track (which arrives with no mapping behind
+    # it) from being forced into an unrelated free slot.
+    if len(leftovers) == 1 and len(remaining) == 1 and len(mapping) > len(items) / 2:
+        mapping[leftovers[0]] = remaining[0]
+        leftovers, remaining = [], []
+
     return mapping, leftovers, remaining
 
 
@@ -155,6 +178,9 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
     One bad file yields [] rather than sinking the batch."""
     recordings: dict[int, list[str]] = {}
     total = len(items)
+    lookup_pause = max(
+        0.0, float(params.get("lookup_pause_seconds", _DEFAULT_LOOKUP_PAUSE_SECONDS))
+    )
     protocol.log(f"enrich_album: fingerprinting {total} file(s)")
     for done, item in enumerate(items):
         path = enrich._decode_path(item)
@@ -185,8 +211,8 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
         except Exception as exc:
             protocol.log(f"enrich_album: item {item.id} fingerprint failed: {exc}")
             recordings[item.id] = []
-        if done < total - 1:
-            time.sleep(_LOOKUP_PAUSE_SECONDS)
+        if lookup_pause > 0 and done < total - 1:
+            time.sleep(lookup_pause)
     return recordings
 
 
@@ -195,7 +221,7 @@ def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[l
     Runs before matching so duplicates never fight over one track slot or one
     destination path. Returns (kept items, {removed id: kept id})."""
     duplicates = find_content_duplicates(
-        [(item.id, set(recordings.get(item.id) or ())) for item in items]
+        [(item.id, list(recordings.get(item.id) or ())) for item in items]
     )
     kept = [item for item in items if item.id not in duplicates]
     for item in items:
@@ -441,12 +467,14 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
     return adopted
 
 
-def _fetch_album_cover(album, items, release_id: str | None) -> None:
+def _fetch_album_cover(
+    album, items, release_id: str | None, release_group_id: str | None = None
+) -> None:
     if not release_id:
         return
     try:
         protocol.log(f"enrich_album: fetching cover for release {release_id}")
-        cover = enrich.download_cover(release_id)
+        cover = enrich.download_cover(release_id, release_group_id)
         if cover is not None:
             hq, thumb = cover
             enrich.set_album_art(album, *thumb)
@@ -520,7 +548,16 @@ def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -
         hint = hints.get(item.id) or {}
         track_params = {**params, "title": hint.get("title"), "artist": params.get("artist")}
         try:
-            result = enrich.enrich_one(request_id, lib, item, track_params, fetch_cover=False)
+            # Both the cover and the unidentified-file guess are deferred to the
+            # batch: it knows the album row and the release the siblings matched.
+            result = enrich.enrich_one(
+                request_id,
+                lib,
+                item,
+                track_params,
+                fetch_cover=False,
+                provisional_fallback=False,
+            )
         except Exception as exc:  # one bad track must not sink the rest
             protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
             result = {"matched": False}
@@ -542,7 +579,44 @@ def _finalize_fallback(lib, items) -> None:
         artpath = enrich._decode(album.artpath) if album.artpath else None
         if artpath and os.path.exists(artpath):
             continue
-        _fetch_album_cover(album, list(album.items()), album.mb_albumid)
+        _fetch_album_cover(
+            album, list(album.items()), album.mb_albumid, album.mb_releasegroupid
+        )
+
+
+def _embed_album_cover(album, item) -> None:
+    """Give a provisionally-tagged track the album's existing cover. The CAA
+    fetch already ran for the batch, so this is a local copy — no second hit."""
+    if album is None or not album.artpath:
+        return
+    path = enrich._decode(album.artpath)
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        enrich.embed_cover(item, data, data[:4] == b"\x89PNG")
+    except Exception as exc:
+        protocol.log(f"enrich_album: cover embed failed: {exc}")
+
+
+def _tag_unidentified(lib, album, items, params: dict) -> None:
+    """Fill and flag whatever survived the per-track fallback unidentified.
+
+    With an album row in hand the guess borrows the release the siblings did
+    match — album, artist, date, cover — so the orphan files itself next to the
+    tracks it arrived with instead of landing blank under Non-Album/. Runs last,
+    after the album rows have been consolidated: these items claim the release's
+    mb_albumid and must not be regrouped on the strength of a guess."""
+    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
+    for item in items:
+        fresh = lib.get_item(item.id)
+        if fresh is None or fresh.mb_trackid:
+            continue
+        hint = hints.get(item.id) or {}
+        track_params = {"title": hint.get("title"), "artist": params.get("artist")}
+        if enrich.apply_provisional(lib, fresh, track_params, album=album):
+            _embed_album_cover(album, fresh)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -599,18 +673,25 @@ def handle(request_id: str, params: dict) -> dict:
             if leftovers
             else []
         )
-        _fetch_album_cover(album, mapped + adopted, match.info.album_id)
+        _fetch_album_cover(
+            album, mapped + adopted, match.info.album_id, match.info.releasegroup_id
+        )
         rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
         if rest:
             protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
             _enrich_per_track(request_id, lib, rest, params, pause)
         _finalize_fallback(lib, mapped + adopted + rest)
+        if rest:
+            _tag_unidentified(lib, album, rest, params)
         reports = _build_reports(lib, mapped + adopted + rest) + duplicate_reports
         return {"matched": True, "mode": "album", "reports": reports}
 
     protocol.log("enrich_album: no album-level match, falling back per track")
     any_matched = _enrich_per_track(request_id, lib, items, params, pause)
     _finalize_fallback(lib, items)
+    # No release was ever voted, so there is nothing to borrow: each survivor
+    # gets only what its own video knew.
+    _tag_unidentified(lib, None, items, params)
     return {
         "matched": any_matched,
         "mode": "per_track" if any_matched else "none",
