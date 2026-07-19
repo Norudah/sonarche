@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
@@ -103,7 +104,7 @@ function BackToAlbums() {
   );
 }
 
-export function AlbumHero({ album }: { album: Album }) {
+export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement> }) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -114,7 +115,10 @@ export function AlbumHero({ album }: { album: Album }) {
   ].filter(Boolean);
 
   return (
-    <header className="relative -mx-8 -mt-8 mb-2 overflow-hidden px-8 pt-5 pb-7 text-white">
+    <header
+      ref={ref}
+      className="relative -mx-8 -mt-8 mb-2 overflow-hidden px-8 pt-5 pb-7 text-white"
+    >
       <HeroBackdrop artUrl={album.artUrl} />
 
       {/* Inside the band rather than above it: the hero is full-bleed and

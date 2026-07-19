@@ -7,6 +7,7 @@ import { Topbar } from "@/app/layout/Topbar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { PlayerBar } from "@/shared/player/PlayerBar";
+import { ScrollportProvider } from "@/shared/ui/Scrollport";
 
 export function AppLayout() {
   // <main> is the app's scroll container, not the window — so scroll handling
@@ -24,10 +25,17 @@ export function AppLayout() {
           <Sidebar />
           <div className="flex min-h-0 flex-1 flex-col">
             <Topbar />
-            <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background p-8">
-              <RouteTransition>
-                <Outlet />
-              </RouteTransition>
+            {/* No padding here: this is the scrollport, and `sticky top-0`
+                resolves against its padding box. Padding on the scrollport
+                would offset every sticky child by 2rem and let content scroll
+                visibly through the gap above it. Pages own their padding via
+                PageContainer, which keeps the scrollport edge available. */}
+            <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
+              <ScrollportProvider value={scrollRef}>
+                <RouteTransition>
+                  <Outlet />
+                </RouteTransition>
+              </ScrollportProvider>
             </main>
           </div>
         </div>

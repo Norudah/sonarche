@@ -7,7 +7,9 @@ import { paths } from "@/app/routes";
 import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
 import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
+import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
+import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { DeleteAlbumDialog, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
@@ -19,6 +21,7 @@ export function AlbumDetailView() {
   const library = useLibrary();
   const playTrack = usePlayTrack();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
+  const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
   const album = useMemo(
     () => findAlbum(groupAlbums(library.data ?? []), artist, title),
@@ -27,20 +30,24 @@ export function AlbumDetailView() {
 
   if (library.isPending) {
     return (
-      <div className="flex justify-center py-16">
-        <Spinner size="lg" />
-      </div>
+      <PageContainer>
+        <div className="flex justify-center py-16">
+          <Spinner size="lg" />
+        </div>
+      </PageContainer>
     );
   }
 
   if (library.isError) {
     return (
-      <Alert status="danger">
-        <Alert.Content>
-          <Alert.Title>{t("loadFailed")}</Alert.Title>
-          <Alert.Description>{String(library.error)}</Alert.Description>
-        </Alert.Content>
-      </Alert>
+      <PageContainer>
+        <Alert status="danger">
+          <Alert.Content>
+            <Alert.Title>{t("loadFailed")}</Alert.Title>
+            <Alert.Description>{String(library.error)}</Alert.Description>
+          </Alert.Content>
+        </Alert>
+      </PageContainer>
     );
   }
 
@@ -51,8 +58,16 @@ export function AlbumDetailView() {
   if (!album) return <Navigate to={paths.libraryAlbums} replace />;
 
   return (
-    <PageContainer>
-      <AlbumHero album={album} />
+    <PageContainer
+      sticky={
+        <AlbumStickyHeader
+          album={album}
+          isVisible={heroPassed}
+          onPlay={() => playTrack(album.tracks[0])}
+        />
+      }
+    >
+      <AlbumHero ref={heroRef} album={album} />
       <AlbumActions
         album={album}
         onPlay={() => playTrack(album.tracks[0])}
