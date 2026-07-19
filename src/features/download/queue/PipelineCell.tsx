@@ -1,9 +1,13 @@
 import { ProgressCircle } from "@heroui/react";
 import { Check, Minus } from "lucide-react";
+import { motion } from "motion/react";
+import type { TargetAndTransition, Transition } from "motion/react";
 import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
+import { Swap } from "@/shared/motion/Swap";
+import { durations, fade, springs } from "@/shared/motion/tokens";
 import {
   type AttemptOutcome,
   jobAttempts,
@@ -16,16 +20,34 @@ import {
   trackPipeline,
 } from "@/features/download/queue/pipeline";
 
+/** The segment between two stage markers. It fills from left to right the moment
+ * the stage it leads into stops being pending, so progress reads as travelling
+ * down the rail rather than as three independent badges flipping. */
+function Connector({ isReached }: { isReached: boolean }) {
+  return (
+    <div className="relative mt-[9px] h-0.5 w-3 shrink-0 overflow-hidden rounded-full bg-separator">
+      <motion.span
+        initial={false}
+        animate={{ scaleX: isReached ? 1 : 0 }}
+        transition={springs.soft}
+        className="absolute inset-0 origin-left rounded-full bg-accent"
+      />
+    </div>
+  );
+}
+
 /** Fixed-width slots so an album row and its expanded track rows line their
- * stage markers up on the same three columns. */
-function Rail({ children, hasConnectors }: { children: ReactNode[]; hasConnectors: boolean }) {
+ * stage markers up on the same three columns. `connectors[i]` says whether the
+ * segment leading into stage `i` is filled; `null` drops the segments entirely,
+ * which is how track rows read as a summary of their parent. */
+function Rail({ children, connectors }: { children: ReactNode[]; connectors: boolean[] | null }) {
   return (
     <div className="flex items-start">
       {children.map((node, index) => (
         <Fragment key={index}>
           {index > 0 &&
-            (hasConnectors ? (
-              <div className="mt-[9px] h-0.5 w-3 shrink-0 rounded-full bg-separator" />
+            (connectors ? (
+              <Connector isReached={connectors[index] ?? false} />
             ) : (
               <div className="w-3 shrink-0" />
             ))}
@@ -36,8 +58,43 @@ function Rail({ children, hasConnectors }: { children: ReactNode[]; hasConnector
   );
 }
 
+/** How each state makes its entrance. A stage turning `done` is the milestone
+ * the user is waiting on, so it gets the pop; `failed` shakes instead of popping
+ * because celebrating a failure reads wrong. Everything else just fades. */
+const ENTRY: Record<StepState, { animate: TargetAndTransition; transition: Transition }> = {
+  done: { animate: { scale: [0.4, 1], opacity: 1 }, transition: springs.bouncy },
+  empty: { animate: { scale: [0.6, 1], opacity: 1 }, transition: springs.snappy },
+  failed: {
+    animate: { x: [0, -3, 3, -2, 0], opacity: 1 },
+    transition: { duration: durations.medium },
+  },
+  active: { animate: { opacity: 1 }, transition: fade },
+  pending: { animate: { opacity: 1 }, transition: fade },
+};
+
+function MarkerTransition({ state, children }: { state: StepState; children: ReactNode }) {
+  return (
+    <Swap
+      swapKey={state}
+      className="flex items-center justify-center"
+      animate={ENTRY[state].animate}
+      transition={ENTRY[state].transition}
+    >
+      {children}
+    </Swap>
+  );
+}
+
 /** Full marker for a job row: a filled disc that carries the stage's state. */
 function StepMarker({ state, label }: { state: StepState; label: string }) {
+  return (
+    <MarkerTransition state={state}>
+      <StepGlyph state={state} label={label} />
+    </MarkerTransition>
+  );
+}
+
+function StepGlyph({ state, label }: { state: StepState; label: string }) {
   switch (state) {
     case "done":
       return (
@@ -92,6 +149,14 @@ function StepMarker({ state, label }: { state: StepState; label: string }) {
 /** Lighter marker for a track row inside an expanded album: a bare glyph, so
  * the child rows read as a summary of the parent instead of repeating it. */
 function TrackStepMarker({ state, label }: { state: StepState; label: string }) {
+  return (
+    <MarkerTransition state={state}>
+      <TrackStepGlyph state={state} label={label} />
+    </MarkerTransition>
+  );
+}
+
+function TrackStepGlyph({ state, label }: { state: StepState; label: string }) {
   switch (state) {
     case "done":
       return <Check className="size-4 text-success" strokeWidth={3} aria-label={label} />;
@@ -139,7 +204,15 @@ function AttemptDots({ outcomes, label }: { outcomes: AttemptOutcome[]; label: s
       aria-label={`${label}: ${tried}/${outcomes.length}`}
     >
       {outcomes.map((outcome, index) => (
-        <span key={index} className={`size-1.5 rounded-full ${ATTEMPT_DOT[outcome]}`} />
+        // Keyed on the outcome so a dot re-enters — and pops — when an attempt
+        // resolves, rather than silently swapping color.
+        <motion.span
+          key={`${index}-${outcome}`}
+          initial={{ scale: 0.2 }}
+          animate={{ scale: 1 }}
+          transition={springs.bouncy}
+          className={`size-1.5 rounded-full ${ATTEMPT_DOT[outcome]}`}
+        />
       ))}
     </span>
   );
@@ -165,7 +238,7 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
   const { t } = useTranslation("download");
   const steps = jobPipeline(job, downloadPercent, enrichedCount);
   return (
-    <Rail hasConnectors>
+    <Rail connectors={steps.map((step) => step.state !== "pending")}>
       {steps.map((step) => {
         // "Import" while it runs, "Importé" once through — the marker carries
         // the state, the label only needs to name the stage. The exception is
@@ -204,7 +277,7 @@ export function TrackPipelineCell({
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   return (
-    <Rail hasConnectors={false}>
+    <Rail connectors={null}>
       {states.map((state, index) => {
         const step = PIPELINE_STEPS[index];
         return (

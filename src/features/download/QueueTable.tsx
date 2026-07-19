@@ -1,5 +1,5 @@
 import { Table } from "@heroui/react";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
@@ -10,6 +10,7 @@ import { JobMediaCell, TrackMediaCell } from "@/features/download/queue/MediaCel
 import { JobPipelineCell, TrackPipelineCell } from "@/features/download/queue/PipelineCell";
 import { AlbumRowActions, RowActions } from "@/features/download/queue/RowActions";
 import { JobTagsCell, TrackTagsCell } from "@/features/download/queue/TagsCell";
+import { useNewJobIds } from "@/features/download/queue/useNewJobIds";
 import type { LibraryTrack } from "@/features/library/api";
 import { type AlbumDeletion, DeleteAlbumDialog } from "@/features/library/DeleteAlbumDialog";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
@@ -37,6 +38,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [deletingAlbum, setDeletingAlbum] = useState<AlbumDeletion | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const newJobIds = useNewJobIds(jobs.map((job) => job.id));
 
   if (jobs.length === 0) {
     return (
@@ -124,7 +126,13 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                     : null;
 
                 const rows = [
-                  <Table.Row id={job.id} key={job.id}>
+                  // A job the user just queued fades up out of an accent wash;
+                  // the history it lands on top of stays still.
+                  <Table.Row
+                    id={job.id}
+                    key={job.id}
+                    className={newJobIds.has(job.id) ? "row-reveal" : undefined}
+                  >
                     <Table.Cell>
                       <JobMediaCell
                         job={job}
@@ -187,7 +195,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
 
                 if (isExpanded) {
                   rows.push(
-                    ...job.tracks.map((track) => {
+                    ...job.tracks.map((track, position) => {
                       const rowId = `${job.id}:${track.index}`;
                       const trackLibraryTrack = libraryTrackFor(
                         track.status === "done" ? track.itemId : null,
@@ -195,7 +203,16 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       return (
                         // The variant forces transparent cells, so the child-row
                         // tint has to be applied on the cells themselves.
-                        <Table.Row id={rowId} key={rowId} className="[&_td]:bg-surface-secondary/50">
+                        // The stagger is capped: a 30-track album should not
+                        // take three seconds to finish unfolding.
+                        <Table.Row
+                          id={rowId}
+                          key={rowId}
+                          className="row-cascade [&_td]:bg-surface-secondary/50"
+                          style={
+                            { "--row-stagger": `${Math.min(position, 8) * 0.03}s` } as CSSProperties
+                          }
+                        >
                           <Table.Cell>
                             <TrackMediaCell track={track} />
                           </Table.Cell>

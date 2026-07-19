@@ -1,9 +1,11 @@
 import { Button } from "@heroui/react";
-import { ChevronDown, ChevronRight, Disc3, Music } from "lucide-react";
+import { ChevronRight, Disc3, Music } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
 import { formatDuration } from "@/shared/lib/format";
+import { springs } from "@/shared/motion/tokens";
 
 /** The YouTube thumbnail is 16:9 and stands in until the real cover art lands
  * with the enrich step; `object-cover` crops it to the square the row wants. */
@@ -56,7 +58,16 @@ export function JobMediaCell({ job, coverUrl, isExpanded, onToggle }: JobMediaCe
             onPress={onToggle}
             isDisabled={job.tracks.length === 0}
           >
-            {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            {/* One chevron that turns, rather than two that swap: the rotation
+                is what tells the user the row opened. */}
+            <motion.span
+              initial={false}
+              animate={{ rotate: isExpanded ? 90 : 0 }}
+              transition={springs.snappy}
+              className="flex"
+            >
+              <ChevronRight className="size-4" />
+            </motion.span>
           </Button>
         )}
       </div>

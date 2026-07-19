@@ -1,4 +1,7 @@
+import { cn } from "@heroui/react";
 import { useTranslation } from "react-i18next";
+
+import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
 
 /** YouTube's wordmark glyph — the rounded rect + play triangle. Nominative use
  * on the badge that says which sources we can fetch from. */
@@ -10,12 +13,27 @@ function YouTubeGlyph() {
   );
 }
 
-/** Which sources the composer accepts, and whether the pasted link matched one. */
+/** Which sources the composer accepts, and whether the pasted link matched one.
+ *
+ * Idle, the YouTube badge is as neutral as the SoundCloud one: it is only
+ * stating a capability, and colouring it red permanently spent the signal for
+ * nothing. The brand colour is the *reward* for pasting a link we recognise —
+ * so it lands with a pop the moment detection flips. */
 export function SourceBadges({ isYouTubeDetected }: { isYouTubeDetected: boolean }) {
   const { t } = useTranslation("download");
+  const badgeRef = usePopOnActivate<HTMLSpanElement>(isYouTubeDetected);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-1.5 rounded-full bg-youtube-soft px-3 py-1 text-xs font-semibold text-youtube">
+      <span
+        ref={badgeRef}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs transition-colors",
+          isYouTubeDetected
+            ? "bg-youtube-soft font-semibold text-youtube"
+            : "bg-default/50 font-medium text-muted",
+        )}
+      >
         <YouTubeGlyph />
         {t("sources.youtube")} ·{" "}
         {isYouTubeDetected ? t("sources.detected") : t("sources.supported")}

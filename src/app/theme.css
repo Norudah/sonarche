@@ -113,6 +113,41 @@
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
+  /* A queue row that just landed. Two animations, because the two properties
+     have to live on different elements:
+
+     - the accent wash goes on the CELL (`td`), which is the full-bleed surface;
+     - the fade + slide goes on the cell's direct CHILD, because a transform on
+       `display: table-cell` is not reliably applied, while the div inside it is
+       an ordinary block and animates properly.
+
+     CSS rather than Motion on purpose: the rows live inside HeroUI's Table, a
+     react-aria collection that parses its children to build the row model, so
+     wrapping them in <AnimatePresence> breaks the table outright. A class on the
+     cells sidesteps the collection entirely. */
+  --animate-row-wash: sonarche-row-wash 0.55s var(--ease-out-fluid);
+  --animate-row-rise: sonarche-row-rise 0.4s var(--ease-out-fluid);
+
+  @keyframes sonarche-row-wash {
+    from {
+      background-color: var(--color-accent-soft);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes sonarche-row-rise {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   /* Now-playing equalizer — used by the player when audio is playing. */
   --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
 
@@ -124,5 +159,38 @@
     50% {
       transform: scaleY(1);
     }
+  }
+}
+
+/* --- Queue row entrances -------------------------------------------------- */
+
+/* Applied on a <tr>, driven from QueueTable. Utilities rather than a stack of
+   arbitrary variants at the call site, because both of these have to reach two
+   different descendants with two different animations — expressing that inline
+   made the className longer than the row it decorated. */
+
+/** A job the user just queued: an accent wash that drains as the content rises. */
+@utility row-reveal {
+  & > td,
+  & > th {
+    animation: var(--animate-row-wash);
+  }
+
+  & > td > *,
+  & > th > * {
+    animation: var(--animate-row-rise);
+  }
+}
+
+/** A track row revealed by expanding its album. No wash — the row is not new,
+    it was only hidden — and a per-row delay so the tracks cascade instead of
+    appearing as one block. `backwards` keeps a row invisible during its delay;
+    without it every row would flash at full opacity before starting. */
+@utility row-cascade {
+  & > td > *,
+  & > th > * {
+    animation: var(--animate-row-rise);
+    animation-delay: var(--row-stagger, 0s);
+    animation-fill-mode: backwards;
   }
 }
