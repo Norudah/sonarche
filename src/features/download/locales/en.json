@@ -50,6 +50,7 @@
       "empty": "Not found",
       "failed": "failed"
     },
+    "awaiting": "Awaiting",
     "provisional": "Guessed tags",
     "provisionalHint": "No identification: these tags come from the video title, not MusicBrainz. Worth a second pass.",
     "copyUrl": "Copy source link",

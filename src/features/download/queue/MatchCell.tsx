@@ -2,10 +2,7 @@ import { Chip } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob, MetadataReport } from "@/features/download/api";
-
-function Dash() {
-  return <span className="text-sm text-muted">—</span>;
-}
+import { EmptyCell } from "@/features/download/queue/EmptyCell";
 
 function SourceChip({ report }: { report: MetadataReport | null }) {
   const { t } = useTranslation("download");
@@ -25,7 +22,7 @@ function SourceChip({ report }: { report: MetadataReport | null }) {
 
 export function JobMatchCell({ job }: { job: DownloadJob }) {
   const { t } = useTranslation("download");
-  if (job.status !== "done") return <Dash />;
+  if (job.status !== "done") return <EmptyCell />;
   if (job.kind !== "album" || job.tracks.length === 0) {
     return <SourceChip report={job.report} />;
   }
@@ -64,6 +61,6 @@ export function TrackMatchCell({ track }: { track: AlbumTrackJob }) {
       </Chip>
     );
   }
-  if (track.status !== "done") return <Dash />;
+  if (track.status !== "done") return <EmptyCell />;
   return <SourceChip report={track.report} />;
 }

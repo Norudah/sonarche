@@ -2,6 +2,7 @@ import { Chip } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
+import { EmptyCell } from "@/features/download/queue/EmptyCell";
 import { albumPresence, type LibraryPresence } from "@/features/download/queue/library";
 
 const PRESENCE_COLOR = {
@@ -15,10 +16,6 @@ const PRESENCE_KEY = {
   partial: "queue.partiallyInLibrary",
   none: "queue.removedFromLibrary",
 } as const;
-
-function Dash() {
-  return <span className="text-sm text-muted">—</span>;
-}
 
 function PresenceChip({ presence }: { presence: LibraryPresence }) {
   const { t } = useTranslation("download");
@@ -37,13 +34,13 @@ interface JobLibraryCellProps {
 }
 
 export function JobLibraryCell({ job, isInLibrary, isLibraryLoaded }: JobLibraryCellProps) {
-  if (!isLibraryLoaded || job.status !== "done") return <Dash />;
+  if (!isLibraryLoaded || job.status !== "done") return <EmptyCell />;
   if (job.kind === "album" && job.tracks.length > 0) {
     const presence = albumPresence(job, isInLibrary);
-    return presence ? <PresenceChip presence={presence} /> : <Dash />;
+    return presence ? <PresenceChip presence={presence} /> : <EmptyCell />;
   }
   const itemId = job.report?.itemId;
-  if (itemId == null) return <Dash />;
+  if (itemId == null) return <EmptyCell />;
   return <PresenceChip presence={isInLibrary(itemId) ? "full" : "none"} />;
 }
 
@@ -63,6 +60,6 @@ export function TrackLibraryCell({
 }) {
   // A dropped duplicate's item no longer exists: the "removed" chip would be
   // misleading.
-  if (!isLibraryLoaded || !isDone || isDuplicate || itemId == null) return <Dash />;
+  if (!isLibraryLoaded || !isDone || isDuplicate || itemId == null) return <EmptyCell />;
   return <PresenceChip presence={isInLibrary(itemId) ? "full" : "none"} />;
 }

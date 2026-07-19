@@ -50,6 +50,7 @@
       "empty": "Non trouvé",
       "failed": "en échec"
     },
+    "awaiting": "En attente",
     "provisional": "Tags devinés",
     "provisionalHint": "Aucune identification : ces tags viennent du titre de la vidéo, pas de MusicBrainz. À revérifier.",
     "copyUrl": "Copier le lien source",

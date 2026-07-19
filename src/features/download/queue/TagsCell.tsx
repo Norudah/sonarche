@@ -2,6 +2,7 @@ import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
+import { EmptyCell } from "@/features/download/queue/EmptyCell";
 import {
   formatTags,
   jobTags,
@@ -41,13 +42,9 @@ function TagBadge({ summary, label }: { summary: TagSummary; label: string }) {
   );
 }
 
-function Dash() {
-  return <span className="text-sm text-muted">—</span>;
-}
-
 export function JobTagsCell({ job }: { job: DownloadJob }) {
   const { t } = useTranslation("download");
-  if (job.status !== "done") return <Dash />;
+  if (job.status !== "done") return <EmptyCell />;
   const summary = jobTags(job);
   if (!summary) return <span className="text-sm text-muted">{t("queue.noReport")}</span>;
   return <TagBadge summary={summary} label={t("queue.colTags")} />;
@@ -56,7 +53,7 @@ export function JobTagsCell({ job }: { job: DownloadJob }) {
 export function TrackTagsCell({ track }: { track: AlbumTrackJob }) {
   const { t } = useTranslation("download");
   // Dropped as a content duplicate: there is no item left to report on.
-  if (track.duplicateOf != null || track.status !== "done") return <Dash />;
+  if (track.duplicateOf != null || track.status !== "done") return <EmptyCell />;
   const summary = trackTags("album", track.report);
   if (!summary) return <span className="text-sm text-muted">{t("queue.noReport")}</span>;
   return <TagBadge summary={summary} label={t("queue.colTags")} />;
