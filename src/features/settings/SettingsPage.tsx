@@ -69,7 +69,7 @@ export function SettingsPage() {
               type="button"
               onClick={() => setCategory(key)}
               className={
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors" +
+                "flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors" +
                 (category === key ? " bg-accent/10 text-accent" : " text-muted hover:bg-default/40")
               }
             >
