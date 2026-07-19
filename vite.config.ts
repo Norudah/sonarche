@@ -18,11 +18,11 @@ export default defineConfig({
     strictPort: true,
   },
   envPrefix: ["VITE_", "TAURI_"],
-  // Node environment on purpose: we test business logic (pure functions,
-  // wire→front mapping), not rendered components — no DOM needed, so no
-  // jsdom/happy-dom dependency.
+  // Node by default: nearly every test here is business logic (pure functions,
+  // wire→front mapping) and pays nothing for a DOM it never touches. The few
+  // that do need one opt in per file with `@vitest-environment jsdom`.
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
