@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { FileText, Play } from "lucide-react";
 import { motion } from "motion/react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
@@ -46,20 +46,36 @@ export function AlbumCard({ album, style, onPlay }: AlbumCardProps) {
 
       <CompletenessBadge value={album.completeness} />
 
-      {/* Rises into place on hover, and stays put once focused so it is
+      {/* Rises into place on hover, and stays put once focused so it stays
        * reachable by keyboard — an opacity-only reveal would be a focus trap
-       * for anyone not using a mouse. */}
-      <motion.button
-        type="button"
-        onClick={onPlay}
-        aria-label={tPlayer("play")}
-        whileTap={{ scale: 0.92 }}
-        whileHover={{ scale: 1.06 }}
-        transition={springs.snappy}
-        className="absolute right-2.5 bottom-14 flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 shadow-lg shadow-accent/30 outline-none transition-[opacity,translate] translate-y-1 group-hover/card:translate-y-0 group-hover/card:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
-      >
-        <Play className="size-4 fill-current" />
-      </motion.button>
+       * for anyone not using a mouse. Info sits at the top of the cover
+       * (the completeness badge), actions at the bottom. */}
+      <div className="absolute right-2.5 bottom-14 flex translate-y-1 items-center gap-1.5 opacity-0 transition-[opacity,translate] group-hover/card:translate-y-0 group-hover/card:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
+        {/* The album-wide metadata panel does not exist yet; the affordance is
+         * placed now so the card's layout is settled when it lands. Same
+         * "coming soon" treatment as the drawer's view-album action. */}
+        <button
+          type="button"
+          disabled
+          aria-label={t("albums.inspect")}
+          title={t("metadata.comingSoon")}
+          className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white/90 opacity-70 shadow-md backdrop-blur-sm outline-none"
+        >
+          <FileText className="size-4" />
+        </button>
+
+        <motion.button
+          type="button"
+          onClick={onPlay}
+          aria-label={tPlayer("play")}
+          whileTap={{ scale: 0.92 }}
+          whileHover={{ scale: 1.06 }}
+          transition={springs.snappy}
+          className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg shadow-accent/30 outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <Play className="size-4 fill-current" />
+        </motion.button>
+      </div>
     </div>
   );
 }

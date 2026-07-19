@@ -23,7 +23,7 @@ export function AlbumsView() {
   const library = useLibrary();
   const playTrack = usePlayTrack();
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<AlbumSort>("recent");
+  const [sort, setSort] = useState<AlbumSort>("artist");
 
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
   const visible = useMemo(

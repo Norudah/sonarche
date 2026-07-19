@@ -20,13 +20,6 @@ export interface Album {
   formats: string[];
   /** Share of tracked metadata fields that are filled, 0…1. */
   completeness: number;
-  /**
-   * Highest beets item id on the album, used as a proxy for import recency:
-   * beets hands out ids monotonically, so a higher id means a later import.
-   * A real `added` timestamp is not exposed by `list_library` yet — swap this
-   * for it when the wire carries one.
-   */
-  latestId: number;
 }
 
 /**
@@ -105,19 +98,16 @@ export function groupAlbums(tracks: LibraryTrack[]): Album[] {
       artUrl: ordered.find((track) => track.artUrl)?.artUrl ?? null,
       formats: Array.from(new Set(ordered.map((track) => track.format).filter(Boolean))).sort(),
       completeness: completenessOf(ordered),
-      latestId: ordered.reduce((max, track) => Math.max(max, track.id), 0),
     };
   });
 }
 
-export const ALBUM_SORTS = ["recent", "artist", "title", "year"] as const;
+export const ALBUM_SORTS = ["artist", "title", "year"] as const;
 export type AlbumSort = (typeof ALBUM_SORTS)[number];
 
 export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
   const sorted = [...albums];
   switch (sort) {
-    case "recent":
-      return sorted.sort((a, b) => b.latestId - a.latestId);
     case "artist":
       // Within an artist, chronological: a discography reads by era, not A→Z.
       return sorted.sort(

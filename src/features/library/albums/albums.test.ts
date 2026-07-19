@@ -155,14 +155,6 @@ describe("groupAlbums", () => {
     expect(album.completeness).toBeCloseTo(13 / 14);
   });
 
-  it("uses the highest item id as the import-recency proxy", () => {
-    const [album] = groupAlbums([
-      track({ id: 4, album: "X" }),
-      track({ id: 91, album: "X" }),
-      track({ id: 12, album: "X" }),
-    ]);
-    expect(album.latestId).toBe(91);
-  });
 });
 
 describe("sortAlbums", () => {
@@ -174,15 +166,6 @@ describe("sortAlbums", () => {
   ]);
 
   const titles = (list: Album[]) => list.map((a) => a.title);
-
-  it("orders by descending item id for 'recent'", () => {
-    expect(titles(sortAlbums(albums, "recent"))).toEqual([
-      "Discovery",
-      "Random Access Memories",
-      "Currents",
-      "Untitled",
-    ]);
-  });
 
   it("orders by artist, then chronologically within that artist", () => {
     expect(titles(sortAlbums(albums, "artist"))).toEqual([

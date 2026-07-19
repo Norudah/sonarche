@@ -21,6 +21,7 @@
   "albums": {
     "eyebrow": "Album",
     "back": "Albums",
+    "inspect": "Inspect album metadata",
     "empty": "No album in your library yet.",
     "noResults": "No album matches “{{query}}”.",
     "completeness": "{{percent}}%",
@@ -28,7 +29,6 @@
     "bonusFrom": "Bonus — “{{source}}”",
     "sort": {
       "label": "Sort by",
-      "recent": "Recently added",
       "artist": "Artist",
       "title": "Title",
       "year": "Year"
