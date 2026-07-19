@@ -1,5 +1,6 @@
 import { Outlet } from "react-router";
 
+import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { Topbar } from "@/app/layout/Topbar";
 import { SetupGate } from "@/features/onboarding/SetupGate";
@@ -14,7 +15,9 @@ export function AppLayout() {
           <Topbar />
           <main className="min-h-0 flex-1 overflow-y-auto bg-background p-8">
             <SetupGate>
-              <Outlet />
+              <RouteTransition>
+                <Outlet />
+              </RouteTransition>
             </SetupGate>
           </main>
         </div>

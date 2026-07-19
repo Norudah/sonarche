@@ -1,11 +1,13 @@
 import { cn } from "@heroui/react";
 import { AudioLines, Disc, Download, FileText, Layers, Mic2, Music, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 
 import { paths } from "@/app/routes";
+import { layoutIds, springs } from "@/shared/motion/tokens";
 
 function NavItem({
   to,
@@ -24,13 +26,26 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-          isActive ? "bg-accent/15 text-accent" : "text-muted hover:bg-default/40",
+          "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+          isActive ? "text-accent" : "text-muted hover:bg-default/40",
         )
       }
     >
-      <Icon className="size-4 shrink-0" />
-      {label}
+      {({ isActive }) => (
+        <>
+          {/* One pill for the whole nav: the shared layoutId makes Motion tween
+              it from the previously active item instead of cross-fading two. */}
+          {isActive && (
+            <motion.span
+              layoutId={layoutIds.navIndicator}
+              transition={springs.snappy}
+              className="absolute inset-0 rounded-md bg-accent/15"
+            />
+          )}
+          <Icon className="relative size-4 shrink-0" />
+          <span className="relative">{label}</span>
+        </>
+      )}
     </NavLink>
   );
 }
