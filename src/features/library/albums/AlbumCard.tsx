@@ -12,6 +12,9 @@ import { springs } from "@/shared/motion/tokens";
 
 interface AlbumCardProps {
   album: Album;
+  /** Set on a card shown inside an artist's discography, so the album page
+   * offers to go back to that artist rather than to the album shelf. */
+  fromArtist?: boolean;
   style?: CSSProperties;
   onPlay: () => void;
 }
@@ -21,7 +24,7 @@ interface AlbumCardProps {
  * <button> inside an <a> is invalid HTML and swallows the outer activation.
  * They only look nested because the wrapper is the positioning context.
  */
-export function AlbumCard({ album, style, onPlay }: AlbumCardProps) {
+export function AlbumCard({ album, fromArtist = false, style, onPlay }: AlbumCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
 
@@ -31,7 +34,7 @@ export function AlbumCard({ album, style, onPlay }: AlbumCardProps) {
         to={albumPath(album.artist, album.title)}
         // Lets the album page know it can go *back* rather than pushing a fresh
         // entry, which is what makes the grid's scroll position survive.
-        state={{ fromGrid: true }}
+        state={{ fromGrid: true, fromArtist }}
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">

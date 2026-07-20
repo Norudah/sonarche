@@ -28,14 +28,29 @@
     "completenessHint": "Incomplete metadata on this album",
     "bonusFrom": "Bonus — “{{source}}”",
     "sort": {
-      "label": "Sort by",
       "artist": "Artist",
       "title": "Title",
       "year": "Year"
     }
   },
+  "artists": {
+    "eyebrow": "Artist",
+    "back": "Artists",
+    "empty": "No artist in your library yet.",
+    "noResults": "No artist matches “{{query}}”.",
+    "discography": "Discography",
+    "appearances": "Appearances",
+    "appearancesHint": "Tracks where {{name}} is credited on someone else's album.",
+    "sort": {
+      "name": "Name",
+      "albums": "Albums",
+      "tracks": "Tracks"
+    }
+  },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",
+  "artistCount_one": "{{count}} artist",
+  "artistCount_other": "{{count}} artists",
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
   "totalPlaytime": "{{hours}} hr {{minutes}}",
@@ -103,5 +118,8 @@
     "body_one": "“{{title}}” and its track will be removed from your library and the file deleted from disk. This cannot be undone.",
     "body_other": "“{{title}}” and its {{count}} tracks will be removed from your library and the files deleted from disk. This cannot be undone.",
     "action": "Delete album"
+  },
+  "sort": {
+    "label": "Sort by"
   }
 }

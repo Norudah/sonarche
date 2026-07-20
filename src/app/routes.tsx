@@ -5,6 +5,7 @@ import { DownloadPage } from "@/features/download/DownloadPage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
+import { ArtistDetailView } from "@/features/library/views/ArtistDetailView";
 import { ArtistsView } from "@/features/library/views/ArtistsView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { TracksView } from "@/features/library/views/TracksView";
@@ -23,6 +24,7 @@ export const paths = {
   libraryAlbums: "/library/albums",
   libraryAlbum: "/library/albums/:artist/:title",
   libraryArtists: "/library/artists",
+  libraryArtist: "/library/artists/:name",
   libraryGenres: "/library/genres",
   settings: "/settings",
 } as const;
@@ -36,6 +38,12 @@ export const paths = {
  */
 export function albumPath(artist: string, title: string): string {
   return `${paths.libraryAlbums}/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+}
+
+/** One segment, and it can stay one: an artist is a single name, so nothing has
+ * to be split back apart on the way in. */
+export function artistPath(name: string): string {
+  return `${paths.libraryArtists}/${encodeURIComponent(name)}`;
 }
 
 export const router = createMemoryRouter([
@@ -55,6 +63,7 @@ export const router = createMemoryRouter([
           { path: paths.libraryAlbums, element: <AlbumsView /> },
           { path: paths.libraryAlbum, element: <AlbumDetailView /> },
           { path: paths.libraryArtists, element: <ArtistsView /> },
+          { path: paths.libraryArtist, element: <ArtistDetailView /> },
           { path: paths.libraryGenres, element: <GenresView /> },
         ],
       },

@@ -1,109 +1,50 @@
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
-import { paths } from "@/app/routes";
+import { artistPath, paths } from "@/app/routes";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
+import { HeroBackdrop } from "@/features/library/HeroBackdrop";
 import { formatDuration } from "@/shared/lib/format";
 
 /**
- * Full-bleed band tinted by the album itself: the cover, blown up and blurred
- * behind a dark scrim. Same grammar as the metadata drawer's header — dark
- * ground, white text, artwork on the baseline — so the app's one "spotlight"
- * treatment stays recognisable, but coloured by the record instead of a fixed
- * gradient. That is Spotify's trick without needing a colour extracted at
- * import time; with no cover we fall back to the drawer's indigo gradient.
- *
- * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
- * so a full-bleed child has to reach back through it.
- */
-/**
- * The band's ground: a fixed indigo gradient, with the album's own cover blown
- * up and blurred over it once it has decoded.
- *
- * Two things here exist purely to stop the banner stuttering on arrival.
- *
- * The gradient is *always* painted rather than being the no-cover alternative.
- * It used to be either/or, so a band with a cover rendered as a dark scrim over
- * nothing for the frames before the image decoded, then the artwork popped in.
- *
- * And the artwork fades in on load instead of appearing the instant it decodes,
- * which turns that pop into a cross-fade from the gradient. Decoding finishes
- * whenever it finishes — that timing is not ours to control, so the arrival is
- * made smooth rather than fast.
- *
- * `will-change-transform` is load-bearing too: a 64px blur across a band this
- * wide is expensive to rasterise, and without its own compositor layer the
- * browser redoes that work on every frame of the page's enter animation. It has
- * to be `will-change` and not Tailwind's `transform-gpu` — v4 puts `scale` in
- * its own property, so `transform-gpu` left the element on a flattened 2D
- * identity matrix and promoted nothing (checked in the browser, not assumed).
- */
-function HeroBackdrop({ artUrl }: { artUrl: string | null }) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  // A cached cover can finish before React attaches onLoad — the callback ref
-  // catches that case, where waiting for the event would leave it invisible.
-  const catchCached = (node: HTMLImageElement | null) => {
-    if (node?.complete) setIsLoaded(true);
-  };
-
-  return (
-    <>
-      <div className="absolute inset-0 bg-gradient-to-br from-metadata-header-from to-metadata-header-to" />
-      {artUrl && (
-        <>
-          {/* scale-110 hides the transparent fringe blur leaves at the edges. */}
-          <img
-            ref={catchCached}
-            src={artUrl}
-            alt=""
-            aria-hidden
-            onLoad={() => setIsLoaded(true)}
-            className={
-              "absolute inset-0 size-full scale-110 object-cover blur-3xl transition-opacity duration-300 will-change-transform " +
-              (isLoaded ? "opacity-100" : "opacity-0")
-            }
-          />
-          <div
-            className={
-              "absolute inset-0 bg-black/55 transition-opacity duration-300 " +
-              (isLoaded ? "opacity-100" : "opacity-0")
-            }
-          />
-        </>
-      )}
-    </>
-  );
-}
-
-/**
- * Steps back through history when we arrived from the grid, so the shelf comes
+ * Steps back through history when we arrived from a grid, so the shelf comes
  * back exactly as it was left — scroll, search and sort intact. A plain
  * `<Link>` would push a new entry and rebuild the grid from the top, which is
  * the most irritating way to lose someone's place. Falls back to a normal
  * navigation when the album page was opened cold and there is nothing behind it.
+ *
+ * The label names where Back actually lands, which is why the caller states it:
+ * an album opened from an artist's discography that offers to return to
+ * "Albums" is lying about its own history.
  */
-function BackToAlbums() {
+function BackToGrid({ artist }: { artist: string }) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const { state } = useLocation();
-  const cameFromGrid = (state as { fromGrid?: boolean } | null)?.fromGrid === true;
+  const from = (state as { fromGrid?: boolean; fromArtist?: boolean } | null) ?? {};
+  const fallback = from.fromArtist ? artistPath(artist) : paths.libraryAlbums;
 
   return (
     <button
       type="button"
-      onClick={() => (cameFromGrid ? navigate(-1) : navigate(paths.libraryAlbums))}
+      onClick={() => (from.fromGrid ? navigate(-1) : navigate(fallback))}
       className="relative flex w-fit cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-[0.8125rem] text-white/70 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
     >
       <ArrowLeft className="size-4" />
-      {t("albums.back")}
+      {from.fromArtist ? artist : t("albums.back")}
     </button>
   );
 }
 
+/**
+ * Full-bleed band tinted by the album itself — see `HeroBackdrop`.
+ *
+ * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
+ * so a full-bleed child has to reach back through it.
+ */
 export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement> }) {
   const { t } = useTranslation("library");
 
@@ -124,7 +65,7 @@ export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement>
       {/* Inside the band rather than above it: the hero is full-bleed and
        * starts at the very top of the scroll area, so a back link placed
        * before it would push the whole treatment down the page. */}
-      <BackToAlbums />
+      <BackToGrid artist={album.artist} />
 
       {/* items-end: the text sits on the artwork's baseline rather than
        * floating at its centre. */}
@@ -138,8 +79,22 @@ export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement>
             {t("albums.eyebrow")}
           </p>
           <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight">{album.title}</h1>
+          {/* The artist name is the way *out* of an album and into everything
+           * else by the same artist — the one link that turns the library from
+           * a list of records into something you can wander through. Underlined
+           * on hover only: a permanently underlined name inside a headline
+           * block reads as an error. */}
           <p className="mt-1.5 truncate text-[0.8125rem] text-white/80">
-            <span className="font-medium text-white">{album.artist || t("unknownArtist")}</span>
+            {album.artist ? (
+              <Link
+                to={artistPath(album.artist)}
+                className="rounded-sm font-medium text-white underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-white/50"
+              >
+                {album.artist}
+              </Link>
+            ) : (
+              <span className="font-medium text-white">{t("unknownArtist")}</span>
+            )}
             {meta.length > 0 && ` · ${meta.join(" · ")}`}
           </p>
         </div>

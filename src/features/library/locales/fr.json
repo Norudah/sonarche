@@ -28,14 +28,29 @@
     "completenessHint": "Métadonnées incomplètes sur cet album",
     "bonusFrom": "Bonus — « {{source}} »",
     "sort": {
-      "label": "Trier par",
       "artist": "Artiste",
       "title": "Titre",
       "year": "Année"
     }
   },
+  "artists": {
+    "eyebrow": "Artiste",
+    "back": "Artistes",
+    "empty": "Aucun artiste dans ta bibliothèque pour l'instant.",
+    "noResults": "Aucun artiste ne correspond à « {{query}} ».",
+    "discography": "Discographie",
+    "appearances": "Apparitions",
+    "appearancesHint": "Titres où {{name}} est crédité sur l'album de quelqu'un d'autre.",
+    "sort": {
+      "name": "Nom",
+      "albums": "Albums",
+      "tracks": "Titres"
+    }
+  },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",
+  "artistCount_one": "{{count}} artiste",
+  "artistCount_other": "{{count}} artistes",
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
   "totalPlaytime": "{{hours}} h {{minutes}}",
@@ -103,5 +118,8 @@
     "body_one": "« {{title}} » et son morceau seront retirés de ta bibliothèque, et le fichier supprimé du disque. Cette action est irréversible.",
     "body_other": "« {{title}} » et ses {{count}} morceaux seront retirés de ta bibliothèque, et les fichiers supprimés du disque. Cette action est irréversible.",
     "action": "Supprimer l'album"
+  },
+  "sort": {
+    "label": "Trier par"
   }
 }
