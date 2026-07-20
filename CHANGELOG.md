@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.7.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.6.0...sonarche-v0.7.0) (2026-07-20)
+
+
+### Features
+
+* browse the library by album, artist and genre — and the perf work to scale it ([d41c266](https://github.com/Norudah/sonarche/commit/d41c266de67b3d249e2dc46f521bb818b4172b47))
+* **library:** add the albums grid and album page ([5c719eb](https://github.com/Norudah/sonarche/commit/5c719eb1549cf642a95b24dae1dd1db87b2db6bd))
+* **library:** browse the genres themselves, not only their families ([bb50d58](https://github.com/Norudah/sonarche/commit/bb50d583e2a14326322adc2c95d176e56038ff89))
+* **library:** browse the library by artist ([e181f4c](https://github.com/Norudah/sonarche/commit/e181f4cb5e4bea6cc5e8e24ee4a209257f5a5f3e))
+* **library:** browse the library by genre family ([8918971](https://github.com/Norudah/sonarche/commit/89189718a2abd24c748273767a6e783b8cf3ca2e))
+* **library:** pin the album's identity once the hero scrolls away ([8c0a12a](https://github.com/Norudah/sonarche/commit/8c0a12a1dd4dea3cc5d5f4d88011d0d9ea30700b))
+* **library:** place the album metadata affordance, drop the recency sort ([d322572](https://github.com/Norudah/sonarche/commit/d322572249a06e6b00028c04f261f61f805f0af7))
+* **library:** redesign the tracks page as a columned list ([3406094](https://github.com/Norudah/sonarche/commit/340609464bc0dd687078332f3ca9e02af61666ea))
+* **library:** redesign track metadata inspector panel ([b105425](https://github.com/Norudah/sonarche/commit/b10542566eec698761e21067ed4c9d4b031b7183))
+* **shell:** give startup a real splash instead of a half-live shell ([774b654](https://github.com/Norudah/sonarche/commit/774b654c88dc469db74ebe699ede35d8caf03197))
+
+
+### Bug Fixes
+
+* **library:** return to the top of the list when the search changes ([203fd5d](https://github.com/Norudah/sonarche/commit/203fd5d076ea7da4b031c58b508aa078e41b8255))
+* **library:** stop the album hero stuttering on arrival ([da87fcb](https://github.com/Norudah/sonarche/commit/da87fcbf5859228315e7c10b4a195cfeda061156))
+* **library:** stop the artist thumbnail reading as an album cover ([d8b8c59](https://github.com/Norudah/sonarche/commit/d8b8c593ee21adaf27de4f066a05a25134ee812b))
+* **library:** stop the mock library echoing genres as their own bucket ([aa6f532](https://github.com/Norudah/sonarche/commit/aa6f532398ed2f1ff32ea5f84c1652097e9dad44))
+* **player:** take durations from the audio file, not the release ([d670232](https://github.com/Norudah/sonarche/commit/d67023264752045bef7f06b840705fd4440d273a))
+* **ui:** fade page transitions without movement or a gap ([a398c4b](https://github.com/Norudah/sonarche/commit/a398c4b1f973f71d55dcc4c594527a8981a41e1a))
+* **ui:** make hover, scrolling and page transitions feel immediate ([05acec3](https://github.com/Norudah/sonarche/commit/05acec361e701cf8407e69a36c9d07af50985322))
+* **ui:** show a pointer cursor on hand-rolled buttons ([3cc3ecd](https://github.com/Norudah/sonarche/commit/3cc3ecd5fcff67dae1fe3df1248fec6232483f86))
+
+
+### Performance Improvements
+
+* **library:** read the listing straight from SQLite instead of beets' ORM ([40b8ee3](https://github.com/Norudah/sonarche/commit/40b8ee339f73ae8bc4e29dc98842f03dd9739209))
+* **library:** render only the visible rows of the tracks table ([339676e](https://github.com/Norudah/sonarche/commit/339676ed2ec01a28f5f3abe75cf6eb2db62dcf56))
+* **library:** resolve cover art once per album, not per track ([b89a5ba](https://github.com/Norudah/sonarche/commit/b89a5baa717d0c9a6e5386c45c27a12a6c92cfd3))
+* **player:** split the playhead out of the player context ([2bc6823](https://github.com/Norudah/sonarche/commit/2bc682394fc5a445aed037220bb70e9a5c05bbe0))
+* **ui:** defer cover art that lives in a list ([49b2b56](https://github.com/Norudah/sonarche/commit/49b2b56595ac689a279f888fc037c7b04c0b850e))
+
 ## [0.6.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.5.0...sonarche-v0.6.0) (2026-07-19)
 
 
