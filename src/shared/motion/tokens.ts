@@ -39,6 +39,11 @@ export const durations = {
   fast: 0.18,
   /** Content swapping under a stable frame (now-playing track change). */
   medium: 0.28,
+  /** A value drawing itself in on arrival — the album completeness ring filling
+   * from empty, and the figure counting up with it. The one token allowed to
+   * run long: it is not a transition between two states but the reading of a
+   * measurement, and at 0.28s the sweep is over before the eye finds it. */
+  reveal: 0.9,
 } as const;
 
 /** HeroUI ships an Apple-style out curve; we reuse it rather than invent one.

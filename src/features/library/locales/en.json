@@ -56,8 +56,7 @@
     "moreActions": "More actions",
     "tagScoreHint": "Metadata fields filled in on this track",
     "stats": {
-      "completeness": "Tag completeness",
-      "tagged": "Complete tracks"
+      "taggedCount": "{{tagged}}/{{total}} tracks complete"
     }
   },
   "artists": {

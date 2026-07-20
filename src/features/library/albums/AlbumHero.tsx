@@ -6,7 +6,7 @@ import { artistPath, paths } from "@/app/routes";
 import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
-import { AlbumStats } from "@/features/library/albums/AlbumStats";
+import { AlbumCompleteness } from "@/features/library/albums/AlbumCompleteness";
 import { GenreChips } from "@/features/library/GenreChips";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroWash } from "@/features/library/HeroWash";
@@ -121,7 +121,7 @@ export function AlbumHero({ album, onPlay, onDelete, ref }: AlbumHeroProps) {
             <AlbumActions album={album} onPlay={onPlay} onDelete={onDelete} />
           </div>
 
-          <AlbumStats album={album} />
+          <AlbumCompleteness album={album} />
         </div>
       </div>
     </header>

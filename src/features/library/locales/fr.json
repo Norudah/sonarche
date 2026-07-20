@@ -56,8 +56,7 @@
     "moreActions": "Plus d'actions",
     "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
     "stats": {
-      "completeness": "Complétude tags",
-      "tagged": "Pistes complètes"
+      "taggedCount": "{{tagged}}/{{total}} pistes complètes"
     }
   },
   "artists": {
