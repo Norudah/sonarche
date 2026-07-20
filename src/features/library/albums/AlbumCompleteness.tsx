@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import type { Album } from "@/features/library/albums/albums";
 import { durations, easings } from "@/shared/motion/tokens";
 
-const SIZE = 128;
-const STROKE = 9;
+const SIZE = 80;
+const STROKE = 6;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -73,6 +73,10 @@ function useCountUp(target: number, duration: number): number {
  *
  * The count below is deliberately kept: a percentage hides whether the gap is
  * one field missing everywhere or one track left untouched.
+ *
+ * Always the app's accent, complete or not — a green swap read as a status
+ * light rather than a gauge, and this is the one number the whole app is about,
+ * not an alert to clear.
  */
 export function AlbumCompleteness({ album }: { album: Album }) {
   const { t } = useTranslation("library");
@@ -80,8 +84,6 @@ export function AlbumCompleteness({ album }: { album: Album }) {
   // Floor, not round: 99.6% must not display as a complete 100%.
   const target = Math.floor(album.completeness * 100);
   const percent = useCountUp(target, durations.reveal);
-  const isComplete = album.fullyTagged === album.tracks.length;
-  const tone = isComplete ? "text-success" : "text-accent";
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
@@ -106,7 +108,7 @@ export function AlbumCompleteness({ album }: { album: Album }) {
             initial={{ strokeDashoffset: CIRCUMFERENCE }}
             animate={{ strokeDashoffset: CIRCUMFERENCE * (1 - target / 100) }}
             transition={{ duration: durations.reveal, ease: easings.out }}
-            className={isComplete ? "stroke-success" : "stroke-accent"}
+            className="stroke-accent"
           />
         </svg>
 
@@ -114,9 +116,9 @@ export function AlbumCompleteness({ album }: { album: Album }) {
             than placed beside it. `tabular-nums` keeps the digits from jittering
             as the count runs through two- and three-digit values. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-[1.75rem] leading-none font-bold tracking-tight tabular-nums ${tone}`}>
+          <span className="text-lg leading-none font-bold tracking-tight tabular-nums text-accent">
             {percent}
-            <span className="ml-0.5 text-base font-semibold">%</span>
+            <span className="ml-0.5 text-[0.625rem] font-semibold">%</span>
           </span>
         </div>
       </div>
