@@ -15,12 +15,23 @@ const ACTION =
 interface TrackRowProps {
   track: LibraryTrack;
   index: number;
+  /** Play the entrance animation. Off when the table is windowed: rows then
+   * mount and unmount as the user scrolls, and the cascade would re-fire on
+   * every one of them instead of playing once for the list. */
+  cascade?: boolean;
   style?: CSSProperties;
   onInspect: () => void;
   onDelete: () => void;
 }
 
-export function TrackRow({ track, index, style, onInspect, onDelete }: TrackRowProps) {
+export function TrackRow({
+  track,
+  index,
+  cascade = true,
+  style,
+  onInspect,
+  onDelete,
+}: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
@@ -31,7 +42,8 @@ export function TrackRow({ track, index, style, onInspect, onDelete }: TrackRowP
     <tr
       style={style}
       className={
-        "group/row row-cascade [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
+        "group/row [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
+        (cascade ? "row-cascade " : "") +
         (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
       }
     >
