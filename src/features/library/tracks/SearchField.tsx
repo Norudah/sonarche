@@ -2,9 +2,10 @@ import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/** Long enough to swallow a burst of typing, short enough that the list still
- * feels like it answers the keystroke. */
-const DEBOUNCE_MS = 200;
+/** Long enough to swallow a whole word typed at speed, short enough that the
+ * list still feels like it answers the keystroke. 200ms let a pause between two
+ * words through and refiltered on a half-typed query; 350ms read as sluggish. */
+const DEBOUNCE_MS = 275;
 
 interface SearchFieldProps {
   value: string;
