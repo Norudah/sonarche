@@ -1,0 +1,30 @@
+# Prettier owns the frontend sources only. Everything below has its own
+# formatter or its own generator, and letting prettier near it either fights
+# that tool or rewrites a file nobody edits by hand.
+
+# Build output and dependencies
+dist/
+dist-ssr/
+node_modules/
+target/
+src-tauri/target/
+
+# Rust: cargo fmt owns these
+src-tauri/**/*.rs
+
+# Tauri codegen — rewritten by the build, never edited by hand
+src-tauri/gen/
+
+# Python sidecar: its own formatting, not prettier's
+sidecar/
+.venv/
+__pycache__/
+
+# Generated / lockfiles
+package-lock.json
+src-tauri/Cargo.lock
+CHANGELOG.md
+.release-please-manifest.json
+
+# Editor / OS
+.DS_Store
