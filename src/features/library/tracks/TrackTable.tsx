@@ -8,8 +8,7 @@ import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTopOnFilterChange } from "@/features/library/tracks/useTopOnFilterChange";
 
-const COLUMN =
-  "px-3 pb-2 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+const COLUMN = "px-3 pb-2 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 interface TrackTableProps {
   tracks: LibraryTrack[];
@@ -49,7 +48,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
               <th className={`${COLUMN} w-[18%]`}>{t("columns.album")}</th>
               <th className={`${COLUMN} w-32`}>{t("columns.genre")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
-              <th className={`${COLUMN} w-16`}>
+              <th className={`${COLUMN} w-20`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>
@@ -77,18 +76,12 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
               />
             ))}
 
-            {rowWindow.paddingBottom > 0 && (
-              <tr style={{ height: rowWindow.paddingBottom }} aria-hidden />
-            )}
+            {rowWindow.paddingBottom > 0 && <tr style={{ height: rowWindow.paddingBottom }} aria-hidden />}
           </tbody>
         </table>
       </div>
 
-      <MetadataDrawer
-        track={inspected}
-        onClose={() => setInspectedId(null)}
-        onDelete={setDeleting}
-      />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} onDelete={setDeleting} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

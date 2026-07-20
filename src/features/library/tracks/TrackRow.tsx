@@ -10,7 +10,7 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
 const ACTION =
-  "cursor-pointer rounded-md p-1.5 text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
 interface TrackRowProps {
   track: LibraryTrack;
@@ -24,14 +24,7 @@ interface TrackRowProps {
   onDelete: () => void;
 }
 
-export function TrackRow({
-  track,
-  index,
-  cascade = true,
-  style,
-  onInspect,
-  onDelete,
-}: TrackRowProps) {
+export function TrackRow({ track, index, cascade = true, style, onInspect, onDelete }: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
@@ -76,8 +69,7 @@ export function TrackRow({
           )}
           <span
             className={
-              "truncate text-sm font-medium transition-colors " +
-              (isCurrent ? "text-accent" : "text-foreground")
+              "truncate text-sm font-medium transition-colors " + (isCurrent ? "text-accent" : "text-foreground")
             }
           >
             {track.title || t("unknownTitle")}
@@ -109,12 +101,10 @@ export function TrackRow({
       {/* Wrapped in a span, not raw text: the row cascade animates each cell's
        * child element, and a bare text node has nothing to animate. */}
       <td className={`${CELL} w-16 text-right tabular-nums`}>
-        <span className="block">
-          {track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}
-        </span>
+        <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      <td className={`${CELL} w-16`}>
+      <td className={`${CELL} w-20`}>
         <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
           <button
             type="button"

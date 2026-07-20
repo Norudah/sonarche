@@ -11,8 +11,12 @@ import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
+// Round, like every other icon-only control in the app: the hero's play pill,
+// its icon pills, the sidebar. A square hover target here was the last holdout.
+// `shrink-0` is what keeps them round — flex children shrink by default, and
+// the cell was 8px too narrow, so both circles were quietly ovals.
 const ACTION =
-  "flex size-8 cursor-pointer items-center justify-center rounded-md text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /**
  * The track's tag score, as filled fields over total.
@@ -33,10 +37,7 @@ function TagScore({ track }: { track: LibraryTrack }) {
   return (
     <span
       title={t("albums.tagScoreHint")}
-      className={
-        "inline-flex items-center gap-1.5 tabular-nums " +
-        (isComplete ? "text-muted" : "text-warning")
-      }
+      className={"inline-flex items-center gap-1.5 tabular-nums " + (isComplete ? "text-muted" : "text-warning")}
     >
       <span className={"size-1.5 rounded-full " + (isComplete ? "bg-success" : "bg-warning")} />
       {filled}/{total}
@@ -131,8 +132,7 @@ export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: A
         <div className="min-w-0">
           <span
             className={
-              "block truncate text-sm font-medium transition-colors " +
-              (isCurrent ? "text-accent" : "text-foreground")
+              "block truncate text-sm font-medium transition-colors " + (isCurrent ? "text-accent" : "text-foreground")
             }
           >
             {track.title || t("unknownTitle")}
@@ -160,9 +160,7 @@ export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: A
       </td>
 
       <td className={`${CELL} w-16 text-right tabular-nums`}>
-        <span className="block">
-          {track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}
-        </span>
+        <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
       {/* The extra wrapper is load-bearing, not decoration. `row-cascade`
@@ -172,7 +170,7 @@ export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: A
        * dropped them. The animation now lands on this div and the hidden layer
        * sits one level deeper, where nothing touches it. `pl-6` is the
        * breathing room — at `px-3` the icons sat against the duration. */}
-      <td className={`${CELL} w-24 pl-6`}>
+      <td className={`${CELL} w-28 pl-6`}>
         <div>
           <RowActions onInspect={onInspect} onDelete={onDelete} />
         </div>

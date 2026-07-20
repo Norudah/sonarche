@@ -18,17 +18,19 @@
  * `accent-soft/0`). Landing on an opaque `--background` keeps every stop in the
  * same family and ends the ramp on the exact colour it is sitting on.
  *
- * And it reaches `-bottom-32`, past the header it belongs to: the ramp used to
- * hit zero exactly at the header's edge, where the last few percent of alpha
- * are also where 8-bit banding is worst. Ending the gradient below the fold
- * puts that fragile tail outside the band. The heroes dropped `overflow-hidden`
- * for this — it was only ever there to clip the blurred artwork, which is gone.
+ * And it stops at the header's own edge. It used to overhang by `-bottom-32`,
+ * on the theory that the last few percent of alpha — where 8-bit banding is
+ * worst — were better off below the fold. But the ramp now *ends* on opaque
+ * `--background`, and an absolutely positioned element paints above the
+ * in-flow siblings that follow it: those 128px were laying a sheet of page
+ * background over the top of the tracklist. Since the final stop is already
+ * the exact colour underneath the header, ending flush leaves no seam to hide.
  */
 export function HeroWash() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 -top-px -bottom-32 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background"
+      className="pointer-events-none absolute inset-x-0 -top-px bottom-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background"
     />
   );
 }

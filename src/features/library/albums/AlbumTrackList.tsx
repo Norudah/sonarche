@@ -7,8 +7,10 @@ import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 
-const COLUMN =
-  "px-3 pb-2 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+// No alignment in the base: `${COLUMN} text-center` looks like it wins, but
+// Tailwind resolves conflicts by stylesheet order, not by class-string order,
+// so a `text-left` baked in here silently beat the "#" column's override.
+const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 /**
  * Deliberately not `TrackTable`: an album's tracklist drops the Album and Genre
@@ -23,8 +25,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
 
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
-  const inspected =
-    inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
+  const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
   return (
     <>
@@ -33,11 +34,11 @@ export function AlbumTrackList({ album }: { album: Album }) {
           <thead>
             <tr className="[&>th]:border-b [&>th]:border-separator/60">
               <th className={`${COLUMN} w-14 text-center`}>#</th>
-              <th className={COLUMN}>{t("columns.title")}</th>
-              <th className={`${COLUMN} w-[22%]`}>{t("columns.artist")}</th>
-              <th className={`${COLUMN} w-20`}>{t("columns.tags")}</th>
+              <th className={`${COLUMN} text-left`}>{t("columns.title")}</th>
+              <th className={`${COLUMN} w-[22%] text-left`}>{t("columns.artist")}</th>
+              <th className={`${COLUMN} w-20 text-left`}>{t("columns.tags")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
-              <th className={`${COLUMN} w-24`}>
+              <th className={`${COLUMN} w-28`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>
@@ -57,11 +58,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
         </table>
       </div>
 
-      <MetadataDrawer
-        track={inspected}
-        onClose={() => setInspectedId(null)}
-        onDelete={setDeleting}
-      />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} onDelete={setDeleting} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );
