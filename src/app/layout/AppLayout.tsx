@@ -3,7 +3,6 @@ import { Outlet } from "react-router";
 
 import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
-import { Topbar } from "@/app/layout/Topbar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { PlayerBar } from "@/shared/player/PlayerBar";
@@ -24,7 +23,6 @@ export function AppLayout() {
         <div className="flex min-h-0 flex-1">
           <Sidebar />
           <div className="flex min-h-0 flex-1 flex-col">
-            <Topbar />
             {/* No padding here: this is the scrollport, and `sticky top-0`
                 resolves against its padding box. Padding on the scrollport
                 would offset every sticky child by 2rem and let content scroll

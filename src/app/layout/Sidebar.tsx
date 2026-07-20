@@ -1,5 +1,5 @@
 import { cn } from "@heroui/react";
-import { AudioLines, Disc, Download, FileText, Layers, Mic2, Music, Plus } from "lucide-react";
+import { AudioLines, Disc, Download, FileText, Layers, Mic2, Music, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -16,7 +16,7 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
       end={end}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+          "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           isActive ? "text-accent" : "text-muted hover:bg-default/40",
         )
       }
@@ -29,7 +29,7 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
             <motion.span
               layoutId={layoutIds.navIndicator}
               transition={springs.snappy}
-              className="absolute inset-0 rounded-md bg-accent/15"
+              className="absolute inset-0 rounded-lg bg-accent/15"
             />
           )}
           <Icon className="relative size-4 shrink-0" />
@@ -40,49 +40,49 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
   );
 }
 
-function NavSection({ label, action, children }: { label: string; action?: ReactNode; children?: ReactNode }) {
+function NavSection({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between px-2.5 pb-0.5">
-        <p className="text-[11px] font-semibold tracking-widest text-muted uppercase">{label}</p>
-        {action}
-      </div>
-      {children && <nav className="flex flex-col gap-0.5">{children}</nav>}
+    <div className="flex flex-col gap-1.5">
+      <p className="px-3 text-[11px] font-semibold tracking-widest text-muted uppercase">{label}</p>
+      <nav className="flex flex-col gap-1">{children}</nav>
     </div>
   );
 }
 
-function AddPlaylistButton({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-default/40 hover:text-foreground"
-    >
-      <Plus className="size-3.5" />
-    </button>
-  );
-}
-
+/**
+ * Asymmetric on purpose: a rule sits closer to the section it opens than to the
+ * one it closes, so the eye groups the label with its items instead of reading
+ * the divider as floating between two equal blocks.
+ */
 function Divider() {
-  return <div className="mx-2.5 border-t border-separator" />;
+  return <div className="mx-3 mt-6 mb-4 border-t border-separator" />;
 }
 
 export function Sidebar() {
   const { t } = useTranslation("common");
   const { t: tLibrary } = useTranslation("library");
+  const { t: tSettings } = useTranslation("settings");
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
-      <div className="flex flex-col gap-4 px-3 pt-7 pb-4">
-        <div className="mb-5 flex items-center gap-2.5 px-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-            <AudioLines className="size-4.5" />
-          </div>
-          <span className="text-[15px] font-semibold tracking-tight">{t("appName")}</span>
-        </div>
+      {/* The window has no native title bar any more, so this strip is what the
+          user grabs to move it — and, being top-left, it is also where macOS
+          paints the traffic lights over our webview. `pt-11` is their
+          clearance; anything less and the close button lands on the logo.
 
+          `pointer-events-none` on the contents because a drag region only
+          reacts to presses that land on the element carrying the attribute,
+          and a press on the logo or the wordmark would otherwise do nothing. */}
+      <div data-tauri-drag-region className="flex items-center gap-3 px-6 pt-14 pb-7">
+        <div className="pointer-events-none flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          <AudioLines className="size-4.5" />
+        </div>
+        <span className="pointer-events-none text-[15px] font-semibold tracking-tight">{t("appName")}</span>
+      </div>
+
+      {/* `flex-1` so the settings entry below is pushed to the floor of the
+          sidebar rather than trailing the last nav item. */}
+      <div className="flex-1 px-3">
         <NavSection label={t("nav.sections.explorer")}>
           <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
           <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
@@ -96,10 +96,13 @@ export function Sidebar() {
           <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
           <NavItem to={paths.libraryGenres} label={tLibrary("views.genres")} icon={Layers} />
         </NavSection>
+      </div>
 
-        <Divider />
-
-        <NavSection label={t("nav.sections.playlists")} action={<AddPlaylistButton label={t("nav.addPlaylist")} />} />
+      {/* Settings is a destination like any other, so it is a nav item and not
+          a floating icon — just the one that belongs at the bottom, out of the
+          path of the things used all day. */}
+      <div className="px-3 pt-2 pb-4">
+        <NavItem to={paths.settings} label={tSettings("title")} icon={Settings} />
       </div>
     </aside>
   );
