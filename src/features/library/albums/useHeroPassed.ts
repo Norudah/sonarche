@@ -9,9 +9,9 @@ import { useScrollport } from "@/shared/ui/Scrollport";
  * this still on screen", which is exactly what the observer answers, and it
  * answers it off the main thread instead of on every scroll frame.
  *
- * The root is the app's scrollport, not the viewport — <main> sits below the
- * topbar, so an element that has left <main> is still inside the window and the
- * default root would report it visible for another topbar's worth of scrolling.
+ * The root is the app's scrollport, not the viewport — <main> is only part of
+ * the window, so an element that has scrolled out of it is still on screen, and
+ * the default root would keep reporting it visible.
  *
  * A callback ref, not a ref object, and that part is load-bearing: the page
  * renders a spinner while the library loads, so the observed element does not

@@ -106,10 +106,9 @@
 /* --- App-level design tokens (theme-agnostic) ----------------------------- */
 
 @theme {
-  /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
+  /* App chrome dimensions — consume via w-sidebar / h-player, etc.
      Centralized so the shell layout never carries magic numbers. */
-  --spacing-sidebar: 13.5rem;
-  --spacing-topbar: 2.25rem;
+  --spacing-sidebar: 15rem;
   --spacing-player: 5.5rem;
 
   /* Source brand colors — not semantic app colors: they identify a third

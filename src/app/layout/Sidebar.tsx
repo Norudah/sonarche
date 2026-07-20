@@ -16,7 +16,7 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
       end={end}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
           isActive ? "text-accent" : "text-muted hover:bg-default/40",
         )
       }
@@ -43,7 +43,10 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
 function NavSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="px-3 text-[11px] font-semibold tracking-widest text-muted uppercase">{label}</p>
+      {/* A shade lighter and a hair smaller than the items they head: these are
+          signposts, and they should be found when looked for rather than read
+          on the way past. */}
+      <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">{label}</p>
       <nav className="flex flex-col gap-1">{children}</nav>
     </div>
   );
@@ -67,8 +70,11 @@ export function Sidebar() {
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
       {/* The window has no native title bar any more, so this strip is what the
           user grabs to move it — and, being top-left, it is also where macOS
-          paints the traffic lights over our webview. `pt-11` is their
-          clearance; anything less and the close button lands on the logo.
+          paints the traffic lights over our webview. Their own distance from
+          the window corner is `trafficLightPosition` in tauri.conf.json, not
+          this padding — that was the wrong lever the first time round. `pt-14`
+          is just their vertical clearance, so the logo sits comfortably below
+          them rather than crowding the same row.
 
           `pointer-events-none` on the contents because a drag region only
           reacts to presses that land on the element carrying the attribute,
