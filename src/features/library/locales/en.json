@@ -10,6 +10,10 @@
   "genres": {
     "eyebrow": "Genre",
     "back": "Genres",
+    "scope": {
+      "families": "Families",
+      "genres": "Genres"
+    },
     "other": "Other",
     "none": "No genre",
     "familyCount_one": "{{count}} family",

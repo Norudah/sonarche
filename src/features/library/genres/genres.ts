@@ -135,6 +135,73 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
     );
 }
 
+/**
+ * A specific genre, as its own browsable object rather than as a filter on its
+ * family.
+ *
+ * Identity is the pair (family, name), not the name alone. A genre tagged
+ * inconsistently across the library — some tracks bucketed, some not — really
+ * does exist in two families, and collapsing it into one row would have to pick
+ * a winner and lie about the other half. It shows up twice, and the family line
+ * under the name says why.
+ */
+export interface Genre {
+  name: string;
+  /** Family key this genre was counted under. Also its route's first segment. */
+  family: string;
+  trackCount: number;
+  albums: Album[];
+  artistCount: number;
+  /** Share of the whole library, 0…1 — the same scale as `Family.share`, so a
+   * genre row and a family row can be read against each other. */
+  share: number;
+}
+
+/**
+ * Flattens the families into their genres, largest first.
+ *
+ * Scoped inside the family rather than swept library-wide: a genre's albums are
+ * its family's albums that carry it, which is what the family page's chip
+ * already showed. Widening it would let a record filed under Rock surface under
+ * an Electronic genre, and the page would stop agreeing with itself.
+ */
+export function listGenres(families: Family[], totalTracks: number): Genre[] {
+  return families
+    .flatMap((family) =>
+      family.subs.map((sub) => {
+        const albums = albumsWithGenre(family, sub.name);
+        return {
+          name: sub.name,
+          family: family.key,
+          trackCount: sub.trackCount,
+          albums,
+          artistCount: new Set(albums.map((album) => album.artist)).size,
+          share: totalTracks === 0 ? 0 : sub.trackCount / totalTracks,
+        };
+      }),
+    )
+    .sort((a, b) => b.trackCount - a.trackCount || a.name.localeCompare(b.name));
+}
+
+export function findGenre(genres: Genre[], family: string, name: string): Genre | null {
+  return genres.find((genre) => genre.family === family && genre.name === name) ?? null;
+}
+
+/** Same contract as `filterFamilies`, one level down. */
+export function filterGenres(genres: Genre[], query: string): Genre[] {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return genres;
+
+  return genres.filter((genre) => {
+    const haystack = normalize(
+      [genre.name, genre.family, ...genre.albums.map((album) => `${album.title} ${album.artist}`)].join(
+        " ",
+      ),
+    );
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
 /** Distinct specific genres across the whole library — the header's second
  * figure. Counted here rather than summed from `subs` so that a genre filed
  * under two families is not counted twice. */

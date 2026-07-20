@@ -2,10 +2,13 @@ import { Button } from "@heroui/react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { ScopeToggle, type GenreScope } from "@/features/library/genres/ScopeToggle";
 import { SearchField } from "@/features/library/tracks/SearchField";
 import { Swap } from "@/shared/motion/Swap";
 
 interface GenresHeaderProps {
+  scope: GenreScope;
+  onScopeChange: (value: GenreScope) => void;
   familyCount: number;
   genreCount: number;
   unclassifiedCount: number;
@@ -19,11 +22,14 @@ interface GenresHeaderProps {
 }
 
 /**
- * No sort control, unlike the album and artist shelves. The families are
- * ordered by size and that ordering *is* the page — letting the user sort them
- * A→Z would turn the distribution back into the flat list it exists not to be.
+ * No sort control, unlike the album and artist shelves. Rows are ordered by
+ * size and that ordering *is* the page — letting the user sort them A→Z would
+ * turn the distribution back into the flat list it exists not to be. The one
+ * control that belongs here changes the unit, not the order.
  */
 export function GenresHeader({
+  scope,
+  onScopeChange,
   familyCount,
   genreCount,
   unclassifiedCount,
@@ -54,6 +60,7 @@ export function GenresHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <ScopeToggle value={scope} onChange={onScopeChange} />
         <SearchField value={query} onChange={onQueryChange} />
         <Button
           variant="secondary"

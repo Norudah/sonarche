@@ -8,13 +8,20 @@ import {
   FAMILY_NONE,
   FAMILY_OTHER,
   filterFamilies,
+  filterGenres,
   findFamily,
+  findGenre,
   groupFamilies,
+  listGenres,
 } from "@/features/library/genres/genres";
 import { track } from "@/features/library/testFixtures";
 
 function familiesOf(tracks: LibraryTrack[]) {
   return groupFamilies(tracks, groupAlbums(tracks));
+}
+
+function genresOf(tracks: LibraryTrack[]) {
+  return listGenres(familiesOf(tracks), tracks.length);
 }
 
 describe("groupFamilies", () => {
@@ -125,6 +132,88 @@ describe("album assignment", () => {
 
     expect(rock.albums).toHaveLength(3);
     expect(rock.artistCount).toBe(2);
+  });
+});
+
+describe("listGenres", () => {
+  it("flattens the families into their genres, largest first", () => {
+    const genres = genresOf([
+      track({ id: 1, album: "A", albumArtist: "X", genre: "Art Rock", genreBucket: "Rock" }),
+      track({ id: 2, album: "A", albumArtist: "X", genre: "Art Rock", genreBucket: "Rock" }),
+      track({ id: 3, album: "B", albumArtist: "Y", genre: "Teen Pop", genreBucket: "Pop" }),
+    ]);
+
+    expect(genres.map((g) => [g.name, g.family, g.trackCount])).toEqual([
+      ["Art Rock", "Rock", 2],
+      ["Teen Pop", "Pop", 1],
+    ]);
+  });
+
+  it("shares are on the whole library, so a genre and a family compare", () => {
+    const tracks = [
+      track({ id: 1, album: "A", albumArtist: "X", genre: "Art Rock", genreBucket: "Rock" }),
+      track({ id: 2, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
+      track({ id: 3, album: "B", albumArtist: "Y", genre: "Teen Pop", genreBucket: "Pop" }),
+      track({ id: 4, album: "B", albumArtist: "Y", genre: "Teen Pop", genreBucket: "Pop" }),
+    ];
+    const rock = findFamily(familiesOf(tracks), "Rock");
+    const artRock = findGenre(genresOf(tracks), "Rock", "Art Rock");
+
+    expect(rock?.share).toBe(0.5);
+    expect(artRock?.share).toBe(0.25);
+  });
+
+  it("keeps a genre that straddles two families as two rows", () => {
+    const genres = genresOf([
+      track({ id: 1, album: "A", albumArtist: "X", genre: "Crossover", genreBucket: "Rock" }),
+      track({ id: 2, album: "B", albumArtist: "Y", genre: "Crossover", genreBucket: "Pop" }),
+    ]);
+
+    expect(genres.map((g) => g.family).sort()).toEqual(["Pop", "Rock"]);
+    expect(findGenre(genres, "Rock", "Crossover")?.trackCount).toBe(1);
+  });
+
+  it("scopes a genre's albums to its own family", () => {
+    const genres = genresOf([
+      // "OK" is a Rock album by plurality, but carries one Teen Pop track.
+      track({ id: 1, album: "OK", albumArtist: "X", genre: "Art Rock", genreBucket: "Rock" }),
+      track({ id: 2, album: "OK", albumArtist: "X", genre: "Art Rock", genreBucket: "Rock" }),
+      track({ id: 3, album: "OK", albumArtist: "X", genre: "Teen Pop", genreBucket: "Pop" }),
+      track({ id: 4, album: "Four", albumArtist: "Y", genre: "Teen Pop", genreBucket: "Pop" }),
+    ]);
+
+    // The Pop genre must not claim a record filed under Rock.
+    expect(findGenre(genres, "Pop", "Teen Pop")?.albums.map((a) => a.title)).toEqual(["Four"]);
+    expect(findGenre(genres, "Rock", "Art Rock")?.albums.map((a) => a.title)).toEqual(["OK"]);
+  });
+
+  it("counts distinct artists of the genre", () => {
+    const genres = genresOf([
+      track({ id: 1, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
+      track({ id: 2, album: "B", albumArtist: "Y", genre: "Grunge", genreBucket: "Rock" }),
+      track({ id: 3, album: "C", albumArtist: "Y", genre: "Grunge", genreBucket: "Rock" }),
+    ]);
+
+    expect(findGenre(genres, "Rock", "Grunge")?.artistCount).toBe(2);
+  });
+});
+
+describe("filterGenres", () => {
+  it("matches on the genre, its family, or one of its records", () => {
+    const genres = genresOf([
+      track({
+        id: 1,
+        album: "Discovery",
+        albumArtist: "Daft Punk",
+        genre: "French House",
+        genreBucket: "Electronic",
+      }),
+      track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
+    ]);
+
+    expect(filterGenres(genres, "house").map((g) => g.name)).toEqual(["French House"]);
+    expect(filterGenres(genres, "rock").map((g) => g.name)).toEqual(["Art Rock"]);
+    expect(filterGenres(genres, "radiohead").map((g) => g.name)).toEqual(["Art Rock"]);
   });
 });
 

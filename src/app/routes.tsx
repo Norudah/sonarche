@@ -48,11 +48,28 @@ export function artistPath(name: string): string {
   return `${paths.libraryArtists}/${encodeURIComponent(name)}`;
 }
 
-/** Same one-segment shape as `artistPath`. The segment is the family *key*, not
- * its label: the key is what the sidecar computed and what survives a language
- * change, while the two sentinels have no name of their own to put in a URL. */
-export function genrePath(family: string): string {
-  return `${paths.libraryGenres}/${encodeURIComponent(family)}`;
+/**
+ * The family alone, or a specific genre inside it.
+ *
+ * The path segment carries the family *key*, not its label: the key is what the
+ * sidecar computed and what survives a language change, while the two sentinels
+ * have no name of their own to put in a URL.
+ *
+ * The genre rides in the query rather than as a second segment, for two reasons
+ * that point the same way. Modelling: a genre is scoped inside its family, so
+ * it refines that page rather than naming a different resource. And mechanics:
+ * React Router expands an optional segment (`:family/:genre?`) into two
+ * separate route entries, so flipping a chip unmounted the page and mounted a
+ * fresh one — the hero restarted its backdrop fade and the shelf rebuilt every
+ * card, which is exactly the jump this is meant to avoid. A query keeps one
+ * match, so the page stays mounted and only the cards that differ move.
+ *
+ * It is still in the URL, so the selection survives leaving the page and coming
+ * back — which component state did not.
+ */
+export function genrePath(family: string, genre?: string): string {
+  const base = `${paths.libraryGenres}/${encodeURIComponent(family)}`;
+  return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
 }
 
 export const router = createMemoryRouter([

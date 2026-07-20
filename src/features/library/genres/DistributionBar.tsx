@@ -1,11 +1,12 @@
 import { motion } from "motion/react";
 
 import type { Family } from "@/features/library/genres/genres";
-import { familyTone, rampSizeOf } from "@/features/library/genres/tone";
+import { toneOf } from "@/features/library/genres/tone";
 import { springs } from "@/shared/motion/tokens";
 
 interface DistributionBarProps {
   families: Family[];
+  tones: Map<string, string>;
   labelOf: (key: string) => string;
 }
 
@@ -24,9 +25,7 @@ interface DistributionBarProps {
  * One transform on the wrapper animates the whole bar, instead of thirteen
  * width animations that would each force a layout pass on every frame.
  */
-export function DistributionBar({ families, labelOf }: DistributionBarProps) {
-  const rampSize = rampSizeOf(families);
-
+export function DistributionBar({ families, tones, labelOf }: DistributionBarProps) {
   return (
     <motion.div
       initial={{ scaleX: 0, opacity: 0 }}
@@ -34,14 +33,11 @@ export function DistributionBar({ families, labelOf }: DistributionBarProps) {
       transition={springs.soft}
       className="flex h-2.5 origin-left gap-0.5 overflow-hidden rounded-full"
     >
-      {families.map((family, rank) => (
+      {families.map((family) => (
         <div
           key={family.key}
           title={`${labelOf(family.key)} — ${Math.round(family.share * 100)} %`}
-          style={{
-            flexGrow: family.share,
-            background: familyTone(family.key, rank, rampSize),
-          }}
+          style={{ flexGrow: family.share, background: toneOf(tones, family.key) }}
           className="min-w-0.5 basis-0 rounded-full"
         />
       ))}
