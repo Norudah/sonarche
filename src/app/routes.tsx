@@ -7,6 +7,7 @@ import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
 import { ArtistDetailView } from "@/features/library/views/ArtistDetailView";
 import { ArtistsView } from "@/features/library/views/ArtistsView";
+import { GenreDetailView } from "@/features/library/views/GenreDetailView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { TracksView } from "@/features/library/views/TracksView";
 import { MetadataPage } from "@/features/metadata/MetadataPage";
@@ -26,6 +27,7 @@ export const paths = {
   libraryArtists: "/library/artists",
   libraryArtist: "/library/artists/:name",
   libraryGenres: "/library/genres",
+  libraryGenre: "/library/genres/:family",
   settings: "/settings",
 } as const;
 
@@ -44,6 +46,13 @@ export function albumPath(artist: string, title: string): string {
  * to be split back apart on the way in. */
 export function artistPath(name: string): string {
   return `${paths.libraryArtists}/${encodeURIComponent(name)}`;
+}
+
+/** Same one-segment shape as `artistPath`. The segment is the family *key*, not
+ * its label: the key is what the sidecar computed and what survives a language
+ * change, while the two sentinels have no name of their own to put in a URL. */
+export function genrePath(family: string): string {
+  return `${paths.libraryGenres}/${encodeURIComponent(family)}`;
 }
 
 export const router = createMemoryRouter([
@@ -65,6 +74,7 @@ export const router = createMemoryRouter([
           { path: paths.libraryArtists, element: <ArtistsView /> },
           { path: paths.libraryArtist, element: <ArtistDetailView /> },
           { path: paths.libraryGenres, element: <GenresView /> },
+          { path: paths.libraryGenre, element: <GenreDetailView /> },
         ],
       },
     ],
