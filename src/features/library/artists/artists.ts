@@ -127,9 +127,7 @@ export function filterArtists(artists: Artist[], query: string): Artist[] {
   if (terms.length === 0) return artists;
 
   return artists.filter((artist) => {
-    const haystack = normalize(
-      [artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "),
-    );
+    const haystack = normalize([artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

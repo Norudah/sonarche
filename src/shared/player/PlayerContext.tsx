@@ -123,10 +123,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [current, isPlaying, volume, play, toggle, seek, setVolume],
   );
 
-  const progress = useMemo<PlayerProgress>(
-    () => ({ currentTime, duration }),
-    [currentTime, duration],
-  );
+  const progress = useMemo<PlayerProgress>(() => ({ currentTime, duration }), [currentTime, duration]);
 
   return (
     <ControlsContext.Provider value={controls}>

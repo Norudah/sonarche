@@ -1,9 +1,4 @@
-import type {
-  AlbumTrackJob,
-  DownloadJob,
-  MetadataReport,
-  MetadataReportFields,
-} from "@/features/download/api";
+import type { AlbumTrackJob, DownloadJob, MetadataReport, MetadataReportFields } from "@/features/download/api";
 
 /** Fixture factories for the queue's pure modules (pipeline, tags, attempts,
  * library presence). Test-only: nothing in `src/` imports this file, and the

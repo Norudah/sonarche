@@ -9,17 +9,7 @@ import { NavLink } from "react-router";
 import { paths } from "@/app/routes";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
-function NavItem({
-  to,
-  label,
-  icon: Icon,
-  end,
-}: {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
-}) {
+function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; icon: LucideIcon; end?: boolean }) {
   return (
     <NavLink
       to={to}
@@ -50,15 +40,7 @@ function NavItem({
   );
 }
 
-function NavSection({
-  label,
-  action,
-  children,
-}: {
-  label: string;
-  action?: ReactNode;
-  children?: ReactNode;
-}) {
+function NavSection({ label, action, children }: { label: string; action?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between px-2.5 pb-0.5">

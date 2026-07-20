@@ -36,14 +36,7 @@ interface SwapProps {
  * pop a dozen markers at once. Only a change that happens while the user is
  * watching is worth animating.
  */
-export function Swap({
-  swapKey,
-  children,
-  className,
-  animate,
-  transition,
-  mode = "wait",
-}: SwapProps) {
+export function Swap({ swapKey, children, className, animate, transition, mode = "wait" }: SwapProps) {
   const content = (
     <motion.span
       key={swapKey}

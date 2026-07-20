@@ -70,10 +70,7 @@ describe("jobTags", () => {
   it("still ignores a duplicate that has no report", () => {
     const album = job({
       kind: "album",
-      tracks: [
-        albumTrack({ index: 1, report: report() }),
-        albumTrack({ index: 2, report: null, duplicateOf: 4 }),
-      ],
+      tracks: [albumTrack({ index: 1, report: report() }), albumTrack({ index: 2, report: null, duplicateOf: 4 })],
     });
     expect(jobTags(album)).toMatchObject({ value: 86 });
   });

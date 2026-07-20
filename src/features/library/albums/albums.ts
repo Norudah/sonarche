@@ -120,9 +120,7 @@ export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
   switch (sort) {
     case "artist":
       // Within an artist, chronological: a discography reads by era, not A→Z.
-      return sorted.sort(
-        (a, b) => a.artist.localeCompare(b.artist) || (a.year ?? 0) - (b.year ?? 0),
-      );
+      return sorted.sort((a, b) => a.artist.localeCompare(b.artist) || (a.year ?? 0) - (b.year ?? 0));
     case "title":
       return sorted.sort((a, b) => a.title.localeCompare(b.title));
     case "year":
@@ -138,9 +136,7 @@ export function filterAlbums(albums: Album[], query: string): Album[] {
   if (terms.length === 0) return albums;
 
   return albums.filter((album) => {
-    const haystack = normalize(
-      [album.title, album.artist, album.year ?? "", ...album.genres].join(" "),
-    );
+    const haystack = normalize([album.title, album.artist, album.year ?? "", ...album.genres].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

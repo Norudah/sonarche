@@ -45,12 +45,7 @@ export function SubGenreChips({ family, subs, selected }: SubGenreChipsProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link
-        to={genrePath(family)}
-        replace
-        state={state}
-        className={chip(selected == null)}
-      >
+      <Link to={genrePath(family)} replace state={state} className={chip(selected == null)}>
         {t("genres.allSubs")}
       </Link>
       {subs.map((sub) => {
@@ -64,9 +59,7 @@ export function SubGenreChips({ family, subs, selected }: SubGenreChipsProps) {
             className={chip(isActive)}
           >
             {sub.name}
-            <span className="ml-1.5 tabular-nums opacity-60">
-              {sub.trackCount}
-            </span>
+            <span className="ml-1.5 tabular-nums opacity-60">{sub.trackCount}</span>
           </Link>
         );
       })}

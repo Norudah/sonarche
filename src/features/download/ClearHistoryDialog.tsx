@@ -4,13 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useClearJobHistory } from "@/features/download/hooks";
 
-export function ClearHistoryDialog({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export function ClearHistoryDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation("download");
   const clear = useClearJobHistory();
 
@@ -36,9 +30,7 @@ export function ClearHistoryDialog({
             </AlertDialog.Header>
             <AlertDialog.Body>
               <p>{t("queue.clearHistoryBody")}</p>
-              {clear.isError && (
-                <p className="mt-2 text-sm text-danger">{t("queue.clearHistoryFailed")}</p>
-              )}
+              {clear.isError && <p className="mt-2 text-sm text-danger">{t("queue.clearHistoryFailed")}</p>}
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button variant="secondary" onPress={onClose} isDisabled={clear.isPending}>

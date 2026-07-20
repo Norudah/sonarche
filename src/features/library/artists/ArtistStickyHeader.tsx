@@ -38,9 +38,7 @@ export function ArtistStickyHeader({ artist, isVisible, onPlay }: ArtistStickyHe
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{artist.name}</p>
-        <p className="truncate text-[0.6875rem] text-muted">
-          {t("albumCount", { count: artist.albums.length })}
-        </p>
+        <p className="truncate text-[0.6875rem] text-muted">{t("albumCount", { count: artist.albums.length })}</p>
       </div>
       <motion.button
         type="button"

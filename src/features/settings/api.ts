@@ -28,10 +28,7 @@ export async function getPreferences(): Promise<Preferences> {
   return invoke<Preferences>("get_preferences");
 }
 
-export async function setRateLimitDelay(
-  key: RateLimitKey,
-  seconds: number,
-): Promise<Preferences> {
+export async function setRateLimitDelay(key: RateLimitKey, seconds: number): Promise<Preferences> {
   return invoke<Preferences>("set_rate_limit_delay", { key, seconds });
 }
 

@@ -56,11 +56,7 @@ export function everyRow(tracks: LibraryTrack[]): RowWindow {
  * spacers must always add up to the full list's height, otherwise the page
  * claims to be shorter than it is and the scroll position drifts.
  */
-export function windowFromSlices(
-  tracks: LibraryTrack[],
-  slices: Slice[],
-  totalSize: number,
-): RowWindow {
+export function windowFromSlices(tracks: LibraryTrack[], slices: Slice[], totalSize: number): RowWindow {
   const first = slices[0];
   const last = slices[slices.length - 1];
 

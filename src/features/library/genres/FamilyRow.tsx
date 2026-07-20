@@ -51,8 +51,7 @@ export function FamilyRow({ family, tone, peakShare, label, style }: FamilyRowPr
           </span>
         ) : (
           <span className="block truncate text-muted">
-            {t("trackCount", { count: family.trackCount })} ·{" "}
-            {t("albumCount", { count: family.albums.length })} ·{" "}
+            {t("trackCount", { count: family.trackCount })} · {t("albumCount", { count: family.albums.length })} ·{" "}
             {t("artistCount", { count: family.artistCount })}
           </span>
         )

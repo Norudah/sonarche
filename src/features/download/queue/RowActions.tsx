@@ -36,14 +36,7 @@ interface RowActionsProps {
   isRetrying?: boolean;
 }
 
-export function RowActions({
-  track,
-  sourceUrl,
-  onInspect,
-  onDelete,
-  onRetry,
-  isRetrying,
-}: RowActionsProps) {
+export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isRetrying }: RowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
@@ -123,13 +116,7 @@ interface AlbumRowActionsProps {
 
 /** An album row has no single library item behind it, so it offers the one
  * action that applies to the whole batch rather than the per-track set. */
-export function AlbumRowActions({
-  trackIds,
-  sourceUrl,
-  onDelete,
-  onRetry,
-  isRetrying,
-}: AlbumRowActionsProps) {
+export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetrying }: AlbumRowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tLibrary } = useTranslation("library");
 
@@ -148,11 +135,7 @@ export function AlbumRowActions({
         <Dropdown.Popover placement="bottom end">
           <Dropdown.Menu>
             <CopySourceItem url={sourceUrl} />
-            <Dropdown.Item
-              id="delete-album"
-              isDisabled={trackIds.length === 0}
-              onAction={onDelete}
-            >
+            <Dropdown.Item id="delete-album" isDisabled={trackIds.length === 0} onAction={onDelete}>
               <Trash2 className="size-4" />
               {tLibrary("deleteAlbum.action")}
             </Dropdown.Item>

@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack } from "@/features/library/api";
-import {
-  COMPLETENESS_KEYS,
-  countFilled,
-  formatBitrate,
-  toFieldValues,
-} from "@/features/library/metadata/fields";
+import { COMPLETENESS_KEYS, countFilled, formatBitrate, toFieldValues } from "@/features/library/metadata/fields";
 
 function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
   return {

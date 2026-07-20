@@ -18,14 +18,7 @@ interface AlbumsHeaderProps {
  * back to back is not an intent anyone has. On a grid the play action belongs
  * to each card, so the primary control lives there.
  */
-export function AlbumsHeader({
-  albumCount,
-  trackCount,
-  query,
-  onQueryChange,
-  sort,
-  onSortChange,
-}: AlbumsHeaderProps) {
+export function AlbumsHeader({ albumCount, trackCount, query, onQueryChange, sort, onSortChange }: AlbumsHeaderProps) {
   const { t } = useTranslation("library");
 
   return (

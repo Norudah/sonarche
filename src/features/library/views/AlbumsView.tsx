@@ -5,12 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
-import {
-  filterAlbums,
-  groupAlbums,
-  sortAlbums,
-  type AlbumSort,
-} from "@/features/library/albums/albums";
+import { filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { useLibrary } from "@/features/library/hooks";
@@ -26,10 +21,7 @@ export function AlbumsView() {
   const [sort, setSort] = useState<AlbumSort>("artist");
 
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
-  const visible = useMemo(
-    () => sortAlbums(filterAlbums(albums, query), sort),
-    [albums, query, sort],
-  );
+  const visible = useMemo(() => sortAlbums(filterAlbums(albums, query), sort), [albums, query, sort]);
 
   return (
     <PageContainer>
@@ -79,11 +71,7 @@ export function AlbumsView() {
       )}
 
       {visible.length > 0 && (
-        <AlbumGrid
-          albums={visible}
-          animationKey={`${query}:${sort}`}
-          onPlay={(album) => playTrack(album.tracks[0])}
-        />
+        <AlbumGrid albums={visible} animationKey={`${query}:${sort}`} onPlay={(album) => playTrack(album.tracks[0])} />
       )}
     </PageContainer>
   );

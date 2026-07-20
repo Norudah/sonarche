@@ -34,8 +34,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
 
   const detected = detectUrlKind(url);
   const chosenKind = mixedChoice?.url === url ? mixedChoice.kind : null;
-  const kind: JobKind | null =
-    detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
+  const kind: JobKind | null = detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
   const canSubmit = url.trim() !== "" && kind != null && !isPending;
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
@@ -49,9 +48,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
 
       <div className="relative flex flex-col gap-4">
         <p className="text-xs font-semibold tracking-widest text-accent uppercase">{t("eyebrow")}</p>
-        <h1 className="text-4xl font-bold tracking-tight text-balance whitespace-pre-line">
-          {t("title")}
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight text-balance whitespace-pre-line">{t("title")}</h1>
 
         <SourceBadges isYouTubeDetected={detected != null} />
 
@@ -114,10 +111,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               transition={springs.soft}
               className="overflow-hidden"
             >
-              <KindChoice
-                value={chosenKind}
-                onChange={(next) => setMixedChoice({ url, kind: next })}
-              />
+              <KindChoice value={chosenKind} onChange={(next) => setMixedChoice({ url, kind: next })} />
             </motion.div>
           )}
         </AnimatePresence>

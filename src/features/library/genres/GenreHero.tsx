@@ -17,15 +17,7 @@ import { HeroWash } from "@/features/library/HeroWash";
  * `up` is the cold-entry fallback only: reached without history (a restored
  * session, a direct navigation), the crumb still has somewhere sensible to go.
  */
-function GenreBreadcrumb({
-  family,
-  isGenre,
-  current,
-}: {
-  family: string;
-  isGenre: boolean;
-  current: string;
-}) {
+function GenreBreadcrumb({ family, isGenre, current }: { family: string; isGenre: boolean; current: string }) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -102,12 +94,8 @@ export function GenreHero({
         <GenreBreadcrumb family={family} isGenre={genre != null} current={genre ?? familyLabel} />
 
         <div className="mt-6">
-          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
-            {eyebrow}
-          </p>
-          <h1 className="mt-1 truncate text-4xl font-semibold tracking-tight">
-            {genre ?? familyLabel}
-          </h1>
+          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{eyebrow}</p>
+          <h1 className="mt-1 truncate text-4xl font-semibold tracking-tight">{genre ?? familyLabel}</h1>
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
         </div>
       </div>

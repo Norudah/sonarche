@@ -38,9 +38,7 @@ export function GenresView() {
   // flipping the toggle does not stack history entries of its own.
   const [params, setParams] = useSearchParams();
   const requested = params.get("scope");
-  const scope: GenreScope = GENRE_SCOPES.includes(requested as GenreScope)
-    ? (requested as GenreScope)
-    : "families";
+  const scope: GenreScope = GENRE_SCOPES.includes(requested as GenreScope) ? (requested as GenreScope) : "families";
   const setScope = (next: GenreScope) => setParams({ scope: next }, { replace: true });
 
   // The grouping is the whole pass over the library and depends on neither the
@@ -126,9 +124,7 @@ export function GenresView() {
        * collection, so it must not change meaning under a toggle, and a
        * filtered distribution summing to 100 % across three rows would be a lie
        * about proportions. */}
-      {families.length > 0 && (
-        <DistributionBar families={families} tones={tones} labelOf={labelOf} />
-      )}
+      {families.length > 0 && <DistributionBar families={families} tones={tones} labelOf={labelOf} />}
 
       {families.length > 0 && isEmpty && (
         <motion.p

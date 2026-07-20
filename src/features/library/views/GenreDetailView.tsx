@@ -8,13 +8,7 @@ import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
-import {
-  albumsWithGenre,
-  findFamily,
-  findGenre,
-  groupFamilies,
-  listGenres,
-} from "@/features/library/genres/genres";
+import { albumsWithGenre, findFamily, findGenre, groupFamilies, listGenres } from "@/features/library/genres/genres";
 import { GenreHero } from "@/features/library/genres/GenreHero";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
@@ -38,8 +32,7 @@ export function GenreDetailView() {
     const families = groupFamilies(tracks, groupAlbums(tracks));
     return {
       family: findFamily(families, key),
-      genre:
-        genreName == null ? null : findGenre(listGenres(families, tracks.length), key, genreName),
+      genre: genreName == null ? null : findGenre(listGenres(families, tracks.length), key, genreName),
     };
   }, [library.data, key, genreName]);
 
@@ -111,11 +104,7 @@ export function GenreDetailView() {
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid
-              albums={albums}
-              animationKey={family.key}
-              onPlay={(album) => playTrack(album.tracks[0])}
-            />
+            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playTrack(album.tracks[0])} />
           </section>
 
           <section className="flex flex-col gap-3">

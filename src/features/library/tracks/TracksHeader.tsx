@@ -13,13 +13,7 @@ interface TracksHeaderProps {
   onPlayAll: () => void;
 }
 
-export function TracksHeader({
-  count,
-  playtime,
-  query,
-  onQueryChange,
-  onPlayAll,
-}: TracksHeaderProps) {
+export function TracksHeader({ count, playtime, query, onQueryChange, onPlayAll }: TracksHeaderProps) {
   const { t } = useTranslation("library");
 
   // Minutes are padded only next to an hour count ("21 h 08"); alone they read

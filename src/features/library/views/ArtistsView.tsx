@@ -6,12 +6,7 @@ import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
-import {
-  filterArtists,
-  groupArtists,
-  sortArtists,
-  type ArtistSort,
-} from "@/features/library/artists/artists";
+import { filterArtists, groupArtists, sortArtists, type ArtistSort } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
 import { useLibrary } from "@/features/library/hooks";
@@ -29,10 +24,7 @@ export function ArtistsView() {
   // Two memos rather than one: the album grouping is the expensive half and it
   // does not depend on the query or the sort, so it must not rerun on a keystroke.
   const artists = useMemo(() => groupArtists(groupAlbums(library.data ?? [])), [library.data]);
-  const visible = useMemo(
-    () => sortArtists(filterArtists(artists, query), sort),
-    [artists, query, sort],
-  );
+  const visible = useMemo(() => sortArtists(filterArtists(artists, query), sort), [artists, query, sort]);
 
   return (
     <PageContainer>

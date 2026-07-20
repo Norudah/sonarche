@@ -13,19 +13,11 @@ interface AlbumGridProps {
   onPlay: (album: Album) => void;
 }
 
-export function AlbumGrid({
-  albums,
-  animationKey = "",
-  fromArtist = false,
-  onPlay,
-}: AlbumGridProps) {
+export function AlbumGrid({ albums, animationKey = "", fromArtist = false, onPlay }: AlbumGridProps) {
   return (
     // auto-fill over a fixed column count: the shelf keeps its card size and
     // reflows, instead of stretching four covers to fill an ultrawide window.
-    <div
-      key={animationKey}
-      className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-7"
-    >
+    <div key={animationKey} className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-7">
       {albums.map((album, position) => (
         <AlbumCard
           key={album.key}

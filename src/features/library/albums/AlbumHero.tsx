@@ -99,10 +99,7 @@ export function AlbumHero({ album, onPlay, onDelete, ref }: AlbumHeroProps) {
         <AlbumBreadcrumb artist={album.artist} title={album.title} />
 
         <div className="mt-5 flex items-end gap-6">
-          <AlbumCover
-            artUrl={album.artUrl}
-            className="size-48 shrink-0 rounded-xl shadow-xl shadow-accent/20"
-          />
+          <AlbumCover artUrl={album.artUrl} className="size-48 shrink-0 rounded-xl shadow-xl shadow-accent/20" />
 
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <div className="min-w-0">

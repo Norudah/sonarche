@@ -42,21 +42,14 @@ export function SettingsPage() {
     { key: "apiKeys", label: t("apiKeys.category"), icon: KeyRound },
     { key: "rateLimits", label: t("rateLimits.category"), icon: Gauge },
     // Dev builds only; the backend command refuses to run in release anyway.
-    ...(import.meta.env.DEV
-      ? [{ key: "developer" as const, label: t("developer.category"), icon: Wrench }]
-      : []),
+    ...(import.meta.env.DEV ? [{ key: "developer" as const, label: t("developer.category"), icon: Wrench }] : []),
   ];
 
   return (
     <div className="flex h-full flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between border-b border-separator px-6 py-4">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={t("close")}
-          onPress={() => navigate(paths.download)}
-        >
+        <Button variant="ghost" size="sm" aria-label={t("close")} onPress={() => navigate(paths.download)}>
           <X className="size-5" />
         </Button>
       </header>

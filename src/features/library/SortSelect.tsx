@@ -17,12 +17,7 @@ interface SortSelectProps<T extends string> {
  * Dropdown.Trigger is a bare react-aria Button we can shape into the same pill
  * as the search field. We keep the accessible listbox and drop the field chrome.
  */
-export function SortSelect<T extends string>({
-  options,
-  value,
-  onChange,
-  labelOf,
-}: SortSelectProps<T>) {
+export function SortSelect<T extends string>({ options, value, onChange, labelOf }: SortSelectProps<T>) {
   const { t } = useTranslation("library");
 
   return (

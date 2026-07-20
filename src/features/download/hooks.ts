@@ -105,13 +105,10 @@ export function useActiveDownloadProgress(active: boolean) {
   useEffect(() => {
     if (!active) return;
     setPercent(null);
-    const unlisten = listen<{ event: string; data: { percent?: number | null } }>(
-      "sidecar:event",
-      (event) => {
-        if (event.payload.event !== "download_progress") return;
-        setPercent(event.payload.data.percent ?? null);
-      },
-    );
+    const unlisten = listen<{ event: string; data: { percent?: number | null } }>("sidecar:event", (event) => {
+      if (event.payload.event !== "download_progress") return;
+      setPercent(event.payload.data.percent ?? null);
+    });
     return () => {
       unlisten.then((fn) => fn());
     };

@@ -22,10 +22,7 @@ export function ArtistDetailView() {
   const playTrack = usePlayTrack();
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
-  const artist = useMemo(
-    () => findArtist(groupArtists(groupAlbums(library.data ?? [])), name),
-    [library.data, name],
-  );
+  const artist = useMemo(() => findArtist(groupArtists(groupAlbums(library.data ?? [])), name), [library.data, name]);
   const appearances = useMemo(() => appearancesOf(library.data ?? [], name), [library.data, name]);
 
   if (library.isPending) {
@@ -59,9 +56,7 @@ export function ArtistDetailView() {
   const playFirst = () => playTrack(artist.albums[0].tracks[0]);
 
   return (
-    <PageContainer
-      sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playFirst} />}
-    >
+    <PageContainer sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playFirst} />}>
       <ArtistHero ref={heroRef} artist={artist} onPlay={playFirst} />
 
       <section className="flex flex-col gap-3">

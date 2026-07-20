@@ -19,13 +19,7 @@ interface GenreListProps {
  * one per track and in practice an order of magnitude below the album shelf
  * this app already renders unvirtualised. Revisit alongside it, not before.
  */
-export function GenreList({
-  genres,
-  animationKey = "",
-  tones,
-  peakShare,
-  labelOf,
-}: GenreListProps) {
+export function GenreList({ genres, animationKey = "", tones, peakShare, labelOf }: GenreListProps) {
   return (
     <div key={animationKey} className="flex flex-col">
       {genres.map((genre, position) => (

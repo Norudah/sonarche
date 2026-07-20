@@ -46,9 +46,7 @@ describe("groupFamilies", () => {
 
   it("orders families by size, both sentinels last however big", () => {
     const families = familiesOf([
-      ...Array.from({ length: 5 }, (_, i) =>
-        track({ id: i + 1, album: "Untagged", albumArtist: "X", title: `t${i}` }),
-      ),
+      ...Array.from({ length: 5 }, (_, i) => track({ id: i + 1, album: "Untagged", albumArtist: "X", title: `t${i}` })),
       track({ id: 6, album: "A", albumArtist: "Y", genre: "Gqom", title: "g1" }),
       track({ id: 7, album: "B", albumArtist: "Z", genre: "Gqom", title: "g2" }),
       track({ id: 8, album: "C", albumArtist: "W", genre: "Art Rock", genreBucket: "Rock" }),
@@ -101,14 +99,12 @@ describe("album assignment", () => {
       track({ id: 3, album: "Other", albumArtist: "Y", genre: "Dance Pop", genreBucket: "Pop" }),
     ];
 
-    expect(findFamily(familiesOf(tracks), "Pop")?.albums.map((a) => a.title)).toEqual([
-      "Split",
-      "Other",
-    ]);
+    expect(findFamily(familiesOf(tracks), "Pop")?.albums.map((a) => a.title)).toEqual(["Split", "Other"]);
     // Same input, reversed: the answer must not move.
-    expect(findFamily(familiesOf([...tracks].reverse()), "Pop")?.albums.map((a) => a.title)).toEqual(
-      ["Other", "Split"],
-    );
+    expect(findFamily(familiesOf([...tracks].reverse()), "Pop")?.albums.map((a) => a.title)).toEqual([
+      "Other",
+      "Split",
+    ]);
   });
 
   it("counts tracks and albums on different units", () => {

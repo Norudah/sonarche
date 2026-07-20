@@ -2,13 +2,7 @@ import { Button, Slider } from "@heroui/react";
 import { Volume1, Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-export function VolumeControl({
-  volume,
-  onVolumeChange,
-}: {
-  volume: number;
-  onVolumeChange: (value: number) => void;
-}) {
+export function VolumeControl({ volume, onVolumeChange }: { volume: number; onVolumeChange: (value: number) => void }) {
   const { t } = useTranslation("player");
   const muted = volume === 0;
   const Icon = muted ? VolumeX : volume < 0.5 ? Volume1 : Volume2;

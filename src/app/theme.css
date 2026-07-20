@@ -139,9 +139,7 @@
   --default-transition-timing-function: var(--ease-out-fluid);
 
   /* Typography */
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* A queue row that just landed. Two animations, because the two properties
      have to live on different elements:

@@ -79,31 +79,85 @@ const jobs = [
     artist: "Various Artists",
     createdAt: now - 500,
     tracks: [
-      albumTrack({ index: 1, videoId: "a1", title: "Intro (Blizzard)", duration: 154, status: "done", itemId: 2, downloadAttempts: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "a2", title: "Hollywood Heights", duration: 231, status: "imported", itemId: 8, downloadAttempts: 1, report: trackReport(8, false) }),
+      albumTrack({
+        index: 1,
+        videoId: "a1",
+        title: "Intro (Blizzard)",
+        duration: 154,
+        status: "done",
+        itemId: 2,
+        downloadAttempts: 2,
+        report: trackReport(2, true),
+      }),
+      albumTrack({
+        index: 2,
+        videoId: "a2",
+        title: "Hollywood Heights",
+        duration: 231,
+        status: "imported",
+        itemId: 8,
+        downloadAttempts: 1,
+        report: trackReport(8, false),
+      }),
       albumTrack({ index: 3, videoId: "a3", title: "Java", duration: 197, status: "downloading", downloadAttempts: 2 }),
-      albumTrack({ index: 4, videoId: "a4", title: "Untitled (Deleted Video)", status: "failed", error: "yt-dlp: video unavailable", downloadAttempts: 3 }),
+      albumTrack({
+        index: 4,
+        videoId: "a4",
+        title: "Untitled (Deleted Video)",
+        status: "failed",
+        error: "yt-dlp: video unavailable",
+        downloadAttempts: 3,
+      }),
       albumTrack({ index: 5, videoId: "a5", title: "Rust", duration: 243 }),
     ],
   }),
-  job({ status: "downloading", title: "Nothing Else Matters", artist: "Metallica", duration: 386, thumbnail: thumb("#0bd", "#07a"), createdAt: now - 1000 }),
+  job({
+    status: "downloading",
+    title: "Nothing Else Matters",
+    artist: "Metallica",
+    duration: 386,
+    thumbnail: thumb("#0bd", "#07a"),
+    createdAt: now - 1000,
+  }),
   job({ status: "queued", createdAt: now - 2000 }),
   job({ status: "importing", title: "Knock Knock", artist: "Scattle", duration: 213, createdAt: now - 3000 }),
-  job({ status: "enriching", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 3500 }),
   job({
-    status: "done", title: "Monster", artist: "Skillet", duration: 178, thumbnail: thumb("#fb0", "#e40"), createdAt: now - 4000,
+    status: "enriching",
+    title: "Nothing Else Matters",
+    artist: "Metallica",
+    duration: 386,
+    createdAt: now - 3500,
+  }),
+  job({
+    status: "done",
+    title: "Monster",
+    artist: "Skillet",
+    duration: 178,
+    thumbnail: thumb("#fb0", "#e40"),
+    createdAt: now - 4000,
     report: {
-      item_id: 2, mb_matched: true, source: "MusicBrainz",
+      item_id: 2,
+      mb_matched: true,
+      source: "MusicBrainz",
       fields: { title: true, artist: true, album: true, year: true, track: true, genre: false },
-      cover: true, cover_source: "Cover Art Archive",
+      cover: true,
+      cover_source: "Cover Art Archive",
     },
   }),
   job({
-    status: "done", title: "Commander's Theme", artist: "The Algorithm", duration: 201, createdAt: now - 5000,
+    status: "done",
+    title: "Commander's Theme",
+    artist: "The Algorithm",
+    duration: 201,
+    createdAt: now - 5000,
     report: {
-      item_id: 5, mb_matched: false, provisional: true, source: null,
+      item_id: 5,
+      mb_matched: false,
+      provisional: true,
+      source: null,
       fields: { title: true, artist: true, album: false, year: false, track: false, genre: false },
-      cover: false, cover_source: null,
+      cover: false,
+      cover_source: null,
     },
   }),
   job({
@@ -115,14 +169,51 @@ const jobs = [
     thumbnail: thumb("#2c8", "#083"),
     createdAt: now - 5500,
     tracks: [
-      albumTrack({ index: 1, videoId: "b1", title: "Hero", duration: 187, status: "done", itemId: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "b2", title: "Monster", duration: 178, status: "done", itemId: 9, report: trackReport(9, false, true) }),
+      albumTrack({
+        index: 1,
+        videoId: "b1",
+        title: "Hero",
+        duration: 187,
+        status: "done",
+        itemId: 2,
+        report: trackReport(2, true),
+      }),
+      albumTrack({
+        index: 2,
+        videoId: "b2",
+        title: "Monster",
+        duration: 178,
+        status: "done",
+        itemId: 9,
+        report: trackReport(9, false, true),
+      }),
       // Content duplicate dropped by the enrich step (same recording as #1).
-      albumTrack({ index: 3, videoId: "b3", title: "Hero (Official Video)", duration: 187, status: "done", itemId: 11, duplicateOf: 2 }),
+      albumTrack({
+        index: 3,
+        videoId: "b3",
+        title: "Hero (Official Video)",
+        duration: 187,
+        status: "done",
+        itemId: 11,
+        duplicateOf: 2,
+      }),
     ],
   }),
-  job({ status: "failed", failedStep: "download", error: "yt-dlp: video unavailable", downloadAttempts: 3, createdAt: now - 6000 }),
-  job({ status: "failed", failedStep: "import", title: "Some Track", artist: "Someone", error: "beet import failed (exit 1)", createdAt: now - 7000 }),
+  job({
+    status: "failed",
+    failedStep: "download",
+    error: "yt-dlp: video unavailable",
+    downloadAttempts: 3,
+    createdAt: now - 6000,
+  }),
+  job({
+    status: "failed",
+    failedStep: "import",
+    title: "Some Track",
+    artist: "Someone",
+    error: "beet import failed (exit 1)",
+    createdAt: now - 7000,
+  }),
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
@@ -183,7 +274,17 @@ const libraryTracks = [
       ["Harder Better Faster", "Daft Punk", "Discovery", "French House", "Electronic", 224, 2001, 3, "#22d3ee|#0e7490"],
       ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 369, 2013, 8, "#1f2937|#111827"],
       ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 337, 2013, 5, "#1f2937|#111827"],
-      ["The Less I Know the Better", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 216, 2015, 4, "#fb923c|#c2410c"],
+      [
+        "The Less I Know the Better",
+        "Tame Impala",
+        "Currents",
+        "Psychedelic Pop",
+        "Pop",
+        216,
+        2015,
+        4,
+        "#fb923c|#c2410c",
+      ],
       ["Let It Happen", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 467, 2015, 1, "#fb923c|#c2410c"],
       ["Nights", "Frank Ocean", "Blonde", null, null, 307, 2016, 5, "#bef264|#84cc16"],
       ["Ivy", "Frank Ocean", "Blonde", null, null, 249, 2016, 3, "#bef264|#84cc16"],
@@ -252,10 +353,7 @@ const libraryTracks = [
  * generation suffix — otherwise 10 000 tracks would collapse into 13 albums
  * and the grid would never be exercised.
  */
-function inflate<T extends { id: number; album: string; album_artist: string }>(
-  seed: T[],
-  total: number,
-): T[] {
+function inflate<T extends { id: number; album: string; album_artist: string }>(seed: T[], total: number): T[] {
   if (total <= seed.length) return seed;
   return Array.from({ length: total }, (_, i) => {
     const source = seed[i % seed.length];
@@ -271,9 +369,7 @@ function inflate<T extends { id: number; album: string; album_artist: string }>(
   });
 }
 
-const requestedTracks = Number(
-  new URLSearchParams(window.location.search).get("tracks") ?? 0,
-);
+const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
 const responses: Record<string, unknown> = {
   get_env_status: {

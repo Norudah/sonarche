@@ -31,11 +31,7 @@ describe("attemptOutcomes", () => {
 
 describe("jobAttempts", () => {
   it("shows nothing started while the job is queued", () => {
-    expect(jobAttempts(job({ status: "queued", downloadAttempts: 0 }))).toEqual([
-      "untried",
-      "untried",
-      "untried",
-    ]);
+    expect(jobAttempts(job({ status: "queued", downloadAttempts: 0 }))).toEqual(["untried", "untried", "untried"]);
   });
 
   it("counts the download as passed once the job moved on to a later step", () => {

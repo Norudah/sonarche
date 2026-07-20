@@ -41,8 +41,7 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
         </div>
         <p className="mt-2.5 truncate text-sm font-medium">{artist.name}</p>
         <p className="truncate text-[0.8125rem] text-muted">
-          {t("albumCount", { count: artist.albums.length })} ·{" "}
-          {t("trackCount", { count: artist.trackCount })}
+          {t("albumCount", { count: artist.albums.length })} · {t("trackCount", { count: artist.trackCount })}
         </p>
       </Link>
 

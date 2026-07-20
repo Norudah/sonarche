@@ -20,8 +20,7 @@ export function MetadataCompleteness({ filled }: { filled: number }) {
           <span
             key={index}
             className={
-              "h-1.5 w-5 rounded-full " +
-              (index < filled ? (isComplete ? "bg-success" : "bg-warning") : "bg-default")
+              "h-1.5 w-5 rounded-full " + (index < filled ? (isComplete ? "bg-success" : "bg-warning") : "bg-default")
             }
           />
         ))}

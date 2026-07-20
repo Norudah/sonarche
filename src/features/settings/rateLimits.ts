@@ -50,10 +50,7 @@ export const RATE_LIMITS: RateLimitDef[] = [
 ];
 
 export function marksFor({ min, max, markStep }: RateLimitDef): number[] {
-  return Array.from(
-    { length: Math.round((max - min) / markStep) + 1 },
-    (_, i) => min + i * markStep,
-  );
+  return Array.from({ length: Math.round((max - min) / markStep) + 1 }, (_, i) => min + i * markStep);
 }
 
 export function formatDuration(totalSeconds: number): string {

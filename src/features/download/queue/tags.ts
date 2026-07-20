@@ -3,20 +3,13 @@ import type { DownloadJob, JobKind, MetadataReport } from "@/features/download/a
 /** A track reports the exact fields it carries; an album is too many numbers to
  * read at a glance, so it reports the mean completion instead. */
 export type TagSummary = { provisional: boolean } & (
-  | { kind: "ratio"; filled: number; total: number }
-  | { kind: "percent"; value: number }
+  { kind: "ratio"; filled: number; total: number } | { kind: "percent"; value: number }
 );
 
 /** Metadata fields we manage per track — the same ones the inspector shows. An
  * album track also carries its place in the set; a single does not. */
 function wantedFields(kind: JobKind, report: MetadataReport): boolean[] {
-  const common = [
-    report.fields.title,
-    report.fields.artist,
-    report.fields.year,
-    report.fields.genre,
-    report.cover,
-  ];
+  const common = [report.fields.title, report.fields.artist, report.fields.year, report.fields.genre, report.cover];
   return kind === "album" ? [...common, report.fields.album, report.fields.track] : common;
 }
 
@@ -54,9 +47,7 @@ function albumTags(job: DownloadJob): TagSummary | null {
 }
 
 export function jobTags(job: DownloadJob): TagSummary | null {
-  return job.kind === "album" && job.tracks.length > 0
-    ? albumTags(job)
-    : trackTags(job.kind, job.report);
+  return job.kind === "album" && job.tracks.length > 0 ? albumTags(job) : trackTags(job.kind, job.report);
 }
 
 export function tagTone(summary: TagSummary): "success" | "warning" | "danger" {

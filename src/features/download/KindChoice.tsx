@@ -22,15 +22,7 @@ const SEGMENT_CONTENT =
   "relative gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
   "text-muted hover:text-foreground data-[selected]:text-accent";
 
-function Segment({
-  kind,
-  selected,
-  children,
-}: {
-  kind: JobKind;
-  selected: JobKind | null;
-  children: ReactNode;
-}) {
+function Segment({ kind, selected, children }: { kind: JobKind; selected: JobKind | null; children: ReactNode }) {
   return (
     <Radio.Root value={kind} className={SEGMENT}>
       {selected === kind && (
@@ -47,13 +39,7 @@ function Segment({
 
 /** Shown only for a video opened from inside a playlist, where the URL alone
  * cannot say whether the user wants the set or the one track. */
-export function KindChoice({
-  value,
-  onChange,
-}: {
-  value: JobKind | null;
-  onChange: (kind: JobKind) => void;
-}) {
+export function KindChoice({ value, onChange }: { value: JobKind | null; onChange: (kind: JobKind) => void }) {
   const { t } = useTranslation("download");
   return (
     <div className="flex flex-wrap items-center gap-2">

@@ -7,10 +7,7 @@ export type LibraryPresence = "full" | "partial" | "none";
 /** An album has no item of its own, so it reports on its tracks: all still
  * there, some pulled out, or the whole set gone. Dropped duplicates never had
  * an item and are excluded. */
-export function albumPresence(
-  job: DownloadJob,
-  isInLibrary: (itemId: number) => boolean,
-): LibraryPresence | null {
+export function albumPresence(job: DownloadJob, isInLibrary: (itemId: number) => boolean): LibraryPresence | null {
   const imported = job.tracks.filter(
     (track) => track.itemId != null && track.duplicateOf == null && track.status === "done",
   );

@@ -31,16 +31,7 @@ interface DistributionRowProps {
  * a different place — would read as switching screens instead of switching
  * unit.
  */
-export function DistributionRow({
-  to,
-  label,
-  sublabel,
-  tone,
-  fill,
-  percent,
-  trailing,
-  style,
-}: DistributionRowProps) {
+export function DistributionRow({ to, label, sublabel, tone, fill, percent, trailing, style }: DistributionRowProps) {
   return (
     <Link
       to={to}
@@ -63,9 +54,7 @@ export function DistributionRow({
         />
       </div>
 
-      <p className="w-12 shrink-0 text-right text-[0.8125rem] tabular-nums text-muted">
-        {percent} %
-      </p>
+      <p className="w-12 shrink-0 text-right text-[0.8125rem] tabular-nums text-muted">{percent} %</p>
 
       <div className="w-56 shrink-0 text-right text-[0.8125rem]">{trailing}</div>
     </Link>

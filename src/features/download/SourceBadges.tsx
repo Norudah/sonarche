@@ -29,14 +29,11 @@ export function SourceBadges({ isYouTubeDetected }: { isYouTubeDetected: boolean
         ref={badgeRef}
         className={cn(
           "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs transition-colors",
-          isYouTubeDetected
-            ? "bg-youtube-soft font-semibold text-youtube"
-            : "bg-default/50 font-medium text-muted",
+          isYouTubeDetected ? "bg-youtube-soft font-semibold text-youtube" : "bg-default/50 font-medium text-muted",
         )}
       >
         <YouTubeGlyph />
-        {t("sources.youtube")} ·{" "}
-        {isYouTubeDetected ? t("sources.detected") : t("sources.supported")}
+        {t("sources.youtube")} · {isYouTubeDetected ? t("sources.detected") : t("sources.supported")}
       </span>
       <span className="rounded-full bg-default/50 px-3 py-1 text-xs font-medium text-muted">
         {t("sources.soundcloud")} · {t("sources.soon")}

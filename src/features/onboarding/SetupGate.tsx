@@ -19,9 +19,7 @@ function PythonMissing({ onRetry, checking }: { onRetry: () => void; checking: b
           <Card.Description>{t("pythonMissing.description")}</Card.Description>
         </Card.Header>
         <Card.Content className="flex flex-col gap-4">
-          <code className="rounded-lg bg-default/40 px-3 py-2 text-sm">
-            brew install python
-          </code>
+          <code className="rounded-lg bg-default/40 px-3 py-2 text-sm">brew install python</code>
           <Button variant="primary" onPress={onRetry} isDisabled={checking}>
             {t("pythonMissing.retry")}
           </Button>
@@ -57,11 +55,7 @@ function SetupNeeded() {
               {logs.length > 0 ? logs.join("\n") : t("setup.starting")}
             </pre>
           )}
-          <Button
-            variant="primary"
-            onPress={() => setup.mutate()}
-            isDisabled={setup.isPending}
-          >
+          <Button variant="primary" onPress={() => setup.mutate()} isDisabled={setup.isPending}>
             {setup.isPending ? t("setup.installing") : t("setup.install")}
           </Button>
         </Card.Content>

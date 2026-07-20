@@ -98,9 +98,7 @@ export function TrackMediaCell({ track }: { track: AlbumTrackJob }) {
   const { t } = useTranslation("download");
   return (
     <div className="flex items-center gap-3 pl-7">
-      <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted">
-        #{track.index}
-      </span>
+      <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted">#{track.index}</span>
       <div className="min-w-0">
         <p className="max-w-52 truncate text-sm">{track.title ?? track.url}</p>
         {track.status === "failed" && track.error ? (
@@ -108,9 +106,7 @@ export function TrackMediaCell({ track }: { track: AlbumTrackJob }) {
             {t("queue.failedWith", { error: track.error })}
           </p>
         ) : (
-          track.duration != null && (
-            <p className="text-xs text-muted">{formatDuration(track.duration)}</p>
-          )
+          track.duration != null && <p className="text-xs text-muted">{formatDuration(track.duration)}</p>
         )}
       </div>
     </div>

@@ -19,8 +19,7 @@ import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 
 /* The `secondary` variant renders the header as a detached rounded pill; here it
  * has to read as the top band of one bordered card, hence the squared corners. */
-const COLUMN =
-  "rounded-none! border-b border-separator/60 py-3 text-[11px] font-semibold tracking-wider uppercase";
+const COLUMN = "rounded-none! border-b border-separator/60 py-3 text-[11px] font-semibold tracking-wider uppercase";
 
 interface QueueTableProps {
   jobs: DownloadJob[];
@@ -114,25 +113,17 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
             <Table.Body>
               {jobs.flatMap((job) => {
                 const isExpanded = job.kind === "album" && expanded.has(job.id);
-                const jobLibraryTrack = libraryTrackFor(
-                  job.status === "done" ? (job.report?.itemId ?? null) : null,
-                );
+                const jobLibraryTrack = libraryTrackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
                 const enrichedCount =
                   job.status === "enriching"
-                    ? job.tracks.filter(
-                        (track) =>
-                          track.itemId != null && enrichStages[track.itemId] === "track_done",
-                      ).length
+                    ? job.tracks.filter((track) => track.itemId != null && enrichStages[track.itemId] === "track_done")
+                        .length
                     : null;
 
                 const rows = [
                   // A job the user just queued fades up out of an accent wash;
                   // the history it lands on top of stays still.
-                  <Table.Row
-                    id={job.id}
-                    key={job.id}
-                    className={newJobIds.has(job.id) ? "row-reveal" : undefined}
-                  >
+                  <Table.Row id={job.id} key={job.id} className={newJobIds.has(job.id) ? "row-reveal" : undefined}>
                     <Table.Cell>
                       <JobMediaCell
                         job={job}
@@ -155,11 +146,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                       <JobTagsCell job={job} />
                     </Table.Cell>
                     <Table.Cell>
-                      <JobLibraryCell
-                        job={job}
-                        isInLibrary={isInLibrary}
-                        isLibraryLoaded={libraryLoaded}
-                      />
+                      <JobLibraryCell job={job} isInLibrary={isInLibrary} isLibraryLoaded={libraryLoaded} />
                     </Table.Cell>
                     <Table.Cell>
                       {job.kind === "album" ? (
@@ -172,9 +159,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                               trackIds: albumTrackIds(job),
                             })
                           }
-                          onRetry={
-                            job.status === "failed" ? () => retry.mutate(job.id) : undefined
-                          }
+                          onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
                           isRetrying={retry.isPending}
                         />
                       ) : (
@@ -183,9 +168,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                           sourceUrl={job.url}
                           onInspect={setInspected}
                           onDelete={setDeleting}
-                          onRetry={
-                            job.status === "failed" ? () => retry.mutate(job.id) : undefined
-                          }
+                          onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
                           isRetrying={retry.isPending}
                         />
                       )}
@@ -197,9 +180,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                   rows.push(
                     ...job.tracks.map((track, position) => {
                       const rowId = `${job.id}:${track.index}`;
-                      const trackLibraryTrack = libraryTrackFor(
-                        track.status === "done" ? track.itemId : null,
-                      );
+                      const trackLibraryTrack = libraryTrackFor(track.status === "done" ? track.itemId : null);
                       return (
                         // The variant forces transparent cells, so the child-row
                         // tint has to be applied on the cells themselves.
@@ -209,9 +190,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                           id={rowId}
                           key={rowId}
                           className="row-cascade [&_td]:bg-surface-secondary/50"
-                          style={
-                            { "--row-stagger": `${Math.min(position, 8) * 0.03}s` } as CSSProperties
-                          }
+                          style={{ "--row-stagger": `${Math.min(position, 8) * 0.03}s` } as CSSProperties}
                         >
                           <Table.Cell>
                             <TrackMediaCell track={track} />
@@ -219,10 +198,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                           <Table.Cell>
                             <TrackPipelineCell
                               track={track}
-                              isEnriched={
-                                track.itemId != null &&
-                                enrichStages[track.itemId] === "track_done"
-                              }
+                              isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
                             />
                           </Table.Cell>
                           <Table.Cell>
@@ -261,16 +237,8 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
         </Table.ScrollContainer>
       </Table>
 
-      <MetadataDrawer
-        track={inspected}
-        onClose={() => setInspected(null)}
-        onDelete={setDeleting}
-      />
-      <DeleteTrackDialog
-        track={deleting}
-        onClose={() => setDeleting(null)}
-        onDeleted={() => setInspected(null)}
-      />
+      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} onDelete={setDeleting} />
+      <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} onDeleted={() => setInspected(null)} />
       <DeleteAlbumDialog album={deletingAlbum} onClose={() => setDeletingAlbum(null)} />
     </>
   );

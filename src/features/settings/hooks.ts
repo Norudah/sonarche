@@ -34,8 +34,7 @@ export function usePreferences() {
 export function useSetRateLimitDelay() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, seconds }: { key: RateLimitKey; seconds: number }) =>
-      setRateLimitDelay(key, seconds),
+    mutationFn: ({ key, seconds }: { key: RateLimitKey; seconds: number }) => setRateLimitDelay(key, seconds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesKey });
     },

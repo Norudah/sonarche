@@ -11,13 +11,7 @@ function useSubtitle(track: LibraryTrack): string {
   return [track.artist || t("unknownArtist"), track.album].filter(Boolean).join(" — ");
 }
 
-export function MetadataHeader({
-  track,
-  onClose,
-}: {
-  track: LibraryTrack;
-  onClose: () => void;
-}) {
+export function MetadataHeader({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
   const { t } = useTranslation("library");
   const subtitle = useSubtitle(track);
 

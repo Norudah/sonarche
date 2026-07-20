@@ -124,12 +124,7 @@ export function AlbumActions({ album, onPlay, onDelete }: AlbumActionsProps) {
        * treatment as the card's inspect affordance and the drawer's view-album
        * action: the slot is placed now so the row's layout is settled when it
        * lands. */}
-      <button
-        type="button"
-        disabled
-        title={t("metadata.comingSoon")}
-        className={`${SECONDARY} opacity-50`}
-      >
+      <button type="button" disabled title={t("metadata.comingSoon")} className={`${SECONDARY} opacity-50`}>
         <Pencil className="size-4" />
         {t("albums.edit")}
       </button>

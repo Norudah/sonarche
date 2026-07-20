@@ -34,8 +34,7 @@ export function GenreRow({ genre, tone, peakShare, familyLabel, style }: GenreRo
       style={style}
       trailing={
         <span className="block truncate text-muted">
-          {t("trackCount", { count: genre.trackCount })} ·{" "}
-          {t("albumCount", { count: genre.albums.length })} ·{" "}
+          {t("trackCount", { count: genre.trackCount })} · {t("albumCount", { count: genre.albums.length })} ·{" "}
           {t("artistCount", { count: genre.artistCount })}
         </span>
       }

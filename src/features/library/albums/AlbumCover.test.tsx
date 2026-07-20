@@ -13,9 +13,7 @@ afterEach(cleanup);
  */
 describe("AlbumCover", () => {
   it("defers loading when asked", () => {
-    const { container } = render(
-      <AlbumCover artUrl="/cover.jpg" className="size-full" loading="lazy" />,
-    );
+    const { container } = render(<AlbumCover artUrl="/cover.jpg" className="size-full" loading="lazy" />);
 
     expect(container.querySelector("img")?.getAttribute("loading")).toBe("lazy");
   });

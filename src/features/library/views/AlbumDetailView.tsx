@@ -22,10 +22,7 @@ export function AlbumDetailView() {
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
-  const album = useMemo(
-    () => findAlbum(groupAlbums(library.data ?? []), artist, title),
-    [library.data, artist, title],
-  );
+  const album = useMemo(() => findAlbum(groupAlbums(library.data ?? []), artist, title), [library.data, artist, title]);
 
   if (library.isPending) {
     return (
@@ -58,21 +55,13 @@ export function AlbumDetailView() {
 
   return (
     <PageContainer
-      sticky={
-        <AlbumStickyHeader
-          album={album}
-          isVisible={heroPassed}
-          onPlay={() => playTrack(album.tracks[0])}
-        />
-      }
+      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playTrack(album.tracks[0])} />}
     >
       <AlbumHero
         ref={heroRef}
         album={album}
         onPlay={() => playTrack(album.tracks[0])}
-        onDelete={() =>
-          setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })
-        }
+        onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />

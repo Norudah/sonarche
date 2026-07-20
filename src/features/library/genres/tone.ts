@@ -27,9 +27,7 @@ const OTHER_TONE = "color-mix(in oklab, var(--color-muted) 40%, transparent)";
  * that shifts when the user types is not an identity.
  */
 export function familyTones(families: Family[]): Map<string, string> {
-  const ramp = families.filter(
-    (family) => family.key !== FAMILY_NONE && family.key !== FAMILY_OTHER,
-  );
+  const ramp = families.filter((family) => family.key !== FAMILY_NONE && family.key !== FAMILY_OTHER);
 
   // Floored at 55%, not lower. The first cut of this ramp bottomed out at 30%
   // and on a library with three real families it inverted the page's meaning:

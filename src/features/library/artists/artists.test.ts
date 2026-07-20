@@ -122,9 +122,7 @@ describe("appearancesOf", () => {
   });
 
   it("does not claim a remix credited to a different artist", () => {
-    const tracks = [
-      track({ id: 1, title: "Remix", artist: "Daft Punk Remix", albumArtist: "Someone" }),
-    ];
+    const tracks = [track({ id: 1, title: "Remix", artist: "Daft Punk Remix", albumArtist: "Someone" })];
 
     expect(appearancesOf(tracks, "Daft Punk")).toEqual([]);
   });

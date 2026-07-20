@@ -32,11 +32,7 @@ function ReenrichAction({ track }: { track: LibraryTrack }) {
         onClick={() => reenrich.mutate(track.id)}
         className="flex cursor-pointer items-center gap-1.5 text-[0.8125rem] font-medium text-accent hover:underline disabled:cursor-default disabled:opacity-60 disabled:hover:no-underline"
       >
-        {reenrich.isPending ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : (
-          <Sparkles className="size-3.5" />
-        )}
+        {reenrich.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
         {reenrich.isPending ? t("metadata.reenriching") : t("metadata.reenrich")}
       </button>
       {feedback && <p className={`text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</p>}
@@ -63,8 +59,7 @@ function MetadataForm({
   const live = toFieldValues(track);
   const shown = isEditing ? draft : live;
 
-  const setField = (key: keyof FieldValues) => (value: string) =>
-    setDraft((prev) => ({ ...prev, [key]: value }));
+  const setField = (key: keyof FieldValues) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
 
   const startEditing = () => {
     setDraft(toFieldValues(track));
@@ -180,18 +175,10 @@ function MetadataForm({
         <div className="flex gap-2.5">
           {isEditing ? (
             <>
-              <Button
-                variant="secondary"
-                className="rounded-xl px-6"
-                onPress={() => setIsEditing(false)}
-              >
+              <Button variant="secondary" className="rounded-xl px-6" onPress={() => setIsEditing(false)}>
                 {t("metadata.cancel")}
               </Button>
-              <Button
-                variant="primary"
-                className="rounded-xl px-6"
-                onPress={() => setIsEditing(false)}
-              >
+              <Button variant="primary" className="rounded-xl px-6" onPress={() => setIsEditing(false)}>
                 {t("metadata.save")}
               </Button>
             </>
@@ -230,14 +217,7 @@ export function MetadataDrawer({
               full-screen positioning layer). HeroUI's default sm:w-96 is too
               narrow for a two-column metadata form. */}
           <Drawer.Dialog className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[30rem]">
-            {track && (
-              <MetadataForm
-                key={track.id}
-                track={track}
-                onClose={onClose}
-                onDelete={() => onDelete(track)}
-              />
-            )}
+            {track && <MetadataForm key={track.id} track={track} onClose={onClose} onDelete={() => onDelete(track)} />}
           </Drawer.Dialog>
         </Drawer.Content>
       </Drawer.Backdrop>

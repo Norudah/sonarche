@@ -21,13 +21,7 @@ interface FamilyListProps {
  * closed list of thirteen in the sidecar's genre tree, plus the two sentinels.
  * This is the one shelf in the app whose length does not depend on the library.
  */
-export function FamilyList({
-  families,
-  animationKey = "",
-  tones,
-  peakShare,
-  labelOf,
-}: FamilyListProps) {
+export function FamilyList({ families, animationKey = "", tones, peakShare, labelOf }: FamilyListProps) {
   return (
     <div key={animationKey} className="flex flex-col">
       {families.map((family, position) => (

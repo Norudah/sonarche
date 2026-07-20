@@ -62,9 +62,7 @@ export function ArtistMosaic({ artUrls, className, loading = "eager" }: ArtistMo
     // A generous mount, not a hairline: at 6% the single-album case came back to
     // within a whisker of an album card, which is the entire thing this
     // component exists to avoid. The visible ground has to survive a glance.
-    <div
-      className={`${className} bg-surface-secondary grid grid-cols-2 grid-rows-2 gap-[5%] p-[11%]`}
-    >
+    <div className={`${className} bg-surface-secondary grid grid-cols-2 grid-rows-2 gap-[5%] p-[11%]`}>
       {artUrls.map((artUrl, index) => (
         <img
           key={artUrl}

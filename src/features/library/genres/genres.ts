@@ -127,12 +127,7 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
           .sort((a, b) => b.trackCount - a.trackCount || a.name.localeCompare(b.name)),
       };
     })
-    .sort(
-      (a, b) =>
-        rankOf(a.key) - rankOf(b.key) ||
-        b.trackCount - a.trackCount ||
-        a.key.localeCompare(b.key),
-    );
+    .sort((a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key));
 }
 
 /**
@@ -194,9 +189,7 @@ export function filterGenres(genres: Genre[], query: string): Genre[] {
 
   return genres.filter((genre) => {
     const haystack = normalize(
-      [genre.name, genre.family, ...genre.albums.map((album) => `${album.title} ${album.artist}`)].join(
-        " ",
-      ),
+      [genre.name, genre.family, ...genre.albums.map((album) => `${album.title} ${album.artist}`)].join(" "),
     );
     return terms.every((term) => haystack.includes(term));
   });

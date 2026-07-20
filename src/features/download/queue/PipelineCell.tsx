@@ -8,17 +8,8 @@ import { useTranslation } from "react-i18next";
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
 import { Swap } from "@/shared/motion/Swap";
 import { durations, fade, springs } from "@/shared/motion/tokens";
-import {
-  type AttemptOutcome,
-  jobAttempts,
-  trackAttempts,
-} from "@/features/download/queue/attempts";
-import {
-  jobPipeline,
-  PIPELINE_STEPS,
-  type StepState,
-  trackPipeline,
-} from "@/features/download/queue/pipeline";
+import { type AttemptOutcome, jobAttempts, trackAttempts } from "@/features/download/queue/attempts";
+import { jobPipeline, PIPELINE_STEPS, type StepState, trackPipeline } from "@/features/download/queue/pipeline";
 
 /** The segment between two stage markers. It fills from left to right the moment
  * the stage it leads into stops being pending, so progress reads as travelling
@@ -46,11 +37,7 @@ function Rail({ children, connectors }: { children: ReactNode[]; connectors: boo
       {children.map((node, index) => (
         <Fragment key={index}>
           {index > 0 &&
-            (connectors ? (
-              <Connector isReached={connectors[index] ?? false} />
-            ) : (
-              <div className="w-3 shrink-0" />
-            ))}
+            (connectors ? <Connector isReached={connectors[index] ?? false} /> : <div className="w-3 shrink-0" />)}
           <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">{node}</div>
         </Fragment>
       ))}
@@ -136,13 +123,7 @@ function StepGlyph({ state, label }: { state: StepState; label: string }) {
         </span>
       );
     case "pending":
-      return (
-        <span
-          role="img"
-          aria-label={label}
-          className="size-5 rounded-full border-2 border-separator"
-        />
-      );
+      return <span role="img" aria-label={label} className="size-5 rounded-full border-2 border-separator" />;
   }
 }
 
@@ -199,10 +180,7 @@ function AttemptDots({ outcomes, label }: { outcomes: AttemptOutcome[]; label: s
   const tried = outcomes.filter((outcome) => outcome !== "untried").length;
   if (tried === 0) return null;
   return (
-    <span
-      className="flex items-center gap-1"
-      aria-label={`${label}: ${tried}/${outcomes.length}`}
-    >
+    <span className="flex items-center gap-1" aria-label={`${label}: ${tried}/${outcomes.length}`}>
       {outcomes.map((outcome, index) => (
         // Keyed on the outcome so a dot re-enters — and pops — when an attempt
         // resolves, rather than silently swapping color.
@@ -250,10 +228,7 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
             : t(`queue.pipeline.${step.step}.${step.state === "active" ? "active" : "idle"}`);
         return (
           <Fragment key={step.step}>
-            <StepMarker
-              state={step.state}
-              label={`${label} — ${t(`queue.stepState.${step.state}`)}`}
-            />
+            <StepMarker state={step.state} label={`${label} — ${t(`queue.stepState.${step.state}`)}`} />
             <span className={`text-center text-[11px] leading-tight ${STATE_TEXT[step.state]}`}>
               {step.detail ? `${label} ${step.detail}` : label}
             </span>
@@ -267,13 +242,7 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
   );
 }
 
-export function TrackPipelineCell({
-  track,
-  isEnriched,
-}: {
-  track: AlbumTrackJob;
-  isEnriched: boolean;
-}) {
+export function TrackPipelineCell({ track, isEnriched }: { track: AlbumTrackJob; isEnriched: boolean }) {
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   return (
@@ -286,9 +255,7 @@ export function TrackPipelineCell({
               state={state}
               label={`${t(`queue.pipeline.${step}.idle`)} — ${t(`queue.stepState.${state}`)}`}
             />
-            {step === "download" && (
-              <AttemptDots outcomes={trackAttempts(track)} label={t("queue.attempts")} />
-            )}
+            {step === "download" && <AttemptDots outcomes={trackAttempts(track)} label={t("queue.attempts")} />}
           </Fragment>
         );
       })}

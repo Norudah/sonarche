@@ -1,9 +1,4 @@
-import type {
-  AlbumTrackJob,
-  DownloadJob,
-  JobStep,
-  MetadataReport,
-} from "@/features/download/api";
+import type { AlbumTrackJob, DownloadJob, JobStep, MetadataReport } from "@/features/download/api";
 
 /** `empty` is a step that ran to completion without identifying anything: no
  * MusicBrainz recording answered for the file. It may still have been tagged —
@@ -53,9 +48,7 @@ function detailFor(
   const total = job.tracks.length;
   if (job.kind !== "album" || total === 0) {
     // A single has no batch to count; only its byte progress is meaningful.
-    return step === "download" && downloadPercent != null
-      ? `${Math.round(downloadPercent)} %`
-      : null;
+    return step === "download" && downloadPercent != null ? `${Math.round(downloadPercent)} %` : null;
   }
   switch (step) {
     case "download":
@@ -82,10 +75,7 @@ export function jobPipeline(
     if (index < current) {
       // An album's own report stays null (its tracks carry the reports), so the
       // aggregate row is left alone — only a single can answer for itself here.
-      const state =
-        step === "enrich" && job.kind !== "album"
-          ? enrichOutcome(job.report, false)
-          : ("done" as const);
+      const state = step === "enrich" && job.kind !== "album" ? enrichOutcome(job.report, false) : ("done" as const);
       return { step, state, detail: null };
     }
     if (index > current) return { step, state: "pending" as const, detail: null };

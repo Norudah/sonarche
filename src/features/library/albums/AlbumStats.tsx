@@ -80,11 +80,7 @@ function StatCard({ value, label, tone }: StatCardProps) {
     <div className="rounded-xl border border-separator bg-surface/80 px-4 py-2.5 shadow-sm">
       {/* Bold, not semibold, and tight: the card shrank, so the figure has to
        * carry the weight the box used to. */}
-      <p
-        className={`text-2xl leading-none font-bold tracking-tight tabular-nums ${TONE_CLASS[tone]}`}
-      >
-        {value}
-      </p>
+      <p className={`text-2xl leading-none font-bold tracking-tight tabular-nums ${TONE_CLASS[tone]}`}>{value}</p>
       <p className="mt-1.5 text-[0.6875rem] text-muted">{label}</p>
     </div>
   );
