@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { tagCounts } from "@/features/library/metadata/fields";
+import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
@@ -58,7 +59,12 @@ function RowActions({ onInspect, onDelete }: { onInspect: () => void; onDelete: 
   const { t } = useTranslation("library");
 
   return (
-    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
+    // Always on screen, never loud. Actions that appear on hover are actions
+    // nobody knows exist until they sweep the row, and on a touchpad that is a
+    // discovery problem. They idle at a third opacity — present enough to read
+    // as "there is something here", quiet enough not to compete with the
+    // titles — and come up to full on row hover.
+    <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
       <button
         type="button"
         onClick={onInspect}
@@ -109,8 +115,9 @@ export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: A
   return (
     <tr
       style={style}
+      onDoubleClick={rowPlayHandler(() => playTrack(track))}
       className={
-        "group/row row-cascade [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
+        "group/row row-cascade select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
       }
     >

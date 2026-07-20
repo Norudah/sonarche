@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
+import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
@@ -34,8 +35,9 @@ export function TrackRow({ track, index, cascade = true, style, onInspect, onDel
   return (
     <tr
       style={style}
+      onDoubleClick={rowPlayHandler(() => playTrack(track))}
       className={
-        "group/row [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
+        "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (cascade ? "row-cascade " : "") +
         (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
       }
@@ -105,7 +107,9 @@ export function TrackRow({ track, index, cascade = true, style, onInspect, onDel
       </td>
 
       <td className={`${CELL} w-20`}>
-        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
+        {/* Permanently visible, faint until the row is hovered — see the album
+            tracklist for why these no longer appear out of nowhere. */}
+        <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
           <button
             type="button"
             onClick={onInspect}
