@@ -237,6 +237,36 @@ const libraryTracks = [
   })),
 ];
 
+/**
+ * `?tracks=10000` inflates the mock library to that many rows by cloning the
+ * handful above, so the browsing views can be measured at a scale nobody has
+ * on disk yet. Album identity is (album artist, title), so the clones carry a
+ * generation suffix — otherwise 10 000 tracks would collapse into 13 albums
+ * and the grid would never be exercised.
+ */
+function inflate<T extends { id: number; album: string; album_artist: string }>(
+  seed: T[],
+  total: number,
+): T[] {
+  if (total <= seed.length) return seed;
+  return Array.from({ length: total }, (_, i) => {
+    const source = seed[i % seed.length];
+    const generation = Math.floor(i / seed.length);
+    return generation === 0
+      ? source
+      : {
+          ...source,
+          id: 10_000 + i,
+          album: `${source.album} (${generation})`,
+          album_artist: `${source.album_artist} ${generation}`,
+        };
+  });
+}
+
+const requestedTracks = Number(
+  new URLSearchParams(window.location.search).get("tracks") ?? 0,
+);
+
 const responses: Record<string, unknown> = {
   get_env_status: {
     python: { path: "/usr/bin/python3", version: "3.12.0" },
@@ -245,7 +275,7 @@ const responses: Record<string, unknown> = {
     libraryDir: "/Users/dev/Music/Sonarche",
   },
   list_jobs: jobs,
-  list_library: { tracks: libraryTracks },
+  list_library: { tracks: inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };

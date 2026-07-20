@@ -12,7 +12,15 @@ import { springs } from "@/shared/motion/tokens";
 function Artwork({ src, isAlbum }: { src: string | null; isAlbum: boolean }) {
   if (src) {
     return (
-      <img src={src} alt="" className="size-10 shrink-0 rounded-lg bg-surface-secondary object-cover" />
+      <img
+        src={src}
+        alt=""
+        // The history grows without a cap (see the jobs DB), so this row is
+        // one of arbitrarily many.
+        loading="lazy"
+        decoding="async"
+        className="size-10 shrink-0 rounded-lg bg-surface-secondary object-cover"
+      />
     );
   }
   return (

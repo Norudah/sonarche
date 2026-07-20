@@ -48,7 +48,15 @@ export function TrackRow({ track, index, style, onInspect, onDelete }: TrackRowP
       <td className={CELL}>
         <div className="flex items-center gap-3">
           {track.artUrl ? (
-            <img src={track.artUrl} alt="" className="size-10 shrink-0 rounded-md object-cover" />
+            <img
+              src={track.artUrl}
+              alt=""
+              // A library-wide tracklist holds one of these per row; without
+              // this the browser fetches every cover in the library at once.
+              loading="lazy"
+              decoding="async"
+              className="size-10 shrink-0 rounded-md object-cover"
+            />
           ) : (
             <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-default/60">
               <Music className="size-4 text-muted" />

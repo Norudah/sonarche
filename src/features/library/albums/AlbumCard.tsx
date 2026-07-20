@@ -35,7 +35,7 @@ export function AlbumCard({ album, style, onPlay }: AlbumCardProps) {
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">
-          <AlbumCover artUrl={album.artUrl} className="size-full" />
+          <AlbumCover artUrl={album.artUrl} className="size-full" loading="lazy" />
         </div>
         <p className="mt-2.5 truncate text-sm font-medium">{album.title}</p>
         <p className="truncate text-[0.8125rem] text-muted">
