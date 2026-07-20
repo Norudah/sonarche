@@ -161,36 +161,43 @@ const libraryTracks = [
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
   },
-  // [title, artist, album, genre, length, year, track, cover]. Deliberately
-  // uneven so the albums grid meets what a real library throws at it: several
+  // [title, artist, album, genre, bucket, length, year, track, cover]. The
+  // bucket is what `sidecar/genre_tree.py` actually resolves for that genre,
+  // not an echo of it: the genres view is built on the two levels being
+  // different, so a fixture that collapses them would only ever exercise a
+  // shape the real library never produces. "Dance Pop" and "Synthwave" are
+  // genuinely absent from the tree — they are here to keep the Other bucket
+  // populated.
+  //
+  // Deliberately uneven so the albums grid meets what a real library throws at it: several
   // tracks per album, a compilation whose artists differ from the album artist,
   // an album with no cover, and albums with missing genres or years (which is
   // what the completeness badge is there to surface).
   ...(
     [
-      ["Night Changes", "One Direction", "Four", "Teen Pop", 226, 2014, 1, "#a78bfa|#7c3aed"],
-      ["Steal My Girl", "One Direction", "Four", "Teen Pop", 228, 2014, 2, "#a78bfa|#7c3aed"],
-      ["Fireproof", "One Direction", "Four", null, 202, 2014, 3, "#a78bfa|#7c3aed"],
-      ["One More Night", "Daft Punk", "Discovery", "French House", 238, 2001, 1, "#22d3ee|#0e7490"],
-      ["Digital Love", "Daft Punk", "Discovery", "French House", 298, 2001, 2, "#22d3ee|#0e7490"],
-      ["Harder Better Faster", "Daft Punk", "Discovery", "French House", 224, 2001, 3, "#22d3ee|#0e7490"],
-      ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", 369, 2013, 8, "#1f2937|#111827"],
-      ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", 337, 2013, 5, "#1f2937|#111827"],
-      ["The Less I Know the Better", "Tame Impala", "Currents", "Psych Pop", 216, 2015, 4, "#fb923c|#c2410c"],
-      ["Let It Happen", "Tame Impala", "Currents", "Psych Pop", 467, 2015, 1, "#fb923c|#c2410c"],
-      ["Nights", "Frank Ocean", "Blonde", null, 307, 2016, 5, "#bef264|#84cc16"],
-      ["Ivy", "Frank Ocean", "Blonde", null, 249, 2016, 3, "#bef264|#84cc16"],
-      ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", 318, 2007, 4, "#f472b6|#9333ea"],
-      ["Nude", "Radiohead", "In Rainbows", "Art Rock", 255, 2007, 3, "#f472b6|#9333ea"],
-      ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", 203, 2020, 4, "#6d28d9|#4c1d95"],
-      ["Physical", "Dua Lipa", "Future Nostalgia", null, 194, 2020, 3, "#6d28d9|#4c1d95"],
-      ["Come as You Are", "Nirvana", "Nevermind", "Grunge", 219, 1991, 3, "#38bdf8|#0369a1"],
-      ["Lithium", "Nirvana", "Nevermind", "Grunge", 257, 1991, 5, "#38bdf8|#0369a1"],
+      ["Night Changes", "One Direction", "Four", "Teen Pop", "Pop", 226, 2014, 1, "#a78bfa|#7c3aed"],
+      ["Steal My Girl", "One Direction", "Four", "Teen Pop", "Pop", 228, 2014, 2, "#a78bfa|#7c3aed"],
+      ["Fireproof", "One Direction", "Four", null, null, 202, 2014, 3, "#a78bfa|#7c3aed"],
+      ["One More Night", "Daft Punk", "Discovery", "French House", "Electronic", 238, 2001, 1, "#22d3ee|#0e7490"],
+      ["Digital Love", "Daft Punk", "Discovery", "French House", "Electronic", 298, 2001, 2, "#22d3ee|#0e7490"],
+      ["Harder Better Faster", "Daft Punk", "Discovery", "French House", "Electronic", 224, 2001, 3, "#22d3ee|#0e7490"],
+      ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 369, 2013, 8, "#1f2937|#111827"],
+      ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 337, 2013, 5, "#1f2937|#111827"],
+      ["The Less I Know the Better", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 216, 2015, 4, "#fb923c|#c2410c"],
+      ["Let It Happen", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 467, 2015, 1, "#fb923c|#c2410c"],
+      ["Nights", "Frank Ocean", "Blonde", null, null, 307, 2016, 5, "#bef264|#84cc16"],
+      ["Ivy", "Frank Ocean", "Blonde", null, null, 249, 2016, 3, "#bef264|#84cc16"],
+      ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", "Rock", 318, 2007, 4, "#f472b6|#9333ea"],
+      ["Nude", "Radiohead", "In Rainbows", "Art Rock", "Rock", 255, 2007, 3, "#f472b6|#9333ea"],
+      ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", null, 203, 2020, 4, "#6d28d9|#4c1d95"],
+      ["Physical", "Dua Lipa", "Future Nostalgia", null, null, 194, 2020, 3, "#6d28d9|#4c1d95"],
+      ["Come as You Are", "Nirvana", "Nevermind", "Grunge", "Rock", 219, 1991, 3, "#38bdf8|#0369a1"],
+      ["Lithium", "Nirvana", "Nevermind", "Grunge", "Rock", 257, 1991, 5, "#38bdf8|#0369a1"],
       // No cover at all: exercises the fallback in the card and the hero.
-      ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", 243, 2011, 4, null],
-      ["Wait", "M83", "Hurry Up, We're Dreaming", null, 322, 2011, 8, null],
+      ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", null, 243, 2011, 4, null],
+      ["Wait", "M83", "Hurry Up, We're Dreaming", null, null, 322, 2011, 8, null],
     ] as const
-  ).map(([title, artist, album, genre, length, year, trackNo, cover], index) => ({
+  ).map(([title, artist, album, genre, bucket, length, year, trackNo, cover], index) => ({
     id: 100 + index,
     title,
     artist,
@@ -198,7 +205,7 @@ const libraryTracks = [
     album_artist: artist,
     year,
     genre,
-    genre_bucket: genre,
+    genre_bucket: bucket,
     track: trackNo,
     track_total: 12,
     length,
@@ -225,7 +232,8 @@ const libraryTracks = [
     album_artist: "Various Artists",
     year: 2012,
     genre: "Synthwave",
-    genre_bucket: "Electronic",
+    // Not a node in the genre tree — the OST lands in Other, like it would.
+    genre_bucket: null,
     track: trackNo,
     track_total: 3,
     length,
