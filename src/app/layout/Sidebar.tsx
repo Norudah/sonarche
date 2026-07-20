@@ -76,7 +76,7 @@ function AddPlaylistButton({ label }: { label: string }) {
       type="button"
       aria-label={label}
       title={label}
-      className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-default/40 hover:text-foreground"
+      className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-default/40 hover:text-foreground"
     >
       <Plus className="size-3.5" />
     </button>

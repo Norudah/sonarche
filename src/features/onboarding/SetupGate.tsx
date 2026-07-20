@@ -1,8 +1,9 @@
-import { Alert, Button, Card, Spinner } from "@heroui/react";
+import { Alert, Button, Card } from "@heroui/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useEnvStatus, useSetupEnv, useSetupLogs } from "@/features/onboarding/hooks";
+import { SplashScreen } from "@/features/onboarding/SplashScreen";
 
 function Centered({ children }: { children: ReactNode }) {
   return <div className="flex h-full items-center justify-center">{children}</div>;
@@ -69,17 +70,16 @@ function SetupNeeded() {
   );
 }
 
+/**
+ * Nothing downstream renders until the Python environment is known to be usable.
+ * Wraps the whole shell, not just the routed content: see `SplashScreen` for
+ * why a half-interactive sidebar was worse than a full-window wait.
+ */
 export function SetupGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation("onboarding");
   const status = useEnvStatus();
 
-  if (status.isPending) {
-    return (
-      <Centered>
-        <Spinner size="lg" />
-      </Centered>
-    );
-  }
+  if (status.isPending) return <SplashScreen />;
 
   if (status.isError) {
     return (

@@ -261,8 +261,16 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
         </Table.ScrollContainer>
       </Table>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
-      <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
+      <MetadataDrawer
+        track={inspected}
+        onClose={() => setInspected(null)}
+        onDelete={setDeleting}
+      />
+      <DeleteTrackDialog
+        track={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => setInspected(null)}
+      />
       <DeleteAlbumDialog album={deletingAlbum} onClose={() => setDeletingAlbum(null)} />
     </>
   );

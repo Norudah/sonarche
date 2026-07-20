@@ -4,6 +4,6 @@ export interface PlayableTrack {
   title: string;
   subtitle?: string;
   artUrl?: string | null;
-  /** Known duration (seconds) from the library's metadata, authoritative over the browser's own estimate. */
+  /** Duration (seconds) as stored by the library, which is the audio file's own. Authoritative; see `trackDuration`. */
   duration?: number | null;
 }

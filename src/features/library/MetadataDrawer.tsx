@@ -1,67 +1,18 @@
-import { Button, Drawer, Input, Label, TextField, useOverlayState } from "@heroui/react";
-import { FileText, Loader2, Sparkles, X } from "lucide-react";
+import { Button, Drawer, useOverlayState } from "@heroui/react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { useReenrichTrack } from "@/features/library/hooks";
+import { countFilled, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
+import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
+import { MetadataField } from "@/features/library/metadata/MetadataField";
+import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 
-interface FieldValues {
-  title: string;
-  artist: string;
-  albumArtist: string;
-  album: string;
-  year: string;
-  track: string;
-  genre: string;
-}
-
-function toFieldValues(track: LibraryTrack): FieldValues {
-  const trackNumber =
-    track.track != null
-      ? track.trackTotal != null
-        ? `${track.track} / ${track.trackTotal}`
-        : String(track.track)
-      : "";
-  return {
-    title: track.title,
-    artist: track.artist,
-    albumArtist: track.albumArtist,
-    album: track.album,
-    year: track.year != null ? String(track.year) : "",
-    track: trackNumber,
-    genre: track.genre ?? "",
-  };
-}
-
-function Field({
-  label,
-  value,
-  isEditing,
-  onChange,
-  className,
-}: {
-  label: string;
-  value: string;
-  isEditing: boolean;
-  onChange: (value: string) => void;
-  className?: string;
-}) {
-  const { t } = useTranslation("library");
-  return (
-    <TextField
-      value={isEditing ? value : value || t("metadata.emptyValue")}
-      onChange={onChange}
-      isReadOnly={!isEditing}
-      className={"flex flex-col" + (className ? ` ${className}` : "")}
-    >
-      <Label className="text-sm font-medium text-muted">{label}</Label>
-      <Input className="mt-1.5 w-full rounded-xl" />
-    </TextField>
-  );
-}
-
-function ReenrichCard({ track }: { track: LibraryTrack }) {
+/** Discreet re-run of the acoustic match — a text action rather than a card, so
+ * the panel stays a metadata sheet and not a status dashboard. */
+function ReenrichAction({ track }: { track: LibraryTrack }) {
   const { t } = useTranslation("library");
   const reenrich = useReenrichTrack();
 
@@ -74,36 +25,34 @@ function ReenrichCard({ track }: { track: LibraryTrack }) {
       : null;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-accent/10 px-4 py-3">
-      <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 size-4 shrink-0 text-accent" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{t("metadata.matchTitle")}</p>
-          <p className="text-sm text-muted">{t("metadata.reenrichHint")}</p>
-        </div>
-      </div>
-      <Button
-        variant="secondary"
-        size="sm"
-        className="self-start rounded-xl"
-        isDisabled={reenrich.isPending}
-        onPress={() => reenrich.mutate(track.id)}
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        disabled={reenrich.isPending}
+        onClick={() => reenrich.mutate(track.id)}
+        className="flex cursor-pointer items-center gap-1.5 text-[0.8125rem] font-medium text-accent hover:underline disabled:cursor-default disabled:opacity-60 disabled:hover:no-underline"
       >
         {reenrich.isPending ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            {t("metadata.reenriching")}
-          </>
+          <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          t("metadata.reenrich")
+          <Sparkles className="size-3.5" />
         )}
-      </Button>
-      {feedback && <p className={`text-sm ${feedback.tone}`}>{feedback.text}</p>}
+        {reenrich.isPending ? t("metadata.reenriching") : t("metadata.reenrich")}
+      </button>
+      {feedback && <p className={`text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</p>}
     </div>
   );
 }
 
-function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
+function MetadataForm({
+  track,
+  onClose,
+  onDelete,
+}: {
+  track: LibraryTrack;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
   const { t } = useTranslation("library");
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<FieldValues>(() => toFieldValues(track));
@@ -121,94 +70,76 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
     setDraft(toFieldValues(track));
     setIsEditing(true);
   };
-  const cancel = () => setIsEditing(false);
 
   return (
     // data-slot="drawer-body" opts the whole panel out of HeroUI's drag-to-dismiss
     // (it excludes pointer-downs inside a drawer-body), so text selection for
     // copy-paste works; the backdrop click and the ✕ still close the drawer.
     <div data-slot="drawer-body" className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-separator px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <FileText className="size-5 shrink-0 text-accent" />
-          <h2 className="text-lg font-semibold">{t("metadata.title")}</h2>
-        </div>
-        <Button
-          isIconOnly
-          variant="tertiary"
-          size="sm"
-          onPress={onClose}
-          aria-label={t("metadata.close")}
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
+      <MetadataHeader track={track} onClose={onClose} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto px-5 py-5">
-        <div className="flex items-center gap-4">
-          {track.artUrl ? (
-            <img src={track.artUrl} alt="" className="size-20 shrink-0 rounded-xl object-cover" />
-          ) : (
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-xl bg-default/60 text-2xl">
-              ♪
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{t("metadata.artwork")}</p>
-            <button
-              type="button"
-              disabled
-              className="mt-0.5 text-sm text-accent/60"
-              title={t("metadata.comingSoon")}
-            >
-              {t("metadata.changeArtwork")}
-            </button>
-          </div>
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-7 py-6">
+        <ReenrichAction track={track} />
+        <MetadataCompleteness filled={countFilled(live)} />
 
-        <ReenrichCard track={track} />
-
-        <Field
+        <MetadataField
           label={t("metadata.fields.title")}
           value={shown.title}
           isEditing={isEditing}
           onChange={setField("title")}
         />
-        <Field
-          label={t("metadata.fields.artist")}
-          value={shown.artist}
-          isEditing={isEditing}
-          onChange={setField("artist")}
-        />
-        {/* Album-level field (shared by every track on the album): always read-only here. */}
-        <Field
-          label={t("metadata.fields.albumArtist")}
-          value={track.albumArtist}
-          isEditing={false}
-          onChange={() => {}}
-        />
-        <Field
+        <div className="flex gap-3">
+          <MetadataField
+            label={t("metadata.fields.artist")}
+            value={shown.artist}
+            isEditing={isEditing}
+            onChange={setField("artist")}
+            className="min-w-0 flex-1"
+          />
+          {/* Album-level field (shared by every track on the album): read-only here. */}
+          <MetadataField
+            label={t("metadata.fields.albumArtist")}
+            value={live.albumArtist}
+            isEditing={false}
+            onChange={() => {}}
+            className="min-w-0 flex-1"
+          />
+        </div>
+        <MetadataField
           label={t("metadata.fields.album")}
           value={shown.album}
           isEditing={isEditing}
           onChange={setField("album")}
+          action={
+            <button
+              type="button"
+              disabled
+              // title would otherwise become the accessible name and hide the label.
+              aria-label={t("metadata.viewAlbum")}
+              title={t("metadata.comingSoon")}
+              className="flex cursor-pointer items-center gap-1 text-[0.75rem] font-medium text-accent/60"
+            >
+              {t("metadata.viewAlbum")}
+              <ArrowRight className="size-3.5" />
+            </button>
+          }
         />
         {track.bonusSource && (
           // Adopted bonus track: filed with the main album for convenience
           // (iTunes/Spotify-style) — keep the real origin explicit.
-          <p className="rounded-xl bg-default/40 px-3 py-2 text-xs text-muted">
+          <p className="rounded-xl bg-default/40 px-3.5 py-2.5 text-[0.75rem] text-muted">
             {t("metadata.bonusFrom", { source: track.bonusSource })}
           </p>
         )}
         <div className="flex gap-3">
-          <Field
+          <MetadataField
             label={t("metadata.fields.year")}
             value={shown.year}
             isEditing={isEditing}
             onChange={setField("year")}
             className="min-w-0 flex-1"
           />
-          <Field
+          <MetadataField
             label={t("metadata.fields.track")}
             value={shown.track}
             isEditing={isEditing}
@@ -216,41 +147,61 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
             className="min-w-0 flex-1"
           />
         </div>
-        <Field
-          label={t("metadata.fields.genre")}
-          value={shown.genre}
-          isEditing={isEditing}
-          onChange={setField("genre")}
-        />
-        {/* Derived from the genre, not an editable tag: read-only even while editing. */}
-        <Field
-          label={t("metadata.fields.genreBucket")}
-          value={track.genreBucket ?? ""}
-          isEditing={false}
-          onChange={() => {}}
-        />
+        <div className="flex gap-3">
+          <MetadataField
+            label={t("metadata.fields.genre")}
+            value={shown.genre}
+            isEditing={isEditing}
+            onChange={setField("genre")}
+            className="min-w-0 flex-1"
+          />
+          {/* Derived from the genre, not an editable tag: read-only even while editing. */}
+          <MetadataField
+            label={t("metadata.fields.genreBucket")}
+            value={track.genreBucket ?? ""}
+            isEditing={false}
+            onChange={() => {}}
+            hint={t("metadata.derived")}
+            className="min-w-0 flex-1"
+          />
+        </div>
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-separator px-5 py-4">
-        {isEditing ? (
-          <>
-            <Button variant="secondary" className="rounded-xl px-6" onPress={cancel}>
-              {t("metadata.cancel")}
+      <footer className="flex items-center justify-between gap-3 border-t border-separator px-7 py-3.5">
+        {/* Bare text, no button chrome: destructive actions shouldn't compete
+            with the primary action for weight. */}
+        <button
+          type="button"
+          onClick={onDelete}
+          className="cursor-pointer text-[0.8125rem] font-medium text-danger hover:underline"
+        >
+          {t("delete.confirm")}
+        </button>
+        <div className="flex gap-2.5">
+          {isEditing ? (
+            <>
+              <Button
+                variant="secondary"
+                className="rounded-xl px-6"
+                onPress={() => setIsEditing(false)}
+              >
+                {t("metadata.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                className="rounded-xl px-6"
+                onPress={() => setIsEditing(false)}
+              >
+                {t("metadata.save")}
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" className="rounded-xl px-6" onPress={startEditing}>
+              {t("metadata.edit")}
             </Button>
-            <Button
-              variant="primary"
-              className="rounded-xl px-6"
-              onPress={() => setIsEditing(false)}
-            >
-              {t("metadata.save")}
-            </Button>
-          </>
-        ) : (
-          <Button variant="primary" className="rounded-xl px-6" onPress={startEditing}>
-            {t("metadata.edit")}
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
@@ -258,9 +209,11 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
 export function MetadataDrawer({
   track,
   onClose,
+  onDelete,
 }: {
   track: LibraryTrack | null;
   onClose: () => void;
+  onDelete: (track: LibraryTrack) => void;
 }) {
   const state = useOverlayState({
     isOpen: track != null,
@@ -273,8 +226,18 @@ export function MetadataDrawer({
     <Drawer state={state}>
       <Drawer.Backdrop>
         <Drawer.Content placement="right">
-          <Drawer.Dialog className="flex h-full flex-col overflow-hidden p-0!">
-            {track && <MetadataForm key={track.id} track={track} onClose={onClose} />}
+          {/* Width belongs on the dialog, not the content (that one is the
+              full-screen positioning layer). HeroUI's default sm:w-96 is too
+              narrow for a two-column metadata form. */}
+          <Drawer.Dialog className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[30rem]">
+            {track && (
+              <MetadataForm
+                key={track.id}
+                track={track}
+                onClose={onClose}
+                onDelete={() => onDelete(track)}
+              />
+            )}
           </Drawer.Dialog>
         </Drawer.Content>
       </Drawer.Backdrop>

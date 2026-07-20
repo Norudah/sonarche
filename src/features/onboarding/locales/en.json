@@ -1,5 +1,8 @@
 {
   "statusError": "Unable to check the environment",
+  "splash": {
+    "checking": "Checking the environment…"
+  },
   "pythonMissing": {
     "title": "Python 3.10+ required",
     "description": "Music Manager needs a recent Python for its download and library engine. Install it with Homebrew, then check again.",

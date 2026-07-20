@@ -8,19 +8,85 @@
     "comingSoon": "Coming soon."
   },
   "genres": {
+    "eyebrow": "Genre",
+    "back": "Genres",
+    "scope": {
+      "families": "Families",
+      "genres": "Genres"
+    },
     "other": "Other",
     "none": "No genre",
-    "allOf": "All {{parent}}",
-    "clear": "Clear",
-    "pickHint": "Pick a genre to see its tracks.",
+    "familyCount_one": "{{count}} family",
+    "familyCount_other": "{{count}} families",
+    "genreCount_one": "{{count}} genre",
+    "genreCount_other": "{{count}} genres",
+    "unclassifiedCount_one": "{{count}} track with no genre",
+    "unclassifiedCount_other": "{{count}} tracks with no genre",
+    "unclassifiedHint": "Not classified automatically",
+    "fixInMetadata": "Fix in Metadata",
+    "shareOfLibrary": "{{percent}} % of the library",
+    "allSubs": "All",
+    "albums": "Albums",
+    "artists": "Artists",
+    "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",
+    "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
     "recomputing": "Recomputing…",
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
     "recomputeFailed": "Recompute failed, try again in a moment."
   },
+  "albums": {
+    "eyebrow": "Album",
+    "back": "Albums",
+    "inspect": "Inspect album metadata",
+    "empty": "No album in your library yet.",
+    "noResults": "No album matches “{{query}}”.",
+    "completeness": "{{percent}}%",
+    "completenessHint": "Incomplete metadata on this album",
+    "bonusFrom": "Bonus — “{{source}}”",
+    "sort": {
+      "artist": "Artist",
+      "title": "Title",
+      "year": "Year"
+    }
+  },
+  "artists": {
+    "eyebrow": "Artist",
+    "back": "Artists",
+    "empty": "No artist in your library yet.",
+    "noResults": "No artist matches “{{query}}”.",
+    "discography": "Discography",
+    "appearances": "Appearances",
+    "appearancesHint": "Tracks where {{name}} is credited on someone else's album.",
+    "sort": {
+      "name": "Name",
+      "albums": "Albums",
+      "tracks": "Tracks"
+    }
+  },
+  "albumCount_one": "{{count}} album",
+  "albumCount_other": "{{count}} albums",
+  "artistCount_one": "{{count}} artist",
+  "artistCount_other": "{{count}} artists",
   "trackCount_one": "{{count}} track",
   "trackCount_other": "{{count}} tracks",
-  "refresh": "Refresh",
+  "totalPlaytime": "{{hours}} hr {{minutes}}",
+  "totalPlaytimeMinutes": "{{minutes}} min",
+  "playAll": "Play all",
+  "columns": {
+    "title": "Title",
+    "artist": "Artist",
+    "album": "Album",
+    "genre": "Genre",
+    "duration": "Duration",
+    "actions": "Actions"
+  },
+  "search": {
+    "placeholder": "Search…",
+    "label": "Search tracks",
+    "noResults": "No track matches “{{query}}”.",
+    "clear": "Clear search"
+  },
   "loadFailed": "Unable to load the library",
   "empty": "Your library is empty for now.",
   "goToDownload": "Download a first track →",
@@ -29,10 +95,7 @@
   "metadata": {
     "title": "Metadata",
     "inspect": "Inspect metadata",
-    "artwork": "Artwork",
     "changeArtwork": "Change image",
-    "matchTitle": "MusicBrainz match",
-    "reenrichHint": "Re-run acoustic identification to fix album, artwork and tags.",
     "reenrich": "Re-run auto-match",
     "reenriching": "Matching…",
     "reenrichMatched": "Metadata updated.",
@@ -54,7 +117,10 @@
     "close": "Close",
     "edit": "Edit",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "completeness": "Completeness — {{filled}}/{{total}} fields",
+    "derived": "derived",
+    "viewAlbum": "View album"
   },
   "delete": {
     "action": "Delete track",
@@ -69,5 +135,8 @@
     "body_one": "“{{title}}” and its track will be removed from your library and the file deleted from disk. This cannot be undone.",
     "body_other": "“{{title}}” and its {{count}} tracks will be removed from your library and the files deleted from disk. This cannot be undone.",
     "action": "Delete album"
+  },
+  "sort": {
+    "label": "Sort by"
   }
 }

@@ -57,7 +57,7 @@ export function DownloadPage() {
             type="button"
             onClick={() => setClearingHistory(true)}
             disabled={!hasHistory}
-            className="flex items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
+            className="flex cursor-pointer items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
           >
             <Trash2 className="size-3.5" />
             {t("queue.clearHistory")}

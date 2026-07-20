@@ -161,7 +161,119 @@ const libraryTracks = [
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
   },
+  // [title, artist, album, genre, bucket, length, year, track, cover]. The
+  // bucket is what `sidecar/genre_tree.py` actually resolves for that genre,
+  // not an echo of it: the genres view is built on the two levels being
+  // different, so a fixture that collapses them would only ever exercise a
+  // shape the real library never produces. "Dance Pop" and "Synthwave" are
+  // genuinely absent from the tree — they are here to keep the Other bucket
+  // populated.
+  //
+  // Deliberately uneven so the albums grid meets what a real library throws at it: several
+  // tracks per album, a compilation whose artists differ from the album artist,
+  // an album with no cover, and albums with missing genres or years (which is
+  // what the completeness badge is there to surface).
+  ...(
+    [
+      ["Night Changes", "One Direction", "Four", "Teen Pop", "Pop", 226, 2014, 1, "#a78bfa|#7c3aed"],
+      ["Steal My Girl", "One Direction", "Four", "Teen Pop", "Pop", 228, 2014, 2, "#a78bfa|#7c3aed"],
+      ["Fireproof", "One Direction", "Four", null, null, 202, 2014, 3, "#a78bfa|#7c3aed"],
+      ["One More Night", "Daft Punk", "Discovery", "French House", "Electronic", 238, 2001, 1, "#22d3ee|#0e7490"],
+      ["Digital Love", "Daft Punk", "Discovery", "French House", "Electronic", 298, 2001, 2, "#22d3ee|#0e7490"],
+      ["Harder Better Faster", "Daft Punk", "Discovery", "French House", "Electronic", 224, 2001, 3, "#22d3ee|#0e7490"],
+      ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 369, 2013, 8, "#1f2937|#111827"],
+      ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 337, 2013, 5, "#1f2937|#111827"],
+      ["The Less I Know the Better", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 216, 2015, 4, "#fb923c|#c2410c"],
+      ["Let It Happen", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 467, 2015, 1, "#fb923c|#c2410c"],
+      ["Nights", "Frank Ocean", "Blonde", null, null, 307, 2016, 5, "#bef264|#84cc16"],
+      ["Ivy", "Frank Ocean", "Blonde", null, null, 249, 2016, 3, "#bef264|#84cc16"],
+      ["Weird Fishes / Arpeggi", "Radiohead", "In Rainbows", "Art Rock", "Rock", 318, 2007, 4, "#f472b6|#9333ea"],
+      ["Nude", "Radiohead", "In Rainbows", "Art Rock", "Rock", 255, 2007, 3, "#f472b6|#9333ea"],
+      ["Levitating", "Dua Lipa", "Future Nostalgia", "Dance Pop", null, 203, 2020, 4, "#6d28d9|#4c1d95"],
+      ["Physical", "Dua Lipa", "Future Nostalgia", null, null, 194, 2020, 3, "#6d28d9|#4c1d95"],
+      ["Come as You Are", "Nirvana", "Nevermind", "Grunge", "Rock", 219, 1991, 3, "#38bdf8|#0369a1"],
+      ["Lithium", "Nirvana", "Nevermind", "Grunge", "Rock", 257, 1991, 5, "#38bdf8|#0369a1"],
+      // No cover at all: exercises the fallback in the card and the hero.
+      ["Midnight City", "M83", "Hurry Up, We're Dreaming", "Synthwave", null, 243, 2011, 4, null],
+      ["Wait", "M83", "Hurry Up, We're Dreaming", null, null, 322, 2011, 8, null],
+    ] as const
+  ).map(([title, artist, album, genre, bucket, length, year, trackNo, cover], index) => ({
+    id: 100 + index,
+    title,
+    artist,
+    album,
+    album_artist: artist,
+    year,
+    genre,
+    genre_bucket: bucket,
+    track: trackNo,
+    track_total: 12,
+    length,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
+    art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
+    bonus_source: null,
+  })),
+
+  // Compilation: the album artist is "Various Artists" while every track has
+  // its own — the case that makes the tracklist grow an artist column.
+  ...(
+    [
+      ["Hydrogen", "M|O|O|N", 1, 269],
+      ["Roller Mobster", "Carpenter Brut", 2, 231],
+      ["Knock Knock", "Scattle", 3, 213],
+    ] as const
+  ).map(([title, artist, trackNo, length], index) => ({
+    id: 200 + index,
+    title,
+    artist,
+    album: "Hotline Miami OST",
+    album_artist: "Various Artists",
+    year: 2012,
+    genre: "Synthwave",
+    // Not a node in the genre tree — the OST lands in Other, like it would.
+    genre_bucket: null,
+    track: trackNo,
+    track_total: 3,
+    length,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
+    art_path: thumb("#f43f5e", "#7c2d12"),
+    bonus_source: null,
+  })),
 ];
+
+/**
+ * `?tracks=10000` inflates the mock library to that many rows by cloning the
+ * handful above, so the browsing views can be measured at a scale nobody has
+ * on disk yet. Album identity is (album artist, title), so the clones carry a
+ * generation suffix — otherwise 10 000 tracks would collapse into 13 albums
+ * and the grid would never be exercised.
+ */
+function inflate<T extends { id: number; album: string; album_artist: string }>(
+  seed: T[],
+  total: number,
+): T[] {
+  if (total <= seed.length) return seed;
+  return Array.from({ length: total }, (_, i) => {
+    const source = seed[i % seed.length];
+    const generation = Math.floor(i / seed.length);
+    return generation === 0
+      ? source
+      : {
+          ...source,
+          id: 10_000 + i,
+          album: `${source.album} (${generation})`,
+          album_artist: `${source.album_artist} ${generation}`,
+        };
+  });
+}
+
+const requestedTracks = Number(
+  new URLSearchParams(window.location.search).get("tracks") ?? 0,
+);
 
 const responses: Record<string, unknown> = {
   get_env_status: {
@@ -171,7 +283,7 @@ const responses: Record<string, unknown> = {
     libraryDir: "/Users/dev/Music/Sonarche",
   },
   list_jobs: jobs,
-  list_library: { tracks: libraryTracks },
+  list_library: { tracks: inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };

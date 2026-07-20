@@ -441,7 +441,7 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
             next_track += 1
             # merge_with_album(match.info) is the adoption itself: track-level
             # fields from the bonus edition, album-level from the main release.
-            item.update(track.merge_with_album(match.info))
+            item.update(enrich.work_fields(track.merge_with_album(match.info)))
             item.track = next_track
             item.album_id = album.id
             # Where the bonus really comes from — surfaced in the UI so the

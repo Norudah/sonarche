@@ -8,19 +8,85 @@
     "comingSoon": "Bientôt disponible."
   },
   "genres": {
+    "eyebrow": "Genre",
+    "back": "Genres",
+    "scope": {
+      "families": "Familles",
+      "genres": "Genres"
+    },
     "other": "Autres",
     "none": "Sans genre",
-    "allOf": "Tout {{parent}}",
-    "clear": "Effacer",
-    "pickHint": "Choisis un genre pour voir les titres.",
+    "familyCount_one": "{{count}} famille",
+    "familyCount_other": "{{count}} familles",
+    "genreCount_one": "{{count}} genre",
+    "genreCount_other": "{{count}} genres",
+    "unclassifiedCount_one": "{{count}} titre sans genre",
+    "unclassifiedCount_other": "{{count}} titres sans genre",
+    "unclassifiedHint": "Non classés automatiquement",
+    "fixInMetadata": "Corriger dans Métadonnées",
+    "shareOfLibrary": "{{percent}} % de la bibliothèque",
+    "allSubs": "Tous",
+    "albums": "Albums",
+    "artists": "Artistes",
+    "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des disques classés ailleurs.",
+    "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
     "recomputing": "Recalcul en cours…",
     "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
     "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant."
   },
+  "albums": {
+    "eyebrow": "Album",
+    "back": "Albums",
+    "inspect": "Inspecter les métadonnées de l'album",
+    "empty": "Aucun album dans ta bibliothèque pour l'instant.",
+    "noResults": "Aucun album ne correspond à « {{query}} ».",
+    "completeness": "{{percent}} %",
+    "completenessHint": "Métadonnées incomplètes sur cet album",
+    "bonusFrom": "Bonus — « {{source}} »",
+    "sort": {
+      "artist": "Artiste",
+      "title": "Titre",
+      "year": "Année"
+    }
+  },
+  "artists": {
+    "eyebrow": "Artiste",
+    "back": "Artistes",
+    "empty": "Aucun artiste dans ta bibliothèque pour l'instant.",
+    "noResults": "Aucun artiste ne correspond à « {{query}} ».",
+    "discography": "Discographie",
+    "appearances": "Apparitions",
+    "appearancesHint": "Titres où {{name}} est crédité sur l'album de quelqu'un d'autre.",
+    "sort": {
+      "name": "Nom",
+      "albums": "Albums",
+      "tracks": "Titres"
+    }
+  },
+  "albumCount_one": "{{count}} album",
+  "albumCount_other": "{{count}} albums",
+  "artistCount_one": "{{count}} artiste",
+  "artistCount_other": "{{count}} artistes",
   "trackCount_one": "{{count}} titre",
   "trackCount_other": "{{count}} titres",
-  "refresh": "Actualiser",
+  "totalPlaytime": "{{hours}} h {{minutes}}",
+  "totalPlaytimeMinutes": "{{minutes}} min",
+  "playAll": "Tout lire",
+  "columns": {
+    "title": "Titre",
+    "artist": "Artiste",
+    "album": "Album",
+    "genre": "Genre",
+    "duration": "Durée",
+    "actions": "Actions"
+  },
+  "search": {
+    "placeholder": "Rechercher…",
+    "label": "Rechercher un morceau",
+    "noResults": "Aucun morceau ne correspond à « {{query}} ».",
+    "clear": "Effacer la recherche"
+  },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": "Ta bibliothèque est vide pour l'instant.",
   "goToDownload": "Télécharger un premier titre →",
@@ -29,10 +95,7 @@
   "metadata": {
     "title": "Métadonnées",
     "inspect": "Inspecter les métadonnées",
-    "artwork": "Pochette",
     "changeArtwork": "Changer l'image",
-    "matchTitle": "Correspondance MusicBrainz",
-    "reenrichHint": "Relance l'identification acoustique pour corriger album, pochette et tags.",
     "reenrich": "Relancer l'auto-correspondance",
     "reenriching": "Correspondance en cours…",
     "reenrichMatched": "Métadonnées mises à jour.",
@@ -54,7 +117,10 @@
     "close": "Fermer",
     "edit": "Modifier",
     "cancel": "Annuler",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "completeness": "Complétude — {{filled}}/{{total}} champs",
+    "derived": "dérivé",
+    "viewAlbum": "Voir l'album"
   },
   "delete": {
     "action": "Supprimer le morceau",
@@ -69,5 +135,8 @@
     "body_one": "« {{title}} » et son morceau seront retirés de ta bibliothèque, et le fichier supprimé du disque. Cette action est irréversible.",
     "body_other": "« {{title}} » et ses {{count}} morceaux seront retirés de ta bibliothèque, et les fichiers supprimés du disque. Cette action est irréversible.",
     "action": "Supprimer l'album"
+  },
+  "sort": {
+    "label": "Trier par"
   }
 }
