@@ -48,6 +48,16 @@
       "artist": "Artiste",
       "title": "Titre",
       "year": "Année"
+    },
+    "rematch": "Re-matcher",
+    "rematching": "Re-matchage…",
+    "rematchDone": "{{matched}}/{{total}} pistes identifiées",
+    "edit": "Modifier",
+    "moreActions": "Plus d'actions",
+    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
+    "stats": {
+      "completeness": "Complétude tags",
+      "tagged": "Pistes complètes"
     }
   },
   "artists": {
@@ -79,7 +89,8 @@
     "album": "Album",
     "genre": "Genre",
     "duration": "Durée",
-    "actions": "Actions"
+    "actions": "Actions",
+    "tags": "Tags"
   },
   "search": {
     "placeholder": "Rechercher…",
@@ -138,5 +149,6 @@
   },
   "sort": {
     "label": "Trier par"
-  }
+  },
+  "breadcrumb": "Fil d'ariane"
 }

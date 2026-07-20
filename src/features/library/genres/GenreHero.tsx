@@ -1,11 +1,10 @@
-import { ArrowLeft } from "lucide-react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import { genrePath, paths } from "@/app/routes";
-import type { Album } from "@/features/library/albums/albums";
-import { HeroBackdrop } from "@/features/library/HeroBackdrop";
+import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
+import { HeroWash } from "@/features/library/HeroWash";
 
 /**
  * Back to wherever this page was entered from.
@@ -16,9 +15,17 @@ import { HeroBackdrop } from "@/features/library/HeroBackdrop";
  * undo, and the family is anyway one click away on the "All" chip.
  *
  * `up` is the cold-entry fallback only: reached without history (a restored
- * session, a direct navigation), the arrow still has somewhere sensible to go.
+ * session, a direct navigation), the crumb still has somewhere sensible to go.
  */
-function BackLink({ family, isGenre }: { family: string; isGenre: boolean }) {
+function GenreBreadcrumb({
+  family,
+  isGenre,
+  current,
+}: {
+  family: string;
+  isGenre: boolean;
+  current: string;
+}) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -27,14 +34,12 @@ function BackLink({ family, isGenre }: { family: string; isGenre: boolean }) {
   const up = isGenre ? genrePath(family) : paths.libraryGenres;
 
   return (
-    <button
-      type="button"
-      onClick={() => (cameFromList ? navigate(-1) : navigate(up))}
-      className="relative flex w-fit cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-[0.8125rem] text-white/70 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
-    >
-      <ArrowLeft className="size-4" />
-      {t("genres.back")}
-    </button>
+    <HeroBreadcrumb
+      label={t("breadcrumb")}
+      backLabel={t("genres.back")}
+      current={current}
+      onBack={() => (cameFromList ? navigate(-1) : navigate(up))}
+    />
   );
 }
 
@@ -45,10 +50,6 @@ interface GenreHeroProps {
   familyLabel: string;
   /** The genre being inspected, or null for the family itself. */
   genre: string | null;
-  /** The *family's* albums, not the filtered set. The backdrop is tinted by the
-   * family, so flipping a genre chip no longer swaps the image out and replays
-   * its fade — the band belongs to the family either way. */
-  albums: Album[];
   albumCount: number;
   trackCount: number;
   artistCount: number;
@@ -62,8 +63,9 @@ interface GenreHeroProps {
  * Every other hero in the app leads with a piece of artwork; a genre has none,
  * and inventing one — a mosaic of four covers from the family — would put a
  * third fabricated thumbnail in the app for an object that is not a thing you
- * can look at. The band is text on the backdrop, tinted by one record of the
- * family so it is still coloured by the music rather than by a constant.
+ * can look at. It is text on the wash, and now that the wash is the same for
+ * every hero, this one no longer has to borrow a record's cover to be tinted at
+ * all.
  *
  * One component for both depths on purpose: a genre is inspected exactly the
  * way its family is, and giving it a lighter-weight band would have said it was
@@ -73,7 +75,6 @@ export function GenreHero({
   family,
   familyLabel,
   genre,
-  albums,
   albumCount,
   trackCount,
   artistCount,
@@ -94,22 +95,21 @@ export function GenreHero({
   ];
 
   return (
-    <header
-      ref={ref}
-      className="relative -mx-8 -mt-8 mb-2 overflow-hidden px-8 pt-5 pb-8 text-white"
-    >
-      <HeroBackdrop artUrl={albums.find((album) => album.artUrl)?.artUrl ?? null} />
+    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+      <HeroWash />
 
-      <BackLink family={family} isGenre={genre != null} />
+      <div className="relative">
+        <GenreBreadcrumb family={family} isGenre={genre != null} current={genre ?? familyLabel} />
 
-      <div className="relative mt-8">
-        <p className="text-[0.6875rem] font-semibold tracking-wider text-white/70 uppercase">
-          {eyebrow}
-        </p>
-        <h1 className="mt-1 truncate text-4xl font-semibold tracking-tight">
-          {genre ?? familyLabel}
-        </h1>
-        <p className="mt-2 truncate text-[0.8125rem] text-white/80">{meta.join(" · ")}</p>
+        <div className="mt-6">
+          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
+            {eyebrow}
+          </p>
+          <h1 className="mt-1 truncate text-4xl font-semibold tracking-tight">
+            {genre ?? familyLabel}
+          </h1>
+          <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
+        </div>
       </div>
     </header>
   );

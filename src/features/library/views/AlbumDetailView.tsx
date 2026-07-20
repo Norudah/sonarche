@@ -5,7 +5,6 @@ import { Navigate, useParams } from "react-router";
 
 import { paths } from "@/app/routes";
 import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
-import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
@@ -67,8 +66,8 @@ export function AlbumDetailView() {
         />
       }
     >
-      <AlbumHero ref={heroRef} album={album} />
-      <AlbumActions
+      <AlbumHero
+        ref={heroRef}
         album={album}
         onPlay={() => playTrack(album.tracks[0])}
         onDelete={() =>

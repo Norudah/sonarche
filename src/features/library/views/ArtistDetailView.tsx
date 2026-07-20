@@ -1,6 +1,4 @@
 import { Alert, Spinner } from "@heroui/react";
-import { Play } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
@@ -15,7 +13,6 @@ import { ArtistHero } from "@/features/library/artists/ArtistHero";
 import { ArtistStickyHeader } from "@/features/library/artists/ArtistStickyHeader";
 import { useLibrary } from "@/features/library/hooks";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
-import { springs } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function ArtistDetailView() {
@@ -29,10 +26,7 @@ export function ArtistDetailView() {
     () => findArtist(groupArtists(groupAlbums(library.data ?? [])), name),
     [library.data, name],
   );
-  const appearances = useMemo(
-    () => appearancesOf(library.data ?? [], name),
-    [library.data, name],
-  );
+  const appearances = useMemo(() => appearancesOf(library.data ?? [], name), [library.data, name]);
 
   if (library.isPending) {
     return (
@@ -66,28 +60,9 @@ export function ArtistDetailView() {
 
   return (
     <PageContainer
-      sticky={
-        <ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playFirst} />
-      }
+      sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playFirst} />}
     >
-      <ArtistHero ref={heroRef} artist={artist} />
-
-      {/* No delete action, unlike the album page. "Delete this artist" would
-       * wipe an unbounded number of albums behind one click, and nothing about
-       * the page makes that scope visible before it happens. */}
-      <div className="flex items-center gap-3">
-        <motion.button
-          type="button"
-          onClick={playFirst}
-          aria-label={t("playAll")}
-          whileTap={{ scale: 0.94 }}
-          whileHover={{ scale: 1.05 }}
-          transition={springs.snappy}
-          className="flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg shadow-accent/30 outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-        >
-          <Play className="size-5 fill-current" />
-        </motion.button>
-      </div>
+      <ArtistHero ref={heroRef} artist={artist} onPlay={playFirst} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>

@@ -1,26 +1,29 @@
-import { ArrowLeft } from "lucide-react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { artistPath, paths } from "@/app/routes";
+import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
-import { HeroBackdrop } from "@/features/library/HeroBackdrop";
+import { AlbumStats } from "@/features/library/albums/AlbumStats";
+import { GenreChips } from "@/features/library/GenreChips";
+import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
+import { HeroWash } from "@/features/library/HeroWash";
 import { formatDuration } from "@/shared/lib/format";
 
 /**
- * Steps back through history when we arrived from a grid, so the shelf comes
- * back exactly as it was left — scroll, search and sort intact. A plain
- * `<Link>` would push a new entry and rebuild the grid from the top, which is
- * the most irritating way to lose someone's place. Falls back to a normal
- * navigation when the album page was opened cold and there is nothing behind it.
+ * The crumb *steps back* through history when we arrived from a grid, so the
+ * shelf comes back exactly as it was left — scroll, search and sort intact. A
+ * plain `<Link>` would push a new entry and rebuild the grid from the top,
+ * which is the most irritating way to lose someone's place. Falls back to a
+ * normal navigation when the album page was opened cold and there is nothing
+ * behind it.
  *
- * The label names where Back actually lands, which is why the caller states it:
- * an album opened from an artist's discography that offers to return to
- * "Albums" is lying about its own history.
+ * The label names where the crumb actually lands: an album opened from an
+ * artist's discography that offers "Albums" is lying about its own history.
  */
-function BackToGrid({ artist }: { artist: string }) {
+function AlbumBreadcrumb({ artist, title }: { artist: string; title: string }) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -28,24 +31,57 @@ function BackToGrid({ artist }: { artist: string }) {
   const fallback = from.fromArtist ? artistPath(artist) : paths.libraryAlbums;
 
   return (
-    <button
-      type="button"
-      onClick={() => (from.fromGrid ? navigate(-1) : navigate(fallback))}
-      className="relative flex w-fit cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-[0.8125rem] text-white/70 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"
-    >
-      <ArrowLeft className="size-4" />
-      {from.fromArtist ? artist : t("albums.back")}
-    </button>
+    <HeroBreadcrumb
+      label={t("breadcrumb")}
+      backLabel={from.fromArtist ? artist : t("albums.back")}
+      current={title}
+      onBack={() => (from.fromGrid ? navigate(-1) : navigate(fallback))}
+    />
   );
 }
 
 /**
- * Full-bleed band tinted by the album itself — see `HeroBackdrop`.
+ * The way *out* of an album and into everything else by the same artist — the
+ * one link that turns the library from a list of records into something you can
+ * wander through.
+ *
+ * The underline is a pseudo-element growing from the left rather than
+ * `hover:underline`, which has no in-between state: a text-decoration is either
+ * there or not, so it snapped on and made a headline look like it had just gone
+ * wrong. Scaling a 1px bar is compositor work, and it lets the colour shift to
+ * accent over the same 200ms so the two read as one gesture.
+ */
+function ArtistLink({ artist }: { artist: string }) {
+  return (
+    <Link
+      to={artistPath(artist)}
+      className="relative rounded-sm font-medium text-foreground outline-none transition-colors duration-200 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-200 after:ease-out hover:text-accent hover:after:scale-x-100 focus-visible:ring-2 focus-visible:ring-accent/40 motion-reduce:after:transition-none"
+    >
+      {artist}
+    </Link>
+  );
+}
+
+interface AlbumHeroProps {
+  album: Album;
+  onPlay: () => void;
+  onDelete: () => void;
+  ref?: Ref<HTMLElement>;
+}
+
+/**
+ * Full-bleed band — see `HeroWash` for why it is no longer the artwork, and why
+ * this header no longer clips its children.
+ *
+ * `items-end` is what aligns the tag cards with the bottom of the action row:
+ * both are last in their column, so bottom-aligning the row aligns them by
+ * construction rather than by a hand-tuned offset that would drift the moment a
+ * title wraps to two lines.
  *
  * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
-export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement> }) {
+export function AlbumHero({ album, onPlay, onDelete, ref }: AlbumHeroProps) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -56,47 +92,39 @@ export function AlbumHero({ album, ref }: { album: Album; ref?: Ref<HTMLElement>
   ].filter(Boolean);
 
   return (
-    <header
-      ref={ref}
-      className="relative -mx-8 -mt-8 mb-2 overflow-hidden px-8 pt-5 pb-7 text-white"
-    >
-      <HeroBackdrop artUrl={album.artUrl} />
+    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+      <HeroWash />
 
-      {/* Inside the band rather than above it: the hero is full-bleed and
-       * starts at the very top of the scroll area, so a back link placed
-       * before it would push the whole treatment down the page. */}
-      <BackToGrid artist={album.artist} />
+      <div className="relative">
+        <AlbumBreadcrumb artist={album.artist} title={album.title} />
 
-      {/* items-end: the text sits on the artwork's baseline rather than
-       * floating at its centre. */}
-      <div className="relative mt-6 flex items-end gap-6">
-        <AlbumCover
-          artUrl={album.artUrl}
-          className="size-40 shrink-0 rounded-lg shadow-2xl shadow-black/40"
-        />
-        <div className="min-w-0 flex-1 pb-1">
-          <p className="text-[0.6875rem] font-semibold tracking-wider text-white/70 uppercase">
-            {t("albums.eyebrow")}
-          </p>
-          <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight">{album.title}</h1>
-          {/* The artist name is the way *out* of an album and into everything
-           * else by the same artist — the one link that turns the library from
-           * a list of records into something you can wander through. Underlined
-           * on hover only: a permanently underlined name inside a headline
-           * block reads as an error. */}
-          <p className="mt-1.5 truncate text-[0.8125rem] text-white/80">
-            {album.artist ? (
-              <Link
-                to={artistPath(album.artist)}
-                className="rounded-sm font-medium text-white underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-white/50"
-              >
-                {album.artist}
-              </Link>
-            ) : (
-              <span className="font-medium text-white">{t("unknownArtist")}</span>
-            )}
-            {meta.length > 0 && ` · ${meta.join(" · ")}`}
-          </p>
+        <div className="mt-5 flex items-end gap-6">
+          <AlbumCover
+            artUrl={album.artUrl}
+            className="size-48 shrink-0 rounded-xl shadow-xl shadow-accent/20"
+          />
+
+          <div className="flex min-w-0 flex-1 flex-col gap-5">
+            <div className="min-w-0">
+              <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
+                {t("albums.eyebrow")}
+              </p>
+              <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight">{album.title}</h1>
+              <p className="mt-1.5 truncate text-[0.8125rem] text-muted">
+                {album.artist ? (
+                  <ArtistLink artist={album.artist} />
+                ) : (
+                  <span className="font-medium text-foreground">{t("unknownArtist")}</span>
+                )}
+                {meta.length > 0 && ` · ${meta.join(" · ")}`}
+              </p>
+              <GenreChips genres={album.genres} />
+            </div>
+
+            <AlbumActions album={album} onPlay={onPlay} onDelete={onDelete} />
+          </div>
+
+          <AlbumStats album={album} />
         </div>
       </div>
     </header>

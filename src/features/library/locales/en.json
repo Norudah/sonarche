@@ -48,6 +48,16 @@
       "artist": "Artist",
       "title": "Title",
       "year": "Year"
+    },
+    "rematch": "Re-match",
+    "rematching": "Re-matching…",
+    "rematchDone": "{{matched}}/{{total}} tracks identified",
+    "edit": "Edit",
+    "moreActions": "More actions",
+    "tagScoreHint": "Metadata fields filled in on this track",
+    "stats": {
+      "completeness": "Tag completeness",
+      "tagged": "Complete tracks"
     }
   },
   "artists": {
@@ -79,7 +89,8 @@
     "album": "Album",
     "genre": "Genre",
     "duration": "Duration",
-    "actions": "Actions"
+    "actions": "Actions",
+    "tags": "Tags"
   },
   "search": {
     "placeholder": "Search…",
@@ -138,5 +149,6 @@
   },
   "sort": {
     "label": "Sort by"
-  }
+  },
+  "breadcrumb": "Breadcrumb"
 }

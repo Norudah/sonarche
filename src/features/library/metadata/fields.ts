@@ -45,6 +45,16 @@ export function countFilled(values: FieldValues): number {
   return COMPLETENESS_KEYS.filter((key) => values[key].trim() !== "").length;
 }
 
+/** A single track's tag score as a ratio, not a percentage: "5/7" says which
+ * fields are missing is a countable, fixable thing, where "71%" reads as a
+ * grade. Same reason the album card counts tracks rather than averaging them. */
+export function tagCounts(track: LibraryTrack): { filled: number; total: number } {
+  return {
+    filled: countFilled(toFieldValues(track)),
+    total: COMPLETENESS_KEYS.length,
+  };
+}
+
 /** `192000` (bps, as beets reports it) → `"192"` kbps. */
 export function formatBitrate(bitrate: number | null): string | null {
   if (bitrate == null || bitrate <= 0) return null;

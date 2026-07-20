@@ -90,7 +90,6 @@ export function GenreDetailView() {
         family={family.key}
         familyLabel={labelOf(family.key)}
         genre={genre?.name ?? null}
-        albums={family.albums}
         albumCount={subject.albums.length}
         trackCount={subject.trackCount}
         artistCount={subject.artistCount}

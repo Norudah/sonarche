@@ -46,6 +46,28 @@ export function useReenrichTrack() {
   });
 }
 
+/** Re-run the acoustic match over a whole album, and report how many tracks
+ * came back matched. Sequential for the same reason as `useDeleteTracks`: each
+ * call has beets rewrite the same library file, so firing eighteen at once only
+ * makes them queue on that file — with the cache invalidated once at the end
+ * rather than eighteen times mid-flight. */
+export function useReenrichAlbum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      let matched = 0;
+      for (const id of ids) {
+        const result = await reenrichTrack(id);
+        if (result.matched) matched += 1;
+      }
+      return { matched, total: ids.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
 export function useRecomputeGenres() {
   const queryClient = useQueryClient();
   return useMutation({

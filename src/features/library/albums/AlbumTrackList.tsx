@@ -13,8 +13,9 @@ const COLUMN =
 /**
  * Deliberately not `TrackTable`: an album's tracklist drops the Album and Genre
  * columns (both are album-level and already in the header), keeps its own fixed
- * order, and only shows an artist column on a compilation. Bending one table to
- * cover both shapes would have meant a variant prop toggling four columns.
+ * order, and carries a per-track tag score the library-wide table has no room
+ * for. Bending one table to cover both shapes would have meant a variant prop
+ * toggling four columns.
  */
 export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
@@ -25,19 +26,18 @@ export function AlbumTrackList({ album }: { album: Album }) {
   const inspected =
     inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
-  const showArtist = new Set(album.tracks.map((track) => track.artist)).size > 1;
-
   return (
     <>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-0.5">
           <thead>
             <tr className="[&>th]:border-b [&>th]:border-separator/60">
-              <th className={`${COLUMN} w-14`}>#</th>
+              <th className={`${COLUMN} w-14 text-center`}>#</th>
               <th className={COLUMN}>{t("columns.title")}</th>
-              {showArtist && <th className={`${COLUMN} w-[22%]`}>{t("columns.artist")}</th>}
+              <th className={`${COLUMN} w-[22%]`}>{t("columns.artist")}</th>
+              <th className={`${COLUMN} w-20`}>{t("columns.tags")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
-              <th className={`${COLUMN} w-16`}>
+              <th className={`${COLUMN} w-24`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>
@@ -48,7 +48,6 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 key={track.id}
                 track={track}
                 position={position + 1}
-                showArtist={showArtist}
                 style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
