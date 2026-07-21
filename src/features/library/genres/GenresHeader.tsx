@@ -48,40 +48,48 @@ export function GenresHeader({
   ].filter(Boolean);
 
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">{t("views.genres")}</h1>
-        <p className="mt-0.5 text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
-        {feedback && (
-          <Swap swapKey={feedback.text}>
-            <span className={`mt-1 block text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</span>
-          </Swap>
-        )}
+    // `items-center` and the controls' own row, exactly like the album and
+    // artist headers — a shelf that aligns its search field differently reads as
+    // a different screen. The recompute feedback sits *below* the row rather than
+    // inside the title block, so appearing it never grows that block and shoves
+    // the controls off the baseline they share with the other shelves.
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("views.genres")}</h1>
+          <p className="mt-0.5 text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <ScopeToggle value={scope} onChange={onScopeChange} />
+          <SearchField value={query} onChange={onQueryChange} />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-9 rounded-full"
+            isDisabled={isRecomputing}
+            onPress={onRecompute}
+          >
+            {isRecomputing ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {t("genres.recomputing")}
+              </>
+            ) : (
+              <>
+                <RefreshCw className="size-4" />
+                {t("genres.recompute")}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <ScopeToggle value={scope} onChange={onScopeChange} />
-        <SearchField value={query} onChange={onQueryChange} />
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-9 rounded-full"
-          isDisabled={isRecomputing}
-          onPress={onRecompute}
-        >
-          {isRecomputing ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              {t("genres.recomputing")}
-            </>
-          ) : (
-            <>
-              <RefreshCw className="size-4" />
-              {t("genres.recompute")}
-            </>
-          )}
-        </Button>
-      </div>
+      {feedback && (
+        <Swap swapKey={feedback.text}>
+          <span className={`block text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</span>
+        </Swap>
+      )}
     </div>
   );
 }

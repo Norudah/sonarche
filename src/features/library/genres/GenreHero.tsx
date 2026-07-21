@@ -75,9 +75,12 @@ export function GenreHero({
 }: GenreHeroProps) {
   const { t } = useTranslation("library");
 
-  // The eyebrow carries the family when a genre is open, so the band says where
-  // in the hierarchy you are without spending the title line on it.
-  const eyebrow = genre == null ? t("genres.eyebrow") : `${t("genres.eyebrow")} · ${familyLabel}`;
+  // No "Genre" eyebrow: the breadcrumb one line up already reads "Genres /
+  // …", so labelling the subject "Genre" again is the same word twice. A family
+  // is its own top level and needs no eyebrow at all; an open genre keeps one,
+  // but only to name the family it belongs to — which the breadcrumb does *not*
+  // carry — with the redundant "Genre ·" prefix dropped.
+  const eyebrow = genre == null ? null : familyLabel;
 
   const meta = [
     t("trackCount", { count: trackCount }),
@@ -94,8 +97,10 @@ export function GenreHero({
         <GenreBreadcrumb family={family} isGenre={genre != null} current={genre ?? familyLabel} />
 
         <div className="mt-6">
-          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{eyebrow}</p>
-          <h1 className="mt-1 truncate text-4xl font-semibold tracking-tight">{genre ?? familyLabel}</h1>
+          {eyebrow && <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{eyebrow}</p>}
+          <h1 className={`${eyebrow ? "mt-1" : ""} truncate text-4xl font-semibold tracking-tight`}>
+            {genre ?? familyLabel}
+          </h1>
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
         </div>
       </div>

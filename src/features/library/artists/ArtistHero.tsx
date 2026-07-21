@@ -66,11 +66,20 @@ export function ArtistHero({ artist, onPlay, ref }: ArtistHeroProps) {
         <ArtistBreadcrumb name={artist.name} />
 
         <div className="mt-5 flex items-end gap-6">
-          <div className="size-48 shrink-0 overflow-hidden rounded-xl shadow-xl shadow-accent/20">
+          {/* Larger than the album's 192px cover on purpose: the mosaic insets
+           * its artwork on an 11% mount, so at an equal frame the covers read
+           * markedly smaller than a bordered-to-edge album cover. The bigger
+           * frame gives the inset artwork back the presence the mount costs it. */}
+          <div className="size-56 shrink-0 overflow-hidden rounded-xl shadow-xl shadow-accent/20">
             <ArtistMosaic artUrls={artist.artUrls} className="size-full" />
           </div>
 
-          <div className="min-w-0 flex-1">
+          {/* Capped rather than stretched: the album's text column is bounded on
+           * its right by the completeness ring, so it never looks empty. This
+           * hero has no such right-hand anchor, and a full-width `flex-1` column
+           * left its short title and stats floating in a half-blank band. The
+           * cap keeps them a tight block and turns the rest into clean margin. */}
+          <div className="min-w-0 max-w-2xl flex-1">
             <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
               {t("artists.eyebrow")}
             </p>
