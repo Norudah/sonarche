@@ -14,7 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Sync Cargo.lock on the release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+        run: |
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
+          cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 --offline >/dev/null
+          if ! git diff --quiet src-tauri/Cargo.lock; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(deps): sync Cargo.lock version" src-tauri/Cargo.lock
+            git push origin "$BRANCH"
+          fi
