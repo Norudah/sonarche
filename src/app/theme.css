@@ -51,6 +51,12 @@
      success/warning scale. Dialed down to match their chroma. */
   --danger: oklch(0.6 0.17 25);
   --danger-foreground: var(--snow);
+
+  /* Artist genre avatar — swap `accent` alone to re-tint every motif's
+     picked-out detail without touching a path. Currently graphite. */
+  --artist-avatar-bg: oklch(0.962 0.014 277);
+  --artist-avatar-ink: var(--accent);
+  --artist-avatar-accent: oklch(0.44 0.012 277);
 }
 
 [data-theme="dark"] {
@@ -60,6 +66,21 @@
 
   --danger: oklch(0.65 0.17 25);
   --danger-foreground: var(--snow);
+
+  --artist-avatar-bg: oklch(0.3 0.03 277);
+  --artist-avatar-ink: oklch(0.82 0.09 277);
+  --artist-avatar-accent: oklch(0.68 0.015 277);
+}
+
+/* --- Artist genre avatar -------------------------------------------------- */
+
+/* A line-art genre motif on a coloured disc, standing in for the artist photo
+   we deliberately don't fetch (see genreArt.tsx). Fully token-driven so the
+   whole set re-tints from three variables (defined per theme above): `ink` is
+   the primary stroke via currentColor, `accent` the one picked-out detail. */
+.artist-avatar {
+  background: var(--artist-avatar-bg);
+  color: var(--artist-avatar-ink);
 }
 
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import { paths } from "@/app/routes";
+import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
-import { ArtistMosaic } from "@/features/library/artists/ArtistMosaic";
 import { GenreChips } from "@/features/library/GenreChips";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButton } from "@/features/library/HeroPlayButton";
@@ -66,13 +66,10 @@ export function ArtistHero({ artist, onPlay, ref }: ArtistHeroProps) {
         <ArtistBreadcrumb name={artist.name} />
 
         <div className="mt-5 flex items-end gap-6">
-          {/* Larger than the album's 192px cover on purpose: the mosaic insets
-           * its artwork on an 11% mount, so at an equal frame the covers read
-           * markedly smaller than a bordered-to-edge album cover. The bigger
-           * frame gives the inset artwork back the presence the mount costs it. */}
-          <div className="size-56 shrink-0 overflow-hidden rounded-xl shadow-xl shadow-accent/20">
-            <ArtistMosaic artUrls={artist.artUrls} className="size-full" />
-          </div>
+          {/* Matches the album hero's 192px cover box, as a circle: the two
+           * heroes share one baseline, the shape is the only tell of which one
+           * you are on. */}
+          <ArtistAvatar family={artist.family} className="size-48 shrink-0 shadow-xl shadow-accent/20" />
 
           {/* Capped rather than stretched: the album's text column is bounded on
            * its right by the completeness ring, so it never looks empty. This
