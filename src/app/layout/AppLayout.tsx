@@ -22,7 +22,10 @@ export function AppLayout() {
       <div className="flex h-full flex-col">
         <div className="flex min-h-0 flex-1">
           <Sidebar />
-          <div className="flex min-h-0 flex-1 flex-col">
+          {/* `min-w-0` so a page with a wide, horizontally scrollable child (the
+              download queue's table) scrolls that child instead of forcing the
+              whole content column — and the viewport — wider than the window. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* No padding here: this is the scrollport, and `sticky top-0`
                 resolves against its padding box. Padding on the scrollport
                 would offset every sticky child by 2rem and let content scroll

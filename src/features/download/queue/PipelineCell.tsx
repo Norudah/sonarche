@@ -11,17 +11,20 @@ import { durations, fade, springs } from "@/shared/motion/tokens";
 import { type AttemptOutcome, jobAttempts, trackAttempts } from "@/features/download/queue/attempts";
 import { jobPipeline, PIPELINE_STEPS, type StepState, trackPipeline } from "@/features/download/queue/pipeline";
 
-/** The segment between two stage markers. It fills from left to right the moment
- * the stage it leads into stops being pending, so progress reads as travelling
- * down the rail rather than as three independent badges flipping. */
+/** The segment between two stage markers. A hairline grey rail that a slightly
+ * stronger grey draws over, left to right, the moment the stage *behind* it
+ * finishes — so completing a step visibly extends the line to the next one, and
+ * the pipeline reads as one rail filling in rather than three badges flipping.
+ * Grey, not accent: colour belongs to the markers (the states), and a coloured
+ * rail on top of them made the whole cell shout. */
 function Connector({ isReached }: { isReached: boolean }) {
   return (
-    <div className="relative mt-[9px] h-0.5 w-3 shrink-0 overflow-hidden rounded-full bg-separator">
+    <div className="relative mt-[9.5px] h-px w-4 shrink-0 overflow-hidden rounded-full bg-separator/60">
       <motion.span
         initial={false}
         animate={{ scaleX: isReached ? 1 : 0 }}
         transition={springs.soft}
-        className="absolute inset-0 origin-left rounded-full bg-accent"
+        className="absolute inset-0 origin-left rounded-full bg-foreground/30"
       />
     </div>
   );
@@ -37,7 +40,7 @@ function Rail({ children, connectors }: { children: ReactNode[]; connectors: boo
       {children.map((node, index) => (
         <Fragment key={index}>
           {index > 0 &&
-            (connectors ? <Connector isReached={connectors[index] ?? false} /> : <div className="w-3 shrink-0" />)}
+            (connectors ? <Connector isReached={connectors[index] ?? false} /> : <div className="w-4 shrink-0" />)}
           <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">{node}</div>
         </Fragment>
       ))}
@@ -94,13 +97,18 @@ function StepGlyph({ state, label }: { state: StepState; label: string }) {
         </span>
       );
     case "active":
+      // Boxed to the same size-5 as every other job marker so its centre lands
+      // on the connector's line: the raw ProgressCircle is a hair shorter, which
+      // is what dropped the rail off-axis while a step was running.
       return (
-        <ProgressCircle isIndeterminate size="sm" color="accent" aria-label={label}>
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
+        <span className="flex size-5 items-center justify-center">
+          <ProgressCircle isIndeterminate size="sm" color="accent" aria-label={label}>
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </span>
       );
     case "empty":
       return (
@@ -215,8 +223,12 @@ interface JobPipelineCellProps {
 export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipelineCellProps) {
   const { t } = useTranslation("download");
   const steps = jobPipeline(job, downloadPercent, enrichedCount);
+  // The segment into stage `i` fills once stage `i-1` has actually *finished*
+  // (done or empty), not merely started — that is what makes the line extend on
+  // completion. A failed stage halts the rail, so nothing draws past it.
+  const isFinished = (state: StepState) => state === "done" || state === "empty";
   return (
-    <Rail connectors={steps.map((step) => step.state !== "pending")}>
+    <Rail connectors={steps.map((_, i) => i > 0 && isFinished(steps[i - 1].state))}>
       {steps.map((step) => {
         // "Import" while it runs, "Importé" once through — the marker carries
         // the state, the label only needs to name the stage. The exception is

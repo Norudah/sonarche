@@ -10,8 +10,11 @@ import { usePlayer } from "@/shared/player/PlayerContext";
  * shifting sideways — when an album is expanded. */
 const ACTIONS_ROW = "flex min-w-[6.5rem] items-center justify-end gap-1";
 
-const TRIGGER =
-  "flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground";
+/* The exact icon-button of the album tracklist: round, muted, filling on hover.
+ * The queue used square `rounded-lg` triggers, which read as a different app's
+ * table next to the round controls everywhere else. */
+const ACTION =
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /** The video this row came from, so it can be pasted back into the input. */
 function CopySourceItem({ url }: { url: string }) {
@@ -45,19 +48,18 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
   return (
     <div className={ACTIONS_ROW}>
       {onRetry && (
-        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
       )}
       {track && (
         <>
-          <Button
-            variant="tertiary"
-            size="sm"
-            isIconOnly
+          <button
+            type="button"
+            className={ACTION}
             aria-label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
-            onPress={() =>
+            onClick={() =>
               play({
                 id: track.id,
                 src: track.audioUrl,
@@ -69,23 +71,17 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
             }
           >
             {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
-          </Button>
-          <Button
-            variant="tertiary"
-            size="sm"
-            isIconOnly
-            aria-label={t("queue.inspect")}
-            onPress={() => onInspect(track)}
-          >
+          </button>
+          <button type="button" className={ACTION} aria-label={t("queue.inspect")} onClick={() => onInspect(track)}>
             <FileText className="size-4" />
-          </Button>
+          </button>
         </>
       )}
       {/* Outside the `track` guard: a row that never reached the library — a
        * failed download, a dropped duplicate — is precisely the one whose
        * source URL the user wants back. */}
       <Dropdown.Root>
-        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={ACTION}>
           <Ellipsis className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">
@@ -123,13 +119,13 @@ export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetr
   return (
     <div className={ACTIONS_ROW}>
       {onRetry && (
-        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
       )}
       <Dropdown.Root>
-        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={ACTION}>
           <Ellipsis className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">

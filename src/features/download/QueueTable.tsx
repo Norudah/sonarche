@@ -1,4 +1,3 @@
-import { Table } from "@heroui/react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -17,9 +16,15 @@ import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 
-/* The `secondary` variant renders the header as a detached rounded pill; here it
- * has to read as the top band of one bordered card, hence the squared corners. */
-const COLUMN = "rounded-none! border-b border-separator/60 py-3 text-[11px] font-semibold tracking-wider uppercase";
+/* The same header and cell treatment as the album tracklist: labels on a filet,
+ * rows as rounded pills that tint on hover, no bordered card boxing it all in.
+ * The queue used HeroUI's `Table` with its grey banded header and full-width
+ * grid borders, which read as a heavier, more "spreadsheet" table than anything
+ * else in the app — the one screen that broke the family. Hand-rolled here for
+ * the same reason `AlbumTrackList` is: album rows expand into per-track child
+ * rows, a shape the collection API cannot express. */
+const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase";
+const CELL = "px-3 py-2 align-middle";
 
 interface QueueTableProps {
   jobs: DownloadJob[];
@@ -83,159 +88,172 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
 
   return (
     <>
-      <Table
-        aria-label={t("queue.heading")}
-        variant="secondary"
-        className="overflow-hidden rounded-2xl border border-separator/60 bg-surface"
-      >
-        {/* Default table content clips overflow with no scrollbar; without this,
-         * a wide row (e.g. the retry button's icon+label) silently hides the
-         * actions column instead of squeezing or scrolling to it. */}
-        <Table.ScrollContainer>
-          {/* Tighter gutters than the HeroUI default: six columns at px-4 push
-           * the table past the 1080px minimum window width. */}
-          <Table.Content aria-label={t("queue.heading")} className="[&_td]:px-3 [&_th]:px-3">
-            <Table.Header>
-              <Table.Column isRowHeader className={`w-full ${COLUMN}`}>
+      {/* `overflow-x-auto` stands in for HeroUI's ScrollContainer: a wide row
+          scrolls to its actions column instead of clipping it silently. `min-w-0`
+          is load-bearing — without it the table's min-content width propagates up
+          the flex chain and widens the whole page past the viewport instead of
+          scrolling here. */}
+      <div className="min-w-0 overflow-x-auto">
+        <table
+          aria-label={t("queue.heading")}
+          className="w-full min-w-[56rem] border-separate border-spacing-y-0.5 text-left"
+        >
+          <thead>
+            <tr className="[&>th]:border-b [&>th]:border-separator/60">
+              <th scope="col" className={`${COLUMN} w-full text-left`}>
                 {t("queue.colMedia")}
-              </Table.Column>
-              <Table.Column className={COLUMN}>{t("queue.colPipeline")}</Table.Column>
-              <Table.Column className={COLUMN}>{t("queue.colMatch")}</Table.Column>
-              <Table.Column className={COLUMN}>{t("queue.colTags")}</Table.Column>
-              <Table.Column className={COLUMN}>{t("queue.colLibrary")}</Table.Column>
-              <Table.Column className={COLUMN}>
+              </th>
+              <th scope="col" className={`${COLUMN} text-left`}>
+                {t("queue.colPipeline")}
+              </th>
+              <th scope="col" className={`${COLUMN} text-left`}>
+                {t("queue.colMatch")}
+              </th>
+              <th scope="col" className={`${COLUMN} text-left`}>
+                {t("queue.colTags")}
+              </th>
+              <th scope="col" className={`${COLUMN} text-left`}>
+                {t("queue.colLibrary")}
+              </th>
+              <th scope="col" className={COLUMN}>
                 <span className="sr-only">{t("queue.colActions")}</span>
-              </Table.Column>
-            </Table.Header>
-            {/* Static children (not the `items` render-prop): album rows expand
-             * into per-track child rows, which the collection API cannot express;
-             * static rows also re-render normally, so no `dependencies` hack. */}
-            <Table.Body>
-              {jobs.flatMap((job) => {
-                const isExpanded = job.kind === "album" && expanded.has(job.id);
-                const jobLibraryTrack = libraryTrackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
-                const enrichedCount =
-                  job.status === "enriching"
-                    ? job.tracks.filter((track) => track.itemId != null && enrichStages[track.itemId] === "track_done")
-                        .length
-                    : null;
+              </th>
+            </tr>
+          </thead>
+          {/* Album rows expand into per-track child rows — a shape the collection
+              API cannot express, hence the flat map over static rows. */}
+          <tbody>
+            {jobs.flatMap((job) => {
+              const isExpanded = job.kind === "album" && expanded.has(job.id);
+              const jobLibraryTrack = libraryTrackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
+              const enrichedCount =
+                job.status === "enriching"
+                  ? job.tracks.filter((track) => track.itemId != null && enrichStages[track.itemId] === "track_done")
+                      .length
+                  : null;
 
-                const rows = [
-                  // A job the user just queued fades up out of an accent wash;
-                  // the history it lands on top of stays still.
-                  <Table.Row id={job.id} key={job.id} className={newJobIds.has(job.id) ? "row-reveal" : undefined}>
-                    <Table.Cell>
-                      <JobMediaCell
-                        job={job}
-                        coverUrl={coverFor(job)}
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleExpanded(job.id)}
+              const rows = [
+                // A job the user just queued fades up out of an accent wash; the
+                // history it lands on top of stays still. Rounded ends + hover
+                // tint are the album tracklist's row, verbatim.
+                <tr
+                  id={job.id}
+                  key={job.id}
+                  className={
+                    "[&>td]:transition-colors [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl hover:[&>td]:bg-default/40 " +
+                    (newJobIds.has(job.id) ? "row-reveal" : "")
+                  }
+                >
+                  <td className={CELL}>
+                    <JobMediaCell
+                      job={job}
+                      coverUrl={coverFor(job)}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleExpanded(job.id)}
+                    />
+                  </td>
+                  <td className={CELL}>
+                    <JobPipelineCell
+                      job={job}
+                      downloadPercent={job.status === "downloading" ? downloadPercent : null}
+                      enrichedCount={enrichedCount}
+                    />
+                  </td>
+                  <td className={CELL}>
+                    <JobMatchCell job={job} />
+                  </td>
+                  <td className={CELL}>
+                    <JobTagsCell job={job} />
+                  </td>
+                  <td className={CELL}>
+                    <JobLibraryCell job={job} isInLibrary={isInLibrary} isLibraryLoaded={libraryLoaded} />
+                  </td>
+                  <td className={CELL}>
+                    {job.kind === "album" ? (
+                      <AlbumRowActions
+                        trackIds={albumTrackIds(job)}
+                        sourceUrl={job.url}
+                        onDelete={() =>
+                          setDeletingAlbum({
+                            title: job.title ?? "",
+                            trackIds: albumTrackIds(job),
+                          })
+                        }
+                        onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
+                        isRetrying={retry.isPending}
                       />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <JobPipelineCell
-                        job={job}
-                        downloadPercent={job.status === "downloading" ? downloadPercent : null}
-                        enrichedCount={enrichedCount}
+                    ) : (
+                      <RowActions
+                        track={jobLibraryTrack}
+                        sourceUrl={job.url}
+                        onInspect={setInspected}
+                        onDelete={setDeleting}
+                        onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
+                        isRetrying={retry.isPending}
                       />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <JobMatchCell job={job} />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <JobTagsCell job={job} />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <JobLibraryCell job={job} isInLibrary={isInLibrary} isLibraryLoaded={libraryLoaded} />
-                    </Table.Cell>
-                    <Table.Cell>
-                      {job.kind === "album" ? (
-                        <AlbumRowActions
-                          trackIds={albumTrackIds(job)}
-                          sourceUrl={job.url}
-                          onDelete={() =>
-                            setDeletingAlbum({
-                              title: job.title ?? "",
-                              trackIds: albumTrackIds(job),
-                            })
-                          }
-                          onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
-                          isRetrying={retry.isPending}
-                        />
-                      ) : (
-                        <RowActions
-                          track={jobLibraryTrack}
-                          sourceUrl={job.url}
-                          onInspect={setInspected}
-                          onDelete={setDeleting}
-                          onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
-                          isRetrying={retry.isPending}
-                        />
-                      )}
-                    </Table.Cell>
-                  </Table.Row>,
-                ];
+                    )}
+                  </td>
+                </tr>,
+              ];
 
-                if (isExpanded) {
-                  rows.push(
-                    ...job.tracks.map((track, position) => {
-                      const rowId = `${job.id}:${track.index}`;
-                      const trackLibraryTrack = libraryTrackFor(track.status === "done" ? track.itemId : null);
-                      return (
-                        // The variant forces transparent cells, so the child-row
-                        // tint has to be applied on the cells themselves.
-                        // The stagger is capped: a 30-track album should not
-                        // take three seconds to finish unfolding.
-                        <Table.Row
-                          id={rowId}
-                          key={rowId}
-                          className="row-cascade [&_td]:bg-surface-secondary/50"
-                          style={{ "--row-stagger": `${Math.min(position, 8) * 0.03}s` } as CSSProperties}
-                        >
-                          <Table.Cell>
-                            <TrackMediaCell track={track} />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <TrackPipelineCell
-                              track={track}
-                              isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
-                            />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <TrackMatchCell track={track} />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <TrackTagsCell track={track} />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <TrackLibraryCell
-                              itemId={track.itemId}
-                              isDuplicate={track.duplicateOf != null}
-                              isDone={track.status === "done"}
-                              isInLibrary={isInLibrary}
-                              isLibraryLoaded={libraryLoaded}
-                            />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <RowActions
-                              track={trackLibraryTrack}
-                              sourceUrl={track.url}
-                              onInspect={setInspected}
-                              onDelete={setDeleting}
-                            />
-                          </Table.Cell>
-                        </Table.Row>
-                      );
-                    }),
-                  );
-                }
+              if (isExpanded) {
+                rows.push(
+                  ...job.tracks.map((track, position) => {
+                    const rowId = `${job.id}:${track.index}`;
+                    const trackLibraryTrack = libraryTrackFor(track.status === "done" ? track.itemId : null);
+                    return (
+                      // Tinted so the child rows read as belonging to the album
+                      // above. The stagger is capped: a 30-track album should not
+                      // take three seconds to finish unfolding.
+                      <tr
+                        id={rowId}
+                        key={rowId}
+                        className="row-cascade [&>td]:bg-surface-secondary/50 [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl"
+                        style={{ "--row-stagger": `${Math.min(position, 8) * 0.03}s` } as CSSProperties}
+                      >
+                        <td className={CELL}>
+                          <TrackMediaCell track={track} />
+                        </td>
+                        <td className={CELL}>
+                          <TrackPipelineCell
+                            track={track}
+                            isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
+                          />
+                        </td>
+                        <td className={CELL}>
+                          <TrackMatchCell track={track} />
+                        </td>
+                        <td className={CELL}>
+                          <TrackTagsCell track={track} />
+                        </td>
+                        <td className={CELL}>
+                          <TrackLibraryCell
+                            itemId={track.itemId}
+                            isDuplicate={track.duplicateOf != null}
+                            isDone={track.status === "done"}
+                            isInLibrary={isInLibrary}
+                            isLibraryLoaded={libraryLoaded}
+                          />
+                        </td>
+                        <td className={CELL}>
+                          <RowActions
+                            track={trackLibraryTrack}
+                            sourceUrl={track.url}
+                            onInspect={setInspected}
+                            onDelete={setDeleting}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  }),
+                );
+              }
 
-                return rows;
-              })}
-            </Table.Body>
-          </Table.Content>
-        </Table.ScrollContainer>
-      </Table>
+              return rows;
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <MetadataDrawer track={inspected} onClose={() => setInspected(null)} onDelete={setDeleting} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} onDeleted={() => setInspected(null)} />

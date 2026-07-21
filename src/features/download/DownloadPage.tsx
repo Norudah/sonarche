@@ -46,7 +46,7 @@ export function DownloadPage() {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{t("queue.heading")}</h2>
           <button
             type="button"
             onClick={() => setClearingHistory(true)}
