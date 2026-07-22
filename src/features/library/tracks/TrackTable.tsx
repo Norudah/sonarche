@@ -8,7 +8,10 @@ import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTopOnFilterChange } from "@/features/library/tracks/useTopOnFilterChange";
 
-const COLUMN = "px-3 pb-2 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+// No alignment in the base: Tailwind resolves conflicts by stylesheet order,
+// not by class-string order, so a `text-left` baked in here silently beats a
+// per-column `text-center` override (see the album tracklist's own note).
+const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 interface TrackTableProps {
   tracks: LibraryTrack[];
@@ -42,13 +45,13 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
         <table className="w-full min-w-[52rem] table-fixed border-separate border-spacing-y-0.5">
           <thead>
             <tr className="[&>th]:border-b [&>th]:border-separator/60">
-              <th className={`${COLUMN} w-14`}>#</th>
-              <th className={COLUMN}>{t("columns.title")}</th>
-              <th className={`${COLUMN} w-[18%]`}>{t("columns.artist")}</th>
-              <th className={`${COLUMN} w-[18%]`}>{t("columns.album")}</th>
-              <th className={`${COLUMN} w-32`}>{t("columns.genre")}</th>
+              <th className={`${COLUMN} w-14 text-center`}>#</th>
+              <th className={`${COLUMN} text-left`}>{t("columns.title")}</th>
+              <th className={`${COLUMN} w-[18%] text-left`}>{t("columns.artist")}</th>
+              <th className={`${COLUMN} w-[18%] text-left`}>{t("columns.album")}</th>
+              <th className={`${COLUMN} w-32 text-left`}>{t("columns.genre")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
-              <th className={`${COLUMN} w-20`}>
+              <th className={`${COLUMN} w-28`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>

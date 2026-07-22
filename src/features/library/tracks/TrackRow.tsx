@@ -1,17 +1,16 @@
-import { FileText, Music, Trash2 } from "lucide-react";
+import { Music } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
+import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
-const ACTION =
-  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
 interface TrackRowProps {
   track: LibraryTrack;
@@ -43,13 +42,17 @@ export function TrackRow({ track, index, cascade = true, style, onInspect, onDel
       }
     >
       <td className={`${CELL} w-14`}>
-        <TrackIndexCell
-          index={index}
-          isCurrent={isCurrent}
-          isPlaying={isPlaying}
-          onPlay={() => playTrack(track)}
-          label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
-        />
+        {/* Centred under its "#" header: the button is narrower than the column,
+         * so left-aligning it left every number visibly off its own label. */}
+        <div className="flex justify-center">
+          <TrackIndexCell
+            index={index}
+            isCurrent={isCurrent}
+            isPlaying={isPlaying}
+            onPlay={() => playTrack(track)}
+            label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
+          />
+        </div>
       </td>
 
       <td className={CELL}>
@@ -106,26 +109,14 @@ export function TrackRow({ track, index, cascade = true, style, onInspect, onDel
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      <td className={`${CELL} w-20`}>
-        {/* Permanently visible, faint until the row is hovered — see the album
-            tracklist for why these no longer appear out of nowhere. */}
-        <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
-          <button
-            type="button"
-            onClick={onInspect}
-            aria-label={t("metadata.inspect")}
-            className={`${ACTION} hover:text-foreground`}
-          >
-            <FileText className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={t("delete.action")}
-            className={`${ACTION} hover:text-danger`}
-          >
-            <Trash2 className="size-4" />
-          </button>
+      {/* The wrapper is load-bearing: `row-cascade` animates `td > *`, and if
+       * the actions were that child the keyframe would override their idle
+       * opacity for the length of the entrance — every row would flash its icons
+       * on arrival. The animation lands on this div; the hover layer sits a
+       * level deeper. `pl-6` is the breathing room from the duration column. */}
+      <td className={`${CELL} w-28 pl-6`}>
+        <div>
+          <RowActions onInspect={onInspect} onDelete={onDelete} />
         </div>
       </td>
     </tr>
