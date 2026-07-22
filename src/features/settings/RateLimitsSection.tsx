@@ -1,32 +1,38 @@
+import { Spinner } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
-import type { Preferences, RateLimitKey } from "@/features/settings/api";
 import { DelaySlider } from "@/features/settings/DelaySlider";
 import { RATE_LIMITS } from "@/features/settings/rateLimits";
+import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingsHero } from "@/features/settings/SettingsHero";
+import { usePreferences, useSetRateLimitDelay } from "@/features/settings/hooks";
 
-interface RateLimitsSectionProps {
-  preferences: Preferences;
-  onChangeDelay: (key: RateLimitKey, seconds: number) => void;
-}
-
-export function RateLimitsSection({ preferences, onChangeDelay }: RateLimitsSectionProps) {
+/** Delays auto-save on slider release, so this category has no footer — the
+ * commit happens on `onChangeEnd`. */
+export function RateLimitsSection() {
   const { t } = useTranslation("settings");
+  const preferences = usePreferences();
+  const setDelay = useSetRateLimitDelay();
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h2 className="text-lg font-semibold">{t("rateLimits.title")}</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted">{t("rateLimits.description")}</p>
-      </div>
+    <>
+      <SettingsHero eyebrow={t("title")} title={t("rateLimits.title")} description={t("rateLimits.description")} />
 
-      {RATE_LIMITS.map((def) => (
-        <DelaySlider
-          key={def.key}
-          def={def}
-          seconds={preferences[def.field]}
-          onCommit={(seconds) => onChangeDelay(def.key, seconds)}
-        />
-      ))}
-    </div>
+      {preferences.isPending ? (
+        <Spinner size="sm" aria-label={t("loading")} />
+      ) : (
+        RATE_LIMITS.map((def) => (
+          <SettingCard key={def.key}>
+            <DelaySlider
+              def={def}
+              seconds={preferences.data![def.field]}
+              onCommit={(seconds) => setDelay.mutate({ key: def.key, seconds })}
+            />
+          </SettingCard>
+        ))
+      )}
+
+      {setDelay.isError && <p className="text-sm text-danger">{String(setDelay.error)}</p>}
+    </>
   );
 }

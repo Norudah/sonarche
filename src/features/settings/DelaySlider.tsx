@@ -22,7 +22,7 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
   const decimals = Number.isInteger(def.step) ? 0 : 2;
 
   return (
-    <div className="flex max-w-lg flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <h3 className="font-medium">{t(`${base}.name`)}</h3>
         <span className="text-sm font-medium tabular-nums text-accent">

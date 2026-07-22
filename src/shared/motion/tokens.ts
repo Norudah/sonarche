@@ -80,6 +80,9 @@ export const pop = {
 export const layoutIds = {
   /** The active-route pill travelling between sidebar nav items. */
   navIndicator: "sonarche-nav-indicator",
+  /** The active-category pill inside the sidebar's settings mode. Its own id so
+   * it never tries to tween across the mode swap from the main-nav pill. */
+  settingsNavIndicator: "sonarche-settings-nav-indicator",
   /** The album/track pill in the composer's segmented control. */
   kindChoice: "sonarche-kind-choice",
 } as const;
