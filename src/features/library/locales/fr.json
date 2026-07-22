@@ -104,6 +104,7 @@
   "unknownArtist": "Artiste inconnu",
   "metadata": {
     "title": "Métadonnées",
+    "eyebrow": "Piste",
     "inspect": "Inspecter les métadonnées",
     "changeArtwork": "Changer l'image",
     "reenrich": "Relancer l'auto-correspondance",

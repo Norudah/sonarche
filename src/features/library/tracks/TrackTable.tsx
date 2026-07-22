@@ -84,7 +84,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
         </table>
       </div>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} onDelete={setDeleting} />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

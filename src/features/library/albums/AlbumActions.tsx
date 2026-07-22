@@ -3,25 +3,12 @@ import { Loader2, MoreHorizontal, Pencil, Sparkles, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
+import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 import { HeroPlayButton } from "@/features/library/HeroPlayButton";
 import { useReenrichAlbum } from "@/features/library/hooks";
 
-/**
- * Outlined pill — the album's secondary actions. Same height and radius as the
- * primary one, so the row reads as one control group rather than as a button
- * with decorations.
- *
- * Padding lives on the two variants rather than in the base: a `px-0` appended
- * after `px-4` in the class string does not win, because Tailwind resolves
- * conflicts by stylesheet order, not by call-site order. It left the icon-only
- * trigger with 32px of padding inside a 40px box, squeezing the glyph to 6px
- * wide — measured in the browser, where it read as a rendering glitch rather
- * than as a CSS conflict.
- */
-const PILL =
-  "flex h-10 items-center gap-2 rounded-full border border-separator bg-surface/70 text-sm font-medium text-foreground outline-none transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent/40";
-const SECONDARY = `${PILL} px-4`;
-const ICON_PILL = `${PILL} w-10 justify-center`;
+const SECONDARY = HERO_PILL_SECONDARY;
+const ICON_PILL = HERO_PILL_ICON;
 
 /**
  * Re-runs the acoustic match over every track at once.

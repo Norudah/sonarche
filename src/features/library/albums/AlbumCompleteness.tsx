@@ -74,9 +74,9 @@ function useCountUp(target: number, duration: number): number {
  * The count below is deliberately kept: a percentage hides whether the gap is
  * one field missing everywhere or one track left untouched.
  *
- * Always the app's accent, complete or not — a green swap read as a status
- * light rather than a gauge, and this is the one number the whole app is about,
- * not an alert to clear.
+ * The same tag-status colours as the tracklist's dots: amber while any field is
+ * still missing (the reserved "incomplete metadata" hue), green once the whole
+ * record is tagged. The gauge and the per-track dots then speak one language.
  */
 export function AlbumCompleteness({ album }: { album: Album }) {
   const { t } = useTranslation("library");
@@ -84,6 +84,7 @@ export function AlbumCompleteness({ album }: { album: Album }) {
   // Floor, not round: 99.6% must not display as a complete 100%.
   const target = Math.floor(album.completeness * 100);
   const percent = useCountUp(target, durations.reveal);
+  const isComplete = target === 100;
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
@@ -108,7 +109,7 @@ export function AlbumCompleteness({ album }: { album: Album }) {
             initial={{ strokeDashoffset: CIRCUMFERENCE }}
             animate={{ strokeDashoffset: CIRCUMFERENCE * (1 - target / 100) }}
             transition={{ duration: durations.reveal, ease: easings.out }}
-            className="stroke-accent"
+            className={isComplete ? "stroke-success" : "stroke-warning"}
           />
         </svg>
 
@@ -116,7 +117,12 @@ export function AlbumCompleteness({ album }: { album: Album }) {
             than placed beside it. `tabular-nums` keeps the digits from jittering
             as the count runs through two- and three-digit values. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg leading-none font-bold tracking-tight tabular-nums text-accent">
+          <span
+            className={
+              "text-lg leading-none font-bold tracking-tight tabular-nums " +
+              (isComplete ? "text-success" : "text-warning")
+            }
+          >
             {percent}
             <span className="ml-0.5 text-[0.625rem] font-semibold">%</span>
           </span>

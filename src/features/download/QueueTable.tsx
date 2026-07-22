@@ -255,7 +255,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
         </table>
       </div>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} onDelete={setDeleting} />
+      <MetadataDrawer track={inspected} onClose={() => setInspected(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} onDeleted={() => setInspected(null)} />
       <DeleteAlbumDialog album={deletingAlbum} onClose={() => setDeletingAlbum(null)} />
     </>

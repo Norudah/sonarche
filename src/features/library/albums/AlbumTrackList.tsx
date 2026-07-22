@@ -58,7 +58,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
         </table>
       </div>
 
-      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} onDelete={setDeleting} />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

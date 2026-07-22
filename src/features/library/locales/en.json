@@ -104,6 +104,7 @@
   "unknownArtist": "Unknown artist",
   "metadata": {
     "title": "Metadata",
+    "eyebrow": "Track",
     "inspect": "Inspect metadata",
     "changeArtwork": "Change image",
     "reenrich": "Re-run auto-match",
