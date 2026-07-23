@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router";
 
 import { genrePath, paths } from "@/app/routes";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
+import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
 
 /**
@@ -46,6 +47,8 @@ interface GenreHeroProps {
   trackCount: number;
   artistCount: number;
   share: number;
+  onPlay: () => void;
+  onShuffle: () => void;
   ref?: Ref<HTMLElement>;
 }
 
@@ -71,6 +74,8 @@ export function GenreHero({
   trackCount,
   artistCount,
   share,
+  onPlay,
+  onShuffle,
   ref,
 }: GenreHeroProps) {
   const { t } = useTranslation("library");
@@ -97,6 +102,13 @@ export function GenreHero({
         <div className="mt-6">
           <h1 className="truncate text-4xl font-semibold tracking-tight">{genre ?? familyLabel}</h1>
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
+
+          {/* In the band, like the album and artist heroes: the three detail
+           * pages answer "how do I start this" in the same place. It is also
+           * what fills the dead strip that used to sit above the genre chips. */}
+          <div className="mt-5">
+            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+          </div>
         </div>
       </div>
     </header>

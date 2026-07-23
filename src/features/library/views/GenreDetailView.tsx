@@ -8,7 +8,14 @@ import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
-import { albumsWithGenre, findFamily, findGenre, groupFamilies, listGenres } from "@/features/library/genres/genres";
+import {
+  albumsWithGenre,
+  familyKeyOf,
+  findFamily,
+  findGenre,
+  groupFamilies,
+  listGenres,
+} from "@/features/library/genres/genres";
 import { GenreHero } from "@/features/library/genres/GenreHero";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
@@ -24,7 +31,7 @@ export function GenreDetailView() {
   const { family: key = "" } = useParams();
   const genreName = useSearchParams()[0].get("genre") ?? undefined;
   const library = useLibrary();
-  const { playOrdered } = usePlayQueue();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const labelOf = useFamilyLabel();
 
   const { family, genre } = useMemo(() => {
@@ -77,6 +84,16 @@ export function GenreDetailView() {
 
   const subject = genre ?? family;
 
+  // The subject's own tracks, not whole albums: a shelf album qualifies on one
+  // matching track, and "play Grunge" must not smuggle in its other genres.
+  // Album order follows the shelf, tracks keep their album order.
+  const subjectTracks = () =>
+    albums.flatMap((album) =>
+      album.tracks.filter((track) =>
+        genreName != null ? track.genre === genreName : familyKeyOf(track) === family.key,
+      ),
+    );
+
   return (
     <PageContainer>
       <GenreHero
@@ -87,6 +104,8 @@ export function GenreDetailView() {
         trackCount={subject.trackCount}
         artistCount={subject.artistCount}
         share={subject.share}
+        onPlay={() => playOrdered(subjectTracks())}
+        onShuffle={() => playShuffled(subjectTracks())}
       />
 
       <SubGenreChips family={family.key} subs={family.subs} selected={genre?.name ?? null} />
