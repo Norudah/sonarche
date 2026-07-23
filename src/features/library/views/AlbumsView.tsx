@@ -7,6 +7,7 @@ import { Link, useSearchParams } from "react-router";
 import { paths } from "@/app/routes";
 import { filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
@@ -21,12 +22,17 @@ export function AlbumsView() {
   const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
+  const [inspectedKey, setInspectedKey] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
+
+  // Derived from the live list, not a snapshot — same reasoning as the track
+  // drawer: a re-enrich refetch must update the open drawer, not a stale copy.
+  const inspected = inspectedKey != null ? (albums.find((album) => album.key === inspectedKey) ?? null) : null;
 
   // Removing a filter refines the entry we are on, it is not a new place —
   // same reasoning as the genre chips' `replace`.
@@ -96,8 +102,11 @@ export function AlbumsView() {
           albums={visible}
           animationKey={`${params.toString()}:${query}:${sort}`}
           onPlay={(album) => playOrdered(album.tracks)}
+          onInspect={(album) => setInspectedKey(album.key)}
         />
       )}
+
+      <AlbumMetadataDrawer album={inspected} onClose={() => setInspectedKey(null)} />
     </PageContainer>
   );
 }
