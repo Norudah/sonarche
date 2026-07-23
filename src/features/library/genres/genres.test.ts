@@ -8,7 +8,6 @@ import {
   FAMILY_NONE,
   FAMILY_OTHER,
   filterFamilies,
-  filterGenres,
   findFamily,
   findGenre,
   groupFamilies,
@@ -194,25 +193,6 @@ describe("listGenres", () => {
   });
 });
 
-describe("filterGenres", () => {
-  it("matches on the genre, its family, or one of its records", () => {
-    const genres = genresOf([
-      track({
-        id: 1,
-        album: "Discovery",
-        albumArtist: "Daft Punk",
-        genre: "French House",
-        genreBucket: "Electronic",
-      }),
-      track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
-    ]);
-
-    expect(filterGenres(genres, "house").map((g) => g.name)).toEqual(["French House"]);
-    expect(filterGenres(genres, "rock").map((g) => g.name)).toEqual(["Art Rock"]);
-    expect(filterGenres(genres, "radiohead").map((g) => g.name)).toEqual(["Art Rock"]);
-  });
-});
-
 describe("countGenres", () => {
   it("counts a genre once even when it straddles two families", () => {
     const families = familiesOf([
@@ -226,15 +206,25 @@ describe("countGenres", () => {
 });
 
 describe("filterFamilies", () => {
-  it("finds a family through one of its records", () => {
+  it("matches the family name or one of its genres", () => {
     const families = familiesOf([
       track({ id: 1, album: "Discovery", albumArtist: "Daft Punk", genre: "French House", genreBucket: "Electronic" }),
       track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
     ]);
 
-    expect(filterFamilies(families, "daft").map((f) => f.key)).toEqual(["Electronic"]);
+    expect(filterFamilies(families, "electronic").map((f) => f.key)).toEqual(["Electronic"]);
     expect(filterFamilies(families, "art rock").map((f) => f.key)).toEqual(["Rock"]);
     expect(filterFamilies(families, "")).toHaveLength(2);
+  });
+
+  it("ignores albums and artists — this page searches genres, not records", () => {
+    const families = familiesOf([
+      track({ id: 1, album: "Discovery", albumArtist: "Daft Punk", genre: "French House", genreBucket: "Electronic" }),
+      track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
+    ]);
+
+    expect(filterFamilies(families, "daft")).toEqual([]);
+    expect(filterFamilies(families, "kid a")).toEqual([]);
   });
 });
 

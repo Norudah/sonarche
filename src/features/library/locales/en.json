@@ -10,10 +10,6 @@
   "genres": {
     "eyebrow": "Genre",
     "back": "Genres",
-    "scope": {
-      "families": "Families",
-      "genres": "Genres"
-    },
     "other": "Other",
     "none": "No genre",
     "familyCount_one": "{{count}} family",
@@ -26,6 +22,8 @@
     "fixInMetadata": "Fix in Metadata",
     "shareOfLibrary": "{{percent}} % of the library",
     "allSubs": "All",
+    "moreSubs_one": "+{{count}} more",
+    "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",

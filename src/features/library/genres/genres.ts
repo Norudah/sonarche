@@ -182,19 +182,6 @@ export function findGenre(genres: Genre[], family: string, name: string): Genre 
   return genres.find((genre) => genre.family === family && genre.name === name) ?? null;
 }
 
-/** Same contract as `filterFamilies`, one level down. */
-export function filterGenres(genres: Genre[], query: string): Genre[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return genres;
-
-  return genres.filter((genre) => {
-    const haystack = normalize(
-      [genre.name, genre.family, ...genre.albums.map((album) => `${album.title} ${album.artist}`)].join(" "),
-    );
-    return terms.every((term) => haystack.includes(term));
-  });
-}
-
 /** Distinct specific genres across the whole library — the header's second
  * figure. Counted here rather than summed from `subs` so that a genre filed
  * under two families is not counted twice. */
@@ -206,20 +193,21 @@ export function countGenres(families: Family[]): number {
   return names.size;
 }
 
-/** Same contract as `filterArtists`: every term must match somewhere, so
- * "rock daft" finds the family through one of its records. */
+/**
+ * Names only — the family's own and those of the genres under it.
+ *
+ * Deliberately *not* the albums and artists it contains, unlike the other
+ * shelves' filters. On a page whose subject is genres, matching a record would
+ * answer "which genre holds this artist?" — a question the artist and album
+ * shelves already answer — and it made typing a name that appears nowhere on
+ * screen surface a card, which reads as a bug rather than a search.
+ */
 export function filterFamilies(families: Family[], query: string): Family[] {
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   if (terms.length === 0) return families;
 
   return families.filter((family) => {
-    const haystack = normalize(
-      [
-        family.key,
-        ...family.subs.map((sub) => sub.name),
-        ...family.albums.map((album) => `${album.title} ${album.artist}`),
-      ].join(" "),
-    );
+    const haystack = normalize([family.key, ...family.subs.map((sub) => sub.name)].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

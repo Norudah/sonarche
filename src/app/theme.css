@@ -57,6 +57,27 @@
   --artist-avatar-bg: oklch(0.962 0.014 277);
   --artist-avatar-ink: var(--accent);
   --artist-avatar-accent: oklch(0.44 0.012 277);
+
+  /* Genre family identity tones — one fixed colour per browse family (the 13
+     roots of the sidecar's genre tree; a closed, curated set, which is what
+     makes a pre-decided identity legitimate). Muted on purpose: chroma stays
+     well under the accent's 0.21 so thirteen hues read as one family of
+     colours, not a rainbow competing with the indigo. Consumed only through
+     tone.ts — components never reference these directly. Dark-theme variants
+     land with the theme toggle pass. */
+  --family-pop: oklch(0.62 0.12 340);
+  --family-rock: oklch(0.55 0.11 25);
+  --family-metal: oklch(0.45 0.03 277);
+  --family-electronic: oklch(0.58 0.11 220);
+  --family-hip-hop: oklch(0.5 0.1 300);
+  --family-jazz: oklch(0.52 0.09 50);
+  --family-blues: oklch(0.5 0.1 250);
+  --family-soul-funk: oklch(0.6 0.11 40);
+  --family-folk: oklch(0.55 0.08 130);
+  --family-country: oklch(0.56 0.08 95);
+  --family-reggae: oklch(0.55 0.11 150);
+  --family-latin: oklch(0.6 0.13 15);
+  --family-classical: oklch(0.55 0.05 277);
 }
 
 [data-theme="dark"] {

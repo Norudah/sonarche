@@ -75,13 +75,6 @@ export function GenreHero({
 }: GenreHeroProps) {
   const { t } = useTranslation("library");
 
-  // No "Genre" eyebrow: the breadcrumb one line up already reads "Genres /
-  // …", so labelling the subject "Genre" again is the same word twice. A family
-  // is its own top level and needs no eyebrow at all; an open genre keeps one,
-  // but only to name the family it belongs to — which the breadcrumb does *not*
-  // carry — with the redundant "Genre ·" prefix dropped.
-  const eyebrow = genre == null ? null : familyLabel;
-
   const meta = [
     t("trackCount", { count: trackCount }),
     t("albumCount", { count: albumCount }),
@@ -96,11 +89,13 @@ export function GenreHero({
       <div className="relative">
         <GenreBreadcrumb family={family} isGenre={genre != null} current={genre ?? familyLabel} />
 
+        {/* No eyebrow on either depth: a genre used to carry its family's name
+         * up here, which made the title block one line taller than the
+         * family's and jumped the layout on every chip flip. The family is
+         * already present as the "All" chip below and in the breadcrumb's
+         * back target, so the line bought nothing but the jump. */}
         <div className="mt-6">
-          {eyebrow && <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{eyebrow}</p>}
-          <h1 className={`${eyebrow ? "mt-1" : ""} truncate text-4xl font-semibold tracking-tight`}>
-            {genre ?? familyLabel}
-          </h1>
+          <h1 className="truncate text-4xl font-semibold tracking-tight">{genre ?? familyLabel}</h1>
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
         </div>
       </div>
