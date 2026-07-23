@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { trackDuration } from "@/shared/player/duration";
+import { isPastKnownEnd, trackDuration } from "@/shared/player/duration";
 
 describe("trackDuration", () => {
   it("takes the library's length, which is the file's own", () => {
@@ -28,5 +28,26 @@ describe("trackDuration", () => {
 
   it("rejects a stream of unknown length", () => {
     expect(trackDuration(null, Infinity)).toBeNull();
+  });
+});
+
+describe("isPastKnownEnd", () => {
+  it("ends the track once the clock passes the library length", () => {
+    // The regression this exists for: the element kept counting phantom
+    // silence for minutes past the real end before firing `ended`.
+    expect(isPastKnownEnd(210, 211)).toBe(true);
+  });
+
+  it("tolerates the timeupdate tick and beets' rounding near the end", () => {
+    expect(isPastKnownEnd(210, 210.2)).toBe(false);
+  });
+
+  it("keeps playing within the track", () => {
+    expect(isPastKnownEnd(210, 120)).toBe(false);
+  });
+
+  it("defers to the element when the library has no length", () => {
+    expect(isPastKnownEnd(null, 9999)).toBe(false);
+    expect(isPastKnownEnd(0, 9999)).toBe(false);
   });
 });

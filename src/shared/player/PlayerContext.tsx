@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import { trackDuration } from "@/shared/player/duration";
+import { isPastKnownEnd, trackDuration } from "@/shared/player/duration";
 import {
   currentTrack,
   cycleRepeat as cycleRepeatQueue,
@@ -125,20 +125,36 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onDurationChange = () => {
-      setDuration(trackDuration(knownDurationRef.current, audio.duration) ?? 0);
-    };
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onEnded = () => {
+    // One end-of-track path for the element's own `ended` and for the forced
+    // end below. The pause is for the forced case: the element still believes
+    // it has minutes of phantom silence to play, and it must not keep counting.
+    const endTrack = () => {
       const nextState = queueAfterEnded(queueRef.current);
       if (!nextState) {
+        audio.pause();
+        const known = knownDurationRef.current;
+        if (known != null) setCurrentTime(known);
         setIsPlaying(false);
         return;
       }
       applyQueue(nextState);
     };
+    const onTimeUpdate = () => {
+      // The library length is where the content actually ends — the element,
+      // reading through the asset protocol, can believe in roughly double
+      // that and would count silence for minutes (see `isPastKnownEnd`).
+      if (!audio.paused && isPastKnownEnd(knownDurationRef.current, audio.currentTime)) {
+        endTrack();
+        return;
+      }
+      setCurrentTime(audio.currentTime);
+    };
+    const onDurationChange = () => {
+      setDuration(trackDuration(knownDurationRef.current, audio.duration) ?? 0);
+    };
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = endTrack;
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onDurationChange);
     audio.addEventListener("durationchange", onDurationChange);
