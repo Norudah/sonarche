@@ -27,17 +27,21 @@ function identityOrder(count: number): number[] {
   return Array.from({ length: count }, (_, index) => index);
 }
 
-/**
- * A full permutation with `firstIndex` moved to the front — not a fresh draw
- * per skip, which is what produces repeats before the set is exhausted. The
- * playing track leads so enabling shuffle never interrupts it.
- */
-export function shuffledOrder(count: number, firstIndex: number, random: () => number = Math.random): number[] {
+/** Fisher-Yates permutation — one draw for the whole set, not a fresh draw per
+ * skip, which is what produces repeats before the set is exhausted. */
+function permutation(count: number, random: () => number): number[] {
   const order = identityOrder(count);
   for (let i = count - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
+  return order;
+}
+
+/** A full permutation with `firstIndex` moved to the front: the playing track
+ * leads, so enabling shuffle never interrupts it. */
+export function shuffledOrder(count: number, firstIndex: number, random: () => number = Math.random): number[] {
+  const order = permutation(count, random);
   const at = order.indexOf(firstIndex);
   if (at > 0) {
     order.splice(at, 1);
@@ -81,6 +85,26 @@ export function toggleShuffle(state: QueueState, random: () => number = Math.ran
     order: shuffledOrder(state.tracks.length, trackIndex, random),
     position: 0,
   };
+}
+
+/** A "play all" press. Forces sequential order — the button states the mode,
+ * unlike a row click which plays within whatever mode is active. */
+export function startQueueOrdered(state: QueueState, tracks: PlayableTrack[], startIndex = 0): QueueState {
+  return startQueue({ ...state, isShuffled: false }, tracks, startIndex);
+}
+
+/**
+ * A "shuffle" press. Forces shuffle on with no forced opener — unlike
+ * `startQueue` under an active shuffle, nothing here was clicked, and a
+ * surprise first track is the whole point. Each press draws fresh.
+ */
+export function startQueueShuffled(
+  state: QueueState,
+  tracks: PlayableTrack[],
+  random: () => number = Math.random,
+): QueueState {
+  if (tracks.length === 0) return { ...state, isShuffled: true, tracks: [], order: [], position: -1 };
+  return { ...state, isShuffled: true, tracks, order: permutation(tracks.length, random), position: 0 };
 }
 
 export function cycleRepeat(state: QueueState): QueueState {

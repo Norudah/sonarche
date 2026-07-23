@@ -11,6 +11,8 @@ import {
   queueAfterNext,
   queueAfterPrevious,
   startQueue,
+  startQueueOrdered,
+  startQueueShuffled,
   toggleShuffle as toggleShuffleQueue,
   type QueueState,
 } from "@/shared/player/queue";
@@ -31,6 +33,11 @@ interface PlayerControls {
   volume: number;
   /** Launch a set from the clicked track. A solo play is a queue of one. */
   play: (tracks: PlayableTrack[], startIndex?: number) => void;
+  /** "Play all": launch a set from the top, forcing sequential order. */
+  playOrdered: (tracks: PlayableTrack[]) => void;
+  /** "Shuffle": launch a set shuffled from a random opener. Always relaunches
+   * — pressing it again is a request for a fresh draw, never a pause. */
+  playShuffled: (tracks: PlayableTrack[]) => void;
   toggle: () => void;
   next: () => void;
   previous: () => void;
@@ -188,6 +195,37 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [loadTrack],
   );
 
+  const playOrdered = useCallback(
+    (tracks: PlayableTrack[]) => {
+      const audio = audioRef.current;
+      const target = tracks[0];
+      if (!audio || !target) return;
+      // Same toggle guard as `play`: "play all" on the already-playing opener
+      // reads as pause/resume, not as a restart.
+      if (currentIdRef.current === target.id) {
+        if (audio.paused) void audio.play();
+        else audio.pause();
+        return;
+      }
+      setQueue(startQueueOrdered(queueRef.current, tracks));
+      loadTrack(target);
+    },
+    [loadTrack],
+  );
+
+  const playShuffled = useCallback(
+    (tracks: PlayableTrack[]) => {
+      const nextState = startQueueShuffled(queueRef.current, tracks);
+      const track = currentTrack(nextState);
+      if (!track) return;
+      setQueue(nextState);
+      // No toggle guard on purpose — even landing on the playing track by
+      // chance, the press asked for a relaunch.
+      loadTrack(track);
+    },
+    [loadTrack],
+  );
+
   const toggle = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || currentIdRef.current == null) return;
@@ -247,8 +285,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useMediaSession({ current, isPlaying, toggle, next, previous });
 
   const controls = useMemo<PlayerControls>(
-    () => ({ current, isPlaying, volume, play, toggle, next, previous, seek, setVolume }),
-    [current, isPlaying, volume, play, toggle, next, previous, seek, setVolume],
+    () => ({ current, isPlaying, volume, play, playOrdered, playShuffled, toggle, next, previous, seek, setVolume }),
+    [current, isPlaying, volume, play, playOrdered, playShuffled, toggle, next, previous, seek, setVolume],
   );
 
   const progress = useMemo<PlayerProgress>(() => ({ currentTime, duration }), [currentTime, duration]);

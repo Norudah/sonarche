@@ -11,6 +11,8 @@ import {
   queueAfterPrevious,
   shuffledOrder,
   startQueue,
+  startQueueOrdered,
+  startQueueShuffled,
   toggleShuffle,
   type QueueState,
 } from "@/shared/player/queue";
@@ -66,6 +68,31 @@ describe("startQueue", () => {
     const state = startQueue(queueOf(3), [], 0);
     expect(state.position).toBe(-1);
     expect(currentTrack(state)).toBeNull();
+  });
+});
+
+describe("startQueueOrdered", () => {
+  it("forces sequential order even under an active shuffle mode", () => {
+    const shuffled = toggleShuffle(queueOf(5), seeded(3));
+    const state = startQueueOrdered(shuffled, tracksOf(5));
+    expect(state.isShuffled).toBe(false);
+    expect(state.order).toEqual([0, 1, 2, 3, 4]);
+    expect(state.position).toBe(0);
+  });
+});
+
+describe("startQueueShuffled", () => {
+  it("draws a complete permutation with no forced opener", () => {
+    const state = startQueueShuffled(queueOf(8), tracksOf(8), seeded(4));
+    expect(state.isShuffled).toBe(true);
+    expect(state.position).toBe(0);
+    expect([...state.order].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("keeps the shuffle flag on an empty set", () => {
+    const state = startQueueShuffled(emptyQueue(), [], seeded(1));
+    expect(state.isShuffled).toBe(true);
+    expect(state.position).toBe(-1);
   });
 });
 
