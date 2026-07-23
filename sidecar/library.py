@@ -176,3 +176,89 @@ def remove(_request_id: str, params: dict) -> dict:
 
     item.remove(delete=True)
     return {"removed": True}
+
+
+# Free-text tags we let the UI overwrite wholesale. Keys are beets' own item
+# attribute names, so the wire shape maps 1:1 onto `setattr`.
+_TEXT_FIELDS = ("title", "artist", "albumartist", "album")
+# Integer tags: beets stores 0 for "absent", so an emptied field clears to 0.
+_INT_FIELDS = ("year", "track", "tracktotal")
+
+
+def _coerce_int(raw) -> int | None:
+    """Empty -> 0 (beets' "unset"); non-numeric -> None so the caller skips the
+    field rather than aborting the whole batch on one fat-fingered value."""
+    text = str(raw).strip()
+    if not text:
+        return 0
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+
+def _apply_fields(item, fields: dict) -> bool:
+    """Assign only the fields that actually change, so an unchanged track is
+    never re-stored or re-tagged. Returns whether anything moved."""
+    touched = False
+    for key in _TEXT_FIELDS:
+        if key not in fields:
+            continue
+        new = str(fields[key]).strip()
+        if (getattr(item, key, "") or "") != new:
+            setattr(item, key, new)
+            touched = True
+    for key in _INT_FIELDS:
+        if key not in fields:
+            continue
+        new = _coerce_int(fields[key])
+        if new is None:
+            continue
+        if (getattr(item, key, 0) or 0) != new:
+            setattr(item, key, new)
+            touched = True
+    if "genre" in fields:
+        # The UI edits the primary genre as one value; beets' column is the
+        # multi-valued `genres`. We collapse to the single edited value (the
+        # app's genre model is one-primary + derived bucket), splitting on the
+        # display delimiter only so a pasted "Rock; Metal" round-trips.
+        raw = str(fields["genre"]).strip()
+        new = [g.strip() for g in raw.split(";") if g.strip()]
+        if list(item.get("genres", with_album=False) or []) != new:
+            item.genres = new
+            touched = True
+    return touched
+
+
+def update(_request_id: str, params: dict) -> dict:
+    """Apply metadata edits to a batch of tracks in one library session.
+
+    One Library open for the whole batch, not one per track: the cost is N tag
+    writes (each track is its own file — irreducible) plus a single DB session,
+    instead of N process round-trips. Writes go through beets' API so DB and
+    tags stay in sync (the source-of-truth invariant). A failed *tag* write is
+    logged, not fatal — the DB store already holds the truth, and the file may
+    be momentarily locked or read-only."""
+    from beets.library import Library
+
+    import protocol
+
+    db_path = params["beets_db"]
+    if not os.path.exists(db_path):
+        raise RuntimeError("library not found")
+
+    lib = Library(db_path, directory=params["library_dir"])
+    updated = 0
+    for entry in params.get("updates") or []:
+        item = lib.get_item(entry["id"])
+        if item is None:
+            continue
+        if not _apply_fields(item, entry.get("fields") or {}):
+            continue
+        item.store()
+        try:
+            item.write()
+        except Exception as exc:
+            protocol.log(f"library.update: tag write failed for {entry['id']}: {exc}")
+        updated += 1
+    return {"updated": updated}

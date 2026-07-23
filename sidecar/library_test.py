@@ -4,7 +4,9 @@ import tempfile
 import unittest
 
 from library import (
+    _apply_fields,
     _art_path,
+    _coerce_int,
     art_paths_by_album,
     bonus_sources_by_item,
     expand_db_path,
@@ -215,6 +217,84 @@ class TrackRowTest(unittest.TestCase):
         out = track_row(self._row(album_id=None), {1: "/music/cover.jpg"}, {}, "/music")
 
         self.assertIsNone(out["art_path"])
+
+
+class _FakeItem:
+    """Enough of a beets Item for _apply_fields: attribute get/set plus the
+    multi-valued `genres` accessor it reads through `.get(...)`."""
+
+    def __init__(self, **attrs):
+        self.__dict__.update(attrs)
+
+    def get(self, key, with_album=True):
+        return self.__dict__.get(key)
+
+
+class CoerceIntTest(unittest.TestCase):
+    def test_empty_clears_to_zero(self):
+        self.assertEqual(_coerce_int(""), 0)
+        self.assertEqual(_coerce_int("   "), 0)
+
+    def test_numeric_string_parses(self):
+        self.assertEqual(_coerce_int("2015"), 2015)
+        self.assertEqual(_coerce_int(" 3 "), 3)
+
+    def test_non_numeric_signals_skip(self):
+        self.assertIsNone(_coerce_int("mmxv"))
+
+
+class ApplyFieldsTest(unittest.TestCase):
+    def _item(self, **overrides):
+        base = dict(
+            title="Old", artist="A", albumartist="A", album="Rec",
+            year=2014, track=3, tracktotal=12, genres=["Pop"],
+        )
+        base.update(overrides)
+        return _FakeItem(**base)
+
+    def test_returns_false_when_nothing_changes(self):
+        item = self._item()
+        self.assertFalse(_apply_fields(item, {"title": "Old", "year": "2014"}))
+
+    def test_changes_only_the_provided_fields(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"title": "New"}))
+        self.assertEqual(item.title, "New")
+        self.assertEqual(item.artist, "A")
+
+    def test_text_field_is_trimmed(self):
+        item = self._item()
+        _apply_fields(item, {"artist": "  Beyoncé  "})
+        self.assertEqual(item.artist, "Beyoncé")
+
+    def test_emptied_int_clears_to_zero(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"year": ""}))
+        self.assertEqual(item.year, 0)
+
+    def test_invalid_int_is_skipped_not_fatal(self):
+        item = self._item()
+        self.assertFalse(_apply_fields(item, {"year": "nope"}))
+        self.assertEqual(item.year, 2014)
+
+    def test_genre_collapses_to_the_edited_value(self):
+        item = self._item(genres=["Pop", "Teen Pop"])
+        self.assertTrue(_apply_fields(item, {"genre": "Rock"}))
+        self.assertEqual(item.genres, ["Rock"])
+
+    def test_genre_splits_a_pasted_multi_value(self):
+        item = self._item()
+        _apply_fields(item, {"genre": "Rock; Metal"})
+        self.assertEqual(item.genres, ["Rock", "Metal"])
+
+    def test_cleared_genre_becomes_empty_list(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"genre": ""}))
+        self.assertEqual(item.genres, [])
+
+    def test_unchanged_genre_is_left_alone(self):
+        item = self._item(genres=["Pop"])
+        self.assertFalse(_apply_fields(item, {"genre": "Pop"}))
 
 
 if __name__ == "__main__":

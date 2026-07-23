@@ -36,6 +36,7 @@ fn main() {
             commands::get_preferences,
             commands::set_rate_limit_delay,
             commands::delete_track,
+            commands::update_tracks,
             commands::list_api_keys,
             commands::set_api_key,
             commands::reset_library_dev,
