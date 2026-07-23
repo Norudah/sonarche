@@ -53,6 +53,7 @@
     "rematching": "Re-matching…",
     "rematchDone": "{{matched}}/{{total}} tracks identified",
     "edit": "Edit",
+    "inspectAction": "Inspect",
     "moreActions": "More actions",
     "tagScoreHint": "Metadata fields filled in on this track",
     "stats": {
@@ -83,6 +84,7 @@
   "totalPlaytimeMinutes": "{{minutes}} min",
   "playAll": "Play all",
   "columns": {
+    "number": "No.",
     "title": "Title",
     "artist": "Artist",
     "album": "Album",
@@ -129,9 +131,27 @@
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save",
+    "saving": "Saving…",
+    "saveFailed": "Save failed, try again in a moment.",
     "completeness": "Completeness — {{filled}}/{{total}} fields",
     "derived": "derived",
     "viewAlbum": "View album"
+  },
+  "albumMetadata": {
+    "eyebrow": "Album",
+    "completion": "Completion",
+    "common": "Common fields",
+    "commonHint": "Edited once, written to every track.",
+    "specific": "Track-specific fields",
+    "specificHint": "Edited one track at a time.",
+    "multipleValues": "Multiple values",
+    "varied": "varies",
+    "tracklist": "Tracks",
+    "propagate": {
+      "prompt": "You changed “{{from}}” to “{{to}}”. Apply it to other tracks that still show “{{from}}”?",
+      "apply_one": "Apply to {{count}} track",
+      "apply_other": "Apply to {{count}} tracks"
+    }
   },
   "delete": {
     "action": "Delete track",

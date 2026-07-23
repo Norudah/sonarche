@@ -20,6 +20,7 @@ export function MetadataField({
   onChange,
   hint,
   action,
+  placeholder,
   className,
 }: {
   label: string;
@@ -30,6 +31,9 @@ export function MetadataField({
   hint?: string;
   /** Trailing control (e.g. a "view album" link) shown beside the read value. */
   action?: ReactNode;
+  /** Ghost text for an empty editable field — e.g. "multiple values" when an
+   * album's tracks disagree on this tag. Only shown while editing. */
+  placeholder?: string;
   className?: string;
 }) {
   const { t } = useTranslation("library");
@@ -52,9 +56,10 @@ export function MetadataField({
           id={id}
           type="text"
           readOnly={!isEditing}
+          placeholder={isEditing ? placeholder : undefined}
           value={isEditing ? value : isEmpty ? t("metadata.emptyValue") : value}
           onChange={(event) => onChange(event.target.value)}
-          className={`${FIELD_BOX} ${state}${action && !isEditing ? " pr-24" : ""}`}
+          className={`${FIELD_BOX} ${state} placeholder:text-muted/50${action && !isEditing ? " pr-24" : ""}`}
         />
         {action && !isEditing && <div className="absolute inset-y-0 right-3 flex items-center">{action}</div>}
       </div>

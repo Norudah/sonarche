@@ -421,6 +421,22 @@ export function installMockTauri() {
         Object.assign(target, { status: "queued", error: null, failedStep: null });
         return target;
       }
+      // Apply edits to the in-memory seed so a re-list reflects them — without
+      // this the drawer would "save" and then snap back to the static fixture.
+      if (cmd === "update_tracks") {
+        const wireKey: Record<string, string> = { albumartist: "album_artist", tracktotal: "track_total" };
+        const numeric = new Set(["year", "track", "tracktotal"]);
+        let updated = 0;
+        for (const u of (payload?.updates as { id: number; fields: Record<string, string> }[]) ?? []) {
+          const target = libraryTracks.find((track) => track.id === u.id) as Record<string, unknown> | undefined;
+          if (!target) continue;
+          for (const [key, value] of Object.entries(u.fields)) {
+            target[wireKey[key] ?? key] = numeric.has(key) ? Number(value) || null : value || null;
+          }
+          updated += 1;
+        }
+        return { updated };
+      }
       return responses[cmd] ?? {};
     },
   };

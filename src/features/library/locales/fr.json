@@ -53,6 +53,7 @@
     "rematching": "Re-matchage…",
     "rematchDone": "{{matched}}/{{total}} pistes identifiées",
     "edit": "Modifier",
+    "inspectAction": "Inspecter",
     "moreActions": "Plus d'actions",
     "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
     "stats": {
@@ -83,6 +84,7 @@
   "totalPlaytimeMinutes": "{{minutes}} min",
   "playAll": "Tout lire",
   "columns": {
+    "number": "N°",
     "title": "Titre",
     "artist": "Artiste",
     "album": "Album",
@@ -129,9 +131,27 @@
     "edit": "Modifier",
     "cancel": "Annuler",
     "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saveFailed": "L'enregistrement a échoué, réessaie dans un instant.",
     "completeness": "Complétude — {{filled}}/{{total}} champs",
     "derived": "dérivé",
     "viewAlbum": "Voir l'album"
+  },
+  "albumMetadata": {
+    "eyebrow": "Album",
+    "completion": "Complétion",
+    "common": "Champs communs",
+    "commonHint": "Modifié une fois, écrit sur chaque morceau.",
+    "specific": "Champs spécifiques",
+    "specificHint": "Modifié morceau par morceau.",
+    "multipleValues": "Valeurs multiples",
+    "varied": "varie",
+    "tracklist": "Morceaux",
+    "propagate": {
+      "prompt": "Tu as changé « {{from}} » en « {{to}} ». L'appliquer aux autres morceaux encore en « {{from}} » ?",
+      "apply_one": "Appliquer à {{count}} morceau",
+      "apply_other": "Appliquer à {{count}} morceaux"
+    }
   },
   "delete": {
     "action": "Supprimer le morceau",

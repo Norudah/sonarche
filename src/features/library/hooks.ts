@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack } from "@/features/library/api";
+import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack, updateTracks } from "@/features/library/api";
 
 export const libraryKey = ["library"] as const;
 
@@ -30,6 +30,19 @@ export function useDeleteTracks() {
     mutationFn: async (ids: number[]) => {
       for (const id of ids) await deleteTrack(id);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
+/** Persist metadata edits for one or many tracks in a single call, then
+ * refresh the library once. The batch is the perf-sensitive shape: an album's
+ * worth of common-field edits ships as one round-trip, not one per track. */
+export function useUpdateTracks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateTracks,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },

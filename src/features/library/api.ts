@@ -45,6 +45,29 @@ export async function deleteTrack(id: number): Promise<void> {
   await invoke("delete_track", { id });
 }
 
+/** Beets attribute names for the tags an edit may touch — the wire contract the
+ * Rust command validates against. Every value travels as a string; the sidecar
+ * coerces `year`/`track`/`tracktotal` and collapses `genre` into its column. */
+export interface TrackFieldPatch {
+  title?: string;
+  artist?: string;
+  albumartist?: string;
+  album?: string;
+  year?: string;
+  track?: string;
+  tracktotal?: string;
+  genre?: string;
+}
+
+export interface TrackUpdate {
+  id: number;
+  fields: TrackFieldPatch;
+}
+
+export async function updateTracks(updates: TrackUpdate[]): Promise<{ updated: number }> {
+  return invoke<{ updated: number }>("update_tracks", { updates });
+}
+
 export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
   const result = await invoke<{ matched: boolean }>("reenrich_track", { id });
   return { matched: result.matched };

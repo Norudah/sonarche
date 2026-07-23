@@ -6,7 +6,8 @@ import { useNavigate } from "react-router";
 
 import { albumPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
-import { countFilled, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
+import { useUpdateTracks } from "@/features/library/hooks";
+import { countFilled, diffFields, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
 import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
 import { MetadataField } from "@/features/library/metadata/MetadataField";
 import { MetadataFooter } from "@/features/library/metadata/MetadataFooter";
@@ -15,6 +16,7 @@ import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
+  const update = useUpdateTracks();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<FieldValues>(() => toFieldValues(track));
 
@@ -35,7 +37,19 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
 
   const startEditing = () => {
     setDraft(toFieldValues(track));
+    update.reset();
     setIsEditing(true);
+  };
+
+  const save = () => {
+    const patch = diffFields(live, draft);
+    if (Object.keys(patch).length === 0) {
+      setIsEditing(false);
+      return;
+    }
+    update.mutate([{ id: track.id, fields: patch }], {
+      onSuccess: () => setIsEditing(false),
+    });
   };
 
   return (
@@ -63,12 +77,11 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
               onChange={setField("artist")}
               className="min-w-0 flex-1"
             />
-            {/* Album-level field (shared by every track on the album): read-only here. */}
             <MetadataField
               label={t("metadata.fields.albumArtist")}
-              value={live.albumArtist}
-              isEditing={false}
-              onChange={() => {}}
+              value={shown.albumArtist}
+              isEditing={isEditing}
+              onChange={setField("albumArtist")}
               className="min-w-0 flex-1"
             />
           </div>
@@ -137,9 +150,11 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
       <MetadataFooter
         track={track}
         isEditing={isEditing}
+        isSaving={update.isPending}
+        saveFailed={update.isError}
         onEdit={startEditing}
         onCancel={() => setIsEditing(false)}
-        onSave={() => setIsEditing(false)}
+        onSave={save}
       />
     </div>
   );
