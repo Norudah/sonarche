@@ -97,6 +97,15 @@
     "noResults": "No track matches “{{query}}”.",
     "clear": "Clear search"
   },
+  "triage": {
+    "missingYear": "Missing year",
+    "genreMissing": "Missing genre",
+    "genreOffTree": "Genre outside the tree",
+    "missingArtwork": "Missing artwork",
+    "tracklistGaps": "Gapped tracklist",
+    "clearFilter": "Remove the “{{filter}}” filter",
+    "noResults": "Nothing matches the active filter."
+  },
   "loadFailed": "Unable to load the library",
   "empty": "Your library is empty for now.",
   "goToDownload": "Download a first track →",

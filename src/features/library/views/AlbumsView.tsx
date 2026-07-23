@@ -2,13 +2,15 @@ import { Alert, Spinner } from "@heroui/react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
 import { filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
+import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
+import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -19,9 +21,26 @@ export function AlbumsView() {
   const playTrack = usePlayTrack();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
+  const [params, setParams] = useSearchParams();
 
+  const triage = useMemo(() => parseAlbumTriage(params), [params]);
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
-  const visible = useMemo(() => sortAlbums(filterAlbums(albums, query), sort), [albums, query, sort]);
+  const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
+  const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
+
+  // Removing a filter refines the entry we are on, it is not a new place —
+  // same reasoning as the genre chips' `replace`.
+  const clearParam = (name: string) => {
+    const next = new URLSearchParams(params);
+    next.delete(name);
+    setParams(next, { replace: true });
+  };
+
+  const chips: TriageChip[] = [];
+  if (triage.missingArtwork)
+    chips.push({ key: "missingArtwork", label: t("triage.missingArtwork"), onRemove: () => clearParam("missing") });
+  if (triage.tracklistGaps)
+    chips.push({ key: "tracklistGaps", label: t("triage.tracklistGaps"), onRemove: () => clearParam("tracklist") });
 
   return (
     <PageContainer>
@@ -33,6 +52,8 @@ export function AlbumsView() {
         sort={sort}
         onSortChange={setSort}
       />
+
+      <TriageChips chips={chips} countLabel={t("albumCount", { count: triaged.length })} />
 
       {library.isPending && (
         <div className="flex justify-center py-16">
@@ -66,12 +87,16 @@ export function AlbumsView() {
           transition={fade}
           className="py-16 text-center text-sm text-muted"
         >
-          {t("albums.noResults", { query })}
+          {query ? t("albums.noResults", { query }) : t("triage.noResults")}
         </motion.p>
       )}
 
       {visible.length > 0 && (
-        <AlbumGrid albums={visible} animationKey={`${query}:${sort}`} onPlay={(album) => playTrack(album.tracks[0])} />
+        <AlbumGrid
+          albums={visible}
+          animationKey={`${params.toString()}:${query}:${sort}`}
+          onPlay={(album) => playTrack(album.tracks[0])}
+        />
       )}
     </PageContainer>
   );

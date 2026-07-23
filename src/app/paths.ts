@@ -33,6 +33,25 @@ export const paths = {
 } as const;
 
 /**
+ * Metadata-triage deep links — the contract between the Metadata page's
+ * correction queue and the explorer views (docs/metadata-page-plan.md). Each
+ * line of the queue navigates to one of these; the explorers parse the same
+ * params back out (see the `triage` module beside each view, whose tests
+ * round-trip against these strings so the two sides cannot drift).
+ *
+ * `?genre=` is the param the family page already carries a plain genre name
+ * in, kept with the same meaning here; `missing` and `off-tree` are sentinel
+ * values no real genre uses.
+ */
+export const triagePaths = {
+  missingYear: `${paths.libraryTracks}?missing=year`,
+  genreMissing: `${paths.libraryTracks}?genre=missing`,
+  genreOffTree: `${paths.libraryTracks}?genre=off-tree`,
+  missingArtwork: `${paths.libraryAlbums}?missing=artwork`,
+  tracklistGaps: `${paths.libraryAlbums}?tracklist=gaps`,
+} as const;
+
+/**
  * Artist and title as two segments rather than one joined key: React Router
  * decodes path params, so anything we join here we would have to split back out
  * of an already-decoded string — which is impossible to do safely once a name

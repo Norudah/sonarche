@@ -97,6 +97,15 @@
     "noResults": "Aucun morceau ne correspond à « {{query}} ».",
     "clear": "Effacer la recherche"
   },
+  "triage": {
+    "missingYear": "Année manquante",
+    "genreMissing": "Genre manquant",
+    "genreOffTree": "Genre hors arbre",
+    "missingArtwork": "Pochette absente",
+    "tracklistGaps": "Tracklist à trous",
+    "clearFilter": "Retirer le filtre « {{filter}} »",
+    "noResults": "Rien ne correspond au filtre actif."
+  },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": "Ta bibliothèque est vide pour l'instant.",
   "goToDownload": "Télécharger un premier titre →",
