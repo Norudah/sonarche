@@ -22,40 +22,54 @@ import { SettingsLayout } from "@/features/settings/SettingsLayout";
 // public import site for the many callers that already use it.
 export { albumPath, artistPath, genrePath, paths } from "@/app/paths";
 
-export const router = createMemoryRouter([
-  {
-    element: <AppLayout />,
-    children: [
-      { path: paths.download, element: <DownloadPage /> },
-      { path: paths.metadata, element: <MetadataPage /> },
-      // Settings lives inside the shell like any other destination: same sidebar
-      // (which switches to a category menu here), same player bar. Each category
-      // is a route so the sidebar drives it through NavLink, active pill and all.
-      {
-        path: paths.settings,
-        element: <SettingsLayout />,
-        children: [
-          { index: true, element: <Navigate to={paths.settingsApiKeys} replace /> },
-          { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
-          { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
-          // Dev builds only; the backend command refuses to run in release anyway.
-          ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
-        ],
-      },
-      {
-        path: paths.library,
-        element: <LibraryLayout />,
-        children: [
-          { index: true, element: <Navigate to={paths.libraryTracks} replace /> },
-          { path: paths.libraryTracks, element: <TracksView /> },
-          { path: paths.libraryAlbums, element: <AlbumsView /> },
-          { path: paths.libraryAlbum, element: <AlbumDetailView /> },
-          { path: paths.libraryArtists, element: <ArtistsView /> },
-          { path: paths.libraryArtist, element: <ArtistDetailView /> },
-          { path: paths.libraryGenres, element: <GenresView /> },
-          { path: paths.libraryGenre, element: <GenreDetailView /> },
-        ],
-      },
-    ],
-  },
-]);
+// A memory router has no URL to deep-link, so in dev a `?route=` param seeds the
+// initial entry — the only way to land a browser (or an automated one) straight
+// on a nested view like an album. Stripped entirely from production builds.
+function devInitialEntries(): string[] | undefined {
+  // `typeof window` guard: this module is imported by node-env unit tests (via
+  // `albumPath`), where there is no `window` to read.
+  if (!import.meta.env.DEV || typeof window === "undefined") return undefined;
+  const route = new URLSearchParams(window.location.search).get("route");
+  return route ? [route] : undefined;
+}
+
+export const router = createMemoryRouter(
+  [
+    {
+      element: <AppLayout />,
+      children: [
+        { path: paths.download, element: <DownloadPage /> },
+        { path: paths.metadata, element: <MetadataPage /> },
+        // Settings lives inside the shell like any other destination: same sidebar
+        // (which switches to a category menu here), same player bar. Each category
+        // is a route so the sidebar drives it through NavLink, active pill and all.
+        {
+          path: paths.settings,
+          element: <SettingsLayout />,
+          children: [
+            { index: true, element: <Navigate to={paths.settingsApiKeys} replace /> },
+            { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
+            { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
+            // Dev builds only; the backend command refuses to run in release anyway.
+            ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
+          ],
+        },
+        {
+          path: paths.library,
+          element: <LibraryLayout />,
+          children: [
+            { index: true, element: <Navigate to={paths.libraryTracks} replace /> },
+            { path: paths.libraryTracks, element: <TracksView /> },
+            { path: paths.libraryAlbums, element: <AlbumsView /> },
+            { path: paths.libraryAlbum, element: <AlbumDetailView /> },
+            { path: paths.libraryArtists, element: <ArtistsView /> },
+            { path: paths.libraryArtist, element: <ArtistDetailView /> },
+            { path: paths.libraryGenres, element: <GenresView /> },
+            { path: paths.libraryGenre, element: <GenreDetailView /> },
+          ],
+        },
+      ],
+    },
+  ],
+  { initialEntries: devInitialEntries() },
+);
