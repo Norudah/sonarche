@@ -1,0 +1,22 @@
+{
+  "title": "Métadonnées",
+  "toFix_one": "{{count}} chose à corriger",
+  "toFix_other": "{{count}} choses à corriger",
+  "allClear": "Rien à corriger",
+  "allClearHint": "Tous les morceaux et albums passent les contrôles.",
+  "queue": {
+    "year": "Année manquante",
+    "genre": "Genre manquant ou hors arbre",
+    "artwork": "Pochette absente",
+    "tracklist": "Tracklist à trous",
+    "genreMissing_one": "{{count}} manquant",
+    "genreMissing_other": "{{count}} manquants",
+    "genreOffTree_one": "{{count}} hors arbre",
+    "genreOffTree_other": "{{count}} hors arbre",
+    "more_one": "+{{count}} autre",
+    "more_other": "+{{count}} autres"
+  },
+  "distribution": {
+    "title": "Répartition des genres"
+  }
+}

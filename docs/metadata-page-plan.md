@@ -100,12 +100,18 @@ Vocabulaire :
    et la page Genres classent identiquement. « Tracklist à trous » = trou
    dans la séquence 1…attendu (total déclaré, sinon plus haut numéro) ;
    album sans aucun numéro = hors verdict (problème de tags, pas de trous).
-3. **Agrégats en helpers purs** colocalisés avec la page
-   (`countMissingYear(tracks)`, `countInvalidGenre(tracks)`, …), testés
-   (`x.ts` + `x.test.ts`).
-4. **Page v1** : header texte + pilule « N à corriger » → ancre file, file
-   à 4 lignes avec exemples inline, répartition des genres repliable, état
-   zéro 1d. Une colonne. `MetadataPage.tsx` sort du placeholder.
+3. ~~**Agrégats en helpers purs**~~ **Fait** — `buildTriageQueue` /
+   `countToFix` dans `features/library/triage/queue.ts` (testés), dérivés
+   des mêmes prédicats que l'explorer : une porte ouvre exactement sur ce
+   qu'elle annonce. La ligne genre fusionnée porte **deux portes** (N
+   manquants / N hors arbre) — une porte à zéro disparaît.
+4. ~~**Page v1**~~ **Fait** — `features/library/triage/MetadataPage.tsx`
+   (la feature `metadata` placeholder est absorbée dans `library` : la page
+   consomme les données bibliothèque et les frontières interdisent le
+   cross-feature ; la route `/metadata` et le namespace i18n `metadata`
+   sont inchangés). Header + sous-ligne compte, pilule ambre « N à
+   corriger » (ancre file), lignes à exemples inline, répartition des
+   genres repliable (chaque famille → sa page), état zéro carte verte.
 5. **En parallèle, sans attendre l'UI : écrire la provenance dans le
    sidecar.** Chaque édition manuelle faite sans trace est perdue à jamais
    (contrairement aux `mb_trackid`, reconstituables). Indépendant du reste,
