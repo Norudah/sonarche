@@ -49,11 +49,13 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
         </p>
       </Link>
 
-      {/* Centred over the disc, not in a corner: the avatar is a circle, so a
-       * corner-anchored button would float on the empty card background. No
-       * completeness badge either — completeness is a property of a release you
-       * can go and fix, not of a person. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex aspect-square items-center justify-center">
+      {/* Bottom-right like the album card, so the two grids share one gesture:
+       * the play always waits in the same corner. On a circle that corner sits
+       * on the rim, and the button straddling it slightly is deliberate — it
+       * reads as pinned to the disc, not floating on the card background. No
+       * completeness badge — completeness is a property of a release you can go
+       * and fix, not of a person. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex aspect-square items-end justify-end pr-[5%] pb-[5%]">
         <motion.button
           type="button"
           onClick={onPlay}
@@ -62,7 +64,7 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="pointer-events-auto flex size-12 scale-90 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 shadow-lg shadow-accent/30 outline-none transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="pointer-events-auto flex size-11 scale-90 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 shadow-lg shadow-accent/30 outline-none transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <Play className="size-5 fill-current" />
         </motion.button>
