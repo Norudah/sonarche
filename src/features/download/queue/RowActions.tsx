@@ -2,6 +2,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { Ellipsis, FileText, Link, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
@@ -70,6 +71,10 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
                   subtitle: track.artist,
                   artUrl: track.artUrl,
                   duration: track.length,
+                  albumUrl: track.album.trim()
+                    ? albumPath(track.albumArtist.trim() || track.artist.trim(), track.album)
+                    : null,
+                  artistUrl: track.artist.trim() ? artistPath(track.artist) : null,
                 },
               ])
             }

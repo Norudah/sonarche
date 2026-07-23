@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import type { PlayableTrack } from "@/shared/player/types";
@@ -24,14 +25,21 @@ export function usePlayQueue(): PlayQueue {
   const { t } = useTranslation("library");
   const { play, playOrdered, playShuffled } = usePlayer();
 
-  const toPlayable = (track: LibraryTrack): PlayableTrack => ({
-    id: track.id,
-    src: track.audioUrl,
-    title: track.title || t("unknownTitle"),
-    subtitle: track.artist || t("unknownArtist"),
-    artUrl: track.artUrl,
-    duration: track.length,
-  });
+  const toPlayable = (track: LibraryTrack): PlayableTrack => {
+    // The album route is keyed on the album artist (falling back to the track
+    // artist), exactly as `groupAlbums` files it.
+    const albumArtist = track.albumArtist.trim() || track.artist.trim();
+    return {
+      id: track.id,
+      src: track.audioUrl,
+      title: track.title || t("unknownTitle"),
+      subtitle: track.artist || t("unknownArtist"),
+      artUrl: track.artUrl,
+      duration: track.length,
+      albumUrl: track.album.trim() ? albumPath(albumArtist, track.album) : null,
+      artistUrl: track.artist.trim() ? artistPath(track.artist) : null,
+    };
+  };
 
   return {
     playFrom: (tracks, startIndex) => play(tracks.map(toPlayable), startIndex),
