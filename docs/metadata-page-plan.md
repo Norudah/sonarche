@@ -122,13 +122,13 @@ Vocabulaire :
      (match ou pas), l'étage « N empreintes » du futur funnel.
    - `sonarche_match_source` = `acoustid` | `text` — posé à l'application
      d'un match (enrich mono, vote album, adoption bonus).
-   Le sidecar ne les relit jamais ; ils alimentent le funnel à venir et
-   `beet ls`. Piège documenté dans le code : les hints texte mutent les
-   items en mémoire sans store, donc la provenance s'écrit sur la ligne
-   fraîche (enrich) ou avant les hints (batch album).
-   **Fait aussi** : `genres.recompute` épargne désormais les genres édités
-   à la main (`provenance.was_hand_edited(item, "genres")`) — le seul
-   endroit où le sidecar relit la trace, pour la respecter.
+     Le sidecar ne les relit jamais ; ils alimentent le funnel à venir et
+     `beet ls`. Piège documenté dans le code : les hints texte mutent les
+     items en mémoire sans store, donc la provenance s'écrit sur la ligne
+     fraîche (enrich) ou avant les hints (batch album).
+     **Fait aussi** : `genres.recompute` épargne désormais les genres édités
+     à la main (`provenance.was_hand_edited(item, "genres")`) — le seul
+     endroit où le sidecar relit la trace, pour la respecter.
 
 ## Reporté explicitement
 
