@@ -197,17 +197,18 @@ def _coerce_int(raw) -> int | None:
         return None
 
 
-def _apply_fields(item, fields: dict) -> bool:
+def _apply_fields(item, fields: dict) -> set[str]:
     """Assign only the fields that actually change, so an unchanged track is
-    never re-stored or re-tagged. Returns whether anything moved."""
-    touched = False
+    never re-stored or re-tagged. Returns the item attribute names that moved
+    (empty set: nothing did)."""
+    touched: set[str] = set()
     for key in _TEXT_FIELDS:
         if key not in fields:
             continue
         new = str(fields[key]).strip()
         if (getattr(item, key, "") or "") != new:
             setattr(item, key, new)
-            touched = True
+            touched.add(key)
     for key in _INT_FIELDS:
         if key not in fields:
             continue
@@ -216,7 +217,7 @@ def _apply_fields(item, fields: dict) -> bool:
             continue
         if (getattr(item, key, 0) or 0) != new:
             setattr(item, key, new)
-            touched = True
+            touched.add(key)
     if "genre" in fields:
         # The UI edits the primary genre as one value; beets' column is the
         # multi-valued `genres`. We collapse to the single edited value (the
@@ -226,7 +227,7 @@ def _apply_fields(item, fields: dict) -> bool:
         new = [g.strip() for g in raw.split(";") if g.strip()]
         if list(item.get("genres", with_album=False) or []) != new:
             item.genres = new
-            touched = True
+            touched.add("genres")
     return touched
 
 
@@ -242,6 +243,7 @@ def update(_request_id: str, params: dict) -> dict:
     from beets.library import Library
 
     import protocol
+    import provenance
 
     db_path = params["beets_db"]
     if not os.path.exists(db_path):
@@ -253,8 +255,12 @@ def update(_request_id: str, params: dict) -> dict:
         item = lib.get_item(entry["id"])
         if item is None:
             continue
-        if not _apply_fields(item, entry.get("fields") or {}):
+        changed = _apply_fields(item, entry.get("fields") or {})
+        if not changed:
             continue
+        # These edits are the one provenance signal that cannot be
+        # reconstructed later; record them in the same store.
+        provenance.mark_edited(item, changed)
         item.store()
         try:
             item.write()

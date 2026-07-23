@@ -296,6 +296,15 @@ class ApplyFieldsTest(unittest.TestCase):
         item = self._item(genres=["Pop"])
         self.assertFalse(_apply_fields(item, {"genre": "Pop"}))
 
+    def test_reports_the_item_attributes_that_moved(self):
+        """The returned names feed the provenance trail — the genre edit must
+        surface as beets' `genres`, the attribute it actually lands on."""
+        item = self._item()
+        self.assertEqual(
+            _apply_fields(item, {"title": "New", "artist": "A", "year": "2015", "genre": "Rock"}),
+            {"title", "year", "genres"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

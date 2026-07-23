@@ -112,10 +112,23 @@ Vocabulaire :
    sont inchangés). Header + sous-ligne compte, pilule ambre « N à
    corriger » (ancre file), lignes à exemples inline, répartition des
    genres repliable (chaque famille → sa page), état zéro carte verte.
-5. **En parallèle, sans attendre l'UI : écrire la provenance dans le
-   sidecar.** Chaque édition manuelle faite sans trace est perdue à jamais
-   (contrairement aux `mb_trackid`, reconstituables). Indépendant du reste,
-   faisable avant même le ①.
+5. ~~**Écrire la provenance dans le sidecar.**~~ **Fait** — module
+   `sidecar/provenance.py`, attributs flexibles beets écrits par chaque
+   chemin qui mute des tags :
+   - `sonarche_edited_at` + `sonarche_edited_fields` (union cumulée des
+     champs touchés à la main) — posés par `library.update`, le signal
+     non-reconstituable.
+   - `sonarche_fingerprinted` — posé dès qu'un Chromaprint est calculé
+     (match ou pas), l'étage « N empreintes » du futur funnel.
+   - `sonarche_match_source` = `acoustid` | `text` — posé à l'application
+     d'un match (enrich mono, vote album, adoption bonus).
+   Le sidecar ne les relit jamais ; ils alimentent le funnel à venir et
+   `beet ls`. Piège documenté dans le code : les hints texte mutent les
+   items en mémoire sans store, donc la provenance s'écrit sur la ligne
+   fraîche (enrich) ou avant les hints (batch album).
+   **Suite ouverte** : `genres.recompute` écrase encore un genre édité à la
+   main — maintenant que `sonarche_edited_fields` existe, le recompute
+   pourra épargner ces items.
 
 ## Reporté explicitement
 

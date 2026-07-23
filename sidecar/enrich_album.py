@@ -17,6 +17,7 @@ import time
 import enrich
 import metadata
 import protocol
+import provenance
 from report import build_report
 
 # Sampled tracks are enough to identify the release; each sample costs a few
@@ -197,6 +198,12 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
         )
         try:
             duration, fingerprint = enrich._fingerprint(params["fpcalc"], path)
+            # Stored here, while the item is still exactly its DB row — after
+            # this point `_apply_hints` mutates items in memory and a store
+            # would persist the hints. Fingerprinted is a fact even when the
+            # lookup below then fails or matches nothing.
+            provenance.mark_fingerprinted(item)
+            item.store()
             protocol.send_event(
                 request_id,
                 "enrich_progress",
@@ -323,10 +330,12 @@ def _text_album_match(request_id: str, items, params: dict):
     return None
 
 
-def _apply_album(request_id: str, lib, match, pause: float):
+def _apply_album(request_id: str, lib, match, pause: float, source: str | None):
     """Apply the match to its mapped items and build the album row. Returns
     (album, mapped_items); covers and reports are the caller's (adopted bonus
-    tracks join the album afterwards and must share the same cover pass)."""
+    tracks join the album afterwards and must share the same cover pass).
+    `source` is how the release was found ("acoustid" vote or "text"), recorded
+    on every mapped item."""
     protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
     match.apply_metadata()
     mapped = match.items
@@ -352,6 +361,8 @@ def _apply_album(request_id: str, lib, match, pause: float):
         if genres:
             item.genres = genres
             protocol.log(f"enrich_album: genre {genres} ({label})")
+        if source:
+            provenance.mark_match(item, source)
         item.store()
         try:
             item.write()
@@ -451,6 +462,8 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
             if genres:
                 item.genres = genres
                 protocol.log(f"enrich_album: genre {genres} ({label})")
+            # Adopted through its own AcoustID recording on a sibling edition.
+            provenance.mark_match(item, "acoustid")
             item.store()
             try:
                 item.write()
@@ -657,17 +670,20 @@ def handle(request_id: str, params: dict) -> dict:
                  params.get("artist"))
 
     match, leftovers = None, []
+    source = None
     if recordings:
         protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
         release_id = _vote_release_id(request_id, items, recordings, pause)
         if release_id:
             protocol.log(f"enrich_album: fingerprints voted release {release_id}")
             match, leftovers = _build_match(items, recordings, release_id)
+            source = "acoustid"
     if match is None:
         match, leftovers = _text_album_match(request_id, items, params), []
+        source = "text" if match is not None else None
 
     if match is not None:
-        album, mapped = _apply_album(request_id, lib, match, pause)
+        album, mapped = _apply_album(request_id, lib, match, pause, source)
         adopted = (
             _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause)
             if leftovers

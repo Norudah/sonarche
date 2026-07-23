@@ -13,6 +13,7 @@ import tempfile
 
 import metadata
 import protocol
+import provenance
 import provisional
 from report import build_report
 
@@ -358,6 +359,7 @@ def enrich_one(
         raise RuntimeError(f"file not found: {path}")
 
     recordings: list[str] = []
+    fingerprinted = False
     api_key = params.get("acoustid_key")
     if api_key:
         # item_id lets the album batch's UI animate the matching child row.
@@ -365,6 +367,7 @@ def enrich_one(
             request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
         )
         duration, fingerprint = _fingerprint(params["fpcalc"], path)
+        fingerprinted = True
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id}
         )
@@ -394,11 +397,13 @@ def enrich_one(
         if not rank[0] and rank[1] == 0:  # clean studio album: nothing beats it
             break
 
+    source = "acoustid" if track_info is not None else None
     if track_info is None:
         rec_id = _text_fallback(item, params.get("artist"), params.get("title"))
         if rec_id:
             try:
                 album_info, track_info, _ = _album_for_recording(rec_id)
+                source = "text" if track_info is not None else None
             except Exception as exc:
                 protocol.log(f"enrich: fallback recording {rec_id} failed: {exc}")
 
@@ -418,4 +423,12 @@ def enrich_one(
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
     fresh = lib.get_item(item.id)
+    if fresh is not None and (fingerprinted or matched):
+        # Provenance goes on the fresh row, never the in-memory item: the item
+        # may carry the fallback's unstored hint mutations.
+        if fingerprinted:
+            provenance.mark_fingerprinted(fresh)
+        if matched and source:
+            provenance.mark_match(fresh, source)
+        fresh.store()
     return {"matched": matched, "report": build_report(fresh) if fresh else None}
