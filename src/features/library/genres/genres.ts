@@ -45,6 +45,19 @@ export function familyKeyOf(track: LibraryTrack): string {
   return track.genre ? FAMILY_OTHER : FAMILY_NONE;
 }
 
+/**
+ * Each genre name's family key, for turning a genre label into its page's
+ * route. First occurrence wins — the sidecar buckets a given genre string
+ * deterministically, so later tracks cannot disagree.
+ */
+export function genreFamilyIndex(tracks: LibraryTrack[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const track of tracks) {
+    if (track.genre && !index.has(track.genre)) index.set(track.genre, familyKeyOf(track));
+  }
+  return index;
+}
+
 interface Tally {
   trackCount: number;
   subs: Map<string, number>;

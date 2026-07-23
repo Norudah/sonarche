@@ -6,6 +6,7 @@ import { paths } from "@/app/routes";
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
 import { GenreChips } from "@/features/library/GenreChips";
+import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
@@ -87,7 +88,10 @@ export function ArtistHero({ artist, onPlay, onShuffle, ref }: ArtistHeroProps) 
             {/* Capped at four: an artist spanning six genres would otherwise
              * push a second row of chips into the band. The album shows all of
              * its own, which are far fewer. */}
-            <GenreChips genres={artist.genres.slice(0, 4)} />
+            <GenreChips
+              genres={artist.genres.slice(0, 4)}
+              families={genreFamilyIndex(artist.albums.flatMap((album) => album.tracks))}
+            />
 
             {/* In the band, like the album's action row: a lone play button
              * under a full-bleed hero reads as orphaned, and the two pages

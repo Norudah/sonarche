@@ -1,9 +1,11 @@
 import { Dropdown } from "@heroui/react";
 import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
+import { springs } from "@/shared/motion/tokens";
 
 const SECONDARY = HERO_PILL_SECONDARY;
 const ICON_PILL = HERO_PILL_ICON;
@@ -56,11 +58,19 @@ export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumAc
       <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
       {/* Same FileText icon as the per-track inspect control in the tables, one
-       * scope up: this opens the album's own metadata drawer. */}
-      <button type="button" onClick={onInspect} className={`${SECONDARY} cursor-pointer`}>
+       * scope up: this opens the album's own metadata drawer. Same press
+       * feedback as the play pills beside it — the row moves as one family. */}
+      <motion.button
+        type="button"
+        onClick={onInspect}
+        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.03 }}
+        transition={springs.snappy}
+        className={`${SECONDARY} cursor-pointer`}
+      >
         <FileText className="size-4" />
         {t("albums.inspectAction")}
-      </button>
+      </motion.button>
 
       <OverflowMenu onDelete={onDelete} />
     </div>

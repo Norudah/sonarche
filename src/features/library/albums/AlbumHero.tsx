@@ -8,6 +8,7 @@ import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
 import { AlbumCompleteness } from "@/features/library/albums/AlbumCompleteness";
 import { GenreChips } from "@/features/library/GenreChips";
+import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroWash } from "@/features/library/HeroWash";
 import { formatDuration } from "@/shared/lib/format";
@@ -117,7 +118,7 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }
                 )}
                 {meta.length > 0 && ` · ${meta.join(" · ")}`}
               </p>
-              <GenreChips genres={album.genres} />
+              <GenreChips genres={album.genres} families={genreFamilyIndex(album.tracks)} />
             </div>
 
             <AlbumActions onPlay={onPlay} onShuffle={onShuffle} onInspect={onInspect} onDelete={onDelete} />
