@@ -65,6 +65,7 @@ function ArtistLink({ artist }: { artist: string }) {
 interface AlbumHeroProps {
   album: Album;
   onPlay: () => void;
+  onInspect: () => void;
   onDelete: () => void;
   ref?: Ref<HTMLElement>;
 }
@@ -81,7 +82,7 @@ interface AlbumHeroProps {
  * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
-export function AlbumHero({ album, onPlay, onDelete, ref }: AlbumHeroProps) {
+export function AlbumHero({ album, onPlay, onInspect, onDelete, ref }: AlbumHeroProps) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -118,7 +119,7 @@ export function AlbumHero({ album, onPlay, onDelete, ref }: AlbumHeroProps) {
               <GenreChips genres={album.genres} />
             </div>
 
-            <AlbumActions album={album} onPlay={onPlay} onDelete={onDelete} />
+            <AlbumActions onPlay={onPlay} onInspect={onInspect} onDelete={onDelete} />
           </div>
 
           <AlbumCompleteness album={album} />

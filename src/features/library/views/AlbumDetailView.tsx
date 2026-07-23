@@ -6,6 +6,7 @@ import { Navigate, useParams } from "react-router";
 import { paths } from "@/app/routes";
 import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
+import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
@@ -20,6 +21,7 @@ export function AlbumDetailView() {
   const library = useLibrary();
   const playTrack = usePlayTrack();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
+  const [inspecting, setInspecting] = useState(false);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
   const album = useMemo(() => findAlbum(groupAlbums(library.data ?? []), artist, title), [library.data, artist, title]);
@@ -61,10 +63,12 @@ export function AlbumDetailView() {
         ref={heroRef}
         album={album}
         onPlay={() => playTrack(album.tracks[0])}
+        onInspect={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />
+      <AlbumMetadataDrawer album={inspecting ? album : null} onClose={() => setInspecting(false)} />
     </PageContainer>
   );
 }
