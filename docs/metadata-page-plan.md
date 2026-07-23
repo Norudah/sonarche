@@ -126,9 +126,9 @@ Vocabulaire :
    `beet ls`. Piège documenté dans le code : les hints texte mutent les
    items en mémoire sans store, donc la provenance s'écrit sur la ligne
    fraîche (enrich) ou avant les hints (batch album).
-   **Suite ouverte** : `genres.recompute` écrase encore un genre édité à la
-   main — maintenant que `sonarche_edited_fields` existe, le recompute
-   pourra épargner ces items.
+   **Fait aussi** : `genres.recompute` épargne désormais les genres édités
+   à la main (`provenance.was_hand_edited(item, "genres")`) — le seul
+   endroit où le sidecar relit la trace, pour la respecter.
 
 ## Reporté explicitement
 

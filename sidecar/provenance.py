@@ -4,8 +4,9 @@ Most of a track's history can be rebuilt after the fact: `mb_trackid` proves a
 MusicBrainz match ever landed, `sonarche_provisional` marks guessed tags. Two
 things exist only at write time and are lost forever if not recorded then —
 *how* a match was found (fingerprint vs text search) and *what a human edited
-by hand*. This module records them; the sidecar never reads them back (they
-are for the front's provenance funnel and for `beet ls` forensics).
+by hand*. This module records them for the front's provenance funnel and for
+`beet ls` forensics; the sidecar itself reads them back only to *respect*
+them — `was_hand_edited` lets a bulk pass spare a human's choice.
 
 Callers own the `item.store()`: marking mutates the in-memory item only, so a
 path that already stores keeps its single write.
@@ -37,6 +38,13 @@ def mark_fingerprinted(item) -> None:
 
 def mark_match(item, source: str) -> None:
     item[MATCH_SOURCE] = source
+
+
+def was_hand_edited(item, field: str) -> bool:
+    """Whether a human ever touched `field` (a beets attribute name) on this
+    item, per the `EDITED_FIELDS` trail."""
+    recorded = str(item.get(EDITED_FIELDS) or "")
+    return field in recorded.split(_FIELDS_DELIMITER)
 
 
 def mark_edited(item, fields, now: str | None = None) -> None:

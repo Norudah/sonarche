@@ -48,6 +48,26 @@ class MarkEditedTest(unittest.TestCase):
         )
 
 
+class WasHandEditedTest(unittest.TestCase):
+    def test_true_for_a_recorded_field(self):
+        item = _FakeItem()
+        provenance.mark_edited(item, {"genres", "year"}, now="2026-07-23T10:00:00Z")
+        self.assertTrue(provenance.was_hand_edited(item, "genres"))
+
+    def test_a_field_name_never_matches_as_substring(self):
+        """"genre" must not match the recorded "genres" — the trail compares
+        whole attribute names, not text."""
+        item = _FakeItem()
+        provenance.mark_edited(item, {"genres"}, now="2026-07-23T10:00:00Z")
+        self.assertFalse(provenance.was_hand_edited(item, "genre"))
+
+    def test_false_for_an_untouched_field_or_no_trail(self):
+        item = _FakeItem()
+        provenance.mark_edited(item, {"year"}, now="2026-07-23T10:00:00Z")
+        self.assertFalse(provenance.was_hand_edited(item, "genres"))
+        self.assertFalse(provenance.was_hand_edited(_FakeItem(), "genres"))
+
+
 class MarkMatchTest(unittest.TestCase):
     def test_records_the_source(self):
         item = _FakeItem()
