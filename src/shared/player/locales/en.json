@@ -15,5 +15,9 @@
   "volume": "Volume",
   "mute": "Mute",
   "unmute": "Unmute",
-  "nothingPlaying": "Nothing playing"
+  "nothingPlaying": "Nothing playing",
+  "goToAlbum": "View album",
+  "goToArtist": "View artist",
+  "nowPlaying": "Now playing",
+  "upNext": "Up next"
 }

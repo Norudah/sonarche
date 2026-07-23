@@ -15,5 +15,9 @@
   "volume": "Volume",
   "mute": "Couper le son",
   "unmute": "Rétablir le son",
-  "nothingPlaying": "Aucune lecture"
+  "nothingPlaying": "Aucune lecture",
+  "goToAlbum": "Voir l'album",
+  "goToArtist": "Voir l'artiste",
+  "nowPlaying": "En lecture",
+  "upNext": "À suivre"
 }
