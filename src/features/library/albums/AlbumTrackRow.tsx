@@ -6,7 +6,6 @@ import { tagCounts } from "@/features/library/metadata/fields";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
@@ -44,21 +43,22 @@ interface AlbumTrackRowProps {
   /** Position in the album, used when beets never tagged a track number. */
   position: number;
   style?: CSSProperties;
+  /** Launch playback at this row, with the album as the queue. */
+  onPlay: () => void;
   onInspect: () => void;
   onDelete: () => void;
 }
 
-export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: AlbumTrackRowProps) {
+export function AlbumTrackRow({ track, position, style, onPlay, onInspect, onDelete }: AlbumTrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
-  const playTrack = usePlayTrack();
   const isCurrent = current?.id === track.id;
 
   return (
     <tr
       style={style}
-      onDoubleClick={rowPlayHandler(() => playTrack(track))}
+      onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row row-cascade select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
@@ -72,7 +72,7 @@ export function AlbumTrackRow({ track, position, style, onInspect, onDelete }: A
             index={track.track ?? position}
             isCurrent={isCurrent}
             isPlaying={isPlaying}
-            onPlay={() => playTrack(track)}
+            onPlay={onPlay}
             label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
           />
         </div>

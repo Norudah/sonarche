@@ -11,14 +11,14 @@ import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function AlbumsView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
   const [params, setParams] = useSearchParams();
@@ -95,7 +95,7 @@ export function AlbumsView() {
         <AlbumGrid
           albums={visible}
           animationKey={`${params.toString()}:${query}:${sort}`}
-          onPlay={(album) => playTrack(album.tracks[0])}
+          onPlay={(album) => playQueue(album.tracks, 0)}
         />
       )}
     </PageContainer>

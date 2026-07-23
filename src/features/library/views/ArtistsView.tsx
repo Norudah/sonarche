@@ -10,14 +10,14 @@ import { filterArtists, groupArtists, sortArtists, type ArtistSort } from "@/fea
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function ArtistsView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ArtistSort>("name");
 
@@ -80,7 +80,12 @@ export function ArtistsView() {
           // The first track of the earliest album: an artist's "play" has to
           // start *somewhere*, and the discography's opening is the only choice
           // that is not arbitrary. Shuffle belongs to a queue we do not have yet.
-          onPlay={(artist) => playTrack(artist.albums[0].tracks[0])}
+          onPlay={(artist) =>
+            playQueue(
+              artist.albums.flatMap((album) => album.tracks),
+              0,
+            )
+          }
         />
       )}
     </PageContainer>

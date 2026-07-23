@@ -12,14 +12,14 @@ import { ArtistAppearances } from "@/features/library/artists/ArtistAppearances"
 import { ArtistHero } from "@/features/library/artists/ArtistHero";
 import { ArtistStickyHeader } from "@/features/library/artists/ArtistStickyHeader";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function ArtistDetailView() {
   const { t } = useTranslation("library");
   const { name = "" } = useParams();
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
   const artist = useMemo(() => findArtist(groupArtists(groupAlbums(library.data ?? [])), name), [library.data, name]);
@@ -53,11 +53,17 @@ export function ArtistDetailView() {
   // not walk straight into the dead route again.
   if (!artist) return <Navigate to={paths.libraryArtists} replace />;
 
-  const playFirst = () => playTrack(artist.albums[0].tracks[0]);
+  // The discography as one queue: `albums` is already chronological, so this
+  // plays the artist by era, album by album.
+  const playAll = () =>
+    playQueue(
+      artist.albums.flatMap((album) => album.tracks),
+      0,
+    );
 
   return (
-    <PageContainer sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playFirst} />}>
-      <ArtistHero ref={heroRef} artist={artist} onPlay={playFirst} />
+    <PageContainer sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playAll} />}>
+      <ArtistHero ref={heroRef} artist={artist} onPlay={playAll} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>
@@ -65,7 +71,7 @@ export function ArtistDetailView() {
           albums={artist.albums}
           animationKey={artist.name}
           fromArtist
-          onPlay={(album) => playTrack(album.tracks[0])}
+          onPlay={(album) => playQueue(album.tracks, 0)}
         />
       </section>
 

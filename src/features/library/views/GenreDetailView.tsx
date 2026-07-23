@@ -13,7 +13,7 @@ import { GenreHero } from "@/features/library/genres/GenreHero";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /** Inspects a family, or a genre inside it — the `genre` query param is what
@@ -24,7 +24,7 @@ export function GenreDetailView() {
   const { family: key = "" } = useParams();
   const genreName = useSearchParams()[0].get("genre") ?? undefined;
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const labelOf = useFamilyLabel();
 
   const { family, genre } = useMemo(() => {
@@ -104,7 +104,7 @@ export function GenreDetailView() {
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playTrack(album.tracks[0])} />
+            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playQueue(album.tracks, 0)} />
           </section>
 
           <section className="flex flex-col gap-3">
@@ -112,7 +112,12 @@ export function GenreDetailView() {
             <ArtistGrid
               artists={artists}
               animationKey={family.key}
-              onPlay={(artist) => playTrack(artist.albums[0].tracks[0])}
+              onPlay={(artist) =>
+                playQueue(
+                  artist.albums.flatMap((album) => album.tracks),
+                  0,
+                )
+              }
             />
           </section>
         </>

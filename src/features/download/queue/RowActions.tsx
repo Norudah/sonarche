@@ -60,14 +60,18 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
             className={ACTION}
             aria-label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
             onClick={() =>
-              play({
-                id: track.id,
-                src: track.audioUrl,
-                title: track.title,
-                subtitle: track.artist,
-                artUrl: track.artUrl,
-                duration: track.length,
-              })
+              // A queue of one, on purpose: a download row is a lone item, not
+              // a browsing context to keep playing through.
+              play([
+                {
+                  id: track.id,
+                  src: track.audioUrl,
+                  title: track.title,
+                  subtitle: track.artist,
+                  artUrl: track.artUrl,
+                  duration: track.length,
+                },
+              ])
             }
           >
             {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}

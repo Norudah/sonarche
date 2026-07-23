@@ -7,6 +7,7 @@ import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTopOnFilterChange } from "@/features/library/tracks/useTopOnFilterChange";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 // No alignment in the base: Tailwind resolves conflicts by stylesheet order,
 // not by class-string order, so a `text-left` baked in here silently beats a
@@ -28,6 +29,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const playQueue = usePlayQueue();
   const rowWindow = useRowWindow(tracks);
   useTopOnFilterChange(animationKey);
 
@@ -74,6 +76,9 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
                 // Capped: a 300-track library must not take ten seconds to
                 // unfold, and only the rows near the top are on screen anyway.
                 style={{ "--row-stagger": `${Math.min(index, 10) * 0.025}s` } as CSSProperties}
+                // The visible list is the row's playback context: what plays
+                // next is what the user is looking at, filters included.
+                onPlay={() => playQueue(tracks, index)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
               />

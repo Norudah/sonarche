@@ -6,6 +6,7 @@ import { AlbumTrackRow } from "@/features/library/albums/AlbumTrackRow";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 // No alignment in the base: `${COLUMN} text-center` looks like it wins, but
 // Tailwind resolves conflicts by stylesheet order, not by class-string order,
@@ -23,6 +24,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const playQueue = usePlayQueue();
 
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
   const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
@@ -50,6 +52,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 track={track}
                 position={position + 1}
                 style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
+                onPlay={() => playQueue(album.tracks, position)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
               />

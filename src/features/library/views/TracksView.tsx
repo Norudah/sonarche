@@ -11,14 +11,14 @@ import { TracksHeader } from "@/features/library/tracks/TracksHeader";
 import { TrackTable } from "@/features/library/tracks/TrackTable";
 import { applyTrackTriage, GENRE_MISSING, GENRE_OFF_TREE, parseTrackTriage } from "@/features/library/tracks/triage";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const [query, setQuery] = useState("");
   const [params, setParams] = useSearchParams();
 
@@ -49,10 +49,7 @@ export function TracksView() {
     chips.push({ key: "genre", label, onRemove: () => clearParam("genre") });
   }
 
-  const playAll = () => {
-    const first = visible[0];
-    if (first) playTrack(first);
-  };
+  const playAll = () => playQueue(visible, 0);
 
   return (
     <PageContainer>

@@ -12,14 +12,14 @@ import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { DeleteAlbumDialog, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function AlbumDetailView() {
   const { t } = useTranslation("library");
   const { artist = "", title = "" } = useParams();
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const playQueue = usePlayQueue();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
@@ -57,12 +57,12 @@ export function AlbumDetailView() {
 
   return (
     <PageContainer
-      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playTrack(album.tracks[0])} />}
+      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playQueue(album.tracks, 0)} />}
     >
       <AlbumHero
         ref={heroRef}
         album={album}
-        onPlay={() => playTrack(album.tracks[0])}
+        onPlay={() => playQueue(album.tracks, 0)}
         onInspect={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
       />

@@ -6,7 +6,6 @@ import type { LibraryTrack } from "@/features/library/api";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
@@ -20,21 +19,23 @@ interface TrackRowProps {
    * every one of them instead of playing once for the list. */
   cascade?: boolean;
   style?: CSSProperties;
+  /** Launch playback at this row, in the list's own context. The table owns
+   * the list, so the table decides what the queue is. */
+  onPlay: () => void;
   onInspect: () => void;
   onDelete: () => void;
 }
 
-export function TrackRow({ track, index, cascade = true, style, onInspect, onDelete }: TrackRowProps) {
+export function TrackRow({ track, index, cascade = true, style, onPlay, onInspect, onDelete }: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
-  const playTrack = usePlayTrack();
   const isCurrent = current?.id === track.id;
 
   return (
     <tr
       style={style}
-      onDoubleClick={rowPlayHandler(() => playTrack(track))}
+      onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (cascade ? "row-cascade " : "") +
@@ -49,7 +50,7 @@ export function TrackRow({ track, index, cascade = true, style, onInspect, onDel
             index={index}
             isCurrent={isCurrent}
             isPlaying={isPlaying}
-            onPlay={() => playTrack(track)}
+            onPlay={onPlay}
             label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
           />
         </div>
