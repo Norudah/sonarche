@@ -18,7 +18,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function AlbumsView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
   const [params, setParams] = useSearchParams();
@@ -95,7 +95,7 @@ export function AlbumsView() {
         <AlbumGrid
           albums={visible}
           animationKey={`${params.toString()}:${query}:${sort}`}
-          onPlay={(album) => playQueue(album.tracks, 0)}
+          onPlay={(album) => playOrdered(album.tracks)}
         />
       )}
     </PageContainer>

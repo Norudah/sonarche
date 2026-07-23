@@ -17,7 +17,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function ArtistsView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ArtistSort>("name");
 
@@ -80,12 +80,7 @@ export function ArtistsView() {
           // The first track of the earliest album: an artist's "play" has to
           // start *somewhere*, and the discography's opening is the only choice
           // that is not arbitrary. Shuffle belongs to a queue we do not have yet.
-          onPlay={(artist) =>
-            playQueue(
-              artist.albums.flatMap((album) => album.tracks),
-              0,
-            )
-          }
+          onPlay={(artist) => playOrdered(artist.albums.flatMap((album) => album.tracks))}
         />
       )}
     </PageContainer>

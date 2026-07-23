@@ -3,7 +3,7 @@ import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
-import { HeroPlayButton } from "@/features/library/HeroPlayButton";
+import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 
 const SECONDARY = HERO_PILL_SECONDARY;
 const ICON_PILL = HERO_PILL_ICON;
@@ -43,16 +43,17 @@ function OverflowMenu({ onDelete }: { onDelete: () => void }) {
 
 interface AlbumActionsProps {
   onPlay: () => void;
+  onShuffle: () => void;
   onInspect: () => void;
   onDelete: () => void;
 }
 
-export function AlbumActions({ onPlay, onInspect, onDelete }: AlbumActionsProps) {
+export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumActionsProps) {
   const { t } = useTranslation("library");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <HeroPlayButton onPlay={onPlay} />
+      <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
       {/* Same FileText icon as the per-track inspect control in the tables, one
        * scope up: this opens the album's own metadata drawer. */}

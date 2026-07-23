@@ -19,7 +19,7 @@ export function AlbumDetailView() {
   const { t } = useTranslation("library");
   const { artist = "", title = "" } = useParams();
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
@@ -57,12 +57,13 @@ export function AlbumDetailView() {
 
   return (
     <PageContainer
-      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playQueue(album.tracks, 0)} />}
+      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playOrdered(album.tracks)} />}
     >
       <AlbumHero
         ref={heroRef}
         album={album}
-        onPlay={() => playQueue(album.tracks, 0)}
+        onPlay={() => playOrdered(album.tracks)}
+        onShuffle={() => playShuffled(album.tracks)}
         onInspect={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
       />

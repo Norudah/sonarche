@@ -19,7 +19,7 @@ export function ArtistDetailView() {
   const { t } = useTranslation("library");
   const { name = "" } = useParams();
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
   const artist = useMemo(() => findArtist(groupArtists(groupAlbums(library.data ?? [])), name), [library.data, name]);
@@ -55,15 +55,13 @@ export function ArtistDetailView() {
 
   // The discography as one queue: `albums` is already chronological, so this
   // plays the artist by era, album by album.
-  const playAll = () =>
-    playQueue(
-      artist.albums.flatMap((album) => album.tracks),
-      0,
-    );
+  const discography = () => artist.albums.flatMap((album) => album.tracks);
+  const playAll = () => playOrdered(discography());
+  const shuffleAll = () => playShuffled(discography());
 
   return (
     <PageContainer sticky={<ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playAll} />}>
-      <ArtistHero ref={heroRef} artist={artist} onPlay={playAll} />
+      <ArtistHero ref={heroRef} artist={artist} onPlay={playAll} onShuffle={shuffleAll} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>
@@ -71,7 +69,7 @@ export function ArtistDetailView() {
           albums={artist.albums}
           animationKey={artist.name}
           fromArtist
-          onPlay={(album) => playQueue(album.tracks, 0)}
+          onPlay={(album) => playOrdered(album.tracks)}
         />
       </section>
 

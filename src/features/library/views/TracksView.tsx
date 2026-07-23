@@ -18,7 +18,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [params, setParams] = useSearchParams();
 
@@ -49,8 +49,6 @@ export function TracksView() {
     chips.push({ key: "genre", label, onRemove: () => clearParam("genre") });
   }
 
-  const playAll = () => playQueue(visible, 0);
-
   return (
     <PageContainer>
       <TracksHeader
@@ -58,7 +56,8 @@ export function TracksView() {
         playtime={playtime}
         query={query}
         onQueryChange={setQuery}
-        onPlayAll={playAll}
+        onPlayAll={() => playOrdered(visible)}
+        onShuffleAll={() => playShuffled(visible)}
       />
 
       <TriageChips chips={chips} countLabel={t("trackCount", { count: triaged.length })} />

@@ -81,6 +81,7 @@
   "totalPlaytime": "{{hours}} h {{minutes}}",
   "totalPlaytimeMinutes": "{{minutes}} min",
   "playAll": "Tout lire",
+  "playShuffled": "Aléatoire",
   "columns": {
     "number": "N°",
     "title": "Titre",

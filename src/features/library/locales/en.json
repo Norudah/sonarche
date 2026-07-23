@@ -81,6 +81,7 @@
   "totalPlaytime": "{{hours}} hr {{minutes}}",
   "totalPlaytimeMinutes": "{{minutes}} min",
   "playAll": "Play all",
+  "playShuffled": "Shuffle",
   "columns": {
     "number": "No.",
     "title": "Title",

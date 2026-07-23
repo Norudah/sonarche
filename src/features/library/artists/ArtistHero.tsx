@@ -7,7 +7,7 @@ import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
 import { GenreChips } from "@/features/library/GenreChips";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
-import { HeroPlayButton } from "@/features/library/HeroPlayButton";
+import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
 
 function ArtistBreadcrumb({ name }: { name: string }) {
@@ -29,6 +29,7 @@ function ArtistBreadcrumb({ name }: { name: string }) {
 interface ArtistHeroProps {
   artist: Artist;
   onPlay: () => void;
+  onShuffle: () => void;
   ref?: Ref<HTMLElement>;
 }
 
@@ -42,7 +43,7 @@ interface ArtistHeroProps {
  * play counter exists; a hero that states a number nothing measures is worse
  * than a hero that states less.
  */
-export function ArtistHero({ artist, onPlay, ref }: ArtistHeroProps) {
+export function ArtistHero({ artist, onPlay, onShuffle, ref }: ArtistHeroProps) {
   const { t } = useTranslation("library");
 
   const span =
@@ -96,7 +97,7 @@ export function ArtistHero({ artist, onPlay, ref }: ArtistHeroProps) {
              * would wipe an unbounded number of albums behind one click, and
              * nothing here makes that scope visible before it happens. */}
             <div className="mt-5">
-              <HeroPlayButton onPlay={onPlay} />
+              <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
             </div>
           </div>
         </div>

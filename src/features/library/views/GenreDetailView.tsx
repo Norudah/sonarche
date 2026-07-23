@@ -24,7 +24,7 @@ export function GenreDetailView() {
   const { family: key = "" } = useParams();
   const genreName = useSearchParams()[0].get("genre") ?? undefined;
   const library = useLibrary();
-  const playQueue = usePlayQueue();
+  const { playOrdered } = usePlayQueue();
   const labelOf = useFamilyLabel();
 
   const { family, genre } = useMemo(() => {
@@ -104,7 +104,7 @@ export function GenreDetailView() {
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playQueue(album.tracks, 0)} />
+            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playOrdered(album.tracks)} />
           </section>
 
           <section className="flex flex-col gap-3">
@@ -112,12 +112,7 @@ export function GenreDetailView() {
             <ArtistGrid
               artists={artists}
               animationKey={family.key}
-              onPlay={(artist) =>
-                playQueue(
-                  artist.albums.flatMap((album) => album.tracks),
-                  0,
-                )
-              }
+              onPlay={(artist) => playOrdered(artist.albums.flatMap((album) => album.tracks))}
             />
           </section>
         </>

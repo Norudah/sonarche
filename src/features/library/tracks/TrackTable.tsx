@@ -29,7 +29,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
-  const playQueue = usePlayQueue();
+  const { playFrom } = usePlayQueue();
   const rowWindow = useRowWindow(tracks);
   useTopOnFilterChange(animationKey);
 
@@ -78,7 +78,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
                 style={{ "--row-stagger": `${Math.min(index, 10) * 0.025}s` } as CSSProperties}
                 // The visible list is the row's playback context: what plays
                 // next is what the user is looking at, filters included.
-                onPlay={() => playQueue(tracks, index)}
+                onPlay={() => playFrom(tracks, index)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
               />
