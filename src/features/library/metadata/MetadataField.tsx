@@ -47,7 +47,15 @@ export function MetadataField({
 
   return (
     <div className={wrap}>
-      <label htmlFor={id} className="text-[0.75rem] font-medium text-muted">
+      {/* One line, always: a label long enough to wrap (a hinted field in a
+          two-column row) used to push its own input down and break the
+          alignment with the field beside it. Truncating keeps the two inputs
+          on the same baseline whatever the language does to the wording. */}
+      <label
+        htmlFor={id}
+        title={hint ? `${label} · ${hint}` : label}
+        className="truncate text-[0.75rem] font-medium whitespace-nowrap text-muted"
+      >
         {label}
         {hint && <span className="ml-1.5 font-normal opacity-70">· {hint}</span>}
       </label>
