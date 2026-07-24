@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
 import { type EnrichStage, useRetryJob } from "@/features/download/hooks";
+import { jobDestination } from "@/features/download/queue/library";
 import { JobLibraryCell, TrackLibraryCell } from "@/features/download/queue/LibraryCell";
 import { JobMatchCell, TrackMatchCell } from "@/features/download/queue/MatchCell";
 import { JobMediaCell, TrackMediaCell } from "@/features/download/queue/MediaCell";
 import { JobPipelineCell, TrackPipelineCell } from "@/features/download/queue/PipelineCell";
+import { canRetry } from "@/features/download/queue/pipeline";
 import { AlbumRowActions, RowActions } from "@/features/download/queue/RowActions";
 import { JobTagsCell, TrackTagsCell } from "@/features/download/queue/TagsCell";
 import { useNewJobIds } from "@/features/download/queue/useNewJobIds";
@@ -148,6 +150,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                     <JobMediaCell
                       job={job}
                       coverUrl={coverFor(job)}
+                      href={jobDestination(job, libraryTrackFor)}
                       isExpanded={isExpanded}
                       onToggle={() => toggleExpanded(job.id)}
                     />
@@ -179,7 +182,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                             trackIds: albumTrackIds(job),
                           })
                         }
-                        onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
+                        onRetry={canRetry(job) ? () => retry.mutate(job.id) : undefined}
                         isRetrying={retry.isPending}
                       />
                     ) : (
@@ -188,7 +191,7 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
                         sourceUrl={job.url}
                         onInspect={setInspected}
                         onDelete={setDeleting}
-                        onRetry={job.status === "failed" ? () => retry.mutate(job.id) : undefined}
+                        onRetry={canRetry(job) ? () => retry.mutate(job.id) : undefined}
                         isRetrying={retry.isPending}
                       />
                     )}

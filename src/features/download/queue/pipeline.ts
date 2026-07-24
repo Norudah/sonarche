@@ -4,8 +4,13 @@ import type { AlbumTrackJob, DownloadJob, JobStep, MetadataReport } from "@/feat
  * MusicBrainz recording answered for the file. It may still have been tagged —
  * the sidecar guesses from the video and flags it — but a guess is not an
  * identity. Distinct from `failed` (the step errored) and from `done` — showing
- * a check there claims a match the Match column reports as absent. */
-export type StepState = "pending" | "active" | "done" | "empty" | "failed";
+ * a check there claims a match the Match column reports as absent.
+ *
+ * `partial` is an album step that ran to the end while some of its tracks fell
+ * out along the way (a video pulled from YouTube, a copyright block). The batch
+ * succeeded and the library gained the rest, so painting it `failed` — which is
+ * what the row used to do — claimed a run that never happened. */
+export type StepState = "pending" | "active" | "done" | "empty" | "failed" | "partial";
 
 export interface PipelineStep {
   step: JobStep;
@@ -63,6 +68,23 @@ function detailFor(
   }
 }
 
+/** Whether a finished job still has something to re-run: it failed outright, or
+ * it landed while some of its tracks did not. Mirrors the backend's own gate —
+ * a retry only re-queues the failed tracks, never the whole batch. */
+export function canRetry(job: DownloadJob): boolean {
+  return job.status === "failed" || (job.status === "done" && job.tracks.some((track) => track.status === "failed"));
+}
+
+/** Tracks the batch carried to the end, over its total — null when nothing was
+ * lost, so the caller can treat "no losses" as the plain case. A track that
+ * failed never reached *any* stage, which is why one ratio answers for all
+ * three. */
+export function survivingTracks(job: DownloadJob): { kept: number; total: number } | null {
+  if (job.kind !== "album" || job.tracks.length === 0) return null;
+  const kept = job.tracks.filter((track) => track.status !== "failed").length;
+  return kept === job.tracks.length ? null : { kept, total: job.tracks.length };
+}
+
 /** The three pipeline stages of a job, each with its state and live progress. */
 export function jobPipeline(
   job: DownloadJob,
@@ -71,8 +93,12 @@ export function jobPipeline(
 ): PipelineStep[] {
   const current = currentIndex(job);
   const hasFailed = job.status === "failed";
+  // A finished album that lost tracks reports every stage as partial, with the
+  // tally kept on screen: the stages did run, on fewer tracks than were queued.
+  const losses = job.status === "done" ? survivingTracks(job) : null;
   return PIPELINE_STEPS.map((step, index) => {
     if (index < current) {
+      if (losses) return { step, state: "partial" as const, detail: `${losses.kept}/${losses.total}` };
       // An album's own report stays null (its tracks carry the reports), so the
       // aggregate row is left alone — only a single can answer for itself here.
       const state = step === "enrich" && job.kind !== "album" ? enrichOutcome(job.report, false) : ("done" as const);

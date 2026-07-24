@@ -54,6 +54,8 @@ function Rail({ children, connectors }: { children: ReactNode[]; connectors: boo
 const ENTRY: Record<StepState, { animate: TargetAndTransition; transition: Transition }> = {
   done: { animate: { scale: [0.4, 1], opacity: 1 }, transition: springs.bouncy },
   empty: { animate: { scale: [0.6, 1], opacity: 1 }, transition: springs.snappy },
+  // The stage did complete, so it pops like `done` — just not as brightly.
+  partial: { animate: { scale: [0.6, 1], opacity: 1 }, transition: springs.snappy },
   failed: {
     animate: { x: [0, -3, 3, -2, 0], opacity: 1 },
     transition: { duration: durations.medium },
@@ -120,6 +122,18 @@ function StepGlyph({ state, label }: { state: StepState; label: string }) {
           <Minus className="size-3" strokeWidth={3} />
         </span>
       );
+    // The check says the stage ran; the amber says not every track made it.
+    // Red belongs to `failed`, which here would mean the batch produced nothing.
+    case "partial":
+      return (
+        <span
+          role="img"
+          aria-label={label}
+          className="flex size-5 items-center justify-center rounded-full bg-warning text-warning-foreground"
+        >
+          <Check className="size-3" strokeWidth={3} />
+        </span>
+      );
     case "failed":
       return (
         <span
@@ -160,6 +174,10 @@ function TrackStepGlyph({ state, label }: { state: StepState; label: string }) {
       );
     case "empty":
       return <Minus className="size-4 text-warning" strokeWidth={3} aria-label={label} />;
+    // A track row is one track: it either made it or did not, so this state
+    // never reaches here. Rendered as the check it is, for exhaustiveness.
+    case "partial":
+      return <Check className="size-4 text-warning" strokeWidth={3} aria-label={label} />;
     case "failed":
       return (
         <span
@@ -208,6 +226,7 @@ const STATE_TEXT: Record<StepState, string> = {
   done: "text-foreground",
   active: "text-accent font-medium",
   empty: "text-warning font-medium",
+  partial: "text-warning font-medium",
   failed: "text-danger font-medium",
   pending: "text-muted/60",
 };
@@ -226,7 +245,7 @@ export function JobPipelineCell({ job, downloadPercent, enrichedCount }: JobPipe
   // The segment into stage `i` fills once stage `i-1` has actually *finished*
   // (done or empty), not merely started — that is what makes the line extend on
   // completion. A failed stage halts the rail, so nothing draws past it.
-  const isFinished = (state: StepState) => state === "done" || state === "empty";
+  const isFinished = (state: StepState) => state === "done" || state === "empty" || state === "partial";
   return (
     <Rail connectors={steps.map((_, i) => i > 0 && isFinished(steps[i - 1].state))}>
       {steps.map((step) => {

@@ -832,38 +832,55 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
+    let total = job.tracks.len();
     let failed = job
         .tracks
         .iter()
         .filter(|t| t.status == TrackStatus::Failed)
         .count();
+
+    // `Failed` means the batch produced nothing — a dead playlist, a network
+    // that never answered. One dead video out of twenty-four is not that: the
+    // run reached the end and the library gained twenty-three tracks, so the
+    // job is `Done` and `error` carries the tally. Calling it failed made the
+    // row paint its whole pipeline red and claim the import never happened.
     if failed == 0 {
         job_log(id, "job done");
-        update_job(app, inner, id, |j| j.status = JobStatus::Done).await;
+        update_job(app, inner, id, |j| {
+            j.status = JobStatus::Done;
+            j.error = None;
+        })
+        .await;
+        return;
+    }
+    if failed == total {
+        job_log(id, &format!("job FAILED: all {total} track(s) failed"));
+        // The earliest failing phase: a failed track without a staged file
+        // never downloaded; with a file but no item it failed the import.
+        let step = if job
+            .tracks
+            .iter()
+            .any(|t| t.status == TrackStatus::Failed && t.staged_path.is_none())
+        {
+            JobStep::Download
+        } else {
+            JobStep::Import
+        };
+        update_job(app, inner, id, |j| {
+            j.status = JobStatus::Failed;
+            j.failed_step = Some(step);
+            j.error = Some(format!("{failed} of {total} tracks failed"));
+        })
+        .await;
         return;
     }
     job_log(
         id,
-        &format!(
-            "job done with {failed}/{} failed track(s)",
-            job.tracks.len()
-        ),
+        &format!("job done with {failed}/{total} failed track(s)"),
     );
-    // The earliest failing phase: a failed track without a staged file never
-    // downloaded; with a file but no item it failed the import.
-    let step = if job
-        .tracks
-        .iter()
-        .any(|t| t.status == TrackStatus::Failed && t.staged_path.is_none())
-    {
-        JobStep::Download
-    } else {
-        JobStep::Import
-    };
-    let total = job.tracks.len();
     update_job(app, inner, id, |j| {
-        j.status = JobStatus::Failed;
-        j.failed_step = Some(step);
+        j.status = JobStatus::Done;
+        j.failed_step = None;
         j.error = Some(format!("{failed} of {total} tracks failed"));
     })
     .await;
@@ -969,10 +986,15 @@ impl JobsState {
         let current = snapshot(&self.0, id)
             .await
             .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
-        if current.status != JobStatus::Failed {
-            return Err(AppError::InvalidInput(
-                "job is not in a failed state".into(),
-            ));
+        // A partly-successful album is `Done` (see the album worker's final
+        // status) yet still holds dead tracks worth another try, so "failed"
+        // alone is too narrow a gate.
+        let has_failed_tracks = current
+            .tracks
+            .iter()
+            .any(|t| t.status == TrackStatus::Failed);
+        if current.status != JobStatus::Failed && !has_failed_tracks {
+            return Err(AppError::InvalidInput("job has nothing to retry".into()));
         }
         let job = update_job(app, &self.0, id, |j| {
             j.status = JobStatus::Queued;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jobPipeline, trackPipeline } from "@/features/download/queue/pipeline";
+import { canRetry, jobPipeline, trackPipeline } from "@/features/download/queue/pipeline";
 import { albumTrack, job, report } from "@/features/download/testFixtures";
 
 /** The pipeline is read as three states left to right; assert on those. */
@@ -38,6 +38,32 @@ describe("jobPipeline", () => {
       tracks: [albumTrack({ status: "done" })],
     });
     expect(states(jobPipeline(album, null, null))).toEqual(["done", "done", "done"]);
+  });
+
+  it("reads a finished album that lost a track as partial, not failed", () => {
+    // Regression: a 24-track playlist with one video pulled from YouTube used
+    // to come back `failed`, so the row painted all three stages red and
+    // claimed the import never ran — while 23 tracks had in fact landed.
+    const album = job({
+      kind: "album",
+      status: "done",
+      report: null,
+      tracks: [albumTrack({ index: 1, status: "done" }), albumTrack({ index: 2, status: "failed" })],
+    });
+    expect(states(jobPipeline(album, null, null))).toEqual(["partial", "partial", "partial"]);
+    // The tally stays on screen — that is what makes "partial" readable.
+    expect(details(jobPipeline(album, null, null))).toEqual(["1/2", "1/2", "1/2"]);
+  });
+
+  it("offers a retry on a partial album and on an outright failure, never on a clean run", () => {
+    const partial = job({
+      kind: "album",
+      status: "done",
+      tracks: [albumTrack({ status: "done" }), albumTrack({ index: 2, status: "failed" })],
+    });
+    expect(canRetry(partial)).toBe(true);
+    expect(canRetry(job({ status: "failed" }))).toBe(true);
+    expect(canRetry(job({ kind: "album", status: "done", tracks: [albumTrack({ status: "done" })] }))).toBe(false);
   });
 
   it("fails the step the job died on and keeps the later ones pending", () => {

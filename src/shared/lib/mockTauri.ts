@@ -85,9 +85,12 @@ const jobs = [
         title: "Intro (Blizzard)",
         duration: 154,
         status: "done",
-        itemId: 2,
+        // 200 is the first Hotline Miami OST item below: a job row's link
+        // resolves through its item ids, so reusing an unrelated id here sent
+        // the row to someone else's record.
+        itemId: 200,
         downloadAttempts: 2,
-        report: trackReport(2, true),
+        report: trackReport(200, true),
       }),
       albumTrack({
         index: 2,
@@ -95,9 +98,9 @@ const jobs = [
         title: "Hollywood Heights",
         duration: 231,
         status: "imported",
-        itemId: 8,
+        itemId: 201,
         downloadAttempts: 1,
-        report: trackReport(8, false),
+        report: trackReport(201, false),
       }),
       albumTrack({ index: 3, videoId: "a3", title: "Java", duration: 197, status: "downloading", downloadAttempts: 2 }),
       albumTrack({
@@ -197,6 +200,32 @@ const jobs = [
         itemId: 11,
         duplicateOf: 2,
       }),
+    ],
+  }),
+  // A playlist that landed while one video was pulled from YouTube. The batch
+  // stays `done` — the library gained the rest — and the row reports the loss
+  // as amber rather than painting the whole pipeline red.
+  job({
+    kind: "album",
+    status: "done",
+    error: "1 of 4 tracks failed",
+    url: "https://youtube.com/playlist?list=OLAK5uy_partial",
+    title: "Cars (Original Soundtrack)",
+    artist: "Various Artists",
+    thumbnail: thumb("#e11", "#711"),
+    createdAt: now - 5800,
+    tracks: [
+      albumTrack({ index: 1, videoId: "d1", title: "Real Gone", duration: 213, status: "done", itemId: 202 }),
+      albumTrack({ index: 2, videoId: "d2", title: "Route 66", duration: 165, status: "done", itemId: 201 }),
+      albumTrack({
+        index: 3,
+        videoId: "d3",
+        title: "Life Is a Highway",
+        status: "failed",
+        error: "yt-dlp: video unavailable (copyright claim)",
+        downloadAttempts: 3,
+      }),
+      albumTrack({ index: 4, videoId: "d4", title: "Sh-Boom", duration: 158, status: "done", itemId: 200 }),
     ],
   }),
   job({
