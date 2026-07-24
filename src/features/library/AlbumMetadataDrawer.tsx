@@ -57,6 +57,15 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
       return { ...prev, rows };
     });
 
+  // The tracklist popover's fan-out: every row takes the value, and the common
+  // field follows so the two views of "the album's genre" cannot disagree.
+  const applyGenreToAll = (genre: string) =>
+    setDraft((prev) => {
+      const rows = { ...prev.rows };
+      for (const id of Object.keys(rows)) rows[Number(id)] = { ...rows[Number(id)], genre };
+      return { common: { ...prev.common, genre }, rows };
+    });
+
   const startEditing = () => {
     setDraft(live);
     update.reset();
@@ -95,13 +104,21 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
           baseline={baseline}
           values={shown.common as AlbumCommonValues}
           genreBucket={genreBucket}
+          soundtrack={album.tracks.some((track) => track.soundtrack)}
           isEditing={isEditing}
           onChange={setCommon}
         />
 
         <hr className="border-separator/60" />
 
-        <AlbumTrackFields tracks={album.tracks} rows={shown.rows} isEditing={isEditing} onChange={setRow} />
+        <AlbumTrackFields
+          tracks={album.tracks}
+          rows={shown.rows}
+          isEditing={isEditing}
+          genreShared={!baseline.genre.mixed}
+          onChange={setRow}
+          onApplyGenreAll={applyGenreToAll}
+        />
 
         <AlbumArtistPropagation propagations={propagations} tracks={album.tracks} onApply={applyPropagation} />
       </div>

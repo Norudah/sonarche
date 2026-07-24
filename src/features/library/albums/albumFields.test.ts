@@ -30,6 +30,8 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
+    category: null,
+    soundtrack: false,
     ...over,
   };
 }
@@ -65,7 +67,10 @@ describe("buildAlbumUpdates", () => {
   ];
 
   function draftFrom(
-    over: { common?: Partial<Record<string, string>>; rows?: Record<number, { title?: string; track?: string }> } = {},
+    over: {
+      common?: Partial<Record<string, string>>;
+      rows?: Record<number, { title?: string; track?: string; genre?: string }>;
+    } = {},
   ) {
     const base = commonBaseline(tracks);
     const draft = toAlbumDraft(tracks, base);
@@ -123,6 +128,26 @@ describe("buildAlbumUpdates", () => {
     const updates = buildAlbumUpdates(mixed, base, draft);
     expect(updates).toHaveLength(2);
     expect(updates.every((u) => u.fields.genre === "Industrial")).toBe(true);
+  });
+
+  it("fans the category out to every track on beets' grouping key", () => {
+    const { base, draft } = draftFrom({ common: { grouping: "Video Games" } });
+    const updates = buildAlbumUpdates(tracks, base, draft);
+    expect(updates).toHaveLength(3);
+    expect(updates.every((u) => u.fields.grouping === "Video Games")).toBe(true);
+  });
+
+  it("applies a row's genre edit to only its own track", () => {
+    const { base, draft } = draftFrom({ rows: { 2: { genre: "Orchestral" } } });
+    const updates = buildAlbumUpdates(tracks, base, draft);
+    expect(updates).toEqual([{ id: 2, fields: { genre: "Orchestral" } }]);
+  });
+
+  it("lets a row's genre win over the common fan-out for that track", () => {
+    const { base, draft } = draftFrom({ common: { genre: "Metal" }, rows: { 2: { genre: "Orchestral" } } });
+    const updates = buildAlbumUpdates(tracks, base, draft);
+    expect(updates.find((u) => u.id === 2)!.fields.genre).toBe("Orchestral");
+    expect(updates.find((u) => u.id === 1)!.fields.genre).toBe("Metal");
   });
 });
 

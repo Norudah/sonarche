@@ -16,11 +16,15 @@ export interface AlbumCommonValues {
   albumartist: string;
   year: string;
   genre: string;
+  /** The category axis (grouping tag) — album-level in practice (a record is a
+   * game OST or it is not), so it rides the common fan-out. Optional by
+   * nature: absent from every completeness count. */
+  grouping: string;
 }
 
 export type AlbumCommonField = keyof AlbumCommonValues;
 
-export const ALBUM_COMMON_FIELDS: readonly AlbumCommonField[] = ["album", "albumartist", "year", "genre"];
+export const ALBUM_COMMON_FIELDS: readonly AlbumCommonField[] = ["album", "albumartist", "year", "genre", "grouping"];
 
 /** One common field's baseline: the value the tracks agree on, and whether they
  * actually disagree. A mixed field carries an empty value — the panel shows a
@@ -44,6 +48,8 @@ function fieldOf(track: LibraryTrack, field: AlbumCommonField): string {
       return track.year != null ? String(track.year) : "";
     case "genre":
       return track.genre ?? "";
+    case "grouping":
+      return track.category ?? "";
   }
 }
 
@@ -69,11 +75,15 @@ export function commonGenreBucket(tracks: LibraryTrack[]): CommonCell {
 }
 
 /** The per-track editable cells shown in the tracklist. Track number rides here
- * (not a common field) because it is what actually orders the record. */
+ * (not a common field) because it is what actually orders the record. Genre is
+ * in *both* places on purpose: edited here when the record genuinely mixes
+ * genres, from the common field when it does not — the Spirit case showed an
+ * album's tracks legitimately disagreeing. */
 export interface TrackRowValues {
   track: string;
   title: string;
   artist: string;
+  genre: string;
 }
 
 export function trackRowValues(track: LibraryTrack): TrackRowValues {
@@ -81,6 +91,7 @@ export function trackRowValues(track: LibraryTrack): TrackRowValues {
     track: track.track != null ? String(track.track) : "",
     title: track.title,
     artist: track.artist,
+    genre: track.genre ?? "",
   };
 }
 
@@ -140,6 +151,9 @@ export function buildAlbumUpdates(
       if (row.track !== liveTrack) fields.track = row.track;
       if (row.title !== track.title) fields.title = row.title;
       if (row.artist !== track.artist) fields.artist = row.artist;
+      // A row's genre edit wins over the common fan-out for that track — the
+      // row is the more specific intent.
+      if (row.genre !== (track.genre ?? "")) fields.genre = row.genre;
     }
     if (Object.keys(fields).length > 0) updates.push({ id: track.id, fields });
   }

@@ -105,6 +105,19 @@ export function AlbumTrackRow({ track, position, style, onPlay, onInspect, onDel
         <span className="block truncate">{track.artist || t("unknownArtist")}</span>
       </td>
 
+      {/* Same chip grammar as the library-wide table: amber when missing —
+       * an album can legitimately mix genres, so the value is per-row data. */}
+      <td className={`${CELL} w-[16%]`}>
+        <span
+          className={
+            "inline-block max-w-full truncate rounded-md px-2 py-0.5 text-[0.6875rem] " +
+            (track.genre ? "bg-default/70 text-foreground" : "bg-warning-soft text-warning")
+          }
+        >
+          {track.genre ?? t("genres.none")}
+        </span>
+      </td>
+
       <td className={`${CELL} w-20`}>
         <TagScore track={track} />
       </td>

@@ -14,11 +14,13 @@ import { usePlayQueue } from "@/features/library/usePlayQueue";
 const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 /**
- * Deliberately not `TrackTable`: an album's tracklist drops the Album and Genre
- * columns (both are album-level and already in the header), keeps its own fixed
- * order, and carries a per-track tag score the library-wide table has no room
- * for. Bending one table to cover both shapes would have meant a variant prop
- * toggling four columns.
+ * Deliberately not `TrackTable`: an album's tracklist drops the Album column
+ * (album-level, already in the header), keeps its own fixed order, and carries
+ * a per-track tag score the library-wide table has no room for. Genre used to
+ * be dropped on the same "album-level" reasoning — until a record legitimately
+ * mixed genres (the Spirit soundtrack), which is exactly what the album view
+ * would then hide. Bending one table to cover both shapes would have meant a
+ * variant prop toggling four columns.
  */
 export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
@@ -38,6 +40,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
               <th className={`${COLUMN} w-14 text-center`}>#</th>
               <th className={`${COLUMN} text-left`}>{t("columns.title")}</th>
               <th className={`${COLUMN} w-[22%] text-left`}>{t("columns.artist")}</th>
+              <th className={`${COLUMN} w-[16%] text-left`}>{t("columns.genre")}</th>
               <th className={`${COLUMN} w-20 text-left`}>{t("columns.tags")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
               <th className={`${COLUMN} w-28`}>
