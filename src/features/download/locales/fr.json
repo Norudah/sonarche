@@ -20,6 +20,10 @@
     "choicePlaylist": "Album entier",
     "confirmHint": "→ confirme avec Récupérer"
   },
+  "history": {
+    "title": "Historique",
+    "lede": "Tous les téléchargements, du plus récent au plus ancien."
+  },
   "queue": {
     "heading": "Activité",
     "empty": "Aucun téléchargement pour l'instant. Colle un lien pour commencer.",
@@ -48,6 +52,7 @@
       "active": "en cours",
       "done": "terminé",
       "empty": "Non trouvé",
+      "partial": "partiel",
       "failed": "en échec"
     },
     "awaiting": "En attente",
@@ -58,6 +63,8 @@
     "inLibrary": "Présent",
     "partiallyInLibrary": "Partiel",
     "removedFromLibrary": "Retiré",
+    "openInLibrary": "Ouvrir dans la bibliothèque",
+    "openInLibrary": "Ouvrir dans la bibliothèque",
     "inspect": "Voir les métadonnées",
     "delete": "Supprimer le morceau",
     "moreActions": "Plus d'actions",
@@ -67,12 +74,18 @@
     "trackCount_other": "{{count}} pistes",
     "expand": "Afficher les morceaux",
     "collapse": "Masquer les morceaux",
+    "partialTracks": "{{failed}} titre(s) indisponible(s) sur {{total}}",
     "failedWith": "Échec — {{error}}",
     "retry": "Réessayer",
     "matched": "Correspondance trouvée",
     "matchNone": "Aucune",
     "duplicate": "Doublon ignoré",
     "noReport": "Pas de rapport",
+    "previousPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "pageOf": "{{page}} / {{pageCount}}",
+    "seeAll": "Tout l'historique",
+    "recentHeading": "Téléchargements récents",
     "clearHistory": "Vider l'historique",
     "clearHistoryTitle": "Vider l'historique des téléchargements ?",
     "clearHistoryBody": "Les téléchargements terminés ou en échec seront retirés de cette liste. Les morceaux déjà importés restent dans ta bibliothèque.",

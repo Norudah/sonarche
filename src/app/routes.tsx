@@ -3,6 +3,7 @@ import { createMemoryRouter, Navigate } from "react-router";
 import { paths } from "@/app/paths";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
+import { HistoryPage } from "@/features/download/HistoryPage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
@@ -41,6 +42,7 @@ export const router = createMemoryRouter(
       element: <AppLayout />,
       children: [
         { path: paths.download, element: <DownloadPage /> },
+        { path: paths.history, element: <HistoryPage /> },
         { path: paths.metadata, element: <MetadataPage /> },
         // Settings lives inside the shell like any other destination: same sidebar
         // (which switches to a category menu here), same player bar. Each category

@@ -17,6 +17,7 @@
  */
 export const paths = {
   download: "/",
+  history: "/history",
   metadata: "/metadata",
   library: "/library",
   libraryTracks: "/library/tracks",

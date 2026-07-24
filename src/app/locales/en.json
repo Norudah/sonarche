@@ -2,6 +2,7 @@
   "appName": "Sonarche",
   "nav": {
     "download": "Downloads",
+    "history": "History",
     "metadata": "Metadata",
     "sections": {
       "explorer": "Explore",

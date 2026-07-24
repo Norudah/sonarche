@@ -1,5 +1,17 @@
 import { cn } from "@heroui/react";
-import { AudioLines, ChevronLeft, Disc, Download, FileText, Layers, Mic2, Music, Settings, Tags } from "lucide-react";
+import {
+  AudioLines,
+  ChevronLeft,
+  Disc,
+  Download,
+  FileText,
+  History,
+  Layers,
+  Mic2,
+  Music,
+  Settings,
+  Tags,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -84,6 +96,7 @@ function MainNav() {
     <div className="flex flex-col">
       <NavSection label={t("nav.sections.explorer")}>
         <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
+        <NavItem to={paths.history} label={t("nav.history")} icon={History} />
         <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
       </NavSection>
 
