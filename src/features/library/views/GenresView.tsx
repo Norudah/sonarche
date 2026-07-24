@@ -9,7 +9,6 @@ import { groupAlbums } from "@/features/library/albums/albums";
 import { FamilyList } from "@/features/library/genres/FamilyList";
 import { countGenres, FAMILY_NONE, filterFamilies, groupFamilies } from "@/features/library/genres/genres";
 import { GenresHeader } from "@/features/library/genres/GenresHeader";
-import { UnclassifiedBanner } from "@/features/library/genres/UnclassifiedBanner";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { fade } from "@/shared/motion/tokens";
@@ -35,8 +34,10 @@ export function GenresView() {
     return groupFamilies(tracks, groupAlbums(tracks));
   }, [library.data]);
 
-  // `None` is a banner, not a card: giving the unclassified pile a card would
-  // dress a problem up as a shelf.
+  // The unclassified pile gets no card: that would dress a gap up as a shelf.
+  // It gets no banner under the grid either — an amber bar shouting across the
+  // page turned browsing into a chore, and the Metadata queue is where fixing
+  // belongs. It survives as one figure in the header's count line.
   const visibleFamilies = useMemo(
     () => filterFamilies(families, query).filter((family) => family.key !== FAMILY_NONE),
     [families, query],
@@ -91,8 +92,6 @@ export function GenresView() {
       )}
 
       {visibleFamilies.length > 0 && <FamilyList families={visibleFamilies} animationKey={query} labelOf={labelOf} />}
-
-      {unclassified > 0 && <UnclassifiedBanner count={unclassified} />}
     </PageContainer>
   );
 }

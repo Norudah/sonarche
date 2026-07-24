@@ -4,8 +4,8 @@ import type { Family } from "@/features/library/genres/genres";
 import { FamilyCard } from "@/features/library/genres/FamilyCard";
 
 interface FamilyListProps {
-  /** Real families plus `Other` — never `None`, which is a banner, not a card
-   * (see UnclassifiedBanner). */
+  /** Real families plus `Other` — never `None`, which is a gap in the tagging
+   * rather than a shelf, and is only ever reported as a count in the header. */
   families: Family[];
   /** Same contract as `AlbumGrid`: what this result set is a result *of*.
    * A change re-keys the list and replays the cascade. */
