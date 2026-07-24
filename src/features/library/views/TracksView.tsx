@@ -48,6 +48,10 @@ export function TracksView() {
           : triage.genre;
     chips.push({ key: "genre", label, onRemove: () => clearParam("genre") });
   }
+  if (triage.suspectMatch)
+    chips.push({ key: "suspect", label: t("triage.suspectMatch"), onRemove: () => clearParam("suspect") });
+  if (triage.duplicateRecording)
+    chips.push({ key: "duplicates", label: t("triage.duplicateRecording"), onRemove: () => clearParam("duplicates") });
 
   return (
     <PageContainer>

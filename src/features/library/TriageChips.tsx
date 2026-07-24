@@ -18,6 +18,11 @@ interface TriageChipsProps {
  * from the Metadata queue says what it is filtered on. The whole chip is the
  * remove button: the filter has no other state to toggle, and a separate ×
  * hit-zone at this size is a misclick trap.
+ *
+ * Amber, not the app accent: every one of these filters means "something to
+ * fix" — the same warning wash the Metadata queue's doors wear — where indigo
+ * is the colour of plain navigation. A refinement chip on a genre page stays
+ * accent-coloured for exactly that reason.
  */
 export function TriageChips({ chips, countLabel }: TriageChipsProps) {
   const { t } = useTranslation("library");
@@ -32,7 +37,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("triage.clearFilter", { filter: chip.label })}
-          className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[0.8125rem] text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           {chip.label}
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />

@@ -20,6 +20,7 @@ import { GenreHero } from "@/features/library/genres/GenreHero";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { TrackTable } from "@/features/library/tracks/TrackTable";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -86,13 +87,14 @@ export function GenreDetailView() {
 
   // The subject's own tracks, not whole albums: a shelf album qualifies on one
   // matching track, and "play Grunge" must not smuggle in its other genres.
-  // Album order follows the shelf, tracks keep their album order.
+  // Album order follows the shelf, tracks keep their album order. With no
+  // shelf at all (every track a minority on a record filed elsewhere), the
+  // library itself is the source — the hero's play button and the fallback
+  // track list below must not go silent on a family that counts tracks.
+  const matches = (track: (typeof albums)[number]["tracks"][number]) =>
+    genreName != null ? track.genre === genreName : familyKeyOf(track) === family.key;
   const subjectTracks = () =>
-    albums.flatMap((album) =>
-      album.tracks.filter((track) =>
-        genreName != null ? track.genre === genreName : familyKeyOf(track) === family.key,
-      ),
-    );
+    albums.length > 0 ? albums.flatMap((album) => album.tracks.filter(matches)) : (library.data ?? []).filter(matches);
 
   return (
     <PageContainer>
@@ -111,14 +113,19 @@ export function GenreDetailView() {
       <SubGenreChips family={family.key} subs={family.subs} selected={genre?.name ?? null} />
 
       {/* A family can hold tracks and no album at all — every one of them is a
-       * minority on a record filed elsewhere. Saying so beats an empty shelf. */}
+       * minority on a record filed elsewhere. Saying so is honest, but the page
+       * doctrine says every count is a door: the tracks themselves follow, so
+       * the subject is still browsable (and playable) with no shelf to show. */}
       {/* Keyed on the family, not on the genre. Re-keying on the genre threw
        * away every card and rebuilt the shelf on what is only a filter change,
        * which is what made the page jump. Album and artist keys are stable, so
        * flipping a chip now removes and adds the cards that actually differ and
        * leaves the rest where they are. */}
       {albums.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted">{t("genres.noAlbums")}</p>
+        <section className="flex flex-col gap-4">
+          <p className="text-sm text-muted">{t("genres.noAlbums")}</p>
+          <TrackTable tracks={subjectTracks()} animationKey={`${family.key}:${genreName ?? ""}`} />
+        </section>
       ) : (
         <>
           <section className="flex flex-col gap-3">
