@@ -1,4 +1,3 @@
-import { Music } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +7,7 @@ import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
+import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
 
@@ -58,21 +58,9 @@ export function TrackRow({ track, index, cascade = true, style, onPlay, onInspec
 
       <td className={CELL}>
         <div className="flex items-center gap-3">
-          {track.artUrl ? (
-            <img
-              src={track.artUrl}
-              alt=""
-              // A library-wide tracklist holds one of these per row; without
-              // this the browser fetches every cover in the library at once.
-              loading="lazy"
-              decoding="async"
-              className="size-10 shrink-0 rounded-md object-cover"
-            />
-          ) : (
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-default/60">
-              <Music className="size-4 text-muted" />
-            </div>
-          )}
+          {/* Lazy: a library-wide tracklist holds one of these per row, and
+              eager loading fetched every cover in the library at once. */}
+          <TrackThumb artUrl={track.artUrl} />
           <span
             className={
               "truncate text-sm font-medium transition-colors " + (isCurrent ? "text-accent" : "text-foreground")

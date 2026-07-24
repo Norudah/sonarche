@@ -9,6 +9,7 @@ import { Equalizer } from "@/shared/player/Equalizer";
 import { usePlayer, usePlayerQueue } from "@/shared/player/PlayerContext";
 import { playOrder } from "@/shared/player/queue";
 import type { PlayableTrack } from "@/shared/player/types";
+import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 /** Uniform slot height in px — a 48px row plus its 4px breathing room. The
  * virtualizer trusts it, so a wrong value makes the scrollbar lie. */
@@ -39,6 +40,9 @@ function QueueRow({ track, isCurrent, isPlaying, onJump }: QueueRowProps) {
         (isCurrent ? "bg-accent/10" : "hover:bg-default/40")
       }
     >
+      {/* The cover is what makes a long queue scannable: titles alone all read
+          the same at this size. */}
+      <TrackThumb artUrl={track.artUrl} size="size-9" radius="rounded-md" />
       <div className="min-w-0 flex-1">
         <p className={"truncate text-sm font-medium " + (isCurrent ? "text-accent" : "text-foreground")}>
           {track.title}
