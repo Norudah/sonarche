@@ -16,9 +16,9 @@ import {
   toAlbumDraft,
   type TrackRowValues,
 } from "@/features/library/albums/albumFields";
-import { AlbumArtistPropagation } from "@/features/library/albums/AlbumArtistPropagation";
 import { AlbumCommonFields } from "@/features/library/albums/AlbumCommonFields";
 import { AlbumCompletionRow } from "@/features/library/albums/AlbumCompletionRow";
+import { AlbumEditAside, type GenreOffer } from "@/features/library/albums/AlbumEditAside";
 import { AlbumInspectHeader } from "@/features/library/albums/AlbumInspectHeader";
 import { AlbumTrackFields } from "@/features/library/albums/AlbumTrackFields";
 import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
@@ -31,6 +31,8 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
   const update = useUpdateTracks();
   const reenrich = useReenrichAlbum();
   const [isEditing, setIsEditing] = useState(false);
+  // The row whose genre cell the side panel is commenting on.
+  const [genreRow, setGenreRow] = useState<number | null>(null);
 
   const baseline = useMemo(() => commonBaseline(album.tracks), [album.tracks]);
   // Read mode mirrors the live album; the draft is only the editing buffer,
@@ -44,6 +46,24 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
   // Artist edits worth offering to repeat elsewhere — recomputed off the live
   // draft so a card shrinks (or clears) as the user applies or edits more.
   const propagations = isEditing ? artistPropagations(album.tracks, draft) : [];
+
+  // The genre edit the side panel offers to fan out. Any real change on a
+  // multi-track record earns it, whether or not the album agreed on a genre
+  // beforehand: normalising a record whose tracks already differ is exactly
+  // the case the offer serves.
+  const genreOffer = ((): GenreOffer | null => {
+    if (!isEditing || genreRow == null || album.tracks.length < 2) return null;
+    const track = album.tracks.find((candidate) => candidate.id === genreRow);
+    const next = draft.rows[genreRow]?.genre ?? "";
+    if (!track || next.trim() === "" || next === (track.genre ?? "")) return null;
+    return {
+      trackId: track.id,
+      trackTitle: track.title,
+      from: track.genre ?? "",
+      to: next,
+      count: album.tracks.length,
+    };
+  })();
 
   const setCommon = (field: AlbumCommonField, value: string) =>
     setDraft((prev) => ({ ...prev, common: { ...prev.common, [field]: value } }));
@@ -94,7 +114,9 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
         : null;
 
   return (
-    <div data-slot="drawer-body" className="flex h-full flex-col">
+    // `relative` so the side panel can hang off this panel's left edge; the
+    // dialog above it keeps its overflow visible so nothing clips it away.
+    <div data-slot="drawer-body" className="relative flex h-full flex-col">
       <AlbumInspectHeader album={album} isEditing={isEditing} onClose={onClose} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-x-hidden overflow-y-auto px-8 py-7">
@@ -115,13 +137,22 @@ function AlbumInspectForm({ album, onClose }: { album: Album; onClose: () => voi
           tracks={album.tracks}
           rows={shown.rows}
           isEditing={isEditing}
-          genreShared={!baseline.genre.mixed}
           onChange={setRow}
-          onApplyGenreAll={applyGenreToAll}
+          onGenreActive={setGenreRow}
         />
-
-        <AlbumArtistPropagation propagations={propagations} tracks={album.tracks} onApply={applyPropagation} />
       </div>
+
+      <AlbumEditAside
+        genreOffer={genreOffer}
+        propagations={propagations}
+        tracks={album.tracks}
+        onApplyGenreAll={(genre) => {
+          setGenreRow(null);
+          applyGenreToAll(genre);
+        }}
+        onDismissGenre={() => setGenreRow(null)}
+        onApplyPropagation={applyPropagation}
+      />
 
       <footer className="flex flex-col gap-2.5 border-t border-separator px-8 py-3.5">
         {feedback && <p className={`text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</p>}
@@ -185,8 +216,9 @@ export function AlbumMetadataDrawer({ album, onClose }: { album: Album | null; o
         <Drawer.Content placement="right">
           {/* Wider than the track drawer's 30rem: this one carries a three-column
               editable tracklist under the common-fields block, and wants room to
-              breathe. */}
-          <Drawer.Dialog className="flex h-full w-[92vw] flex-col overflow-hidden p-0! sm:w-[40rem]">
+              breathe. Overflow stays visible so the edit side panel can float
+              outside this edge — the scroller inside does its own clipping. */}
+          <Drawer.Dialog className="flex h-full w-[92vw] flex-col overflow-visible! p-0! sm:w-[40rem]">
             {album && <AlbumInspectForm key={album.key} album={album} onClose={onClose} />}
           </Drawer.Dialog>
         </Drawer.Content>

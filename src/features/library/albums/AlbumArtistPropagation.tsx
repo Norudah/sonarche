@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ArtistPropagation } from "@/features/library/albums/albumFields";
+import { EDIT_ASIDE_CARD } from "@/features/library/albums/editAside";
 import type { LibraryTrack } from "@/features/library/api";
 import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 
@@ -36,7 +37,10 @@ function PropagationCard({
     });
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-accent/20 bg-accent-soft/40 p-4">
+    <div className={EDIT_ASIDE_CARD}>
+      <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">
+        {t("metadata.fields.artist")}
+      </p>
       <p className="text-[0.8125rem] leading-snug text-foreground">
         {t("albumMetadata.propagate.prompt", { from: propagation.from, to: propagation.to })}
       </p>
