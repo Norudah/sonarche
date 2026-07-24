@@ -18,6 +18,7 @@ import enrich
 import metadata
 import protocol
 import provenance
+import suspect
 from report import build_report
 
 # Sampled tracks are enough to identify the release; each sample costs a few
@@ -74,6 +75,65 @@ def vote_release(release_sets: list[list[dict]], track_count: int) -> str | None
         )
 
     return sorted(votes, key=_key)[0]
+
+
+def rescue_candidates(release_sets: list[list[dict]], exclude: str | None = None) -> list[str]:
+    """Alternative release ids worth re-testing when the voted release leaves
+    identified files off it, ranked by how many leftovers each could host
+    (release_rank breaks ties). Pure.
+
+    `release_sets` holds one list of MB release dicts per leftover — the
+    releases its own recordings live on. The voted release (`exclude`) is
+    never a candidate: it already had its chance."""
+    votes: dict[str, int] = {}
+    by_id: dict[str, dict] = {}
+    for releases in release_sets:
+        seen = set()
+        for release in releases:
+            release_id = release.get("id")
+            if not release_id or release_id == exclude or release_id in seen:
+                continue
+            seen.add(release_id)
+            votes[release_id] = votes.get(release_id, 0) + 1
+            by_id.setdefault(release_id, release)
+    return sorted(votes, key=lambda rid: (-votes[rid], metadata.release_rank(by_id[rid])))
+
+
+def slot_rescues(leftovers, tracks, hints: dict) -> dict:
+    """Seat leftover items onto the voted release's still-empty tracks when the
+    video's own title agrees with the track title AND the duration fits. Pure —
+    needs `.id`/`.length` on items, `.title`/`.length` on tracks. Returns
+    {item: track}, each track seated at most once (nearest duration wins).
+
+    Leftovers were identified as some *other* release's recording — the
+    cross-language trap again: the fingerprint resolves to the popular sibling
+    edition ("Here I Am"), whose recording is absent from the release in hand,
+    and the file used to fall through to per-track fallback and found a
+    one-track album next door. Neither signal alone is trusted (titles are junk
+    on most videos; duration alone is reserved for AcoustID-silent files), but
+    a title the uploader typed that names an open slot, at that slot's length,
+    outweighs a fingerprint known to cross-link editions. Both lengths must be
+    present: title agreement alone seats nothing."""
+    assignments: dict = {}
+    taken: set[int] = set()
+    for item in leftovers:
+        hint = (hints.get(item.id) or {}).get("title")
+        file_length = float(item.length) if item.length else None
+        if not hint or not file_length:
+            continue
+        best = None
+        for track in tracks:
+            if id(track) in taken or not track.length:
+                continue
+            if not suspect.titles_agree(hint, track.title):
+                continue
+            diff = abs(file_length - float(track.length))
+            if diff <= _MAX_DURATION_DIFF_SECONDS and (best is None or diff < best[0]):
+                best = (diff, track)
+        if best is not None:
+            assignments[item] = best[1]
+            taken.add(id(best[1]))
+    return assignments
 
 
 def _pair_plausible(file_length: float | None, track_length: float | None) -> bool:
@@ -247,6 +307,45 @@ def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[l
     return kept, duplicates
 
 
+def _remove_library_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[list, dict[int, int]]:
+    """Delete new items whose primary recording the library already holds — the
+    single downloaded yesterday coming back inside today's playlist. Same
+    policy as the in-batch pass (first copy wins, file deleted), keyed on
+    `mb_trackid`, which is exactly the recording a kept item was matched to.
+    Returns (kept items, {removed id: existing library item id})."""
+    from beets.dbcore.query import MatchQuery
+
+    batch_ids = {item.id for item in items}
+    kept, duplicates = [], {}
+    for item in items:
+        primary = next(iter(recordings.get(item.id) or ()), None)
+        existing = None
+        if primary:
+            existing = next(
+                (
+                    candidate
+                    for candidate in lib.items(MatchQuery("mb_trackid", primary))
+                    if candidate.id not in batch_ids
+                ),
+                None,
+            )
+        if existing is None:
+            kept.append(item)
+            continue
+        protocol.log(
+            f"enrich_album: item {item.id} duplicates library item {existing.id}, removing"
+        )
+        try:
+            item.remove(delete=True)
+        except Exception as exc:
+            protocol.log(f"enrich_album: duplicate removal failed: {exc}")
+        duplicates[item.id] = existing.id
+        protocol.send_event(
+            request_id, "enrich_progress", {"stage": "track_done", "item_id": item.id}
+        )
+    return kept, duplicates
+
+
 def _vote_release_id(request_id: str, items, recordings: dict, pause: float) -> str | None:
     """Vote among the releases of a few sampled items' recordings. Samples
     spread across the batch, skipping items AcoustID didn't identify."""
@@ -309,6 +408,66 @@ def _build_match(items, recordings: dict, release_id: str):
     return match, leftovers
 
 
+# Coverage rescue budget: releases actually re-tested (one album_for_id each)
+# and recordings resolved per leftover (one get_recording each, ~1 req/s).
+_MAX_RESCUE_RELEASES = 2
+_MAX_RESCUE_RECORDINGS = 3
+
+
+def _rescue_coverage(request_id: str, items, recordings: dict, match, leftovers):
+    """Re-test the leftovers' own releases against the whole batch and switch
+    to one that maps strictly more files than the voted release.
+
+    The vote ranks by AcoustID popularity, and popularity is systematically
+    wrong when two editions share their fingerprints — the French Spirit
+    soundtrack's files all resolve to the English edition's recordings too,
+    with more sources. The tell is coverage: files AcoustID *identified* that
+    still don't map onto the voted release, while some sibling release explains
+    them AND the rest of the batch."""
+    plugin = metadata.mb_plugin()
+    release_sets: list[list[dict]] = []
+    for item in leftovers:
+        releases: list[dict] = []
+        for rec_id in (recordings.get(item.id) or [])[:_MAX_RESCUE_RECORDINGS]:
+            try:
+                # MusicBrainz pacing is handled by beets' client (~1 req/s).
+                rec = plugin.mb_api.get_recording(rec_id, includes=["releases", "release-groups"])
+                releases.extend(rec.get("releases", []) if isinstance(rec, dict) else [])
+            except Exception as exc:
+                protocol.log(f"enrich_album: recording {rec_id} failed: {exc}")
+        if releases:
+            release_sets.append(releases)
+
+    for release_id in rescue_candidates(release_sets, exclude=match.info.album_id)[:_MAX_RESCUE_RELEASES]:
+        candidate, candidate_leftovers = _build_match(items, recordings, release_id)
+        if candidate is None:
+            continue
+        if len(candidate.mapping) > len(match.mapping):
+            protocol.log(
+                f"enrich_album: « {candidate.info.album} » covers "
+                f"{len(candidate.mapping)}/{len(items)} file(s) against "
+                f"{len(match.mapping)} on the voted release — switching"
+            )
+            return candidate, candidate_leftovers
+    return match, leftovers
+
+
+def _rescue_slots(match, leftovers, hints: dict) -> list:
+    """Apply `slot_rescues` to the match in place (mapping gains the pair, the
+    slot and the item leave the extras). Returns the leftovers still unseated."""
+    rescued = slot_rescues(leftovers, match.extra_tracks, hints)
+    for item, track in rescued.items():
+        protocol.log(
+            f"enrich_album: item {item.id} seated on open slot {track.index} "
+            f"« {track.title} » by title+duration"
+        )
+        match.mapping[item] = track
+        match.extra_tracks.remove(track)
+        if item in match.extra_items:
+            match.extra_items.remove(item)
+    return [item for item in leftovers if item not in rescued]
+
+
 def _text_album_match(request_id: str, items, params: dict):
     """All-or-nothing text search: without a fingerprint anchor, only a
     complete, near-perfect release match is trusted."""
@@ -330,12 +489,13 @@ def _text_album_match(request_id: str, items, params: dict):
     return None
 
 
-def _apply_album(request_id: str, lib, match, pause: float, source: str | None):
+def _apply_album(request_id: str, lib, match, pause: float, source: str | None, hints: dict):
     """Apply the match to its mapped items and build the album row. Returns
     (album, mapped_items); covers and reports are the caller's (adopted bonus
     tracks join the album afterwards and must share the same cover pass).
     `source` is how the release was found ("acoustid" vote or "text"), recorded
-    on every mapped item."""
+    on every mapped item; `hints` ({item_id: {"title": …}}) feeds the
+    suspect-match check."""
     protocol.send_event(request_id, "enrich_progress", {"stage": "apply"})
     match.apply_metadata()
     mapped = match.items
@@ -343,8 +503,17 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None):
     # One real album row for the set (items were imported as singletons), built
     # from the now-populated item fields — the single-track path syncs a blank
     # row for the same reason: destination paths and duplicate detection read
-    # album-level fields from the row, not the items.
-    album = lib.add_album(mapped)
+    # album-level fields from the row, not the items. A row this library
+    # already holds for the release is reused: a second job landing on the
+    # same album (the single downloaded before its playlist) must extend it,
+    # not stand up a sibling row and a "%aunique"-suffixed folder.
+    album = enrich.find_album_row(lib, match.info.album_id)
+    if album is not None:
+        protocol.log(f"enrich_album: joining existing album row {album.id}")
+        for item in mapped:
+            item.album_id = album.id
+    else:
+        album = lib.add_album(mapped)
     match.apply_album_metadata(album)
     album.store()
 
@@ -363,6 +532,11 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None):
             protocol.log(f"enrich_album: genre {genres} ({label})")
         if source:
             provenance.mark_match(item, source)
+        if suspect.mark(item, (hints.get(item.id) or {}).get("title")):
+            protocol.log(
+                f"enrich_album: item {item.id} flagged {suspect.TITLE_MISMATCH}: "
+                f"« {(hints.get(item.id) or {}).get('title')} » matched « {item.title} »"
+            )
         item.store()
         try:
             item.write()
@@ -384,7 +558,7 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None):
     return album, mapped
 
 
-def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recordings: dict, pause: float) -> list:
+def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict) -> list:
     """Adopt leftovers whose recording lives on a sibling edition of the voted
     release's release-group (deluxe, regional): real title and track metadata
     from their own edition, album identity and folder from the main one,
@@ -464,6 +638,7 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
                 protocol.log(f"enrich_album: genre {genres} ({label})")
             # Adopted through its own AcoustID recording on a sibling edition.
             provenance.mark_match(item, "acoustid")
+            suspect.mark(item, (hints.get(item.id) or {}).get("title"))
             item.store()
             try:
                 item.write()
@@ -509,43 +684,117 @@ def _build_reports(lib, items) -> list[dict]:
     return reports
 
 
-def _consolidate_fallback_albums(lib, items) -> list:
-    """Merge the one-item album rows left by per-track enrichment.
+def _adopt_art(keep, dying) -> None:
+    """Move a dying row's cover files into the kept row's directory when the
+    kept row has none — otherwise the files are stale copies; delete them so
+    the emptied folder can be pruned instead of surviving on cover.jpg alone."""
+    import shutil
 
-    Each enrich_one call creates its own album row, so tracks that matched
-    the same MusicBrainz release end up in N sibling rows — beets' %aunique
-    then suffixes every folder ("New Model [7]", …) and each gets its own
-    cover. Regroup by mb_albumid: keep one row per release, reattach the
-    items, drop the empty rows, and re-move the files (with the dead
-    siblings gone, %aunique yields the clean folder name again)."""
-    groups: dict[str, list] = {}
+    art = enrich._decode(dying.artpath) if dying.artpath else None
+    if not art or not os.path.exists(art):
+        return
+    src_dir = os.path.dirname(art)
+    covers = [art] + [
+        os.path.join(src_dir, name)
+        for name in os.listdir(src_dir)
+        if name.startswith("cover-hq.")
+    ]
+    keep_art = enrich._decode(keep.artpath) if keep.artpath else None
+    if keep_art and os.path.exists(keep_art):
+        for path in covers:
+            try:
+                os.remove(path)
+            except OSError as exc:
+                protocol.log(f"enrich_album: stale cover removal failed: {exc}")
+    else:
+        dest_dir = enrich._decode(keep.item_dir())
+        for path in covers:
+            try:
+                shutil.move(path, os.path.join(dest_dir, os.path.basename(path)))
+            except OSError as exc:
+                protocol.log(f"enrich_album: cover relocation failed: {exc}")
+        keep.artpath = os.path.join(dest_dir, os.path.basename(art))
+        keep["art_source"] = dying.get("art_source") or keep.get("art_source")
+        keep.store()
+    try:
+        if not os.listdir(src_dir):
+            os.rmdir(src_dir)
+    except OSError:
+        pass
+
+
+def _follow_hq_cover(lib, album, old_dir: str | None) -> None:
+    """When the re-move renamed the album folder, beets relocated its own
+    artpath (item.move gives the album a chance to move its art) — but our
+    out-of-band cover-hq.* stayed behind. Bring it along and prune the husk."""
+    import shutil
+
+    fresh = lib.get_album(album.id)
+    art = enrich._decode(fresh.artpath) if fresh is not None and fresh.artpath else None
+    new_dir = os.path.dirname(art) if art else None
+    if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
+        return
+    for name in os.listdir(old_dir):
+        if name.startswith("cover-hq."):
+            try:
+                shutil.move(os.path.join(old_dir, name), os.path.join(new_dir, name))
+            except OSError as exc:
+                protocol.log(f"enrich_album: cover relocation failed: {exc}")
+    try:
+        if not os.listdir(old_dir):
+            os.rmdir(old_dir)
+    except OSError:
+        pass
+
+
+def _consolidate_album_rows(lib, items) -> list:
+    """One album row per MusicBrainz release, library-wide.
+
+    Two ways sibling rows appear: per-track enrichment creates one row per
+    enrich_one call, and separate *jobs* used to create one row per import of
+    the same release (the single, then the playlist carrying it). Either way
+    beets' %aunique starts suffixing every folder ("Album [7]", …) and each row
+    drags its own cover. For every release the batch touched, keep the row
+    holding the most items, reattach the others' items (wherever they came
+    from), drop the empty rows, and re-move the files — with the dead siblings
+    gone, %aunique yields the clean folder name again."""
+    touched: set[str] = set()
     for item in items:
         fresh = lib.get_item(item.id)
-        if fresh is None or not fresh.mb_albumid or fresh.album_id is None:
-            continue
-        groups.setdefault(fresh.mb_albumid, []).append(fresh)
+        if fresh is not None and fresh.mb_albumid and fresh.album_id is not None:
+            touched.add(fresh.mb_albumid)
+
+    from beets.dbcore.query import MatchQuery
 
     albums = []
-    for group in groups.values():
-        keep = group[0].get_album()
-        if keep is None:
+    for release_id in touched:
+        rows = list(lib.albums(MatchQuery("mb_albumid", release_id)))
+        if not rows:
             continue
-        emptied = []
-        for item in group[1:]:
-            old = item.get_album()
-            if old is not None and old.id != keep.id:
+        members = {row.id: list(row.items()) for row in rows}
+        keep = max(rows, key=lambda row: (len(members[row.id]), -row.id))
+        for row in rows:
+            if row.id == keep.id:
+                continue
+            protocol.log(
+                f"enrich_album: merging album row {row.id} into {keep.id} ({release_id})"
+            )
+            for item in members[row.id]:
                 item.album_id = keep.id
                 item.store()
-                emptied.append(old)
-        for old in emptied:
-            if not list(old.items()):
-                old.remove(delete=False, with_items=False)
+                members[keep.id].append(item)
+            _adopt_art(keep, row)
+            row.remove(delete=False, with_items=False)
+        art_dir_before = (
+            os.path.dirname(enrich._decode(keep.artpath)) if keep.artpath else None
+        )
         # Re-move every item now that the sibling rows are gone.
-        for item in group:
+        for item in members[keep.id]:
             try:
                 item.move()
             except Exception as exc:
                 protocol.log(f"enrich_album: move failed: {exc}")
+        _follow_hq_cover(lib, keep, art_dir_before)
         albums.append(keep)
     return albums
 
@@ -588,7 +837,7 @@ def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -
 def _finalize_fallback(lib, items) -> None:
     """Regroup same-release rows, then fetch covers still missing (an album
     already covered by the album-match path keeps its art, no second CAA hit)."""
-    for album in _consolidate_fallback_albums(lib, items):
+    for album in _consolidate_album_rows(lib, items):
         artpath = enrich._decode(album.artpath) if album.artpath else None
         if artpath and os.path.exists(artpath):
             continue
@@ -657,6 +906,8 @@ def handle(request_id: str, params: dict) -> dict:
     if params.get("acoustid_key"):
         recordings = _fingerprint_all(request_id, items, params)
         items, duplicates = _remove_duplicates(request_id, lib, items, recordings)
+        items, library_duplicates = _remove_library_duplicates(request_id, lib, items, recordings)
+        duplicates.update(library_duplicates)
         duplicate_reports = [
             {"item_id": item_id, "duplicate_of": kept_id, "report": None}
             for item_id, kept_id in sorted(duplicates.items())
@@ -666,8 +917,8 @@ def handle(request_id: str, params: dict) -> dict:
     else:
         protocol.log("enrich_album: no AcoustID key configured, text search only")
 
-    _apply_hints(items, {h["item_id"]: h for h in params.get("track_hints") or []},
-                 params.get("artist"))
+    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
+    _apply_hints(items, hints, params.get("artist"))
 
     match, leftovers = None, []
     source = None
@@ -678,14 +929,18 @@ def handle(request_id: str, params: dict) -> dict:
             protocol.log(f"enrich_album: fingerprints voted release {release_id}")
             match, leftovers = _build_match(items, recordings, release_id)
             source = "acoustid"
+        if match is not None and leftovers:
+            match, leftovers = _rescue_coverage(request_id, items, recordings, match, leftovers)
+        if match is not None and leftovers:
+            leftovers = _rescue_slots(match, leftovers, hints)
     if match is None:
         match, leftovers = _text_album_match(request_id, items, params), []
         source = "text" if match is not None else None
 
     if match is not None:
-        album, mapped = _apply_album(request_id, lib, match, pause, source)
+        album, mapped = _apply_album(request_id, lib, match, pause, source, hints)
         adopted = (
-            _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause)
+            _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause, hints)
             if leftovers
             else []
         )

@@ -3,7 +3,13 @@
 
 import unittest
 
-from enrich_album import find_content_duplicates, match_by_recordings, vote_release
+from enrich_album import (
+    find_content_duplicates,
+    match_by_recordings,
+    rescue_candidates,
+    slot_rescues,
+    vote_release,
+)
 
 
 def _rel(release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"):
@@ -78,6 +84,38 @@ class VoteReleaseTest(unittest.TestCase):
         self.assertEqual(vote_release(sets, 11), "album")
 
 
+class RescueCandidatesTest(unittest.TestCase):
+    def test_release_hosting_most_leftovers_ranks_first(self):
+        # Regression (Spirit): the French edition hosted every leftover, a
+        # best-of hosted one — the French album must be re-tested first.
+        sets = [
+            [_rel("fr-album"), _rel("best-of", secondary=["Compilation"])],
+            [_rel("fr-album")],
+            [_rel("fr-album")],
+        ]
+        self.assertEqual(rescue_candidates(sets)[0], "fr-album")
+
+    def test_voted_release_is_never_a_candidate(self):
+        sets = [[_rel("voted"), _rel("other")]]
+        self.assertEqual(rescue_candidates(sets, exclude="voted"), ["other"])
+
+    def test_rank_breaks_support_ties(self):
+        sets = [[_rel("comp", secondary=["Compilation"]), _rel("album")]]
+        self.assertEqual(rescue_candidates(sets)[0], "album")
+
+    def test_duplicate_within_one_leftover_counts_once(self):
+        sets = [
+            [_rel("twice"), _rel("twice")],
+            [_rel("once")],
+            [_rel("once")],
+        ]
+        self.assertEqual(rescue_candidates(sets)[0], "once")
+
+    def test_empty_sets_yield_no_candidates(self):
+        self.assertEqual(rescue_candidates([]), [])
+        self.assertEqual(rescue_candidates([[], []]), [])
+
+
 class FindContentDuplicatesTest(unittest.TestCase):
     def test_same_primary_marks_later_item(self):
         # Regression: a playlist carrying the same song under two different
@@ -117,9 +155,10 @@ class _Item:
 
 
 class _Track:
-    def __init__(self, track_id, length=None):
+    def __init__(self, track_id, length=None, title=None):
         self.track_id = track_id
         self.length = length
+        self.title = title
 
 
 class MatchByRecordingsTest(unittest.TestCase):
@@ -201,6 +240,51 @@ class MatchByRecordingsTest(unittest.TestCase):
         self.assertEqual(mapping[identified].track_id, "rec-a")
         self.assertEqual(mapping[silent].track_id, "rec-b")
         self.assertEqual(leftovers, [])
+
+
+class SlotRescuesTest(unittest.TestCase):
+    def test_title_and_duration_seat_cross_language_leftovers(self):
+        # The Spirit regression: two French files identified as their English
+        # siblings' recordings ("Here I Am", "Sound the Bugle"), while the
+        # voted French release kept exactly their two slots open.
+        me_voila, clairon = _Item(71, 271.6), _Item(72, 234.8)
+        slot6 = _Track("rec-me-voila", 272.0, title="Me voilà")
+        slot7 = _Track("rec-clairon", 235.0, title="Sonne le clairon")
+        hints = {71: {"title": "Me voilà"}, 72: {"title": "Sonne le clairon"}}
+        rescued = slot_rescues([me_voila, clairon], [slot6, slot7], hints)
+        self.assertEqual(rescued, {me_voila: slot6, clairon: slot7})
+
+    def test_title_agreement_alone_is_not_enough(self):
+        item = _Item(1, 180.0)
+        slot = _Track("rec-a", 272.0, title="Me voilà")
+        self.assertEqual(slot_rescues([item], [slot], {1: {"title": "Me voilà"}}), {})
+
+    def test_duration_fit_alone_is_not_enough(self):
+        item = _Item(1, 271.6)
+        slot = _Track("rec-a", 272.0, title="Me voilà")
+        self.assertEqual(slot_rescues([item], [slot], {1: {"title": "Here I Am"}}), {})
+
+    def test_missing_hint_or_length_seats_nothing(self):
+        slot = _Track("rec-a", 272.0, title="Me voilà")
+        self.assertEqual(slot_rescues([_Item(1, 271.6)], [slot], {}), {})
+        self.assertEqual(slot_rescues([_Item(2, None)], [slot], {2: {"title": "Me voilà"}}), {})
+        blind = _Track("rec-b", None, title="Me voilà")
+        self.assertEqual(slot_rescues([_Item(3, 271.6)], [blind], {3: {"title": "Me voilà"}}), {})
+
+    def test_nearest_duration_wins_between_agreeing_slots(self):
+        # Both Spirit slots agree on "Me voilà" once the noise qualifier is
+        # stripped; the file's length picks the right edition of the song.
+        item = _Item(1, 271.6)
+        single = _Track("rec-single", 256.0, title="Me voilà (version single)")
+        end_title = _Track("rec-end", 272.0, title="Me voilà")
+        rescued = slot_rescues([item], [single, end_title], {1: {"title": "Me voilà"}})
+        self.assertEqual(rescued, {item: end_title})
+
+    def test_each_slot_seats_at_most_one_item(self):
+        first, second = _Item(1, 271.6), _Item(2, 272.4)
+        slot = _Track("rec-a", 272.0, title="Me voilà")
+        hints = {1: {"title": "Me voilà"}, 2: {"title": "Me voilà"}}
+        self.assertEqual(slot_rescues([first, second], [slot], hints), {first: slot})
 
 
 if __name__ == "__main__":
