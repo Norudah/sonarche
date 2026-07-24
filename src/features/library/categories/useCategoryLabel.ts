@@ -4,10 +4,15 @@ import { useTranslation } from "react-i18next";
 /** i18n key per canonical taxonomy value. A value outside the map is a free
  * tag the user typed — shown as stored, there is nothing to translate it to. */
 const LABEL_KEYS: Record<string, string> = {
+  Music: "categories.values.music",
   "Video Games": "categories.values.videoGames",
   Film: "categories.values.film",
-  TV: "categories.values.tv",
+  Series: "categories.values.series",
+  // Retired in favour of "Series" — kept readable so a file tagged before the
+  // rename still shows a label instead of the raw value.
+  TV: "categories.values.series",
   Anime: "categories.values.anime",
+  Cartoon: "categories.values.cartoon",
   Musical: "categories.values.musical",
 };
 

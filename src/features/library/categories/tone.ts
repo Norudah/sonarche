@@ -8,10 +8,14 @@ const FREE_TONE = "color-mix(in oklab, var(--color-muted) 40%, transparent)";
  * same grey the `Other` family uses.
  */
 const CATEGORY_TONES: Record<string, string> = {
+  Music: "var(--category-music)",
   "Video Games": "var(--category-video-games)",
   Film: "var(--category-film)",
-  TV: "var(--category-tv)",
+  Series: "var(--category-series)",
+  /** Retired alias of "Series" — see `useCategoryLabel`. */
+  TV: "var(--category-series)",
   Anime: "var(--category-anime)",
+  Cartoon: "var(--category-cartoon)",
   Musical: "var(--category-musical)",
 };
 

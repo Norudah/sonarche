@@ -18,10 +18,12 @@
     "emptyAction": "Parcourir les albums",
     "noAlbums": "Aucun album ne porte cette catégorie pour l'instant.",
     "values": {
+      "music": "Musique",
       "videoGames": "Jeux vidéo",
       "film": "Films",
-      "tv": "Séries TV",
+      "series": "Séries",
       "anime": "Anime",
+      "cartoon": "Dessins animés",
       "musical": "Comédies musicales"
     }
   },
@@ -44,6 +46,7 @@
     "moreSubs_other": "+{{count}} autres",
     "albums": "Albums",
     "artists": "Artistes",
+    "viewTracks": "Voir les morceaux",
     "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des disques classés ailleurs.",
     "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
@@ -163,9 +166,9 @@
     "saving": "Enregistrement…",
     "saveFailed": "L'enregistrement a échoué, réessaie dans un instant.",
     "completeness": "Complétude — {{filled}}/{{total}} champs",
-    "derived": "dérivé · hors comptage",
+    "derived": "hors comptage",
     "viewAlbum": "Voir l'album",
-    "optional": "optionnel · hors comptage",
+    "optional": "optionnel, hors comptage",
     "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie."
   },
   "albumMetadata": {
@@ -184,7 +187,7 @@
       "apply_other": "Appliquer à {{count}} morceaux"
     },
     "applyGenre": {
-      "prompt": "Le genre était commun à l'album. Appliquer « {{value}} » partout ?",
+      "prompt": "Ce changement peut valoir pour tout l'album.",
       "all_one": "Appliquer à {{count}} morceau",
       "all_other": "Appliquer aux {{count}} morceaux",
       "one": "Ce morceau seul"

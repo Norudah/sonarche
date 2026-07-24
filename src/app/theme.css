@@ -83,10 +83,12 @@
      for the taxonomy's known values (free values fall back to grey in
      categories/tone.ts). Hues picked between the family ones so the two card
      shelves never look like the same page recolored. */
+  --category-music: oklch(0.56 0.09 225);
   --category-video-games: oklch(0.58 0.11 190);
   --category-film: oklch(0.55 0.09 70);
-  --category-tv: oklch(0.54 0.1 260);
+  --category-series: oklch(0.54 0.1 260);
   --category-anime: oklch(0.62 0.12 355);
+  --category-cartoon: oklch(0.62 0.13 40);
   --category-musical: oklch(0.53 0.1 315);
 }
 

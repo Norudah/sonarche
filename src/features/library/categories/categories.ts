@@ -9,8 +9,13 @@ import type { LibraryTrack } from "@/features/library/api";
  * values for display (see `useCategoryLabel`); a free value outside the
  * taxonomy is shown as typed. A starter set, curated as the need appears —
  * the same doctrine as the genre tree.
+ *
+ * "Music" leads because it is the ordinary case: a band's record is music, not
+ * the score of something else, and the axis only becomes interesting once a
+ * library holds both. The rest name the medium the music was written for, and
+ * "Cartoon" sits apart from "Anime" the way the shelves themselves do.
  */
-export const CATEGORY_TAXONOMY = ["Video Games", "Film", "TV", "Anime", "Musical"] as const;
+export const CATEGORY_TAXONOMY = ["Music", "Video Games", "Film", "Series", "Anime", "Cartoon", "Musical"] as const;
 
 export interface CategoryGenre {
   name: string;

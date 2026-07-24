@@ -18,10 +18,12 @@
     "emptyAction": "Browse albums",
     "noAlbums": "No album carries this category yet.",
     "values": {
+      "music": "Music",
       "videoGames": "Video Games",
       "film": "Films",
-      "tv": "TV Series",
+      "series": "Series",
       "anime": "Anime",
+      "cartoon": "Cartoons",
       "musical": "Musicals"
     }
   },
@@ -44,6 +46,7 @@
     "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
+    "viewTracks": "View tracks",
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
@@ -163,9 +166,9 @@
     "saving": "Saving…",
     "saveFailed": "Save failed, try again in a moment.",
     "completeness": "Completeness — {{filled}}/{{total}} fields",
-    "derived": "derived · not counted",
+    "derived": "not counted",
     "viewAlbum": "View album",
-    "optional": "optional · not counted",
+    "optional": "optional, not counted",
     "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category."
   },
   "albumMetadata": {
@@ -184,7 +187,7 @@
       "apply_other": "Apply to {{count}} tracks"
     },
     "applyGenre": {
-      "prompt": "The genre was shared across the album. Apply “{{value}}” everywhere?",
+      "prompt": "This change may hold for the whole record.",
       "all_one": "Apply to {{count}} track",
       "all_other": "Apply to {{count}} tracks",
       "one": "This track only"
