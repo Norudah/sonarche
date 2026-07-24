@@ -30,7 +30,8 @@ _SUSPECT_KEY = "sonarche_suspect_match"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
-    " length, bitrate, format, path, album_id, added, mb_trackid"
+    " length, bitrate, format, path, album_id, added, mb_trackid, grouping,"
+    " albumtypes"
 )
 
 
@@ -57,14 +58,19 @@ def expand_db_path(stored, library_dir: str) -> str | None:
     return os.path.normpath(os.path.join(library_dir, path.replace("/", os.sep)))
 
 
-def first_genre(stored: str | None) -> str | None:
-    """Primary genre out of beets' delimited `genres` column."""
+def split_multi(stored: str | None) -> list[str]:
+    """Values of a beets multi-valued column, whichever delimiter it used."""
     if not stored:
-        return None
+        return []
     delimiter = (
         _GENRE_DB_DELIMITER if _GENRE_DB_DELIMITER in stored else _GENRE_FMT_DELIMITER
     )
-    return next((part for part in stored.split(delimiter) if part.strip()), None)
+    return [part.strip() for part in stored.split(delimiter) if part.strip()]
+
+
+def first_genre(stored: str | None) -> str | None:
+    """Primary genre out of beets' delimited `genres` column."""
+    return next(iter(split_multi(stored)), None)
 
 
 def _art_path(artpath: str | None) -> str | None:
@@ -134,6 +140,11 @@ def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: st
         "bonus_source": bonus_by_item.get(row["id"]),
         # Empty string is beets' "no match" — surface it as null.
         "mb_trackid": row["mb_trackid"] or None,
+        # The user's own axis (grouping tag): context, not musical style.
+        "category": row["grouping"] or None,
+        # MusicBrainz marked the release a soundtrack — the UI's cue to
+        # pre-suggest a category, since MB can't tell film from game.
+        "soundtrack": "soundtrack" in split_multi(row["albumtypes"]),
         # The match contradicts the download's own title (see suspect.py):
         # shown by the triage page as "to review".
         "suspect_match": row["id"] in suspect_by_item,
@@ -188,8 +199,13 @@ def remove(_request_id: str, params: dict) -> dict:
 
 
 # Free-text tags we let the UI overwrite wholesale. Keys are beets' own item
-# attribute names, so the wire shape maps 1:1 onto `setattr`.
-_TEXT_FIELDS = ("title", "artist", "albumartist", "album")
+# attribute names, so the wire shape maps 1:1 onto `setattr`. `grouping` is the
+# category axis (context: Video Games, Film, …), orthogonal to genre.
+_TEXT_FIELDS = ("title", "artist", "albumartist", "album", "grouping")
+# Fields whose edit answers a suspect match: the review flag is about *what the
+# audio is*, so only identity edits lift it — setting a category or fixing a
+# track number leaves the question open.
+_IDENTITY_FIELDS = frozenset(("title", "artist", "albumartist", "album"))
 # Integer tags: beets stores 0 for "absent", so an emptied field clears to 0.
 _INT_FIELDS = ("year", "track", "tracktotal")
 
@@ -270,9 +286,9 @@ def update(_request_id: str, params: dict) -> dict:
         # These edits are the one provenance signal that cannot be
         # reconstructed later; record them in the same store.
         provenance.mark_edited(item, changed)
-        # A human touched the item: the "match to review" flag is answered,
-        # whichever way they decided.
-        if item.get(_SUSPECT_KEY):
+        # A human re-identified the item: the "match to review" flag is
+        # answered, whichever way they decided.
+        if changed & _IDENTITY_FIELDS and item.get(_SUSPECT_KEY):
             del item[_SUSPECT_KEY]
         item.store()
         try:

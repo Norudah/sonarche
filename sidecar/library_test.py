@@ -89,7 +89,8 @@ def _db_with(items=(), albums=(), attributes=()):
         "CREATE TABLE items (id INTEGER PRIMARY KEY, title TEXT, artist TEXT,"
         " album TEXT, albumartist TEXT, year INTEGER, genres TEXT, track INTEGER,"
         " tracktotal INTEGER, length REAL, bitrate INTEGER, format TEXT,"
-        " path BLOB, album_id INTEGER, added REAL, mb_trackid TEXT)"
+        " path BLOB, album_id INTEGER, added REAL, mb_trackid TEXT,"
+        " grouping TEXT, albumtypes TEXT)"
     )
     conn.execute(
         "CREATE TABLE item_attributes (entity_id INTEGER, key TEXT, value TEXT)"
@@ -102,15 +103,17 @@ def _db_with(items=(), albums=(), attributes=()):
     for item in items:
         conn.execute(
             "INSERT INTO items (id, title, artist, album, albumartist, year, genres,"
-            " track, tracktotal, length, bitrate, format, path, album_id, added, mb_trackid)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " track, tracktotal, length, bitrate, format, path, album_id, added, mb_trackid,"
+            " grouping, albumtypes)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             item,
         )
     return conn
 
 
 def _item(
-    item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2014, mb_trackid=""
+    item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2014,
+    mb_trackid="", grouping="", albumtypes="",
 ):
     return (
         item_id,
@@ -129,6 +132,8 @@ def _item(
         album_id,
         added,
         mb_trackid,
+        grouping,
+        albumtypes,
     )
 
 
@@ -237,6 +242,20 @@ class TrackRowTest(unittest.TestCase):
 
         self.assertIsNone(out["bonus_source"])
 
+    def test_category_surfaces_and_empty_reads_as_none(self):
+        tagged = track_row(self._row(grouping="Video Games"), {}, {}, {}, "/music")
+        bare = track_row(self._row(grouping=""), {}, {}, {}, "/music")
+
+        self.assertEqual(tagged["category"], "Video Games")
+        self.assertIsNone(bare["category"])
+
+    def test_soundtrack_release_type_is_flagged(self):
+        ost = track_row(self._row(albumtypes="album; soundtrack"), {}, {}, {}, "/music")
+        plain = track_row(self._row(albumtypes="album"), {}, {}, {}, "/music")
+
+        self.assertTrue(ost["soundtrack"])
+        self.assertFalse(plain["soundtrack"])
+
     def test_track_without_album_gets_no_art(self):
         out = track_row(self._row(album_id=None), {1: "/music/cover.jpg"}, {}, {}, "/music")
 
@@ -328,6 +347,11 @@ class ApplyFieldsTest(unittest.TestCase):
             _apply_fields(item, {"title": "New", "artist": "A", "year": "2015", "genre": "Rock"}),
             {"title", "year", "genres"},
         )
+
+    def test_category_lands_on_grouping(self):
+        item = self._item(grouping="")
+        self.assertEqual(_apply_fields(item, {"grouping": "Video Games"}), {"grouping"})
+        self.assertEqual(item.grouping, "Video Games")
 
 
 if __name__ == "__main__":

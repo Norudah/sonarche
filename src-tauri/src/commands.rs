@@ -150,6 +150,8 @@ const EDITABLE_FIELDS: &[&str] = &[
     "track",
     "tracktotal",
     "genre",
+    // The category axis (context: Video Games, Film, …), beets' grouping tag.
+    "grouping",
 ];
 
 #[derive(Deserialize)]
