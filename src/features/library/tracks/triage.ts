@@ -12,6 +12,9 @@ export interface TrackTriage {
   missingYear: boolean;
   /** `?genre=` — a sentinel, a plain genre name, or null when absent. */
   genre: string | null;
+  /** `?family=` — a genre family *key* (the genres page's own segment), the
+   * whole-family counterpart of `?genre=`. Null when absent. */
+  family: string | null;
   /** `?suspect=match` — matches contradicting the download's own title. */
   suspectMatch: boolean;
   /** `?duplicates=recording` — tracks sharing a MusicBrainz recording. */
@@ -22,6 +25,7 @@ export function parseTrackTriage(params: URLSearchParams): TrackTriage {
   return {
     missingYear: params.get("missing") === "year",
     genre: params.get("genre"),
+    family: params.get("family"),
     suspectMatch: params.get("suspect") === "match",
     duplicateRecording: params.get("duplicates") === "recording",
   };
@@ -49,6 +53,10 @@ export function applyTrackTriage(tracks: LibraryTrack[], triage: TrackTriage): L
   if (triage.genre === GENRE_MISSING) result = result.filter((track) => familyKeyOf(track) === FAMILY_NONE);
   else if (triage.genre === GENRE_OFF_TREE) result = result.filter((track) => familyKeyOf(track) === FAMILY_OTHER);
   else if (triage.genre != null) result = result.filter((track) => track.genre === triage.genre);
+  // The family key goes through `familyKeyOf` too, so "show this family's
+  // tracks" lands on exactly the set the family page counted — the sentinels
+  // included, which is what makes the genre-less pile browsable here.
+  if (triage.family != null) result = result.filter((track) => familyKeyOf(track) === triage.family);
   if (triage.suspectMatch) result = result.filter((track) => track.suspectMatch);
   if (triage.duplicateRecording) result = duplicateRecordingTracks(result);
   return result;

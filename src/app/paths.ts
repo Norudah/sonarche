@@ -97,6 +97,20 @@ export function genrePath(family: string, genre?: string): string {
 }
 
 /**
+ * The same subject as `genrePath`, seen in the tracks explorer.
+ *
+ * A family page shows shelves — albums and artists — which answers "what is in
+ * this family" but not "which tracks, exactly". This is that door: the family
+ * key rides `?family=`, a genre keeps the `?genre=` param the triage links
+ * already use, and the explorer parses both back out (`tracks/triage.ts`).
+ */
+export function genreTracksPath(family: string, genre?: string | null): string {
+  return genre == null
+    ? `${paths.libraryTracks}?family=${encodeURIComponent(family)}`
+    : `${paths.libraryTracks}?genre=${encodeURIComponent(genre)}`;
+}
+
+/**
  * A category, or one genre inside it — the same shape as `genrePath` for the
  * same reasons: the segment carries the stored (canonical English) value that
  * survives a language switch, and the genre refines the page through a query

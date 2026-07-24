@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 export interface TriageChip {
   key: string;
   label: string;
+  /** "fix" (default) is a correction filter; "browse" is plain navigation
+   * arriving from a genre or family page — same chip, different colour. */
+  tone?: "fix" | "browse";
   onRemove: () => void;
 }
 
@@ -19,11 +22,16 @@ interface TriageChipsProps {
  * remove button: the filter has no other state to toggle, and a separate ×
  * hit-zone at this size is a misclick trap.
  *
- * Amber, not the app accent: every one of these filters means "something to
- * fix" — the same warning wash the Metadata queue's doors wear — where indigo
- * is the colour of plain navigation. A refinement chip on a genre page stays
- * accent-coloured for exactly that reason.
+ * Amber for a correction filter: it means "something to fix" — the same warning
+ * wash the Metadata queue's doors wear — where indigo is the colour of plain
+ * navigation. Arriving from a genre or family page is navigation, so that chip
+ * keeps the accent: the colour states which of the two errands the list is on.
  */
+const CHIP_TONE = {
+  fix: "bg-warning-soft text-warning",
+  browse: "bg-accent-soft text-accent",
+} as const;
+
 export function TriageChips({ chips, countLabel }: TriageChipsProps) {
   const { t } = useTranslation("library");
 
@@ -37,7 +45,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("triage.clearFilter", { filter: chip.label })}
-          className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "fix"]}`}
         >
           {chip.label}
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />

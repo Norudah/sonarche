@@ -30,7 +30,17 @@ function AccentPill({ onPress, children }: { onPress: () => void; children: Reac
  * tracklist or a shelf whose every item plays something else, and "Tout lire"
  * is what says this one starts at the top.
  */
-export function HeroPlayButtons({ onPlay, onShuffle }: { onPlay: () => void; onShuffle: () => void }) {
+export function HeroPlayButtons({
+  onPlay,
+  onShuffle,
+  children,
+}: {
+  onPlay: () => void;
+  onShuffle: () => void;
+  /** Secondary actions of the same band — a slot rather than a prop, because
+   * what a page adds here is a whole control, not a label. */
+  children?: ReactNode;
+}) {
   const { t } = useTranslation("library");
 
   return (
@@ -43,6 +53,7 @@ export function HeroPlayButtons({ onPlay, onShuffle }: { onPlay: () => void; onS
         <Shuffle className="size-4" />
         {t("playShuffled")}
       </AccentPill>
+      {children}
     </div>
   );
 }

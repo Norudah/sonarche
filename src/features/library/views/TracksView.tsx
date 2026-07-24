@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
+import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { filterTracks, totalPlaytime } from "@/features/library/tracks/filter";
 import { TracksHeader } from "@/features/library/tracks/TracksHeader";
@@ -19,6 +20,7 @@ export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
+  const familyLabelOf = useFamilyLabel();
   const [query, setQuery] = useState("");
   const [params, setParams] = useSearchParams();
 
@@ -40,14 +42,21 @@ export function TracksView() {
   if (triage.missingYear)
     chips.push({ key: "missingYear", label: t("triage.missingYear"), onRemove: () => clearParam("missing") });
   if (triage.genre != null) {
-    const label =
-      triage.genre === GENRE_MISSING
-        ? t("triage.genreMissing")
-        : triage.genre === GENRE_OFF_TREE
-          ? t("triage.genreOffTree")
-          : triage.genre;
-    chips.push({ key: "genre", label, onRemove: () => clearParam("genre") });
+    // A sentinel is a correction filter; a plain genre name is someone who
+    // came from the genres page to see the list — hence the two tones.
+    const isSentinel = triage.genre === GENRE_MISSING || triage.genre === GENRE_OFF_TREE;
+    const label = isSentinel
+      ? t(triage.genre === GENRE_MISSING ? "triage.genreMissing" : "triage.genreOffTree")
+      : triage.genre;
+    chips.push({ key: "genre", label, tone: isSentinel ? "fix" : "browse", onRemove: () => clearParam("genre") });
   }
+  if (triage.family != null)
+    chips.push({
+      key: "family",
+      label: familyLabelOf(triage.family),
+      tone: "browse",
+      onRemove: () => clearParam("family"),
+    });
   if (triage.suspectMatch)
     chips.push({ key: "suspect", label: t("triage.suspectMatch"), onRemove: () => clearParam("suspect") });
   if (triage.duplicateRecording)

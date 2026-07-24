@@ -56,7 +56,7 @@ function doorsOf(doors: TriageDoor[]): { count: number; doors: TriageDoor[] } {
  * same predicates, so a door always opens on exactly as many items as it said.
  */
 export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): TriageLine[] {
-  const none = { missingYear: false, genre: null, suspectMatch: false, duplicateRecording: false };
+  const none = { missingYear: false, genre: null, family: null, suspectMatch: false, duplicateRecording: false };
   const missingYear = applyTrackTriage(tracks, { ...none, missingYear: true });
   const genreMissing = applyTrackTriage(tracks, { ...none, genre: GENRE_MISSING });
   const genreOffTree = applyTrackTriage(tracks, { ...none, genre: GENRE_OFF_TREE });

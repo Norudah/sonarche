@@ -9,7 +9,7 @@ function paramsOf(path: string): URLSearchParams {
 }
 
 function triage(over: Partial<TrackTriage> = {}): TrackTriage {
-  return { missingYear: false, genre: null, suspectMatch: false, duplicateRecording: false, ...over };
+  return { missingYear: false, genre: null, family: null, suspectMatch: false, duplicateRecording: false, ...over };
 }
 
 const library = [
@@ -54,6 +54,14 @@ describe("applyTrackTriage", () => {
   it("matches a plain genre name exactly", () => {
     expect(applyTrackTriage(library, triage({ genre: "Grunge" })).map((t) => t.id)).toEqual([1]);
     expect(applyTrackTriage(library, triage({ genre: "grunge" }))).toEqual([]);
+  });
+
+  it("keeps a whole family under ?family=, sentinels included", () => {
+    // The genre page's "view tracks" door: the family key resolves through
+    // familyKeyOf, so the two sides count the same tracks.
+    expect(applyTrackTriage(library, triage({ family: "rock" })).map((t) => t.id)).toEqual([1]);
+    expect(applyTrackTriage(library, triage({ family: "__other__" })).map((t) => t.id)).toEqual([2]);
+    expect(applyTrackTriage(library, triage({ family: "__none__" })).map((t) => t.id)).toEqual([3, 4]);
   });
 
   it("composes active filters", () => {

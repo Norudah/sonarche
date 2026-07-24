@@ -1,11 +1,13 @@
+import { ListMusic } from "lucide-react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
-import { genrePath, paths } from "@/app/routes";
+import { genrePath, genreTracksPath, paths } from "@/app/routes";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
+import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 
 /**
  * Back to wherever this page was entered from.
@@ -107,7 +109,15 @@ export function GenreHero({
            * pages answer "how do I start this" in the same place. It is also
            * what fills the dead strip that used to sit above the genre chips. */}
           <div className="mt-5">
-            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
+              {/* The page shows shelves — albums and artists — so the track
+                  count in the meta line had no door of its own. This is it:
+                  the explorer, filtered on exactly this subject. */}
+              <Link to={genreTracksPath(family, genre)} className={HERO_PILL_SECONDARY}>
+                <ListMusic className="size-4 text-accent" />
+                {t("genres.viewTracks")}
+              </Link>
+            </HeroPlayButtons>
           </div>
         </div>
       </div>
