@@ -20,6 +20,8 @@ export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     audioUrl: "",
     artUrl: null,
     bonusSource: null,
+    mbTrackId: null,
+    suspectMatch: false,
     ...over,
   };
 }

@@ -251,6 +251,8 @@ const libraryTracks = [
     art_path: thumb("#334", "#112"),
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
+    mb_trackid: "rec-monster",
+    suspect_match: false,
   },
   // [title, artist, album, genre, bucket, length, year, track, cover]. The
   // bucket is what `sidecar/genre_tree.py` actually resolves for that genre,
@@ -315,6 +317,8 @@ const libraryTracks = [
     path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
+    mb_trackid: null,
+    suspect_match: false,
   })),
 
   // Compilation: the album artist is "Various Artists" while every track has
@@ -343,6 +347,37 @@ const libraryTracks = [
     path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
     art_path: thumb("#f43f5e", "#7c2d12"),
     bonus_source: null,
+    mb_trackid: null,
+    suspect_match: false,
+  })),
+
+  // Spirit regression: a cross-language match flagged for review, and the
+  // same recording filed twice (the single re-imported inside a playlist) —
+  // both land on the metadata page's review lines.
+  ...(
+    [
+      [300, "You Can’t Take Me", 1, true],
+      [301, "You Can’t Take Me", 2, false],
+    ] as const
+  ).map(([id, title, trackNo, flagged]) => ({
+    id,
+    title,
+    artist: "Bryan Adams",
+    album: "Spirit: Stallion of the Cimarron",
+    album_artist: "Bryan Adams",
+    year: 2002,
+    genre: "Art Rock",
+    genre_bucket: "Rock",
+    track: trackNo,
+    track_total: 2,
+    length: 265,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/Bryan Adams/${title}.m4a`,
+    art_path: thumb("#d97706", "#78350f"),
+    bonus_source: null,
+    mb_trackid: "rec-yctm",
+    suspect_match: flagged,
   })),
 ];
 
@@ -353,7 +388,9 @@ const libraryTracks = [
  * generation suffix — otherwise 10 000 tracks would collapse into 13 albums
  * and the grid would never be exercised.
  */
-function inflate<T extends { id: number; album: string; album_artist: string }>(seed: T[], total: number): T[] {
+function inflate<
+  T extends { id: number; album: string; album_artist: string; mb_trackid: string | null; suspect_match: boolean },
+>(seed: T[], total: number): T[] {
   if (total <= seed.length) return seed;
   return Array.from({ length: total }, (_, i) => {
     const source = seed[i % seed.length];
@@ -365,6 +402,10 @@ function inflate<T extends { id: number; album: string; album_artist: string }>(
           id: 10_000 + i,
           album: `${source.album} (${generation})`,
           album_artist: `${source.album_artist} ${generation}`,
+          // Clones share the source's recording only nominally — carrying it
+          // over would flood the duplicates line at ?tracks=10000.
+          mb_trackid: null,
+          suspect_match: false,
         };
   });
 }

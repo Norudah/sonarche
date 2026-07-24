@@ -49,6 +49,8 @@ export const triagePaths = {
   genreOffTree: `${paths.libraryTracks}?genre=off-tree`,
   missingArtwork: `${paths.libraryAlbums}?missing=artwork`,
   tracklistGaps: `${paths.libraryAlbums}?tracklist=gaps`,
+  suspectMatch: `${paths.libraryTracks}?suspect=match`,
+  duplicateRecording: `${paths.libraryTracks}?duplicates=recording`,
 } as const;
 
 /**

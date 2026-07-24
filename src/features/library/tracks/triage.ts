@@ -12,13 +12,30 @@ export interface TrackTriage {
   missingYear: boolean;
   /** `?genre=` — a sentinel, a plain genre name, or null when absent. */
   genre: string | null;
+  /** `?suspect=match` — matches contradicting the download's own title. */
+  suspectMatch: boolean;
+  /** `?duplicates=recording` — tracks sharing a MusicBrainz recording. */
+  duplicateRecording: boolean;
 }
 
 export function parseTrackTriage(params: URLSearchParams): TrackTriage {
   return {
     missingYear: params.get("missing") === "year",
     genre: params.get("genre"),
+    suspectMatch: params.get("suspect") === "match",
+    duplicateRecording: params.get("duplicates") === "recording",
   };
+}
+
+/** Tracks whose recording id another track of the list also carries — the
+ * same audio filed twice (a playlist re-importing an already-owned single).
+ * Unmatched tracks (null id) never pair up. */
+export function duplicateRecordingTracks(tracks: LibraryTrack[]): LibraryTrack[] {
+  const seen = new Map<string, number>();
+  for (const track of tracks) {
+    if (track.mbTrackId != null) seen.set(track.mbTrackId, (seen.get(track.mbTrackId) ?? 0) + 1);
+  }
+  return tracks.filter((track) => track.mbTrackId != null && (seen.get(track.mbTrackId) ?? 0) > 1);
 }
 
 /**
@@ -32,5 +49,7 @@ export function applyTrackTriage(tracks: LibraryTrack[], triage: TrackTriage): L
   if (triage.genre === GENRE_MISSING) result = result.filter((track) => familyKeyOf(track) === FAMILY_NONE);
   else if (triage.genre === GENRE_OFF_TREE) result = result.filter((track) => familyKeyOf(track) === FAMILY_OTHER);
   else if (triage.genre != null) result = result.filter((track) => track.genre === triage.genre);
+  if (triage.suspectMatch) result = result.filter((track) => track.suspectMatch);
+  if (triage.duplicateRecording) result = duplicateRecordingTracks(result);
   return result;
 }

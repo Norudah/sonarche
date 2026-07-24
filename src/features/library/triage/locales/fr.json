@@ -5,6 +5,8 @@
   "allClear": "Rien à corriger",
   "allClearHint": "Tous les morceaux et albums passent les contrôles.",
   "queue": {
+    "suspect": "Correspondance à vérifier",
+    "duplicates": "Morceaux en double",
     "year": "Année manquante",
     "genre": "Genre manquant ou hors arbre",
     "artwork": "Pochette absente",

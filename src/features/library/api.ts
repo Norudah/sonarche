@@ -20,6 +20,12 @@ export interface LibraryTrack {
   /** Origin release title when the track is a bonus adopted into this album
    * (deluxe/regional edition filed with the main album), else null. */
   bonusSource: string | null;
+  /** MusicBrainz recording id of the applied match, null when never matched.
+   * Two tracks sharing one id are the same audio filed twice. */
+  mbTrackId: string | null;
+  /** The match contradicts the download's own title (cross-language
+   * fingerprint collisions): surfaced by the metadata triage as "to review". */
+  suspectMatch: boolean;
 }
 
 interface WireTrack {
@@ -39,6 +45,8 @@ interface WireTrack {
   path: string;
   art_path: string | null;
   bonus_source: string | null;
+  mb_trackid: string | null;
+  suspect_match: boolean;
 }
 
 export async function deleteTrack(id: number): Promise<void> {
@@ -97,5 +105,7 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     audioUrl: convertFileSrc(track.path),
     artUrl: track.art_path ? convertFileSrc(track.art_path) : null,
     bonusSource: track.bonus_source,
+    mbTrackId: track.mb_trackid,
+    suspectMatch: track.suspect_match,
   }));
 }

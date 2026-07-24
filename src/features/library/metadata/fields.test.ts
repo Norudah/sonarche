@@ -28,6 +28,8 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     audioUrl: "asset://music/monster.m4a",
     artUrl: null,
     bonusSource: null,
+    mbTrackId: null,
+    suspectMatch: false,
     ...over,
   };
 }

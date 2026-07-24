@@ -26,10 +26,11 @@ _GENRE_FMT_DELIMITER = "; "
 # Flexible (non-column) attributes we surface. Anything not listed here stays
 # in item_attributes and is never read.
 _BONUS_SOURCE_KEY = "sonarche_bonus_source"
+_SUSPECT_KEY = "sonarche_suspect_match"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
-    " length, bitrate, format, path, album_id, added"
+    " length, bitrate, format, path, album_id, added, mb_trackid"
 )
 
 
@@ -93,21 +94,21 @@ def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     }
 
 
-def bonus_sources_by_item(conn) -> dict[int, str]:
-    """`sonarche_bonus_source` is a flexible attribute, so it lives in
-    item_attributes rather than a column. One indexed query for the whole
-    library instead of a lookup per track."""
+def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
+    """One surfaced flexible attribute for the whole library — they live in
+    item_attributes rather than columns. One indexed query per key instead of
+    a lookup per track."""
     return {
         row["entity_id"]: row["value"]
         for row in conn.execute(
             "SELECT entity_id, value FROM item_attributes WHERE key = ?",
-            (_BONUS_SOURCE_KEY,),
+            (key,),
         )
         if row["value"]
     }
 
 
-def track_row(row, art_by_album, bonus_by_item, library_dir: str) -> dict:
+def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: str) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
     genre = first_genre(row["genres"])
     return {
@@ -131,6 +132,11 @@ def track_row(row, art_by_album, bonus_by_item, library_dir: str) -> dict:
         # Origin release of an adopted bonus track (deluxe/regional
         # edition filed with the main album), or None.
         "bonus_source": bonus_by_item.get(row["id"]),
+        # Empty string is beets' "no match" — surface it as null.
+        "mb_trackid": row["mb_trackid"] or None,
+        # The match contradicts the download's own title (see suspect.py):
+        # shown by the triage page as "to review".
+        "suspect_match": row["id"] in suspect_by_item,
         "added": row["added"],
     }
 
@@ -147,13 +153,16 @@ def handle(_request_id: str, params: dict) -> dict:
     conn.row_factory = sqlite3.Row
     try:
         art_by_album = art_paths_by_album(conn, library_dir)
-        bonus_by_item = bonus_sources_by_item(conn)
+        bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
+        suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
         # `added` at the bottom instead of letting NULL sort unpredictably.
         rows = conn.execute(
             f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC"
         )
-        tracks = [track_row(r, art_by_album, bonus_by_item, library_dir) for r in rows]
+        tracks = [
+            track_row(r, art_by_album, bonus_by_item, suspect_by_item, library_dir) for r in rows
+        ]
     finally:
         conn.close()
 
@@ -261,6 +270,10 @@ def update(_request_id: str, params: dict) -> dict:
         # These edits are the one provenance signal that cannot be
         # reconstructed later; record them in the same store.
         provenance.mark_edited(item, changed)
+        # A human touched the item: the "match to review" flag is answered,
+        # whichever way they decided.
+        if item.get(_SUSPECT_KEY):
+            del item[_SUSPECT_KEY]
         item.store()
         try:
             item.write()

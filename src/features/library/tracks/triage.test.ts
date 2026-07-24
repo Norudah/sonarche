@@ -9,7 +9,7 @@ function paramsOf(path: string): URLSearchParams {
 }
 
 function triage(over: Partial<TrackTriage> = {}): TrackTriage {
-  return { missingYear: false, genre: null, ...over };
+  return { missingYear: false, genre: null, suspectMatch: false, duplicateRecording: false, ...over };
 }
 
 const library = [
@@ -24,6 +24,8 @@ describe("parseTrackTriage", () => {
     expect(parseTrackTriage(paramsOf(triagePaths.missingYear))).toEqual(triage({ missingYear: true }));
     expect(parseTrackTriage(paramsOf(triagePaths.genreMissing))).toEqual(triage({ genre: "missing" }));
     expect(parseTrackTriage(paramsOf(triagePaths.genreOffTree))).toEqual(triage({ genre: "off-tree" }));
+    expect(parseTrackTriage(paramsOf(triagePaths.suspectMatch))).toEqual(triage({ suspectMatch: true }));
+    expect(parseTrackTriage(paramsOf(triagePaths.duplicateRecording))).toEqual(triage({ duplicateRecording: true }));
   });
 
   it("is inert on unrelated or unknown params", () => {
@@ -57,5 +59,23 @@ describe("applyTrackTriage", () => {
   it("composes active filters", () => {
     const both = triage({ missingYear: true, genre: "missing" });
     expect(applyTrackTriage(library, both).map((t) => t.id)).toEqual([4]);
+  });
+
+  it("keeps only flagged matches under ?suspect=match", () => {
+    const flagged = [track({ id: 1, suspectMatch: true }), track({ id: 2 })];
+    expect(applyTrackTriage(flagged, triage({ suspectMatch: true })).map((t) => t.id)).toEqual([1]);
+  });
+
+  it("keeps only tracks sharing a recording under ?duplicates=recording", () => {
+    // Regression (Spirit): the same video imported as a single and again
+    // inside a playlist — both copies carry the same MusicBrainz recording.
+    const doubled = [
+      track({ id: 1, mbTrackId: "rec-a" }),
+      track({ id: 2, mbTrackId: "rec-b" }),
+      track({ id: 3, mbTrackId: "rec-a" }),
+      track({ id: 4, mbTrackId: null }),
+      track({ id: 5, mbTrackId: null }),
+    ];
+    expect(applyTrackTriage(doubled, triage({ duplicateRecording: true })).map((t) => t.id)).toEqual([1, 3]);
   });
 });

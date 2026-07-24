@@ -2,12 +2,24 @@ import { triagePaths } from "@/app/paths";
 import type { Album } from "@/features/library/albums/albums";
 import { hasTracklistGaps } from "@/features/library/albums/triage";
 import type { LibraryTrack } from "@/features/library/api";
-import { applyTrackTriage, GENRE_MISSING, GENRE_OFF_TREE } from "@/features/library/tracks/triage";
+import {
+  applyTrackTriage,
+  duplicateRecordingTracks,
+  GENRE_MISSING,
+  GENRE_OFF_TREE,
+} from "@/features/library/tracks/triage";
 
 /** One clickable count — the page's doctrine is that every number is a door
  * into the filtered explorer, never a figure to just look at. */
 export interface TriageDoor {
-  key: "missingYear" | "genreMissing" | "genreOffTree" | "missingArtwork" | "tracklistGaps";
+  key:
+    | "missingYear"
+    | "genreMissing"
+    | "genreOffTree"
+    | "missingArtwork"
+    | "tracklistGaps"
+    | "suspectMatch"
+    | "duplicateRecording";
   count: number;
   /** The matching `triagePaths` deep link. */
   to: string;
@@ -18,7 +30,7 @@ export interface TriageDoor {
  * Doors that count zero are dropped; a row whose doors all dropped counts
  * zero and is the view's cue to hide it. */
 export interface TriageLine {
-  key: "year" | "genre" | "artwork" | "tracklist";
+  key: "year" | "genre" | "artwork" | "tracklist" | "suspect" | "duplicates";
   count: number;
   doors: TriageDoor[];
   /** A few concrete names (track or album titles), untranslated data. */
@@ -44,13 +56,26 @@ function doorsOf(doors: TriageDoor[]): { count: number; doors: TriageDoor[] } {
  * same predicates, so a door always opens on exactly as many items as it said.
  */
 export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): TriageLine[] {
-  const missingYear = applyTrackTriage(tracks, { missingYear: true, genre: null });
-  const genreMissing = applyTrackTriage(tracks, { missingYear: false, genre: GENRE_MISSING });
-  const genreOffTree = applyTrackTriage(tracks, { missingYear: false, genre: GENRE_OFF_TREE });
+  const none = { missingYear: false, genre: null, suspectMatch: false, duplicateRecording: false };
+  const missingYear = applyTrackTriage(tracks, { ...none, missingYear: true });
+  const genreMissing = applyTrackTriage(tracks, { ...none, genre: GENRE_MISSING });
+  const genreOffTree = applyTrackTriage(tracks, { ...none, genre: GENRE_OFF_TREE });
+  const suspect = tracks.filter((track) => track.suspectMatch);
+  const duplicated = duplicateRecordingTracks(tracks);
   const missingArtwork = albums.filter((album) => album.artUrl == null);
   const gapped = albums.filter(hasTracklistGaps);
 
   return [
+    {
+      key: "suspect",
+      ...doorsOf([{ key: "suspectMatch", count: suspect.length, to: triagePaths.suspectMatch }]),
+      examples: examplesOf(suspect.map((track) => track.title)),
+    },
+    {
+      key: "duplicates",
+      ...doorsOf([{ key: "duplicateRecording", count: duplicated.length, to: triagePaths.duplicateRecording }]),
+      examples: examplesOf(duplicated.map((track) => track.title)),
+    },
     {
       key: "year",
       ...doorsOf([{ key: "missingYear", count: missingYear.length, to: triagePaths.missingYear }]),

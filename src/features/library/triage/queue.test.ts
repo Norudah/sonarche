@@ -50,6 +50,32 @@ const tracks = [
   // An album with no artwork and a gapped tracklist (1 then 3): both album lines.
   track({ id: 4, title: "Gap A", album: "Holes", year: 2001, genre: "Grunge", genreBucket: "rock", track: 1 }),
   track({ id: 5, title: "Gap B", album: "Holes", year: 2001, genre: "Grunge", genreBucket: "rock", track: 3 }),
+  // A flagged match and a recording filed twice (Spirit regression).
+  track({
+    id: 6,
+    title: "Sound the Bugle",
+    album: "Done",
+    year: 2001,
+    genre: "Grunge",
+    genreBucket: "rock",
+    track: 1,
+    trackTotal: 1,
+    artUrl: "asset://a.jpg",
+    suspectMatch: true,
+    mbTrackId: "rec-dup",
+  }),
+  track({
+    id: 7,
+    title: "You Can't Take Me",
+    album: "Done",
+    year: 2001,
+    genre: "Grunge",
+    genreBucket: "rock",
+    track: 1,
+    trackTotal: 1,
+    artUrl: "asset://a.jpg",
+    mbTrackId: "rec-dup",
+  }),
 ];
 
 const albums = groupAlbums(tracks.map((item) => ({ ...item, artist: "Artist", albumArtist: "Artist" })));
@@ -61,6 +87,18 @@ describe("buildTriageQueue", () => {
     expect(lineOf(queue, "genre").count).toBe(2);
     expect(lineOf(queue, "artwork").count).toBe(1);
     expect(lineOf(queue, "tracklist").count).toBe(1);
+    expect(lineOf(queue, "suspect").count).toBe(1);
+    // Both copies of the shared recording count: the door opens on the pair.
+    expect(lineOf(queue, "duplicates").count).toBe(2);
+  });
+
+  it("points the review lines at their deep links, with track examples", () => {
+    expect(lineOf(queue, "suspect").doors).toEqual([{ key: "suspectMatch", count: 1, to: triagePaths.suspectMatch }]);
+    expect(lineOf(queue, "suspect").examples).toEqual(["Sound the Bugle"]);
+    expect(lineOf(queue, "duplicates").doors).toEqual([
+      { key: "duplicateRecording", count: 2, to: triagePaths.duplicateRecording },
+    ]);
+    expect(lineOf(queue, "duplicates").examples).toEqual(["Sound the Bugle", "You Can't Take Me"]);
   });
 
   it("points every door at its contract deep link", () => {
@@ -101,7 +139,7 @@ describe("buildTriageQueue", () => {
 
 describe("countToFix", () => {
   it("adds tracks and albums together — N things, not N tracks", () => {
-    expect(countToFix(queue)).toBe(5);
+    expect(countToFix(queue)).toBe(8);
   });
 
   it("is zero on a clean library", () => {

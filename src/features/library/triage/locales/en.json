@@ -5,6 +5,8 @@
   "allClear": "Nothing to fix",
   "allClearHint": "Every track and album passes the checks.",
   "queue": {
+    "suspect": "Match to review",
+    "duplicates": "Duplicate tracks",
     "year": "Missing year",
     "genre": "Missing or off-tree genre",
     "artwork": "Missing artwork",
