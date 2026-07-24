@@ -26,6 +26,8 @@ export const paths = {
   libraryArtist: "/library/artists/:name",
   libraryGenres: "/library/genres",
   libraryGenre: "/library/genres/:family",
+  libraryCategories: "/library/categories",
+  libraryCategory: "/library/categories/:category",
   settings: "/settings",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",
@@ -91,5 +93,16 @@ export function artistPath(name: string): string {
  */
 export function genrePath(family: string, genre?: string): string {
   const base = `${paths.libraryGenres}/${encodeURIComponent(family)}`;
+  return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
+}
+
+/**
+ * A category, or one genre inside it — the same shape as `genrePath` for the
+ * same reasons: the segment carries the stored (canonical English) value that
+ * survives a language switch, and the genre refines the page through a query
+ * param so flipping a chip never remounts it.
+ */
+export function categoryPath(category: string, genre?: string): string {
+  const base = `${paths.libraryCategories}/${encodeURIComponent(category)}`;
   return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
 }

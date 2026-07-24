@@ -30,6 +30,8 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
+    category: null,
+    soundtrack: false,
     ...over,
   };
 }
@@ -71,6 +73,12 @@ describe("countFilled", () => {
     );
     expect(countFilled(empty)).toBe(0);
   });
+
+  it("never counts the category — optional by nature, in or out", () => {
+    const bare = countFilled(toFieldValues(track({ category: null })));
+    const tagged = countFilled(toFieldValues(track({ category: "Video Games" })));
+    expect(tagged).toBe(bare);
+  });
 });
 
 describe("diffFields", () => {
@@ -88,6 +96,11 @@ describe("diffFields", () => {
   it("carries an emptied field through as an empty string, not a drop", () => {
     const live = toFieldValues(track());
     expect(diffFields(live, { ...live, genre: "" })).toEqual({ genre: "" });
+  });
+
+  it("ships a category edit under beets' grouping key", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, category: "Video Games" })).toEqual({ grouping: "Video Games" });
   });
 });
 

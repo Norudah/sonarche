@@ -253,6 +253,8 @@ const libraryTracks = [
     bonus_source: "Awake: Deluxe Edition",
     mb_trackid: "rec-monster",
     suspect_match: false,
+    category: null,
+    soundtrack: false,
   },
   // [title, artist, album, genre, bucket, length, year, track, cover]. The
   // bucket is what `sidecar/genre_tree.py` actually resolves for that genre,
@@ -319,6 +321,8 @@ const libraryTracks = [
     bonus_source: null,
     mb_trackid: null,
     suspect_match: false,
+    category: null,
+    soundtrack: false,
   })),
 
   // Compilation: the album artist is "Various Artists" while every track has
@@ -349,6 +353,9 @@ const libraryTracks = [
     bonus_source: null,
     mb_trackid: null,
     suspect_match: false,
+    // Categorized soundtrack: the Categories page's first card.
+    category: "Video Games",
+    soundtrack: true,
   })),
 
   // Spirit regression: a cross-language match flagged for review, and the
@@ -378,6 +385,10 @@ const libraryTracks = [
     bonus_source: null,
     mb_trackid: "rec-yctm",
     suspect_match: flagged,
+    // MB typed the release a soundtrack but no category is set yet — the
+    // drawer's pre-suggestion case.
+    category: null,
+    soundtrack: true,
   })),
 ];
 

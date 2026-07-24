@@ -26,6 +26,13 @@ export interface LibraryTrack {
   /** The match contradicts the download's own title (cross-language
    * fingerprint collisions): surfaced by the metadata triage as "to review". */
   suspectMatch: boolean;
+  /** The user's own axis (beets' grouping tag): context — Video Games, Film…
+   * — not musical style. Canonical English values; the UI translates known
+   * taxonomy entries. Optional by nature: not counted in tag completeness. */
+  category: string | null;
+  /** MusicBrainz typed the release a soundtrack: the drawer's cue to
+   * pre-suggest a category (MB can't tell film from game). */
+  soundtrack: boolean;
 }
 
 interface WireTrack {
@@ -47,6 +54,8 @@ interface WireTrack {
   bonus_source: string | null;
   mb_trackid: string | null;
   suspect_match: boolean;
+  category: string | null;
+  soundtrack: boolean;
 }
 
 export async function deleteTrack(id: number): Promise<void> {
@@ -65,6 +74,7 @@ export interface TrackFieldPatch {
   track?: string;
   tracktotal?: string;
   genre?: string;
+  grouping?: string;
 }
 
 export interface TrackUpdate {
@@ -107,5 +117,7 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     bonusSource: track.bonus_source,
     mbTrackId: track.mb_trackid,
     suspectMatch: track.suspect_match,
+    category: track.category,
+    soundtrack: track.soundtrack,
   }));
 }

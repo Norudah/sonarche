@@ -9,6 +9,10 @@ export interface FieldValues {
   year: string;
   track: string;
   genre: string;
+  /** The category axis (grouping tag). Editable but optional by nature, so it
+   * is deliberately absent from COMPLETENESS_KEYS — a plain studio album must
+   * not read as 7/8 for lacking one. */
+  category: string;
 }
 
 /** Fields counted by the completeness meter. `genreBucket` is excluded: it is
@@ -32,6 +36,7 @@ export function toFieldValues(track: LibraryTrack): FieldValues {
     year: track.year != null ? String(track.year) : "",
     track: track.track != null ? String(track.track) : "",
     genre: track.genre ?? "",
+    category: track.category ?? "",
   };
 }
 
@@ -46,6 +51,7 @@ const WIRE_KEY: Record<keyof FieldValues, keyof TrackFieldPatch> = {
   year: "year",
   track: "track",
   genre: "genre",
+  category: "grouping",
 };
 
 /** Only the fields the user actually changed, keyed for the sidecar. Sending

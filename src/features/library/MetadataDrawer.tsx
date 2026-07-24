@@ -6,6 +6,8 @@ import { useNavigate } from "react-router";
 
 import { albumPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
+import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useUpdateTracks } from "@/features/library/hooks";
 import { countFilled, diffFields, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
 import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
@@ -15,6 +17,7 @@ import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 
 function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
   const { t } = useTranslation("library");
+  const categoryLabelOf = useCategoryLabel();
   const navigate = useNavigate();
   const update = useUpdateTracks();
   const [isEditing, setIsEditing] = useState(false);
@@ -134,7 +137,8 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
               onChange={setField("genre")}
               className="min-w-0 flex-1"
             />
-            {/* Derived from the genre, not an editable tag: read-only even while editing. */}
+            {/* Derived from the genre, not an editable tag: read-only even
+                while editing, and marked as outside the tag count. */}
             <MetadataField
               label={t("metadata.fields.genreBucket")}
               value={track.genreBucket ?? ""}
@@ -143,6 +147,24 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
               hint={t("metadata.derived")}
               className="min-w-0 flex-1"
             />
+          </div>
+          <div className="flex flex-col gap-2">
+            {/* The stored value is the canonical English tag; read mode shows
+                its translation, the chips write the canonical form. */}
+            <MetadataField
+              label={t("metadata.fields.category")}
+              value={isEditing ? shown.category : categoryLabelOf(shown.category)}
+              isEditing={isEditing}
+              onChange={setField("category")}
+              hint={t("metadata.optional")}
+            />
+            {isEditing && (
+              <CategoryTaxonomyChips
+                value={shown.category}
+                soundtrack={track.soundtrack}
+                onSelect={(canonical) => setField("category")(canonical)}
+              />
+            )}
           </div>
         </div>
       </div>

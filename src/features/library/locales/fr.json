@@ -5,7 +5,25 @@
     "albums": "Albums",
     "artists": "Artistes",
     "genres": "Genres",
+    "categories": "Catégories",
     "comingSoon": "Bientôt disponible."
+  },
+  "categories": {
+    "back": "Catégories",
+    "categoryCount_one": "{{count}} catégorie",
+    "categoryCount_other": "{{count}} catégories",
+    "categorizedCount_one": "{{count}} titre catégorisé",
+    "categorizedCount_other": "{{count}} titres catégorisés",
+    "empty": "La catégorie note le contexte d'un morceau — jeux vidéo, film… — indépendamment de son genre. Attribue-la depuis l'inspection des métadonnées d'un album ou d'un morceau, et les étagères se construiront ici.",
+    "emptyAction": "Parcourir les albums",
+    "noAlbums": "Aucun album ne porte cette catégorie pour l'instant.",
+    "values": {
+      "videoGames": "Jeux vidéo",
+      "film": "Films",
+      "tv": "Séries TV",
+      "anime": "Anime",
+      "musical": "Comédies musicales"
+    }
   },
   "genres": {
     "eyebrow": "Genre",
@@ -105,7 +123,9 @@
     "missingArtwork": "Pochette absente",
     "tracklistGaps": "Tracklist à trous",
     "clearFilter": "Retirer le filtre « {{filter}} »",
-    "noResults": "Rien ne correspond au filtre actif."
+    "noResults": "Rien ne correspond au filtre actif.",
+    "suspectMatch": "Correspondance à vérifier",
+    "duplicateRecording": "Morceaux en double"
   },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": "Ta bibliothèque est vide pour l'instant.",
@@ -133,7 +153,8 @@
       "year": "Année",
       "track": "N° piste",
       "genre": "Genre",
-      "genreBucket": "Genre parent"
+      "genreBucket": "Genre parent",
+      "category": "Catégorie"
     },
     "close": "Fermer",
     "edit": "Modifier",
@@ -142,8 +163,10 @@
     "saving": "Enregistrement…",
     "saveFailed": "L'enregistrement a échoué, réessaie dans un instant.",
     "completeness": "Complétude — {{filled}}/{{total}} champs",
-    "derived": "dérivé",
-    "viewAlbum": "Voir l'album"
+    "derived": "dérivé · hors comptage",
+    "viewAlbum": "Voir l'album",
+    "optional": "optionnel · hors comptage",
+    "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie."
   },
   "albumMetadata": {
     "eyebrow": "Album",
@@ -159,6 +182,12 @@
       "prompt": "Tu as changé « {{from}} » en « {{to}} ». L'appliquer aux autres morceaux encore en « {{from}} » ?",
       "apply_one": "Appliquer à {{count}} morceau",
       "apply_other": "Appliquer à {{count}} morceaux"
+    },
+    "applyGenre": {
+      "prompt": "Le genre était commun à l'album. Appliquer « {{value}} » partout ?",
+      "all_one": "Appliquer à {{count}} morceau",
+      "all_other": "Appliquer aux {{count}} morceaux",
+      "one": "Ce morceau seul"
     }
   },
   "delete": {

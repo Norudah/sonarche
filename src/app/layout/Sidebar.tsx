@@ -1,5 +1,5 @@
 import { cn } from "@heroui/react";
-import { AudioLines, ChevronLeft, Disc, Download, FileText, Layers, Mic2, Music, Settings } from "lucide-react";
+import { AudioLines, ChevronLeft, Disc, Download, FileText, Layers, Mic2, Music, Settings, Tags } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -94,6 +94,7 @@ function MainNav() {
         <NavItem to={paths.libraryAlbums} label={tLibrary("views.albums")} icon={Disc} />
         <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
         <NavItem to={paths.libraryGenres} label={tLibrary("views.genres")} icon={Layers} />
+        <NavItem to={paths.libraryCategories} label={tLibrary("views.categories")} icon={Tags} />
       </NavSection>
     </div>
   );

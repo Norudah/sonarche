@@ -5,7 +5,25 @@
     "albums": "Albums",
     "artists": "Artists",
     "genres": "Genres",
+    "categories": "Categories",
     "comingSoon": "Coming soon."
+  },
+  "categories": {
+    "back": "Categories",
+    "categoryCount_one": "{{count}} category",
+    "categoryCount_other": "{{count}} categories",
+    "categorizedCount_one": "{{count}} categorized track",
+    "categorizedCount_other": "{{count}} categorized tracks",
+    "empty": "A category notes a track's context — video games, film… — independently of its genre. Set it from an album's or a track's metadata inspection and the shelves will build themselves here.",
+    "emptyAction": "Browse albums",
+    "noAlbums": "No album carries this category yet.",
+    "values": {
+      "videoGames": "Video Games",
+      "film": "Films",
+      "tv": "TV Series",
+      "anime": "Anime",
+      "musical": "Musicals"
+    }
   },
   "genres": {
     "eyebrow": "Genre",
@@ -105,7 +123,9 @@
     "missingArtwork": "Missing artwork",
     "tracklistGaps": "Gapped tracklist",
     "clearFilter": "Remove the “{{filter}}” filter",
-    "noResults": "Nothing matches the active filter."
+    "noResults": "Nothing matches the active filter.",
+    "suspectMatch": "Match to review",
+    "duplicateRecording": "Duplicate tracks"
   },
   "loadFailed": "Unable to load the library",
   "empty": "Your library is empty for now.",
@@ -133,7 +153,8 @@
       "year": "Year",
       "track": "Track no.",
       "genre": "Genre",
-      "genreBucket": "Parent genre"
+      "genreBucket": "Parent genre",
+      "category": "Category"
     },
     "close": "Close",
     "edit": "Edit",
@@ -142,8 +163,10 @@
     "saving": "Saving…",
     "saveFailed": "Save failed, try again in a moment.",
     "completeness": "Completeness — {{filled}}/{{total}} fields",
-    "derived": "derived",
-    "viewAlbum": "View album"
+    "derived": "derived · not counted",
+    "viewAlbum": "View album",
+    "optional": "optional · not counted",
+    "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category."
   },
   "albumMetadata": {
     "eyebrow": "Album",
@@ -159,6 +182,12 @@
       "prompt": "You changed “{{from}}” to “{{to}}”. Apply it to other tracks that still show “{{from}}”?",
       "apply_one": "Apply to {{count}} track",
       "apply_other": "Apply to {{count}} tracks"
+    },
+    "applyGenre": {
+      "prompt": "The genre was shared across the album. Apply “{{value}}” everywhere?",
+      "all_one": "Apply to {{count}} track",
+      "all_other": "Apply to {{count}} tracks",
+      "one": "This track only"
     }
   },
   "delete": {
