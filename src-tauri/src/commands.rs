@@ -10,7 +10,7 @@ use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
 use crate::now_playing::{NowPlayingState, NowPlayingTrack};
-use crate::player::{PlaybackStatus, PlayerState};
+use crate::player::{self, PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
@@ -106,48 +106,51 @@ pub async fn reenrich_track(
 /// Play a library file now, replacing whatever was queued. Returns the decoded
 /// duration in seconds — the engine's own reading of the file, which is what
 /// the seek bar should trust.
+///
+/// Like every command here it runs through `off_runtime`: each one waits on the
+/// audio thread, and the runtime's threads are not the ones to wait on it.
 #[tauri::command]
-pub async fn player_load(state: State<'_, PlayerState>, path: String) -> AppResult<Option<f64>> {
-    state.load(&path)
+pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>> {
+    player::off_runtime(app, move |player| player.load(&path)).await
 }
 
 /// Queue a file behind the playing one, for a seamless hand-over. The front
 /// calls this once it knows what comes next.
 #[tauri::command]
-pub async fn player_enqueue(state: State<'_, PlayerState>, path: String) -> AppResult<()> {
-    state.enqueue(&path)
+pub async fn player_enqueue(app: AppHandle, path: String) -> AppResult<()> {
+    player::off_runtime(app, move |player| player.enqueue(&path)).await
 }
 
 #[tauri::command]
-pub async fn player_toggle(state: State<'_, PlayerState>) -> AppResult<bool> {
-    state.toggle()
+pub async fn player_toggle(app: AppHandle) -> AppResult<bool> {
+    player::off_runtime(app, |player| player.toggle()).await
 }
 
 #[tauri::command]
-pub async fn player_pause(state: State<'_, PlayerState>) -> AppResult<()> {
-    state.pause()
+pub async fn player_pause(app: AppHandle) -> AppResult<()> {
+    player::off_runtime(app, |player| player.pause()).await
 }
 
 #[tauri::command]
-pub async fn player_seek(state: State<'_, PlayerState>, seconds: f64) -> AppResult<()> {
+pub async fn player_seek(app: AppHandle, seconds: f64) -> AppResult<()> {
     if !seconds.is_finite() {
         return Err(AppError::InvalidInput("seek target is not a number".into()));
     }
-    state.seek(seconds)
+    player::off_runtime(app, move |player| player.seek(seconds)).await
 }
 
 /// `level` is the slider position, 0…1; the engine applies the audio taper.
 #[tauri::command]
-pub async fn player_set_volume(state: State<'_, PlayerState>, level: f64) -> AppResult<()> {
+pub async fn player_set_volume(app: AppHandle, level: f64) -> AppResult<()> {
     if !level.is_finite() {
         return Err(AppError::InvalidInput("volume is not a number".into()));
     }
-    state.set_volume(level as f32)
+    player::off_runtime(app, move |player| player.set_volume(level as f32)).await
 }
 
 #[tauri::command]
-pub async fn player_stop(state: State<'_, PlayerState>) -> AppResult<()> {
-    state.stop()
+pub async fn player_stop(app: AppHandle) -> AppResult<()> {
+    player::off_runtime(app, |player| player.stop()).await
 }
 
 /// Tell the OS what is playing — media keys, Control Center, the lock screen.

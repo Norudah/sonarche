@@ -22,6 +22,11 @@ import type { PlayableTrack } from "@/shared/player/types";
  * after that it means "start this one over". The universal threshold. */
 const PREVIOUS_RESTARTS_AFTER = 3;
 
+/** How long before the end the next file is handed to the engine, in seconds.
+ * Only has to beat the time it takes to open a decoder; the rest of the margin
+ * is there so a stalled status tick cannot cost the hand-over. */
+const PRELOAD_LEAD = 8;
+
 /**
  * What the player is doing. Changes only when the user acts — a new track, a
  * play/pause, a volume drag.
@@ -110,17 +115,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    * arrives between "the user clicked" and "the engine answered" describes the
    * previous track, and would drag the playhead backwards. */
   const loadingRef = useRef(0);
+  /** Same guard for a seek. The engine samples its playhead four times a
+   * second, so between asking it to move and it having moved there is always a
+   * tick describing where the playhead *was* — which snapped the thumb back to
+   * where it was dropped. */
+  const seekingRef = useRef(0);
+  /** The length of the playing track, for the preload check that runs on every
+   * status tick and must not re-subscribe four times a second to read it. */
+  const durationRef = useRef(0);
+  durationRef.current = duration;
+  /** The track already handed to the engine to play next, or null. Cleared by
+   * every load, which drops the engine's queue along with whatever was in it. */
+  const preloadedRef = useRef<PlayableTrack | null>(null);
 
-  /** Hand a track to the engine and start it. The one path every launch, skip
-   * and auto-advance goes through.
+  /** Take a track as the playing one, without touching the engine.
    *
-   * The state moves before the round-trip so the UI answers the click at once;
-   * the engine's own decoded duration replaces the library's when it lands,
-   * and it is the more accurate of the two. */
-  const loadTrack = useCallback((track: PlayableTrack) => {
+   * Everything a launch does apart from the load itself, because the gapless
+   * hand-over is exactly that: the engine is already playing the file, and
+   * loading it again would put back the gap the hand-over exists to avoid. */
+  const adopt = useCallback((track: PlayableTrack, decoded?: number | null) => {
     setCurrent(track);
     setCurrentTime(0);
-    setDuration(track.duration ?? 0);
+    setDuration(decoded ?? track.duration ?? 0);
     setIsPlaying(true);
 
     // Tell the OS what this is: media keys, Control Center, the lock screen.
@@ -132,20 +148,48 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       artPath: track.artPath,
       duration: track.duration,
     });
+  }, []);
 
-    const token = loadingRef.current + 1;
-    loadingRef.current = token;
-    void engine.load(track.path).then(
-      (decoded) => {
-        // A newer load overtook this one — its duration is the one that counts.
-        if (loadingRef.current !== token) return;
-        if (decoded != null) setDuration(decoded);
-      },
-      () => {
-        if (loadingRef.current !== token) return;
-        setIsPlaying(false);
-      },
-    );
+  /** Hand a track to the engine and start it. The one path every launch, skip
+   * and auto-advance goes through.
+   *
+   * The state moves before the round-trip so the UI answers the click at once;
+   * the engine's own decoded duration replaces the library's when it lands,
+   * and it is the more accurate of the two. */
+  const loadTrack = useCallback(
+    (track: PlayableTrack) => {
+      adopt(track);
+      preloadedRef.current = null;
+
+      const token = loadingRef.current + 1;
+      loadingRef.current = token;
+      void engine.load(track.path).then(
+        (decoded) => {
+          // A newer load overtook this one — its duration is the one that counts.
+          if (loadingRef.current !== token) return;
+          if (decoded != null) setDuration(decoded);
+        },
+        () => {
+          if (loadingRef.current !== token) return;
+          setIsPlaying(false);
+        },
+      );
+    },
+    [adopt],
+  );
+
+  /** Move the playhead. Set locally first so the thumb lands where it was
+   * dropped instead of snapping back until the next status tick, and hold the
+   * engine's own ticks off until it confirms — the one in flight is stale by
+   * definition. */
+  const seek = useCallback((time: number) => {
+    setCurrentTime(time);
+    const token = seekingRef.current + 1;
+    seekingRef.current = token;
+    void engine.seek(time).finally(() => {
+      // A newer seek is already in charge; this one has nothing left to release.
+      if (seekingRef.current === token) seekingRef.current = 0;
+    });
   }, []);
 
   /** Apply a queue transition and make playback follow it. A transition that
@@ -156,27 +200,78 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const track = currentTrack(nextState);
       if (!track) return;
       if (track.id === currentIdRef.current) {
-        setCurrentTime(0);
-        void engine.seek(0);
+        seek(0);
         return;
       }
       loadTrack(track);
     },
-    [loadTrack],
+    [loadTrack, seek],
   );
+
+  /** Hand the engine the next file before the playing one runs out, so it can
+   * cross over without stopping to open a decoder — the gap reassigning
+   * `<audio>.src` could never close.
+   *
+   * Near the end rather than at the start of the track: what comes next is only
+   * settled once the queue has stopped moving, and a shuffle toggled after the
+   * file was lined up would be heard as the wrong song. */
+  const preloadNext = useCallback((position: number) => {
+    if (preloadedRef.current) return;
+    const total = durationRef.current;
+    if (!total || total - position > PRELOAD_LEAD) return;
+
+    const nextState = queueAfterEnded(queueRef.current);
+    const track = nextState && currentTrack(nextState);
+    if (!track) return;
+    preloadedRef.current = track;
+    void engine.enqueue(track.path).catch(() => {
+      // Unreadable. Let the track run out and take the ordinary path, which
+      // reports the failure where the user can see it.
+      if (preloadedRef.current === track) preloadedRef.current = null;
+    });
+  }, []);
 
   // Follow the engine, the external system that owns playback. It reports four
   // times a second while something plays and goes quiet otherwise.
   useEffect(() => {
     const unlisten = engine.onStatus((status) => {
-      // Ignore ticks that describe the track we are leaving.
-      if (status.loaded) setCurrentTime(status.position);
+      // Ignore ticks that describe the track we are leaving, or the playhead we
+      // are in the middle of moving.
+      if (status.loaded && !seekingRef.current) setCurrentTime(status.position);
       setIsPlaying(status.isPlaying);
+      if (status.loaded) preloadNext(status.position);
     });
     return () => {
       void unlisten.then((off) => off());
     };
-  }, []);
+  }, [preloadNext]);
+
+  // The engine crossed into the file it was handed ahead of time. Nothing
+  // stopped, so there is nothing to load: only the queue and the display have
+  // to catch up with what is already being heard.
+  useEffect(() => {
+    const unlisten = engine.onAdvanced(({ path, duration: decoded }) => {
+      preloadedRef.current = null;
+      const nextState = queueAfterEnded(queueRef.current);
+      const track = nextState && currentTrack(nextState);
+      if (!nextState || !track) {
+        // The queue no longer has anywhere to go — repeat turned off at the
+        // last track, say. Silence beats playing a track nothing points at.
+        void engine.stop();
+        setIsPlaying(false);
+        return;
+      }
+      setQueue(nextState);
+      // The queue moved after the file was lined up. Reloading costs the gap
+      // this whole path exists to avoid, and is still better than showing one
+      // track while playing another.
+      if (track.path === path) adopt(track, decoded);
+      else loadTrack(track);
+    });
+    return () => {
+      void unlisten.then((off) => off());
+    };
+  }, [adopt, loadTrack]);
 
   // The engine ran out of audio: the queue decides what happens next.
   useEffect(() => {
@@ -270,16 +365,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
     // Past the threshold — or already at the front: start the track over.
-    void engine.seek(0);
-    setCurrentTime(0);
-  }, [applyQueue]);
-
-  /** Move the playhead. Set locally first so the thumb lands where it was
-   * dropped instead of snapping back until the next status tick. */
-  const seek = useCallback((time: number) => {
-    setCurrentTime(time);
-    void engine.seek(time);
-  }, []);
+    seek(0);
+  }, [applyQueue, seek]);
 
   /** `value` is the slider position, 0…1. The engine turns it into an
    * amplitude — the taper lives there, so every caller gets the same curve. */

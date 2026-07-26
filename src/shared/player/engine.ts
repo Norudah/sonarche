@@ -65,6 +65,20 @@ export function onEnded(handler: () => void) {
   return listen("player:ended", () => handler());
 }
 
+/** The file the engine crossed into by itself, having been handed it ahead of
+ * time. Identified by path rather than by queue slot: the front's queue can
+ * have moved since, and the path is what settles which track is being heard. */
+export interface HandedOver {
+  path: string;
+  duration: number | null;
+}
+
+/** Subscribe to the gapless hand-over. Nothing stopped, so no `ended` fires —
+ * this is the only sign the playing track changed. */
+export function onAdvanced(handler: (file: HandedOver) => void) {
+  return listen<HandedOver>("player:advanced", (event) => handler(event.payload));
+}
+
 /** What the OS shows: media keys, Control Center, the lock screen. Sent
  * separately from `load` because the engine is handed a file path, and a track
  * is more than that. */
