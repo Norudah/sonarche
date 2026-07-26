@@ -34,3 +34,6 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Design and mockups
+docs/designs/
