@@ -25,3 +25,11 @@ fastrand = "2"
 # Download-history store (our own DB, distinct from the beets library). `bundled`
 # ships SQLite with the binary — no system lib, matching the app's self-contained ethos.
 rusqlite = { version = "0.32", features = ["bundled"] }
+# Native audio playback. The webview's <audio> read every track through the asset
+# protocol, which reports twice the real duration (measured: 436.95s for a 218.45s
+# file, correct over plain HTTP) — hence the hand-rolled end-of-track cutoff it
+# needed. Reading the file directly sidesteps that transport entirely, and the
+# queue gives us gapless. `mp4` only: the download pipeline keeps YouTube's native
+# AAC and the library is 100% AAC, so any other codec would be a silent import bug
+# rather than a file we should quietly play.
+rodio = { version = "0.22", default-features = false, features = ["playback", "mp4"] }

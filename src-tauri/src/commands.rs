@@ -9,6 +9,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
+use crate::player::{PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
@@ -99,6 +100,59 @@ pub async fn reenrich_track(
     id: i64,
 ) -> AppResult<Value> {
     state.run(&app, id).await
+}
+
+/// Play a library file now, replacing whatever was queued. Returns the decoded
+/// duration in seconds — the engine's own reading of the file, which is what
+/// the seek bar should trust.
+#[tauri::command]
+pub async fn player_load(state: State<'_, PlayerState>, path: String) -> AppResult<Option<f64>> {
+    state.load(&path)
+}
+
+/// Queue a file behind the playing one, for a seamless hand-over. The front
+/// calls this once it knows what comes next.
+#[tauri::command]
+pub async fn player_enqueue(state: State<'_, PlayerState>, path: String) -> AppResult<()> {
+    state.enqueue(&path)
+}
+
+#[tauri::command]
+pub async fn player_toggle(state: State<'_, PlayerState>) -> AppResult<bool> {
+    state.toggle()
+}
+
+#[tauri::command]
+pub async fn player_pause(state: State<'_, PlayerState>) -> AppResult<()> {
+    state.pause()
+}
+
+#[tauri::command]
+pub async fn player_seek(state: State<'_, PlayerState>, seconds: f64) -> AppResult<()> {
+    if !seconds.is_finite() {
+        return Err(AppError::InvalidInput("seek target is not a number".into()));
+    }
+    state.seek(seconds)
+}
+
+/// `level` is the slider position, 0…1; the engine applies the audio taper.
+#[tauri::command]
+pub async fn player_set_volume(state: State<'_, PlayerState>, level: f64) -> AppResult<()> {
+    if !level.is_finite() {
+        return Err(AppError::InvalidInput("volume is not a number".into()));
+    }
+    state.set_volume(level as f32)
+}
+
+#[tauri::command]
+pub async fn player_stop(state: State<'_, PlayerState>) -> AppResult<()> {
+    state.stop()
+}
+
+/// The current playhead, for a front that just mounted and missed the events.
+#[tauri::command]
+pub async fn player_status(state: State<'_, PlayerState>) -> AppResult<PlaybackStatus> {
+    Ok(state.status())
 }
 
 #[tauri::command]

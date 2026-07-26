@@ -14,6 +14,8 @@ pub enum AppError {
     Setup(String),
     #[error("keychain error: {0}")]
     Keychain(String),
+    #[error("playback error: {0}")]
+    Playback(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]

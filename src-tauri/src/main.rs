@@ -5,6 +5,7 @@ mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
+mod player;
 mod preferences;
 mod python_env;
 mod reenrich;
@@ -18,9 +19,13 @@ fn main() {
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
+        .manage(player::PlayerState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
             app.manage(state);
+            // Pushes the playhead and end-of-track to the front; idle until
+            // something actually plays.
+            player::spawn_status_loop(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -40,6 +45,14 @@ fn main() {
             commands::list_api_keys,
             commands::set_api_key,
             commands::reset_library_dev,
+            commands::player_load,
+            commands::player_enqueue,
+            commands::player_toggle,
+            commands::player_pause,
+            commands::player_seek,
+            commands::player_set_volume,
+            commands::player_stop,
+            commands::player_status,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")
