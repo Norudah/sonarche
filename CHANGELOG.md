@@ -1,5 +1,71 @@
 # Changelog
 
+## [0.8.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.7.0...sonarche-v0.8.0) (2026-07-26)
+
+
+### Features
+
+* **download:** move the activity table to its own History page ([22a6610](https://github.com/Norudah/sonarche/commit/22a6610521d13f386d8a0a25e5696b23e88db139))
+* **download:** open the record a finished row produced ([8dec5ee](https://github.com/Norudah/sonarche/commit/8dec5eeab724ee4454f47e7fe01307cdc69a372d))
+* **library:** add a category axis alongside genres ([c9d87b5](https://github.com/Norudah/sonarche/commit/c9d87b59aa94d8b2953c11963d5bdc50ce9efe3c))
+* **library:** anchor the artist hover play to the cover corner ([be69a92](https://github.com/Norudah/sonarche/commit/be69a92172cdb0062badd298771a7e8ae3d88731))
+* **library:** browse a genre, category or artist's tracks in place ([58d8569](https://github.com/Norudah/sonarche/commit/58d856969f74511ee74bbb115b961e6ed2891056))
+* **library:** build the metadata triage page ([0c921fb](https://github.com/Norudah/sonarche/commit/0c921fbfa85fa0c3cdc1be6da75b04dead8fb1d8))
+* **library:** drop the borrowed streaming hero for a metadata-first band ([bf891f4](https://github.com/Norudah/sonarche/commit/bf891f4109d7333ff7ae24298033adbdad9239c2))
+* **library:** filter the explorers from metadata triage deep links ([e63f0e4](https://github.com/Norudah/sonarche/commit/e63f0e43085386f4ac543ea4464e83693e1f948c))
+* **library:** float the album drawer's fan-out offers beside the panel ([1780aad](https://github.com/Norudah/sonarche/commit/1780aad529bbb1eb6474825d8a23d87a23be19d0))
+* **library:** genre-based line-art avatars for artists ([e1fbad9](https://github.com/Norudah/sonarche/commit/e1fbad9d2204be3e4df642b3be99d238904288f7))
+* **library:** give every explorer the same sticky work bar ([3c363f2](https://github.com/Norudah/sonarche/commit/3c363f26d406ac2acdb76c9e21734b50d2ed50c3))
+* **library:** give the tracks explorer a sticky filter bar ([a50546d](https://github.com/Norudah/sonarche/commit/a50546d0f3da15bb9e12c2c45de894acd79d2a81))
+* **library:** index, filter and sort tracks in pure modules ([ac4aa7c](https://github.com/Norudah/sonarche/commit/ac4aa7c33c2c9d36b1d7bf437c01fc0f6abcb535))
+* **library:** inspect and edit a whole album in one drawer ([b4f1d19](https://github.com/Norudah/sonarche/commit/b4f1d19be2e91feddea56a1706bf62c06c67dd59))
+* **library:** keep row actions on screen and play on double-click ([20cb089](https://github.com/Norudah/sonarche/commit/20cb089ff08bc19128536e99237ba3dc4116e5f9))
+* **library:** link hero genre chips to their pages, animate the row ([9c467e4](https://github.com/Norudah/sonarche/commit/9c467e410291fb7cbcbc73880cebc2f8cba01556))
+* **library:** open a genre's tracks from its page ([1e23208](https://github.com/Norudah/sonarche/commit/1e2320853e068b4010c2ea674c34251e6251deea))
+* **library:** open the album metadata drawer from the shelf ([2a1534b](https://github.com/Norudah/sonarche/commit/2a1534bb78d12f9dca8f693c77785c9032c957e6))
+* **library:** pair every play-all with a shuffle pill ([28acdb9](https://github.com/Norudah/sonarche/commit/28acdb91a37d3be2268c1bde0473af51367e41e6))
+* **library:** play a genre from its hero ([2cabfea](https://github.com/Norudah/sonarche/commit/2cabfea1b0ac252bbca85cd1683ffe05da15c3e4))
+* **library:** save edits from the track metadata drawer ([4e23ec8](https://github.com/Norudah/sonarche/commit/4e23ec85882c9ee60cffbc3f0bf0ab2c9945403c))
+* **library:** set the category and per-track genre from the album drawer ([21c8b24](https://github.com/Norudah/sonarche/commit/21c8b249b8762796b86941c7e838ff3c7da319bc))
+* **library:** show album completeness as a ring that fills on arrival ([4daab32](https://github.com/Norudah/sonarche/commit/4daab3223ee04ed4279a2c20c23e5a568af9038f))
+* **library:** sort the genres shelf by size or name ([398558d](https://github.com/Norudah/sonarche/commit/398558da1f0b227b2fe6d6184d4ef32d2d4d0d9b))
+* **library:** sort the tracks table from its column headers ([4a91ff6](https://github.com/Norudah/sonarche/commit/4a91ff60022c94efe8e9c39c2c7272521b6db605))
+* **library:** step back through history from the hero's trail ([d779dcb](https://github.com/Norudah/sonarche/commit/d779dcbe70b63f91a675a494133000bffffdeea3))
+* **library:** surface suspect matches and duplicate recordings in triage ([d80c104](https://github.com/Norudah/sonarche/commit/d80c10437eeeceb7ee7e1f14176f7b3955f5576a))
+* **library:** turn the genres view into a family card index ([71fd3ad](https://github.com/Norudah/sonarche/commit/71fd3ad6f745e569baaf30bf6a01e48c2a8571ef))
+* **library:** widen the category taxonomy and rename TV to Series ([306f3b0](https://github.com/Norudah/sonarche/commit/306f3b00617ca4b4088fa17ffc4d915ae333fa36))
+* **player:** add ordered and shuffled set launches ([0ef8b00](https://github.com/Norudah/sonarche/commit/0ef8b009c5e9816ceee89b4a198c832d8ae5a427))
+* **player:** add queue primitives (order, shuffle, repeat) ([c5eaaf9](https://github.com/Norudah/sonarche/commit/c5eaaf9eae058f1f72a4bec3d3ed93e5a0e5b13f))
+* **player:** give the queue panel sections and air ([792771c](https://github.com/Norudah/sonarche/commit/792771c14fc9140fe10a33c732cf40937174aafb))
+* **player:** navigate to the album and artist from the bar ([c6f74e9](https://github.com/Norudah/sonarche/commit/c6f74e91f7483ee57f802660fcc968b807f2881e))
+* **player:** play sets through a real queue ([3523d97](https://github.com/Norudah/sonarche/commit/3523d97b4b151e3de3e799f850f69879b15289e9))
+* **player:** show cover art in the play queue ([fa76b2e](https://github.com/Norudah/sonarche/commit/fa76b2e209747268d02834289ef556b2d63a5ae6))
+* **settings:** bring the settings page into the app shell ([7beab2d](https://github.com/Norudah/sonarche/commit/7beab2df0af6a7e822e2effb8da3865beb3f47b4))
+* **sidecar:** add a batch metadata write path ([b454b1e](https://github.com/Norudah/sonarche/commit/b454b1ec70abbbae6370ba69036adaddd1c7d359))
+* **sidecar:** expose the beets grouping tag as an editable field ([22639b7](https://github.com/Norudah/sonarche/commit/22639b7a793b60ffb93103d866b042b96f8e916d))
+* **sidecar:** record metadata provenance as flexible attributes ([b30d128](https://github.com/Norudah/sonarche/commit/b30d12823c3a16195910233ece47b7045a660890))
+* **sidecar:** spare hand-edited genres in genre recompute ([4101a6b](https://github.com/Norudah/sonarche/commit/4101a6b04946cd2f9dc6ba655a477ab46bd16559))
+* **ui:** breathing room for the sidebar and the traffic lights ([070e34b](https://github.com/Norudah/sonarche/commit/070e34b2eb5e704573daf8e60de561d28b72324d))
+* **ui:** drop the topbar and the native title bar, rework the sidebar ([f3ec00c](https://github.com/Norudah/sonarche/commit/f3ec00c079839af22315a06d2605dc396c89ec74))
+
+
+### Bug Fixes
+
+* **download:** stop reporting a partly-downloaded playlist as a failure ([6578b66](https://github.com/Norudah/sonarche/commit/6578b66fbdae8fffe50c6e55e31f3d634bb37267))
+* **library:** keep a metadata field's label on one line ([dd75140](https://github.com/Norudah/sonarche/commit/dd7514073cede8fc183a917747de414c7e014ca4))
+* **library:** stop a genre chip from renaming the category page ([fece290](https://github.com/Norudah/sonarche/commit/fece290d8681f3402642732d91e3d5487fc5f854))
+* **library:** stop the hero wash covering the tracklist, round the row actions ([deb7de1](https://github.com/Norudah/sonarche/commit/deb7de1bb1f92c9f4ce805d8f95161dfcc8c4f48))
+* **library:** tint triage chips amber and unblock genre families with no album ([da91c29](https://github.com/Norudah/sonarche/commit/da91c2959d286e404d5408bc4ccb384b2ad23bb4))
+* **player:** end tracks at the library length, not the element's ([15630a2](https://github.com/Norudah/sonarche/commit/15630a2af039147ae257275615261662e5609132))
+* **shell:** keep native traffic lights visible in system dark mode ([c972f5a](https://github.com/Norudah/sonarche/commit/c972f5a0e7920a747c4596e7b39c2dfd2e3bb9c4))
+* **sidecar:** rescue cross-language album matches onto one clean release ([357770d](https://github.com/Norudah/sonarche/commit/357770da2844e9629df75838cf4dd6a67bf15642))
+
+
+### Performance Improvements
+
+* **library:** debounce the library search ([a7d59dc](https://github.com/Norudah/sonarche/commit/a7d59dca9fb6b8b0a882de3702cef54409058846))
+* **library:** settle the search debounce at 275ms ([4a42932](https://github.com/Norudah/sonarche/commit/4a4293202249836cf16d317eb5e46990bbf19222))
+
 ## [0.7.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.6.0...sonarche-v0.7.0) (2026-07-20)
 
 
