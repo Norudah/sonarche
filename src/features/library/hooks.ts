@@ -4,10 +4,27 @@ import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack, updateTracks 
 
 export const libraryKey = ["library"] as const;
 
+/**
+ * The whole library, once.
+ *
+ * `staleTime: Infinity` because nothing changes this data behind our back: the
+ * beets DB moves only through our own commands, and every one of them —
+ * edit, delete, re-enrich, recompute, a finished download, the dev wipe —
+ * invalidates this key, which refetches an active query regardless of staleness.
+ * The default (stale immediately) meant every route that mounts this hook
+ * refetched the entire listing on arrival: a full Rust -> Python -> SQLite
+ * round-trip, JSON for every track in the library, to redraw a page whose data
+ * had not moved. Navigating between two shelves paid for the library twice.
+ *
+ * The cost of being wrong is a listing that lags an out-of-band edit until the
+ * next launch — which `refetchOnWindowFocus: false` already meant we would not
+ * have caught anyway.
+ */
 export function useLibrary() {
   return useQuery({
     queryKey: libraryKey,
     queryFn: listLibrary,
+    staleTime: Infinity,
   });
 }
 
