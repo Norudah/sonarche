@@ -28,7 +28,9 @@ export function AlbumsView() {
   const [params, setParams] = useSearchParams();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
-  const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
+  // No `useMemo`: `groupAlbums` caches on the array's identity, which every
+  // surface shares — a memo here would only add a second cache.
+  const albums = groupAlbums(library.data ?? []);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
 
