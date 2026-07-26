@@ -12,8 +12,10 @@ export interface TriageChip {
 
 interface TriageChipsProps {
   chips: TriageChip[];
-  /** Pre-formatted count of what the active filters leave ("21 tracks"). */
-  countLabel: string;
+  /** Pre-formatted count of what the active filters leave ("21 tracks"). Omitted
+   * inside the tracks filter bar, which states the count once for the whole row
+   * rather than per chip group. */
+  countLabel?: string;
 }
 
 /**
@@ -51,7 +53,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />
         </button>
       ))}
-      <span className="text-[0.8125rem] text-muted tabular-nums">{countLabel}</span>
+      {countLabel && <span className="text-[0.8125rem] text-muted tabular-nums">{countLabel}</span>}
     </div>
   );
 }

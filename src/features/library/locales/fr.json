@@ -25,7 +25,8 @@
       "anime": "Anime",
       "cartoon": "Dessins animés",
       "musical": "Comédies musicales"
-    }
+    },
+    "overviewMode": "Albums & artistes"
   },
   "genres": {
     "eyebrow": "Genre",
@@ -46,13 +47,13 @@
     "moreSubs_other": "+{{count}} autres",
     "albums": "Albums",
     "artists": "Artistes",
-    "viewTracks": "Voir les morceaux",
     "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des disques classés ailleurs.",
     "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
     "recomputing": "Recalcul en cours…",
     "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
-    "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant."
+    "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant.",
+    "overviewMode": "Albums & artistes"
   },
   "albums": {
     "eyebrow": "Album",
@@ -91,7 +92,9 @@
       "name": "Nom",
       "albums": "Albums",
       "tracks": "Titres"
-    }
+    },
+    "overviewMode": "Discographie",
+    "guest": "Invité"
   },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",
@@ -118,6 +121,17 @@
     "label": "Rechercher un morceau",
     "noResults": "Aucun morceau ne correspond à « {{query}} ».",
     "clear": "Effacer la recherche"
+  },
+  "filters": {
+    "family": "Famille",
+    "allFamilies": "Toutes les familles",
+    "category": "Catégorie",
+    "allCategories": "Toutes les catégories",
+    "more": "Filtres",
+    "decade": "Décennie",
+    "decadeValue": "années {{decade}}",
+    "toFix": "À corriger",
+    "subset": "{{shown}} sur {{total}}"
   },
   "triage": {
     "missingYear": "Année manquante",
@@ -208,7 +222,8 @@
     "action": "Supprimer l'album"
   },
   "sort": {
-    "label": "Trier par"
+    "label": "Trier par",
+    "byColumn": "Trier par {{column}}"
   },
   "breadcrumb": "Fil d'ariane"
 }
