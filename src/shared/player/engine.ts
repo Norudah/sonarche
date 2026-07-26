@@ -64,3 +64,28 @@ export function onStatus(handler: (status: PlaybackStatus) => void) {
 export function onEnded(handler: () => void) {
   return listen("player:ended", () => handler());
 }
+
+/** What the OS shows: media keys, Control Center, the lock screen. Sent
+ * separately from `load` because the engine is handed a file path, and a track
+ * is more than that. */
+export interface NowPlayingTrack {
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  /** Absolute path to the cover on disk — Rust turns it into the URL each
+   * platform wants. Not the asset URL the UI draws with. */
+  artPath?: string | null;
+  duration?: number | null;
+}
+
+export function setNowPlaying(track: NowPlayingTrack): Promise<void> {
+  return invoke("now_playing_set", { track });
+}
+
+/** A press on a system control. `seek` carries an absolute position in seconds
+ * from the lock screen's scrubber. */
+export type RemoteAction = "play" | "pause" | "toggle" | "next" | "previous" | "stop" | { seek: number };
+
+export function onRemote(handler: (action: RemoteAction) => void) {
+  return listen<RemoteAction>("player:remote", (event) => handler(event.payload));
+}

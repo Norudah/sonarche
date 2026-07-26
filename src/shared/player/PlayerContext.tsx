@@ -17,7 +17,6 @@ import {
   type QueueState,
 } from "@/shared/player/queue";
 import type { PlayableTrack } from "@/shared/player/types";
-import { useMediaSession } from "@/shared/player/useMediaSession";
 
 /** Pressing previous inside a track's opening seconds means "go back one";
  * after that it means "start this one over". The universal threshold. */
@@ -123,6 +122,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(0);
     setDuration(track.duration ?? 0);
     setIsPlaying(true);
+
+    // Tell the OS what this is: media keys, Control Center, the lock screen.
+    // Sent alongside the load rather than from it — the engine is handed a file
+    // path, and none of this is the engine's business.
+    void engine.setNowPlaying({
+      title: track.title,
+      artist: track.subtitle,
+      artPath: track.artPath,
+      duration: track.duration,
+    });
 
     const token = loadingRef.current + 1;
     loadingRef.current = token;
@@ -295,7 +304,36 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [applyQueue],
   );
 
-  useMediaSession({ current, isPlaying, toggle, next, previous });
+  // A press on a media key, the Control Center or the lock screen. It lands on
+  // the same callbacks the on-screen transport uses, so there is exactly one
+  // definition of what "next" means.
+  useEffect(() => {
+    const unlisten = engine.onRemote((action) => {
+      if (typeof action === "object") {
+        seek(action.seek);
+        return;
+      }
+      switch (action) {
+        case "next":
+          next();
+          break;
+        case "previous":
+          previous();
+          break;
+        case "stop":
+          void engine.stop();
+          setIsPlaying(false);
+          break;
+        // play/pause/toggle all land here: the OS sends whichever its own
+        // button says, and the engine already knows which way it is going.
+        default:
+          toggle();
+      }
+    });
+    return () => {
+      void unlisten.then((off) => off());
+    };
+  }, [next, previous, seek, toggle]);
 
   const controls = useMemo<PlayerControls>(
     () => ({ current, isPlaying, play, playOrdered, playShuffled, toggle, next, previous, seek }),

@@ -5,6 +5,7 @@ mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
+mod now_playing;
 mod player;
 mod preferences;
 mod python_env;
@@ -20,6 +21,7 @@ fn main() {
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
         .manage(player::PlayerState::default())
+        .manage(now_playing::NowPlayingState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
             app.manage(state);
@@ -53,6 +55,7 @@ fn main() {
             commands::player_set_volume,
             commands::player_stop,
             commands::player_status,
+            commands::now_playing_set,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

@@ -23,6 +23,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::{AppError, AppResult};
+use crate::now_playing::NowPlayingState;
 
 /// The output device and the queue feeding it.
 ///
@@ -224,6 +225,9 @@ pub fn track_ended(previous: Option<&PlaybackStatus>, next: &PlaybackStatus) -> 
 /// announcing it, and because the same tick has to serve both purposes: moving
 /// the seek bar, and noticing that a track ran out so the front can queue the
 /// next one.
+/// This one tick serves both audiences — the front's seek bar and the OS's
+/// Now Playing panel. They need the same two facts at the same moment, and a
+/// second loop for the OS would only be this one, offset by a few milliseconds.
 pub fn spawn_status_loop(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous: Option<PlaybackStatus> = None;
@@ -233,9 +237,19 @@ pub fn spawn_status_loop(app: AppHandle) {
 
             if track_ended(previous.as_ref(), &status) {
                 let _ = app.emit("player:ended", ());
+                // Clear the OS panel rather than leaving a finished track
+                // sitting there looking merely paused.
+                let _ = app.state::<NowPlayingState>().clear(&app);
             }
             if worth_emitting(previous.as_ref(), &status) {
                 let _ = app.emit("player:status", &status);
+                if status.loaded {
+                    let _ = app.state::<NowPlayingState>().set_playback(
+                        &app,
+                        status.is_playing,
+                        status.position,
+                    );
+                }
             }
             previous = Some(status);
         }

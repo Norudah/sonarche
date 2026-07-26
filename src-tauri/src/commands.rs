@@ -9,6 +9,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
+use crate::now_playing::{NowPlayingState, NowPlayingTrack};
 use crate::player::{PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
@@ -147,6 +148,18 @@ pub async fn player_set_volume(state: State<'_, PlayerState>, level: f64) -> App
 #[tauri::command]
 pub async fn player_stop(state: State<'_, PlayerState>) -> AppResult<()> {
     state.stop()
+}
+
+/// Tell the OS what is playing — media keys, Control Center, the lock screen.
+/// The front owns this because a track is more than the file path the engine
+/// was handed.
+#[tauri::command]
+pub async fn now_playing_set(
+    app: AppHandle,
+    state: State<'_, NowPlayingState>,
+    track: NowPlayingTrack,
+) -> AppResult<()> {
+    state.set_track(&app, &track)
 }
 
 /// The current playhead, for a front that just mounted and missed the events.

@@ -562,7 +562,7 @@ export function installMockTauri() {
       // playhead is what keeps the player bar, the seek bar and the queue panel
       // explorable here: without it nothing ever advances and "playing" is a
       // state the UI can never be seen in.
-      if (cmd.startsWith("player_")) return mockPlayback(cmd, payload);
+      if (cmd.startsWith("player_") || cmd === "now_playing_set") return mockPlayback(cmd, payload);
       return responses[cmd] ?? {};
     },
   };
@@ -617,6 +617,11 @@ function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
       return null;
     case "player_status":
       return { ...playback };
+    case "now_playing_set":
+      // No OS session in a browser; the call is acknowledged so the front's
+      // path is exercised, and `emitMockEvent("player:remote", …)` from the
+      // console stands in for a media key.
+      return null;
     default:
       return null;
   }

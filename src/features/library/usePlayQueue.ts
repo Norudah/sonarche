@@ -35,6 +35,7 @@ export function usePlayQueue(): PlayQueue {
       title: track.title || t("unknownTitle"),
       subtitle: track.artist || t("unknownArtist"),
       artUrl: track.artUrl,
+      artPath: track.artPath,
       duration: track.length,
       albumUrl: track.album.trim() ? albumPath(albumArtist, track.album) : null,
       artistUrl: track.artist.trim() ? artistPath(track.artist) : null,

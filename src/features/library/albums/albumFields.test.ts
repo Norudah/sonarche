@@ -27,6 +27,7 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     path: "/music/monster.m4a",
     audioUrl: "asset://music/monster.m4a",
     artUrl: null,
+    artPath: null,
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,

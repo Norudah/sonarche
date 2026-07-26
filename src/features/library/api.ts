@@ -21,6 +21,9 @@ export interface LibraryTrack {
    * there is no call site the original would serve better — see
    * `art_paths_by_album` in the sidecar. */
   artUrl: string | null;
+  /** The cover's path on disk. The asset URL above is for drawing; this is for
+   * the OS Now Playing panel, which is given a path and builds its own URL. */
+  artPath: string | null;
   /** Origin release title when the track is a bonus adopted into this album
    * (deluxe/regional edition filed with the main album), else null. */
   bonusSource: string | null;
@@ -118,6 +121,7 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     path: track.path,
     audioUrl: convertFileSrc(track.path),
     artUrl: track.art_path ? convertFileSrc(track.art_path) : null,
+    artPath: track.art_path,
     bonusSource: track.bonus_source,
     mbTrackId: track.mb_trackid,
     suspectMatch: track.suspect_match,

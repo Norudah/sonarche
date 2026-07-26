@@ -70,6 +70,7 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
                   title: track.title,
                   subtitle: track.artist,
                   artUrl: track.artUrl,
+                  artPath: track.artPath,
                   duration: track.length,
                   albumUrl: track.album.trim()
                     ? albumPath(track.albumArtist.trim() || track.artist.trim(), track.album)

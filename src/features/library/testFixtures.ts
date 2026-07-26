@@ -19,6 +19,7 @@ export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     path: "",
     audioUrl: "",
     artUrl: null,
+    artPath: null,
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,

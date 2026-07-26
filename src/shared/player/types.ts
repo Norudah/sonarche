@@ -7,6 +7,8 @@ export interface PlayableTrack {
   title: string;
   subtitle?: string;
   artUrl?: string | null;
+  /** Cover path on disk, for the OS panel. `artUrl` is what the UI draws. */
+  artPath?: string | null;
   /** Duration (seconds) as the library stores it. Shown until the engine
    * answers with what it actually decoded, which then wins. */
   duration?: number | null;

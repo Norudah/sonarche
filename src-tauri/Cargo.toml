@@ -33,3 +33,14 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # AAC and the library is 100% AAC, so any other codec would be a silent import bug
 # rather than a file we should quietly play.
 rodio = { version = "0.22", default-features = false, features = ["playback", "mp4"] }
+# OS media session: media keys, Control Center, the lock screen. Playback moved
+# out of the webview, and `navigator.mediaSession` only exposes a session for a
+# page playing a media element — so the OS side has to be spoken to directly.
+# Uses Apple's public MPNowPlayingInfoCenter/MPRemoteCommandCenter (not the
+# private MediaRemote), and covers MPRIS/SMTC if we ever leave macOS.
+#
+# Known debt: on macOS it pulls the pre-objc2 generation (cocoa/objc/block), and
+# `block 0.1.6` already trips a future-incompatibility warning. Not urgent —
+# nothing breaks today — but the exit is `objc2-media-player`, the maintained
+# bindings, at the cost of writing the platform code ourselves.
+souvlaki = "0.8"
