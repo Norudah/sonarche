@@ -7,12 +7,14 @@ interface GenresHeaderProps {
 }
 
 /**
- * No sort control in the bar below, unlike the album and artist shelves. Cards
- * are ordered by size and that ordering *is* the page. No scope toggle either,
- * since the flat genre list left with the distribution: search is how a specific
- * genre is reached, because a card matches on the genres it holds. No recompute
- * button: the genre pass is being repurposed as a fallback for when MusicBrainz
- * returns no genre, not a manual action offered here.
+ * Identity and size, like the album and artist headers — the controls are in
+ * the bar below.
+ *
+ * No scope toggle there, since the flat genre list left with the distribution:
+ * search is how a specific genre is reached, because a card matches on the
+ * genres it holds. No recompute button either: the genre pass is being
+ * repurposed as a fallback for when MusicBrainz returns no genre, not a manual
+ * action offered here.
  */
 export function GenresHeader({ familyCount, genreCount, unclassifiedCount }: GenresHeaderProps) {
   const { t } = useTranslation("library");

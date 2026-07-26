@@ -7,11 +7,20 @@ import { Link } from "react-router";
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { FamilyList } from "@/features/library/genres/FamilyList";
-import { countGenres, FAMILY_NONE, filterFamilies, groupFamilies } from "@/features/library/genres/genres";
+import {
+  countGenres,
+  FAMILY_NONE,
+  FAMILY_SORTS,
+  filterFamilies,
+  groupFamilies,
+  sortFamilies,
+  type FamilySort,
+} from "@/features/library/genres/genres";
 import { GenresHeader } from "@/features/library/genres/GenresHeader";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { SortSelect } from "@/features/library/SortSelect";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -27,6 +36,7 @@ export function GenresView() {
   const library = useLibrary();
   const labelOf = useFamilyLabel();
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<FamilySort>("size");
 
   // The grouping is the whole pass over the library and does not depend on the
   // query, so a keystroke may not rerun it.
@@ -40,8 +50,13 @@ export function GenresView() {
   // page turned browsing into a chore, and the Metadata queue is where fixing
   // belongs. It survives as one figure in the header's count line.
   const visibleFamilies = useMemo(
-    () => filterFamilies(families, query).filter((family) => family.key !== FAMILY_NONE),
-    [families, query],
+    () =>
+      sortFamilies(
+        filterFamilies(families, query).filter((family) => family.key !== FAMILY_NONE),
+        sort,
+        labelOf,
+      ),
+    [families, query, sort, labelOf],
   );
 
   const unclassified = families.find((family) => family.key === FAMILY_NONE)?.trackCount ?? 0;
@@ -50,15 +65,19 @@ export function GenresView() {
     <PageContainer>
       <GenresHeader familyCount={families.length} genreCount={countGenres(families)} unclassifiedCount={unclassified} />
 
-      {/* Nothing on the left: this shelf has no sort — the cards are ordered by
-          size and that ordering is the page. The bar exists all the same, so
-          search sits where it sits on every other explorer. */}
       <ExplorerBar
         query={query}
         onQueryChange={setQuery}
         shown={visibleFamilies.length}
         total={families.filter((family) => family.key !== FAMILY_NONE).length}
-      />
+      >
+        <SortSelect
+          options={FAMILY_SORTS}
+          value={sort}
+          onChange={setSort}
+          labelOf={(option) => t(`genres.sort.${option}`)}
+        />
+      </ExplorerBar>
 
       {library.isPending && (
         <div className="flex justify-center py-16">
@@ -96,7 +115,9 @@ export function GenresView() {
         </motion.p>
       )}
 
-      {visibleFamilies.length > 0 && <FamilyList families={visibleFamilies} animationKey={query} labelOf={labelOf} />}
+      {visibleFamilies.length > 0 && (
+        <FamilyList families={visibleFamilies} animationKey={`${query}:${sort}`} labelOf={labelOf} />
+      )}
     </PageContainer>
   );
 }

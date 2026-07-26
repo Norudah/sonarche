@@ -47,6 +47,10 @@
     "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
+    "sort": {
+      "size": "Size",
+      "name": "Name"
+    },
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",

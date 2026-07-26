@@ -47,6 +47,10 @@
     "moreSubs_other": "+{{count}} autres",
     "albums": "Albums",
     "artists": "Artistes",
+    "sort": {
+      "size": "Taille",
+      "name": "Nom"
+    },
     "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des disques classés ailleurs.",
     "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
