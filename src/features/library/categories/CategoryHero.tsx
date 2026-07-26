@@ -1,40 +1,15 @@
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
 
-import { categoryPath, paths } from "@/app/routes";
+import { paths } from "@/app/routes";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
 
-/** Same shape as the genre breadcrumb: selecting a genre replaces the history
- * entry (one visit), so back leads to wherever the page was entered from, with
- * `up` as the cold-entry fallback. */
-function CategoryBreadcrumb({ category, isGenre, current }: { category: string; isGenre: boolean; current: string }) {
-  const { t } = useTranslation("library");
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const cameFromList = (state as { fromCategories?: boolean } | null)?.fromCategories === true;
-
-  const up = isGenre ? categoryPath(category) : paths.libraryCategories;
-
-  return (
-    <HeroBreadcrumb
-      label={t("breadcrumb")}
-      backLabel={t("categories.back")}
-      current={current}
-      onBack={() => (cameFromList ? navigate(-1) : navigate(up))}
-    />
-  );
-}
-
 interface CategoryHeroProps {
-  /** Stored category value — the route segment, and where "back" leads. */
-  category: string;
   /** The category's display name (translated taxonomy value or free tag). */
   categoryLabel: string;
-  /** The genre being inspected inside it, or null for the whole category. */
-  genre: string | null;
+  /** Always the whole category's, never the selected genre's — see below. */
   albumCount: number;
   trackCount: number;
   artistCount: number;
@@ -46,12 +21,24 @@ interface CategoryHeroProps {
   ref?: Ref<HTMLElement>;
 }
 
-/** The genre hero's twin: text on the wash, no invented artwork, one
- * component for both depths so refining by genre never demotes the page. */
+/**
+ * The genre hero's twin — text on the wash, no invented artwork — with one
+ * deliberate difference: the genre chips never rename this page.
+ *
+ * They used to. Picking "Synthwave" inside "Video Games" retitled the hero
+ * "Synthwave" and left the category nowhere on screen, so a chip on the
+ * category card appeared to open a genre page. That was the bug: on the genres
+ * axis a sub-genre is a subject with a page of its own, but on this axis a
+ * genre is not a sub-category — it is a cut across the category, and a cut does
+ * not get to take over the identity of what it cuts.
+ *
+ * So the title and its counts describe the whole category, always, and the
+ * selection lives in the active chip below and in the list it narrows. Same
+ * rule the filter bar already follows: the numbers up here state the scope, not
+ * the filter.
+ */
 export function CategoryHero({
-  category,
   categoryLabel,
-  genre,
   albumCount,
   trackCount,
   artistCount,
@@ -75,16 +62,20 @@ export function CategoryHero({
       <HeroWash />
 
       <div className="relative">
-        <CategoryBreadcrumb category={category} isGenre={genre != null} current={genre ?? categoryLabel} />
+        <HeroBreadcrumb
+          label={t("breadcrumb")}
+          up={paths.libraryCategories}
+          upLabel={t("categories.back")}
+          current={categoryLabel}
+          actions={actions}
+        />
 
-        <div className="mt-6">
-          <h1 className="truncate text-4xl font-semibold tracking-tight">{genre ?? categoryLabel}</h1>
+        <div className="mt-5">
+          <h1 className="truncate text-4xl font-semibold tracking-tight">{categoryLabel}</h1>
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
 
-          <div className="mt-5">
-            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
-              {actions}
-            </HeroPlayButtons>
+          <div className="mt-4">
+            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
           </div>
         </div>
       </div>
