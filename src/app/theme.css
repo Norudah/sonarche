@@ -124,14 +124,47 @@
   border-inline-width: 0.5rem;
 }
 
+/* Four pixels of paint is not a target you can hit. A transparent band widens
+   the grab area to 20 px without thickening the line: the track is the element
+   the slider listens on, and a pointer landing on its pseudo-element hits the
+   track itself. Sits below the thumb and the fill in paint order, so neither
+   loses its own presses. */
+.player-slider .slider__track::before {
+  content: "";
+  position: absolute;
+  inset-block: -0.5rem;
+  inset-inline: 0;
+}
+
+/* The playhead marker. Hidden at rest so the bar stays a line rather than a
+   control, and revealed on hover of the grab band above — the moment the bar
+   becomes something you can act on is the moment it says so. Also revealed on
+   keyboard focus, where it was previously the focus ring that was invisible. */
 .player-slider .slider__thumb {
-  @apply opacity-0;
+  @apply bg-transparent opacity-0;
+  @apply transition-opacity duration-150 motion-reduce:transition-none;
   width: calc(1rem + 0.25rem);
 }
 
+.player-slider:not([data-disabled="true"]):hover .slider__thumb,
+.player-slider .slider__thumb[data-dragging="true"],
+.player-slider .slider__thumb[data-focus-visible="true"] {
+  @apply opacity-100;
+}
+
+/* A 3 px bar, not a dot: it marks a position on a timeline, and a line reads
+   as a cut where a disc reads as a handle to fling.
+   The hairline and the drop shadow are what make white work here — half the
+   marker sits on the indigo fill and half on the pale rail, and on the pale
+   side white alone is a ghost. HeroUI's own `shadow-field` is too faint at
+   this size, hence the override. */
 .player-slider .slider__thumb::after {
-  width: 1rem;
-  height: 1rem;
+  @apply rounded-full;
+  width: 0.1875rem;
+  height: 0.75rem;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.06),
+    0 1px 3px rgb(0 0 0 / 0.3);
 }
 
 /* Volume slider — thin gray bar, no visible thumb, no border artifacts */
