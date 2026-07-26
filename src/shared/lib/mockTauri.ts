@@ -474,12 +474,45 @@ const responses: Record<string, unknown> = {
 
 let callbackId = 0;
 
+/**
+ * Event listeners, by event name.
+ *
+ * Tauri's `listen()` hands its handler to `transformCallback` and passes the
+ * resulting id to `plugin:event|listen`; the backend then calls that callback
+ * by id. The stub used to number the callbacks and drop them, so nothing the
+ * backend pushes ever arrived — fine while every mocked screen was
+ * request/response, but the player is driven entirely by pushed status, and
+ * would sit frozen here.
+ */
+const listeners = new Map<string, Set<(payload: unknown) => void>>();
+const callbacks = new Map<number, (message: unknown) => void>();
+
+/** Deliver an event to whatever subscribed to it, as the backend would. */
+export function emitMockEvent(event: string, payload: unknown) {
+  for (const handler of listeners.get(event) ?? []) handler(payload);
+}
+
 export function installMockTauri() {
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
-    transformCallback: () => ++callbackId,
+    transformCallback: (callback: (message: unknown) => void) => {
+      const id = ++callbackId;
+      callbacks.set(id, callback);
+      return id;
+    },
     convertFileSrc: (path: string) => path,
     invoke: async (cmd: string, payload?: Record<string, unknown>) => {
+      if (cmd === "plugin:event|listen") {
+        const event = String(payload?.event);
+        const callback = callbacks.get(Number(payload?.handler));
+        if (callback) {
+          const deliver = (value: unknown) => callback({ event, id: callbackId, payload: value });
+          const set = listeners.get(event) ?? new Set();
+          set.add(deliver);
+          listeners.set(event, set);
+        }
+        return callbackId;
+      }
       if (cmd.startsWith("plugin:event|")) return ++callbackId;
       if (cmd === "set_api_key") {
         const key = apiKeys.find((k) => k.name === payload?.name);
@@ -525,7 +558,66 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // The Rust engine owns playback, so a browser preview has none. A fake
+      // playhead is what keeps the player bar, the seek bar and the queue panel
+      // explorable here: without it nothing ever advances and "playing" is a
+      // state the UI can never be seen in.
+      if (cmd.startsWith("player_")) return mockPlayback(cmd, payload);
       return responses[cmd] ?? {};
     },
   };
+}
+
+/** Stand-in for the Rust engine: enough state to drive the UI, no audio. */
+const playback = { position: 0, duration: 0, isPlaying: false, loaded: false, queued: 0, timer: 0 };
+
+function emitPlaybackStatus() {
+  const { position, duration, isPlaying, loaded, queued } = playback;
+  emitMockEvent("player:status", { position, duration, isPlaying, loaded, queued });
+}
+
+function tickPlayback() {
+  window.clearInterval(playback.timer);
+  playback.timer = window.setInterval(() => {
+    if (!playback.isPlaying) return;
+    playback.position += 0.25;
+    if (playback.duration > 0 && playback.position >= playback.duration) {
+      playback.position = 0;
+      playback.isPlaying = false;
+      playback.loaded = false;
+      emitMockEvent("player:ended", null);
+    }
+    emitPlaybackStatus();
+  }, 250);
+}
+
+function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
+  switch (cmd) {
+    case "player_load":
+      // A plausible length, since there is no file to decode.
+      playback.position = 0;
+      playback.duration = 214;
+      playback.isPlaying = true;
+      playback.loaded = true;
+      tickPlayback();
+      return playback.duration;
+    case "player_toggle":
+      playback.isPlaying = !playback.isPlaying;
+      return playback.isPlaying;
+    case "player_pause":
+      playback.isPlaying = false;
+      return null;
+    case "player_seek":
+      playback.position = Number(payload?.seconds ?? 0);
+      emitPlaybackStatus();
+      return null;
+    case "player_stop":
+      playback.isPlaying = false;
+      playback.loaded = false;
+      return null;
+    case "player_status":
+      return { ...playback };
+    default:
+      return null;
+  }
 }

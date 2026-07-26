@@ -31,7 +31,7 @@ export function usePlayQueue(): PlayQueue {
     const albumArtist = track.albumArtist.trim() || track.artist.trim();
     return {
       id: track.id,
-      src: track.audioUrl,
+      path: track.path,
       title: track.title || t("unknownTitle"),
       subtitle: track.artist || t("unknownArtist"),
       artUrl: track.artUrl,

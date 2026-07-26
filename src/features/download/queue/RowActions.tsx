@@ -66,7 +66,7 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
               play([
                 {
                   id: track.id,
-                  src: track.audioUrl,
+                  path: track.path,
                   title: track.title,
                   subtitle: track.artist,
                   artUrl: track.artUrl,

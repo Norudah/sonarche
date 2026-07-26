@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import { isPastKnownEnd, trackDuration } from "@/shared/player/duration";
+import * as engine from "@/shared/player/engine";
 import {
   currentTrack,
   cycleRepeat as cycleRepeatQueue,
@@ -89,16 +89,12 @@ const QueueContext = createContext<PlayerQueue | null>(null);
 const VolumeContext = createContext<PlayerVolume | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [current, setCurrent] = useState<PlayableTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const [queue, setQueue] = useState<QueueState>(emptyQueue);
-  // The playing track's library duration, read from the element's own listeners.
-  // A ref, not state, so the listeners stay attached once for the app's life.
-  const knownDurationRef = useRef<number | null>(null);
 
   // Read through refs so the callbacks never have to list the playing track or
   // the queue as dependencies: a new identity here would ripple out to every row.
@@ -106,32 +102,53 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   currentIdRef.current = current?.id ?? null;
   const queueRef = useRef(queue);
   queueRef.current = queue;
+  /** The playhead, for the callbacks that read it without drawing it —
+   * `previous` needs to know how far in we are, and must not re-create itself
+   * four times a second to find out. */
+  const positionRef = useRef(0);
+  positionRef.current = currentTime;
+  /** Guards the status stream against a load still in flight: a tick that
+   * arrives between "the user clicked" and "the engine answered" describes the
+   * previous track, and would drag the playhead backwards. */
+  const loadingRef = useRef(0);
 
-  /** Point the element at a track and start it. The one path every launch,
-   * skip and auto-advance goes through. */
+  /** Hand a track to the engine and start it. The one path every launch, skip
+   * and auto-advance goes through.
+   *
+   * The state moves before the round-trip so the UI answers the click at once;
+   * the engine's own decoded duration replaces the library's when it lands,
+   * and it is the more accurate of the two. */
   const loadTrack = useCallback((track: PlayableTrack) => {
-    const audio = audioRef.current;
-    if (!audio) return;
     setCurrent(track);
     setCurrentTime(0);
-    knownDurationRef.current = track.duration ?? null;
     setDuration(track.duration ?? 0);
-    audio.src = track.src;
-    void audio.play();
+    setIsPlaying(true);
+
+    const token = loadingRef.current + 1;
+    loadingRef.current = token;
+    void engine.load(track.path).then(
+      (decoded) => {
+        // A newer load overtook this one — its duration is the one that counts.
+        if (loadingRef.current !== token) return;
+        if (decoded != null) setDuration(decoded);
+      },
+      () => {
+        if (loadingRef.current !== token) return;
+        setIsPlaying(false);
+      },
+    );
   }, []);
 
-  /** Apply a queue transition and make the audio follow it. A transition that
-   * lands on the already-loaded track restarts it instead of reloading. */
+  /** Apply a queue transition and make playback follow it. A transition that
+   * lands on the already-loaded track restarts it rather than reloading. */
   const applyQueue = useCallback(
     (nextState: QueueState) => {
       setQueue(nextState);
       const track = currentTrack(nextState);
       if (!track) return;
-      const audio = audioRef.current;
-      if (track.id === currentIdRef.current && audio) {
-        audio.currentTime = 0;
+      if (track.id === currentIdRef.current) {
         setCurrentTime(0);
-        void audio.play();
+        void engine.seek(0);
         return;
       }
       loadTrack(track);
@@ -139,89 +156,76 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [loadTrack],
   );
 
-  // Sync React state with the <audio> element, the external system that owns playback.
+  // Follow the engine, the external system that owns playback. It reports four
+  // times a second while something plays and goes quiet otherwise.
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    // One end-of-track path for the element's own `ended` and for the forced
-    // end below. The pause is for the forced case: the element still believes
-    // it has minutes of phantom silence to play, and it must not keep counting.
-    const endTrack = () => {
+    const unlisten = engine.onStatus((status) => {
+      // Ignore ticks that describe the track we are leaving.
+      if (status.loaded) setCurrentTime(status.position);
+      setIsPlaying(status.isPlaying);
+    });
+    return () => {
+      void unlisten.then((off) => off());
+    };
+  }, []);
+
+  // The engine ran out of audio: the queue decides what happens next.
+  useEffect(() => {
+    const unlisten = engine.onEnded(() => {
       const nextState = queueAfterEnded(queueRef.current);
       if (!nextState) {
-        audio.pause();
-        const known = knownDurationRef.current;
-        if (known != null) setCurrentTime(known);
+        // Nothing follows. The queue survives so the panel still shows what
+        // just played, and the playhead is left where it stopped rather than
+        // rewound — the engine has gone quiet, so no tick will move it.
         setIsPlaying(false);
         return;
       }
       applyQueue(nextState);
-    };
-    const onTimeUpdate = () => {
-      // The library length is where the content actually ends — the element,
-      // reading through the asset protocol, can believe in roughly double
-      // that and would count silence for minutes (see `isPastKnownEnd`).
-      if (!audio.paused && isPastKnownEnd(knownDurationRef.current, audio.currentTime)) {
-        endTrack();
-        return;
-      }
-      setCurrentTime(audio.currentTime);
-    };
-    const onDurationChange = () => {
-      setDuration(trackDuration(knownDurationRef.current, audio.duration) ?? 0);
-    };
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onEnded = endTrack;
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("loadedmetadata", onDurationChange);
-    audio.addEventListener("durationchange", onDurationChange);
-    audio.addEventListener("play", onPlay);
-    audio.addEventListener("pause", onPause);
-    audio.addEventListener("ended", onEnded);
+    });
     return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("loadedmetadata", onDurationChange);
-      audio.removeEventListener("durationchange", onDurationChange);
-      audio.removeEventListener("play", onPlay);
-      audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("ended", onEnded);
+      void unlisten.then((off) => off());
     };
   }, [applyQueue]);
 
+  /** Play/pause without a round-trip for the answer: the engine reports the
+   * truth 250 ms later, and a transport button must not wait for it. */
+  const flip = useCallback(() => {
+    setIsPlaying((playing) => !playing);
+    void engine.toggle().then(
+      (playing) => setIsPlaying(playing),
+      () => setIsPlaying(false),
+    );
+  }, []);
+
   const play = useCallback(
     (tracks: PlayableTrack[], startIndex = 0) => {
-      const audio = audioRef.current;
       const target = tracks[startIndex];
-      if (!audio || !target) return;
+      if (!target) return;
       // Clicking the playing track toggles it; the queue it came from stays.
       if (currentIdRef.current === target.id) {
-        if (audio.paused) void audio.play();
-        else audio.pause();
+        flip();
         return;
       }
       setQueue(startQueue(queueRef.current, tracks, startIndex));
       loadTrack(target);
     },
-    [loadTrack],
+    [flip, loadTrack],
   );
 
   const playOrdered = useCallback(
     (tracks: PlayableTrack[]) => {
-      const audio = audioRef.current;
       const target = tracks[0];
-      if (!audio || !target) return;
+      if (!target) return;
       // Same toggle guard as `play`: "play all" on the already-playing opener
       // reads as pause/resume, not as a restart.
       if (currentIdRef.current === target.id) {
-        if (audio.paused) void audio.play();
-        else audio.pause();
+        flip();
         return;
       }
       setQueue(startQueueOrdered(queueRef.current, tracks));
       loadTrack(target);
     },
-    [loadTrack],
+    [flip, loadTrack],
   );
 
   const playShuffled = useCallback(
@@ -238,11 +242,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const toggle = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio || currentIdRef.current == null) return;
-    if (audio.paused) void audio.play();
-    else audio.pause();
-  }, []);
+    if (currentIdRef.current == null) return;
+    flip();
+  }, [flip]);
 
   const next = useCallback(() => {
     const nextState = queueAfterNext(queueRef.current);
@@ -250,9 +252,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [applyQueue]);
 
   const previous = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio || currentIdRef.current == null) return;
-    if (audio.currentTime <= PREVIOUS_RESTARTS_AFTER) {
+    if (currentIdRef.current == null) return;
+    if (positionRef.current <= PREVIOUS_RESTARTS_AFTER) {
       const prevState = queueAfterPrevious(queueRef.current);
       if (prevState) {
         applyQueue(prevState);
@@ -260,21 +261,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
     // Past the threshold — or already at the front: start the track over.
-    audio.currentTime = 0;
+    void engine.seek(0);
     setCurrentTime(0);
   }, [applyQueue]);
 
+  /** Move the playhead. Set locally first so the thumb lands where it was
+   * dropped instead of snapping back until the next status tick. */
   const seek = useCallback((time: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = time;
     setCurrentTime(time);
+    void engine.seek(time);
   }, []);
 
+  /** `value` is the slider position, 0…1. The engine turns it into an
+   * amplitude — the taper lives there, so every caller gets the same curve. */
   const setVolume = useCallback((value: number) => {
-    const audio = audioRef.current;
-    if (audio) audio.volume = value;
     setVolumeState(value);
+    void engine.setVolume(value);
   }, []);
 
   const toggleShuffle = useCallback(() => {
@@ -313,10 +315,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     <ControlsContext.Provider value={controls}>
       <ProgressContext.Provider value={progress}>
         <QueueContext.Provider value={queueValue}>
-          <VolumeContext.Provider value={volumeValue}>
-            {children}
-            <audio ref={audioRef} onVolumeChange={() => setVolumeState(audioRef.current?.volume ?? 1)} />
-          </VolumeContext.Provider>
+          <VolumeContext.Provider value={volumeValue}>{children}</VolumeContext.Provider>
         </QueueContext.Provider>
       </ProgressContext.Provider>
     </ControlsContext.Provider>

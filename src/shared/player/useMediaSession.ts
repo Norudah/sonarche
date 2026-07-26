@@ -15,6 +15,16 @@ interface MediaSessionHandlers {
  * and the system's now-playing surface drive the same queue as the on-screen
  * transport. Guarded — the API is absent from some webviews, and the app must
  * not care.
+ *
+ * DORMANT since playback moved into Rust. The API only surfaces a session for a
+ * page that is itself playing a media element, and there is no longer one: the
+ * metadata is still set and the handlers still registered, but macOS has
+ * nothing to attach them to, so the media keys do nothing.
+ *
+ * Left in place rather than deleted because the shape is right and the decision
+ * is open: reimplement the OS side natively (MPNowPlayingInfoCenter), keep a
+ * silent element alive purely to hold the session, or drop this file. Whichever
+ * wins, this is the code that describes what the OS should be told.
  */
 export function useMediaSession({ current, isPlaying, toggle, next, previous }: MediaSessionHandlers): void {
   useEffect(() => {
