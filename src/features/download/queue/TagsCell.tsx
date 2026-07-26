@@ -3,13 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
 import { EmptyCell } from "@/features/download/queue/EmptyCell";
-import {
-  formatTags,
-  jobTags,
-  type TagSummary,
-  tagTone,
-  trackTags,
-} from "@/features/download/queue/tags";
+import { formatTags, jobTags, type TagSummary, tagTone, trackTags } from "@/features/download/queue/tags";
 
 const DOT_TONE = {
   success: "bg-success",
@@ -35,9 +29,7 @@ function TagBadge({ summary, label }: { summary: TagSummary; label: string }) {
       ) : (
         <span className={`size-2 shrink-0 rounded-full ${DOT_TONE[tagTone(summary)]}`} />
       )}
-      <span className={`text-sm tabular-nums ${summary.provisional ? "text-warning" : ""}`}>
-        {text}
-      </span>
+      <span className={`text-sm tabular-nums ${summary.provisional ? "text-warning" : ""}`}>{text}</span>
     </span>
   );
 }

@@ -8,11 +8,11 @@ import {
   FAMILY_NONE,
   FAMILY_OTHER,
   filterFamilies,
-  filterGenres,
   findFamily,
   findGenre,
   groupFamilies,
   listGenres,
+  sortFamilies,
 } from "@/features/library/genres/genres";
 import { track } from "@/features/library/testFixtures";
 
@@ -46,9 +46,7 @@ describe("groupFamilies", () => {
 
   it("orders families by size, both sentinels last however big", () => {
     const families = familiesOf([
-      ...Array.from({ length: 5 }, (_, i) =>
-        track({ id: i + 1, album: "Untagged", albumArtist: "X", title: `t${i}` }),
-      ),
+      ...Array.from({ length: 5 }, (_, i) => track({ id: i + 1, album: "Untagged", albumArtist: "X", title: `t${i}` })),
       track({ id: 6, album: "A", albumArtist: "Y", genre: "Gqom", title: "g1" }),
       track({ id: 7, album: "B", albumArtist: "Z", genre: "Gqom", title: "g2" }),
       track({ id: 8, album: "C", albumArtist: "W", genre: "Art Rock", genreBucket: "Rock" }),
@@ -101,14 +99,12 @@ describe("album assignment", () => {
       track({ id: 3, album: "Other", albumArtist: "Y", genre: "Dance Pop", genreBucket: "Pop" }),
     ];
 
-    expect(findFamily(familiesOf(tracks), "Pop")?.albums.map((a) => a.title)).toEqual([
-      "Split",
-      "Other",
-    ]);
+    expect(findFamily(familiesOf(tracks), "Pop")?.albums.map((a) => a.title)).toEqual(["Split", "Other"]);
     // Same input, reversed: the answer must not move.
-    expect(findFamily(familiesOf([...tracks].reverse()), "Pop")?.albums.map((a) => a.title)).toEqual(
-      ["Other", "Split"],
-    );
+    expect(findFamily(familiesOf([...tracks].reverse()), "Pop")?.albums.map((a) => a.title)).toEqual([
+      "Other",
+      "Split",
+    ]);
   });
 
   it("counts tracks and albums on different units", () => {
@@ -198,25 +194,6 @@ describe("listGenres", () => {
   });
 });
 
-describe("filterGenres", () => {
-  it("matches on the genre, its family, or one of its records", () => {
-    const genres = genresOf([
-      track({
-        id: 1,
-        album: "Discovery",
-        albumArtist: "Daft Punk",
-        genre: "French House",
-        genreBucket: "Electronic",
-      }),
-      track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
-    ]);
-
-    expect(filterGenres(genres, "house").map((g) => g.name)).toEqual(["French House"]);
-    expect(filterGenres(genres, "rock").map((g) => g.name)).toEqual(["Art Rock"]);
-    expect(filterGenres(genres, "radiohead").map((g) => g.name)).toEqual(["Art Rock"]);
-  });
-});
-
 describe("countGenres", () => {
   it("counts a genre once even when it straddles two families", () => {
     const families = familiesOf([
@@ -230,15 +207,25 @@ describe("countGenres", () => {
 });
 
 describe("filterFamilies", () => {
-  it("finds a family through one of its records", () => {
+  it("matches the family name or one of its genres", () => {
     const families = familiesOf([
       track({ id: 1, album: "Discovery", albumArtist: "Daft Punk", genre: "French House", genreBucket: "Electronic" }),
       track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
     ]);
 
-    expect(filterFamilies(families, "daft").map((f) => f.key)).toEqual(["Electronic"]);
+    expect(filterFamilies(families, "electronic").map((f) => f.key)).toEqual(["Electronic"]);
     expect(filterFamilies(families, "art rock").map((f) => f.key)).toEqual(["Rock"]);
     expect(filterFamilies(families, "")).toHaveLength(2);
+  });
+
+  it("ignores albums and artists — this page searches genres, not records", () => {
+    const families = familiesOf([
+      track({ id: 1, album: "Discovery", albumArtist: "Daft Punk", genre: "French House", genreBucket: "Electronic" }),
+      track({ id: 2, album: "Kid A", albumArtist: "Radiohead", genre: "Art Rock", genreBucket: "Rock" }),
+    ]);
+
+    expect(filterFamilies(families, "daft")).toEqual([]);
+    expect(filterFamilies(families, "kid a")).toEqual([]);
   });
 });
 
@@ -253,5 +240,53 @@ describe("albumsWithGenre", () => {
     expect(albumsWithGenre(rock, "Art Rock").map((a) => a.title)).toEqual(["OK"]);
     expect(albumsWithGenre(rock, "Grunge").map((a) => a.title)).toEqual(["OK", "Bleach"]);
     expect(albumsWithGenre(rock, null)).toHaveLength(2);
+  });
+});
+
+describe("sortFamilies", () => {
+  // "Autres" and the untagged pile are answers to a question nobody asked, so
+  // they must not float up whichever way the shelf is ordered.
+  const shelf = () =>
+    familiesOf([
+      track({ id: 1, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
+      track({ id: 2, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
+      track({ id: 3, album: "B", albumArtist: "Y", genre: "Disco", genreBucket: "Electronic" }),
+      track({ id: 4, album: "C", albumArtist: "Z", genre: "Chiptune" }),
+      track({ id: 5, album: "D", albumArtist: "W", genre: null }),
+    ]);
+
+  const asIs = (key: string) => key;
+
+  it("orders by track count, largest first", () => {
+    expect(sortFamilies(shelf(), "size", asIs).map((family) => family.key)).toEqual([
+      "Rock",
+      "Electronic",
+      FAMILY_OTHER,
+      FAMILY_NONE,
+    ]);
+  });
+
+  it("orders by displayed label, not by stored key", () => {
+    // "Electronic" stored, "Zebre" shown: sorting on the key would put it first.
+    const labelOf = (key: string) => (key === "Electronic" ? "Zebre" : key);
+    expect(sortFamilies(shelf(), "name", labelOf).map((family) => family.key)).toEqual([
+      "Rock",
+      "Electronic",
+      FAMILY_OTHER,
+      FAMILY_NONE,
+    ]);
+  });
+
+  it("sinks the sentinels even when sorting A to Z", () => {
+    // Both sentinel keys start with an underscore, which sorts before letters.
+    const keys = sortFamilies(shelf(), "name", asIs).map((family) => family.key);
+    expect(keys.slice(-2)).toEqual([FAMILY_OTHER, FAMILY_NONE]);
+  });
+
+  it("leaves the input array alone", () => {
+    const families = shelf();
+    const before = families.map((family) => family.key);
+    sortFamilies(families, "name", asIs);
+    expect(families.map((family) => family.key)).toEqual(before);
   });
 });

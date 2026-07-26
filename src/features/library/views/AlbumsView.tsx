@@ -2,45 +2,70 @@ import { Alert, Spinner } from "@heroui/react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
-import {
-  filterAlbums,
-  groupAlbums,
-  sortAlbums,
-  type AlbumSort,
-} from "@/features/library/albums/albums";
+import { ALBUM_SORTS, filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
+import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
+import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { SortSelect } from "@/features/library/SortSelect";
+import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function AlbumsView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
+  const [inspectedKey, setInspectedKey] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
 
+  const triage = useMemo(() => parseAlbumTriage(params), [params]);
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
-  const visible = useMemo(
-    () => sortAlbums(filterAlbums(albums, query), sort),
-    [albums, query, sort],
-  );
+  const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
+  const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
+
+  // Derived from the live list, not a snapshot — same reasoning as the track
+  // drawer: a re-enrich refetch must update the open drawer, not a stale copy.
+  const inspected = inspectedKey != null ? (albums.find((album) => album.key === inspectedKey) ?? null) : null;
+
+  // Removing a filter refines the entry we are on, it is not a new place —
+  // same reasoning as the genre chips' `replace`.
+  const clearParam = (name: string) => {
+    const next = new URLSearchParams(params);
+    next.delete(name);
+    setParams(next, { replace: true });
+  };
+
+  const chips: TriageChip[] = [];
+  if (triage.missingArtwork)
+    chips.push({ key: "missingArtwork", label: t("triage.missingArtwork"), onRemove: () => clearParam("missing") });
+  if (triage.tracklistGaps)
+    chips.push({ key: "tracklistGaps", label: t("triage.tracklistGaps"), onRemove: () => clearParam("tracklist") });
 
   return (
     <PageContainer>
       <AlbumsHeader
         albumCount={albums.length}
         trackCount={albums.reduce((sum, album) => sum + album.tracks.length, 0)}
-        query={query}
-        onQueryChange={setQuery}
-        sort={sort}
-        onSortChange={setSort}
       />
+
+      <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={albums.length}>
+        <SortSelect
+          options={ALBUM_SORTS}
+          value={sort}
+          onChange={setSort}
+          labelOf={(option) => t(`albums.sort.${option}`)}
+        />
+        <TriageChips chips={chips} />
+      </ExplorerBar>
 
       {library.isPending && (
         <div className="flex justify-center py-16">
@@ -74,17 +99,20 @@ export function AlbumsView() {
           transition={fade}
           className="py-16 text-center text-sm text-muted"
         >
-          {t("albums.noResults", { query })}
+          {query ? t("albums.noResults", { query }) : t("triage.noResults")}
         </motion.p>
       )}
 
       {visible.length > 0 && (
         <AlbumGrid
           albums={visible}
-          animationKey={`${query}:${sort}`}
-          onPlay={(album) => playTrack(album.tracks[0])}
+          animationKey={`${params.toString()}:${query}:${sort}`}
+          onPlay={(album) => playOrdered(album.tracks)}
+          onInspect={(album) => setInspectedKey(album.key)}
         />
       )}
+
+      <AlbumMetadataDrawer album={inspected} onClose={() => setInspectedKey(null)} />
     </PageContainer>
   );
 }

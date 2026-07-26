@@ -1,16 +1,22 @@
-import { FileText, Music, Trash2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
+import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
+import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
+import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
-const ACTION =
-  "cursor-pointer rounded-md p-1.5 text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
+
+/* Underline on hover only. A row holds two of these and permanently underlined
+ * text would turn the table into a page of links; the pointer plus the reveal is
+ * enough to say they are one. */
+const CELL_LINK = "block truncate outline-none hover:text-foreground hover:underline focus-visible:text-foreground";
 
 interface TrackRowProps {
   track: LibraryTrack;
@@ -20,6 +26,12 @@ interface TrackRowProps {
    * every one of them instead of playing once for the list. */
   cascade?: boolean;
   style?: CSSProperties;
+  /** Album artist of the page this row is on, when it has one. A row filed under
+   * anyone else is a guest spot and says so. */
+  guestOwner?: string;
+  /** Launch playback at this row, in the list's own context. The table owns
+   * the list, so the table decides what the queue is. */
+  onPlay: () => void;
   onInspect: () => void;
   onDelete: () => void;
 }
@@ -29,55 +41,59 @@ export function TrackRow({
   index,
   cascade = true,
   style,
+  guestOwner,
+  onPlay,
   onInspect,
   onDelete,
 }: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
-  const playTrack = usePlayTrack();
   const isCurrent = current?.id === track.id;
+
+  // Who the record is filed under — the album artist, or the track's own when
+  // beets left it empty. Both the album route and the guest test key off it.
+  const owner = track.albumArtist.trim() || track.artist.trim();
+  // An artist page exists per *album* artist, so only a credited artist who owns
+  // the record has one. A featuring credit on someone else's album leads
+  // nowhere, and a link into a page that redirects straight back out is worse
+  // than plain text.
+  const artistLink = owner === track.artist.trim() && owner !== "" ? artistPath(owner) : null;
+  const albumLink = track.album.trim() !== "" ? albumPath(owner, track.album) : null;
+  const isGuest = guestOwner != null && owner !== guestOwner;
 
   return (
     <tr
       style={style}
+      onDoubleClick={rowPlayHandler(onPlay)}
       className={
-        "group/row [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
+        "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (cascade ? "row-cascade " : "") +
         (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
       }
     >
       <td className={`${CELL} w-14`}>
-        <TrackIndexCell
-          index={index}
-          isCurrent={isCurrent}
-          isPlaying={isPlaying}
-          onPlay={() => playTrack(track)}
-          label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
-        />
+        {/* Centred under its "#" header: the button is narrower than the column,
+         * so left-aligning it left every number visibly off its own label. */}
+        <div className="flex justify-center">
+          <TrackIndexCell
+            index={index}
+            isCurrent={isCurrent}
+            isPlaying={isPlaying}
+            onPlay={onPlay}
+            label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
+          />
+        </div>
       </td>
 
       <td className={CELL}>
         <div className="flex items-center gap-3">
-          {track.artUrl ? (
-            <img
-              src={track.artUrl}
-              alt=""
-              // A library-wide tracklist holds one of these per row; without
-              // this the browser fetches every cover in the library at once.
-              loading="lazy"
-              decoding="async"
-              className="size-10 shrink-0 rounded-md object-cover"
-            />
-          ) : (
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-default/60">
-              <Music className="size-4 text-muted" />
-            </div>
-          )}
+          {/* Lazy: a library-wide tracklist holds one of these per row, and
+              eager loading fetched every cover in the library at once. */}
+          <TrackThumb artUrl={track.artUrl} />
           <span
             className={
-              "truncate text-sm font-medium transition-colors " +
-              (isCurrent ? "text-accent" : "text-foreground")
+              "truncate text-sm font-medium transition-colors " + (isCurrent ? "text-accent" : "text-foreground")
             }
           >
             {track.title || t("unknownTitle")}
@@ -86,11 +102,30 @@ export function TrackRow({
       </td>
 
       <td className={CELL}>
-        <span className="block truncate">{track.artist || t("unknownArtist")}</span>
+        {artistLink ? (
+          <Link to={artistLink} className={CELL_LINK}>
+            {track.artist}
+          </Link>
+        ) : (
+          <span className="block truncate">{track.artist || t("unknownArtist")}</span>
+        )}
       </td>
 
       <td className={CELL}>
-        <span className="block truncate">{track.album || t("metadata.emptyValue")}</span>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isGuest && (
+            <span className="shrink-0 rounded bg-default/70 px-1 text-[0.625rem] font-semibold uppercase">
+              {t("artists.guest")}
+            </span>
+          )}
+          {albumLink ? (
+            <Link to={albumLink} className={CELL_LINK}>
+              {track.album}
+            </Link>
+          ) : (
+            <span className="block truncate">{t("metadata.emptyValue")}</span>
+          )}
+        </div>
       </td>
 
       <td className={CELL}>
@@ -109,29 +144,17 @@ export function TrackRow({
       {/* Wrapped in a span, not raw text: the row cascade animates each cell's
        * child element, and a bare text node has nothing to animate. */}
       <td className={`${CELL} w-16 text-right tabular-nums`}>
-        <span className="block">
-          {track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}
-        </span>
+        <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      <td className={`${CELL} w-16`}>
-        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
-          <button
-            type="button"
-            onClick={onInspect}
-            aria-label={t("metadata.inspect")}
-            className={`${ACTION} hover:text-foreground`}
-          >
-            <FileText className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={t("delete.action")}
-            className={`${ACTION} hover:text-danger`}
-          >
-            <Trash2 className="size-4" />
-          </button>
+      {/* The wrapper is load-bearing: `row-cascade` animates `td > *`, and if
+       * the actions were that child the keyframe would override their idle
+       * opacity for the length of the entrance — every row would flash its icons
+       * on arrival. The animation lands on this div; the hover layer sits a
+       * level deeper. `pl-6` is the breathing room from the duration column. */}
+      <td className={`${CELL} w-28 pl-6`}>
+        <div>
+          <RowActions onInspect={onInspect} onDelete={onDelete} />
         </div>
       </td>
     </tr>

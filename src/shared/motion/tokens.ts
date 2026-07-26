@@ -39,6 +39,11 @@ export const durations = {
   fast: 0.18,
   /** Content swapping under a stable frame (now-playing track change). */
   medium: 0.28,
+  /** A value drawing itself in on arrival — the album completeness ring filling
+   * from empty, and the figure counting up with it. The one token allowed to
+   * run long: it is not a transition between two states but the reading of a
+   * measurement, and at 0.28s the sweep is over before the eye finds it. */
+  reveal: 0.9,
 } as const;
 
 /** HeroUI ships an Apple-style out curve; we reuse it rather than invent one.
@@ -75,6 +80,13 @@ export const pop = {
 export const layoutIds = {
   /** The active-route pill travelling between sidebar nav items. */
   navIndicator: "sonarche-nav-indicator",
+  /** The active-category pill inside the sidebar's settings mode. Its own id so
+   * it never tries to tween across the mode swap from the main-nav pill. */
+  settingsNavIndicator: "sonarche-settings-nav-indicator",
   /** The album/track pill in the composer's segmented control. */
   kindChoice: "sonarche-kind-choice",
+  /** The overview/tracks pill in a scoped page's view switcher. Its own id
+   * because the two switches can be on screen in the same app but never in the
+   * same place — sharing one would tween a pill across half the window. */
+  viewMode: "sonarche-view-mode",
 } as const;

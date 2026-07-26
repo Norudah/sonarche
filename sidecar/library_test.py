@@ -4,11 +4,13 @@ import tempfile
 import unittest
 
 from library import (
+    _apply_fields,
     _art_path,
+    _coerce_int,
     art_paths_by_album,
-    bonus_sources_by_item,
     expand_db_path,
     first_genre,
+    flex_attrs_by_item,
     track_row,
 )
 
@@ -87,7 +89,8 @@ def _db_with(items=(), albums=(), attributes=()):
         "CREATE TABLE items (id INTEGER PRIMARY KEY, title TEXT, artist TEXT,"
         " album TEXT, albumartist TEXT, year INTEGER, genres TEXT, track INTEGER,"
         " tracktotal INTEGER, length REAL, bitrate INTEGER, format TEXT,"
-        " path BLOB, album_id INTEGER, added REAL)"
+        " path BLOB, album_id INTEGER, added REAL, mb_trackid TEXT,"
+        " grouping TEXT, albumtypes TEXT)"
     )
     conn.execute(
         "CREATE TABLE item_attributes (entity_id INTEGER, key TEXT, value TEXT)"
@@ -100,14 +103,18 @@ def _db_with(items=(), albums=(), attributes=()):
     for item in items:
         conn.execute(
             "INSERT INTO items (id, title, artist, album, albumartist, year, genres,"
-            " track, tracktotal, length, bitrate, format, path, album_id, added)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " track, tracktotal, length, bitrate, format, path, album_id, added, mb_trackid,"
+            " grouping, albumtypes)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             item,
         )
     return conn
 
 
-def _item(item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2014):
+def _item(
+    item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2014,
+    mb_trackid="", grouping="", albumtypes="",
+):
     return (
         item_id,
         "Night Changes",
@@ -124,6 +131,9 @@ def _item(item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2
         b"One Direction/Four/03 Night Changes.m4a",
         album_id,
         added,
+        mb_trackid,
+        grouping,
+        albumtypes,
     )
 
 
@@ -148,22 +158,27 @@ class ArtPathsByAlbumTest(unittest.TestCase):
         self.assertIsNone(mapping.get(999))
 
 
-class BonusSourcesTest(unittest.TestCase):
-    def test_reads_only_the_bonus_source_key(self):
+class FlexAttrsTest(unittest.TestCase):
+    def test_reads_only_the_requested_key(self):
         conn = _db_with(
             attributes=[
                 (1, "sonarche_bonus_source", "Deluxe Edition"),
                 (1, "data_source", "MusicBrainz"),
-                (2, "art_source", "coverart"),
+                (2, "sonarche_suspect_match", "title-mismatch"),
             ]
         )
 
-        self.assertEqual(bonus_sources_by_item(conn), {1: "Deluxe Edition"})
+        self.assertEqual(
+            flex_attrs_by_item(conn, "sonarche_bonus_source"), {1: "Deluxe Edition"}
+        )
+        self.assertEqual(
+            flex_attrs_by_item(conn, "sonarche_suspect_match"), {2: "title-mismatch"}
+        )
 
     def test_empty_value_is_dropped(self):
         conn = _db_with(attributes=[(1, "sonarche_bonus_source", "")])
 
-        self.assertEqual(bonus_sources_by_item(conn), {})
+        self.assertEqual(flex_attrs_by_item(conn, "sonarche_bonus_source"), {})
 
 
 class TrackRowTest(unittest.TestCase):
@@ -174,7 +189,7 @@ class TrackRowTest(unittest.TestCase):
     def test_maps_the_wire_shape(self):
         row = self._row(genres="Pop\\␀Teen Pop")
 
-        out = track_row(row, {1: "/music/cover.jpg"}, {}, "/music")
+        out = track_row(row, {1: "/music/cover.jpg"}, {}, {}, "/music")
 
         self.assertEqual(out["id"], 1)
         self.assertEqual(out["album_artist"], "One Direction")
@@ -185,36 +200,158 @@ class TrackRowTest(unittest.TestCase):
         ))
 
     def test_length_is_rounded_to_one_decimal(self):
-        out = track_row(self._row(length=200.05), {}, {}, "/music")
+        out = track_row(self._row(length=200.05), {}, {}, {}, "/music")
 
         self.assertEqual(out["length"], 200.1)
 
     def test_zero_length_yields_none_not_zero(self):
         """A track with no stored duration must read as unknown, so the front
         falls back to the audio element rather than showing 0:00."""
-        out = track_row(self._row(length=0), {}, {}, "/music")
+        out = track_row(self._row(length=0), {}, {}, {}, "/music")
 
         self.assertIsNone(out["length"])
 
     def test_zero_year_yields_none(self):
-        self.assertIsNone(track_row(self._row(year=0), {}, {}, "/music")["year"])
+        self.assertIsNone(track_row(self._row(year=0), {}, {}, {}, "/music")["year"])
+
+    def test_mb_trackid_surfaces_and_empty_reads_as_none(self):
+        matched = track_row(self._row(mb_trackid="rec-1"), {}, {}, {}, "/music")
+        unmatched = track_row(self._row(mb_trackid=""), {}, {}, {}, "/music")
+
+        self.assertEqual(matched["mb_trackid"], "rec-1")
+        self.assertIsNone(unmatched["mb_trackid"])
+
+    def test_suspect_match_is_attached_by_item_id(self):
+        row = self._row(item_id=7)
+
+        flagged = track_row(row, {}, {}, {7: "title-mismatch"}, "/music")
+        clean = track_row(row, {}, {}, {8: "title-mismatch"}, "/music")
+
+        self.assertTrue(flagged["suspect_match"])
+        self.assertFalse(clean["suspect_match"])
 
     def test_bonus_source_is_attached_by_item_id(self):
         row = self._row(item_id=7)
 
-        out = track_row(row, {}, {7: "Deluxe Edition"}, "/music")
+        out = track_row(row, {}, {7: "Deluxe Edition"}, {}, "/music")
 
         self.assertEqual(out["bonus_source"], "Deluxe Edition")
 
     def test_missing_bonus_source_is_none(self):
-        out = track_row(self._row(item_id=7), {}, {8: "Other"}, "/music")
+        out = track_row(self._row(item_id=7), {}, {8: "Other"}, {}, "/music")
 
         self.assertIsNone(out["bonus_source"])
 
+    def test_category_surfaces_and_empty_reads_as_none(self):
+        tagged = track_row(self._row(grouping="Video Games"), {}, {}, {}, "/music")
+        bare = track_row(self._row(grouping=""), {}, {}, {}, "/music")
+
+        self.assertEqual(tagged["category"], "Video Games")
+        self.assertIsNone(bare["category"])
+
+    def test_soundtrack_release_type_is_flagged(self):
+        ost = track_row(self._row(albumtypes="album; soundtrack"), {}, {}, {}, "/music")
+        plain = track_row(self._row(albumtypes="album"), {}, {}, {}, "/music")
+
+        self.assertTrue(ost["soundtrack"])
+        self.assertFalse(plain["soundtrack"])
+
     def test_track_without_album_gets_no_art(self):
-        out = track_row(self._row(album_id=None), {1: "/music/cover.jpg"}, {}, "/music")
+        out = track_row(self._row(album_id=None), {1: "/music/cover.jpg"}, {}, {}, "/music")
 
         self.assertIsNone(out["art_path"])
+
+
+class _FakeItem:
+    """Enough of a beets Item for _apply_fields: attribute get/set plus the
+    multi-valued `genres` accessor it reads through `.get(...)`."""
+
+    def __init__(self, **attrs):
+        self.__dict__.update(attrs)
+
+    def get(self, key, with_album=True):
+        return self.__dict__.get(key)
+
+
+class CoerceIntTest(unittest.TestCase):
+    def test_empty_clears_to_zero(self):
+        self.assertEqual(_coerce_int(""), 0)
+        self.assertEqual(_coerce_int("   "), 0)
+
+    def test_numeric_string_parses(self):
+        self.assertEqual(_coerce_int("2015"), 2015)
+        self.assertEqual(_coerce_int(" 3 "), 3)
+
+    def test_non_numeric_signals_skip(self):
+        self.assertIsNone(_coerce_int("mmxv"))
+
+
+class ApplyFieldsTest(unittest.TestCase):
+    def _item(self, **overrides):
+        base = dict(
+            title="Old", artist="A", albumartist="A", album="Rec",
+            year=2014, track=3, tracktotal=12, genres=["Pop"],
+        )
+        base.update(overrides)
+        return _FakeItem(**base)
+
+    def test_returns_false_when_nothing_changes(self):
+        item = self._item()
+        self.assertFalse(_apply_fields(item, {"title": "Old", "year": "2014"}))
+
+    def test_changes_only_the_provided_fields(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"title": "New"}))
+        self.assertEqual(item.title, "New")
+        self.assertEqual(item.artist, "A")
+
+    def test_text_field_is_trimmed(self):
+        item = self._item()
+        _apply_fields(item, {"artist": "  Beyoncé  "})
+        self.assertEqual(item.artist, "Beyoncé")
+
+    def test_emptied_int_clears_to_zero(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"year": ""}))
+        self.assertEqual(item.year, 0)
+
+    def test_invalid_int_is_skipped_not_fatal(self):
+        item = self._item()
+        self.assertFalse(_apply_fields(item, {"year": "nope"}))
+        self.assertEqual(item.year, 2014)
+
+    def test_genre_collapses_to_the_edited_value(self):
+        item = self._item(genres=["Pop", "Teen Pop"])
+        self.assertTrue(_apply_fields(item, {"genre": "Rock"}))
+        self.assertEqual(item.genres, ["Rock"])
+
+    def test_genre_splits_a_pasted_multi_value(self):
+        item = self._item()
+        _apply_fields(item, {"genre": "Rock; Metal"})
+        self.assertEqual(item.genres, ["Rock", "Metal"])
+
+    def test_cleared_genre_becomes_empty_list(self):
+        item = self._item()
+        self.assertTrue(_apply_fields(item, {"genre": ""}))
+        self.assertEqual(item.genres, [])
+
+    def test_unchanged_genre_is_left_alone(self):
+        item = self._item(genres=["Pop"])
+        self.assertFalse(_apply_fields(item, {"genre": "Pop"}))
+
+    def test_reports_the_item_attributes_that_moved(self):
+        """The returned names feed the provenance trail — the genre edit must
+        surface as beets' `genres`, the attribute it actually lands on."""
+        item = self._item()
+        self.assertEqual(
+            _apply_fields(item, {"title": "New", "artist": "A", "year": "2015", "genre": "Rock"}),
+            {"title", "year", "genres"},
+        )
+
+    def test_category_lands_on_grouping(self):
+        item = self._item(grouping="")
+        self.assertEqual(_apply_fields(item, {"grouping": "Video Games"}), {"grouping"})
+        self.assertEqual(item.grouping, "Video Games")
 
 
 if __name__ == "__main__":

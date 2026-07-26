@@ -45,6 +45,19 @@ export function familyKeyOf(track: LibraryTrack): string {
   return track.genre ? FAMILY_OTHER : FAMILY_NONE;
 }
 
+/**
+ * Each genre name's family key, for turning a genre label into its page's
+ * route. First occurrence wins — the sidecar buckets a given genre string
+ * deterministically, so later tracks cannot disagree.
+ */
+export function genreFamilyIndex(tracks: LibraryTrack[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const track of tracks) {
+    if (track.genre && !index.has(track.genre)) index.set(track.genre, familyKeyOf(track));
+  }
+  return index;
+}
+
 interface Tally {
   trackCount: number;
   subs: Map<string, number>;
@@ -127,12 +140,33 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
           .sort((a, b) => b.trackCount - a.trackCount || a.name.localeCompare(b.name)),
       };
     })
-    .sort(
-      (a, b) =>
-        rankOf(a.key) - rankOf(b.key) ||
-        b.trackCount - a.trackCount ||
-        a.key.localeCompare(b.key),
-    );
+    .sort((a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key));
+}
+
+export const FAMILY_SORTS = ["size", "name"] as const;
+export type FamilySort = (typeof FAMILY_SORTS)[number];
+
+/**
+ * Reorders the shelf without ever letting a sentinel climb it.
+ *
+ * `rankOf` stays the primary key in both directions: "Autres" and the untagged
+ * pile are answers to a question nobody asked, and an A→Z pass that floated
+ * "Autres" to the top would put the least meaningful card first.
+ *
+ * Size is the default because it is the page's own reading — the shelf shows
+ * what the library is mostly made of. Name is for the other job, finding a
+ * family you already have in mind, and it sorts on the *displayed* label: the
+ * keys are stored English, so ordering by key would put "Jeux vidéo" under J in
+ * one language and V in another.
+ */
+export function sortFamilies(families: Family[], sort: FamilySort, labelOf: (key: string) => string): Family[] {
+  const sorted = [...families];
+  if (sort === "name") {
+    return sorted.sort((a, b) => rankOf(a.key) - rankOf(b.key) || labelOf(a.key).localeCompare(labelOf(b.key)));
+  }
+  return sorted.sort(
+    (a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key),
+  );
 }
 
 /**
@@ -187,21 +221,6 @@ export function findGenre(genres: Genre[], family: string, name: string): Genre 
   return genres.find((genre) => genre.family === family && genre.name === name) ?? null;
 }
 
-/** Same contract as `filterFamilies`, one level down. */
-export function filterGenres(genres: Genre[], query: string): Genre[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return genres;
-
-  return genres.filter((genre) => {
-    const haystack = normalize(
-      [genre.name, genre.family, ...genre.albums.map((album) => `${album.title} ${album.artist}`)].join(
-        " ",
-      ),
-    );
-    return terms.every((term) => haystack.includes(term));
-  });
-}
-
 /** Distinct specific genres across the whole library — the header's second
  * figure. Counted here rather than summed from `subs` so that a genre filed
  * under two families is not counted twice. */
@@ -213,20 +232,21 @@ export function countGenres(families: Family[]): number {
   return names.size;
 }
 
-/** Same contract as `filterArtists`: every term must match somewhere, so
- * "rock daft" finds the family through one of its records. */
+/**
+ * Names only — the family's own and those of the genres under it.
+ *
+ * Deliberately *not* the albums and artists it contains, unlike the other
+ * shelves' filters. On a page whose subject is genres, matching a record would
+ * answer "which genre holds this artist?" — a question the artist and album
+ * shelves already answer — and it made typing a name that appears nowhere on
+ * screen surface a card, which reads as a bug rather than a search.
+ */
 export function filterFamilies(families: Family[], query: string): Family[] {
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   if (terms.length === 0) return families;
 
   return families.filter((family) => {
-    const haystack = normalize(
-      [
-        family.key,
-        ...family.subs.map((sub) => sub.name),
-        ...family.albums.map((album) => `${album.title} ${album.artist}`),
-      ].join(" "),
-    );
+    const haystack = normalize([family.key, ...family.subs.map((sub) => sub.name)].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

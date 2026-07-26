@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
+use serde::Deserialize;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
@@ -135,6 +137,70 @@ pub async fn reset_library_dev(app: AppHandle) -> AppResult<()> {
     let _ = tokio::fs::remove_file(&paths.beets_db).await;
     eprintln!("[dev] library reset: files and beets DB wiped");
     Ok(())
+}
+
+/// The only tags an edit may touch. Keys are beets' own item attribute names,
+/// so the whitelist doubles as the wire contract with the sidecar.
+const EDITABLE_FIELDS: &[&str] = &[
+    "title",
+    "artist",
+    "albumartist",
+    "album",
+    "year",
+    "track",
+    "tracktotal",
+    "genre",
+    // The category axis (context: Video Games, Film, …), beets' grouping tag.
+    "grouping",
+];
+
+#[derive(Deserialize)]
+pub struct TrackUpdate {
+    id: i64,
+    fields: HashMap<String, Value>,
+}
+
+/// Edit metadata on a batch of tracks in one sidecar round-trip. The whole
+/// batch is validated before any write is attempted, so a single stray field
+/// name rejects the request rather than half-applying it.
+#[tauri::command]
+pub async fn update_tracks(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    updates: Vec<TrackUpdate>,
+) -> AppResult<Value> {
+    if updates.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+    let mut wire = Vec::with_capacity(updates.len());
+    for update in &updates {
+        if update.fields.is_empty() {
+            continue;
+        }
+        for key in update.fields.keys() {
+            if !EDITABLE_FIELDS.contains(&key.as_str()) {
+                return Err(AppError::InvalidInput(format!("unknown field: {key}")));
+            }
+        }
+        wire.push(json!({ "id": update.id, "fields": update.fields }));
+    }
+    if wire.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "library_update",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "updates": wire,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
 }
 
 #[tauri::command]

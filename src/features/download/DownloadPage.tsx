@@ -1,34 +1,32 @@
 import { Alert } from "@heroui/react";
-import { Trash2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
-import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
+import { paths } from "@/app/routes";
 import { QueueTable } from "@/features/download/QueueTable";
-import {
-  useActiveDownloadProgress,
-  useEnqueueDownload,
-  useEnrichProgress,
-  useJobs,
-} from "@/features/download/hooks";
+import { useActiveDownloadProgress, useEnqueueDownload, useEnrichProgress, useJobs } from "@/features/download/hooks";
+import { RECENT_JOBS } from "@/features/download/queue/page";
 import { UrlComposer } from "@/features/download/UrlComposer";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function DownloadPage() {
   const { t } = useTranslation("download");
-  const [clearingHistory, setClearingHistory] = useState(false);
   // Bumped on success so the composer clears its own input state.
   const [queuedCount, setQueuedCount] = useState(0);
   const jobs = useJobs();
   const enqueue = useEnqueueDownload();
 
-  const hasHistory =
-    jobs.data?.some((job) => job.status === "done" || job.status === "failed") ?? false;
+  const all = jobs.data ?? [];
+  // The last few only: this page is the URL field, and an unbounded archive
+  // under it buried the one control it exists for. History owns the rest.
+  const recent = all.slice(0, RECENT_JOBS);
 
-  const hasActiveDownload = jobs.data?.some((job) => job.status === "downloading") ?? false;
+  const hasActiveDownload = all.some((job) => job.status === "downloading");
   const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
 
-  const hasActiveEnrich = jobs.data?.some((job) => job.status === "enriching") ?? false;
+  const hasActiveEnrich = all.some((job) => job.status === "enriching");
   const enrichStages = useEnrichProgress(hasActiveEnrich);
 
   return (
@@ -52,25 +50,21 @@ export function DownloadPage() {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("queue.heading")}</h2>
-          <button
-            type="button"
-            onClick={() => setClearingHistory(true)}
-            disabled={!hasHistory}
-            className="flex cursor-pointer items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Trash2 className="size-3.5" />
-            {t("queue.clearHistory")}
-          </button>
+          <h2 className="text-lg font-semibold tracking-tight">{t("queue.recentHeading")}</h2>
+          {/* Only once there is more than what fits here — an empty page
+              behind the link would be a dead end. */}
+          {all.length > RECENT_JOBS && (
+            <Link
+              to={paths.history}
+              className="group/all flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-4 outline-none transition-colors hover:text-accent/80 focus-visible:underline"
+            >
+              {t("queue.seeAll")}
+              <ArrowRight className="size-3.5 transition-transform duration-200 ease-out group-hover/all:translate-x-0.5 motion-reduce:transition-none" />
+            </Link>
+          )}
         </div>
-        <QueueTable
-          jobs={jobs.data ?? []}
-          downloadPercent={downloadPercent}
-          enrichStages={enrichStages}
-        />
+        <QueueTable jobs={recent} downloadPercent={downloadPercent} enrichStages={enrichStages} />
       </section>
-
-      <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />
     </PageContainer>
   );
 }

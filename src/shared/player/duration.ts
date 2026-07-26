@@ -14,11 +14,36 @@
  * double the real one — which put the end of the music at the halfway mark of
  * the seek bar. It is only consulted for a track the library has no length for.
  *
- * Note that none of this shortens silence at the end of a file. That is
- * content: the audio really does run that long, and the bar is right to say so.
+ * Note that none of this shortens real silence inside the file — that is
+ * content, and it lies within the library's length. What gets cut is only the
+ * element's phantom overrun past that length (see `isPastKnownEnd`).
  */
 export function trackDuration(libraryLength: number | null, reported: number): number | null {
   if (libraryLength != null && libraryLength > 0) return libraryLength;
   // NaN before metadata loads, Infinity for a stream of unknown length.
   return Number.isFinite(reported) && reported > 0 ? reported : null;
+}
+
+/**
+ * Grace past the library length before declaring the track over. Covers the
+ * ~250 ms `timeupdate` granularity and beets' tenth-of-a-second rounding
+ * without ever letting a whole phantom minute through.
+ */
+const END_OVERRUN = 0.5;
+
+/**
+ * Whether the element has played past the end of the actual content.
+ *
+ * The same asset-protocol distortion that doubles the *reported* duration also
+ * doubles the element's idea of where the file ends: after the real last
+ * sample it keeps "playing" silence, the clock keeps counting, and `ended`
+ * only fires at the phantom end — minutes late. Display was already shielded
+ * by `trackDuration`; ending the track is the library's call too, so the
+ * player treats crossing this line exactly like the `ended` event.
+ *
+ * Always false without a library length: then the element's own end is the
+ * only end there is, and `ended` handles it.
+ */
+export function isPastKnownEnd(libraryLength: number | null, currentTime: number): boolean {
+  return libraryLength != null && libraryLength > 0 && currentTime >= libraryLength + END_OVERRUN;
 }

@@ -5,28 +5,26 @@ import { Navigate, useParams } from "react-router";
 
 import { paths } from "@/app/routes";
 import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
-import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
+import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { DeleteAlbumDialog, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function AlbumDetailView() {
   const { t } = useTranslation("library");
   const { artist = "", title = "" } = useParams();
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
+  const [inspecting, setInspecting] = useState(false);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
-  const album = useMemo(
-    () => findAlbum(groupAlbums(library.data ?? []), artist, title),
-    [library.data, artist, title],
-  );
+  const album = useMemo(() => findAlbum(groupAlbums(library.data ?? []), artist, title), [library.data, artist, title]);
 
   if (library.isPending) {
     return (
@@ -59,24 +57,19 @@ export function AlbumDetailView() {
 
   return (
     <PageContainer
-      sticky={
-        <AlbumStickyHeader
-          album={album}
-          isVisible={heroPassed}
-          onPlay={() => playTrack(album.tracks[0])}
-        />
-      }
+      sticky={<AlbumStickyHeader album={album} isVisible={heroPassed} onPlay={() => playOrdered(album.tracks)} />}
     >
-      <AlbumHero ref={heroRef} album={album} />
-      <AlbumActions
+      <AlbumHero
+        ref={heroRef}
         album={album}
-        onPlay={() => playTrack(album.tracks[0])}
-        onDelete={() =>
-          setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })
-        }
+        onPlay={() => playOrdered(album.tracks)}
+        onShuffle={() => playShuffled(album.tracks)}
+        onInspect={() => setInspecting(true)}
+        onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />
+      <AlbumMetadataDrawer album={inspecting ? album : null} onClose={() => setInspecting(false)} />
     </PageContainer>
   );
 }

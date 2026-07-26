@@ -2,8 +2,8 @@ import { Play } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
+import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
-import { ArtistMosaic } from "@/features/library/artists/ArtistMosaic";
 import { durations, easings, springs } from "@/shared/motion/tokens";
 
 interface ArtistStickyHeaderProps {
@@ -33,14 +33,10 @@ export function ArtistStickyHeader({ artist, isVisible, onPlay }: ArtistStickyHe
         (isVisible ? "" : "pointer-events-none")
       }
     >
-      <div className="size-9 shrink-0 overflow-hidden rounded-md">
-        <ArtistMosaic artUrls={artist.artUrls} className="size-full" />
-      </div>
+      <ArtistAvatar family={artist.family} className="size-9 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{artist.name}</p>
-        <p className="truncate text-[0.6875rem] text-muted">
-          {t("albumCount", { count: artist.albums.length })}
-        </p>
+        <p className="truncate text-[0.6875rem] text-muted">{t("albumCount", { count: artist.albums.length })}</p>
       </div>
       <motion.button
         type="button"

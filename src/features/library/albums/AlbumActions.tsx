@@ -1,60 +1,78 @@
-import { Play, Trash2 } from "lucide-react";
+import { Dropdown } from "@heroui/react";
+import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
-import type { Album } from "@/features/library/albums/albums";
+import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
+import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { springs } from "@/shared/motion/tokens";
 
-interface AlbumActionsProps {
-  album: Album;
-  onPlay: () => void;
-  onDelete: () => void;
-}
+const SECONDARY = HERO_PILL_SECONDARY;
+const ICON_PILL = HERO_PILL_ICON;
 
-/** Same size-12 accent disc as the tracks header: it is the page's one primary
- * action, and the app should have exactly one shape for that. */
-export function AlbumActions({ album, onPlay, onDelete }: AlbumActionsProps) {
+/**
+ * Everything destructive, one level down.
+ *
+ * Delete used to sit in the row as a bare trash icon, permanently under the
+ * cursor next to the play button. A menu costs one extra click for an action
+ * nobody performs twice, and buys back the row for the two things you actually
+ * came here to do.
+ */
+function OverflowMenu({ onDelete }: { onDelete: () => void }) {
   const { t } = useTranslation("library");
 
   return (
-    <div className="flex items-center gap-3">
+    <Dropdown>
+      <Dropdown.Trigger
+        aria-label={t("albums.moreActions")}
+        className={`${ICON_PILL} cursor-pointer data-[pressed]:bg-surface`}
+      >
+        <MoreHorizontal className="size-4 shrink-0" />
+      </Dropdown.Trigger>
+      <Dropdown.Popover placement="bottom start">
+        <Dropdown.Menu onAction={onDelete}>
+          <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")}>
+            <span className="flex items-center gap-2 text-danger">
+              <Trash2 className="size-4" />
+              {t("deleteAlbum.action")}
+            </span>
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
+  );
+}
+
+interface AlbumActionsProps {
+  onPlay: () => void;
+  onShuffle: () => void;
+  onInspect: () => void;
+  onDelete: () => void;
+}
+
+export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumActionsProps) {
+  const { t } = useTranslation("library");
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+
+      {/* Same FileText icon as the per-track inspect control in the tables, one
+       * scope up: this opens the album's own metadata drawer. Same press
+       * feedback as the play pills beside it — the row moves as one family. */}
       <motion.button
         type="button"
-        onClick={onPlay}
-        aria-label={t("playAll")}
-        whileTap={{ scale: 0.94 }}
-        whileHover={{ scale: 1.05 }}
+        onClick={onInspect}
+        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.03 }}
         transition={springs.snappy}
-        className="flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg shadow-accent/30 outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className={`${SECONDARY} cursor-pointer`}
       >
-        <Play className="size-5 fill-current" />
+        <FileText className="size-4" />
+        {t("albums.inspectAction")}
       </motion.button>
 
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={t("deleteAlbum.action")}
-        title={t("deleteAlbum.action")}
-        className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-danger focus-visible:ring-2 focus-visible:ring-accent/40"
-      >
-        <Trash2 className="size-4" />
-      </button>
-
-      {/* Kept next to the actions rather than pushed right with `ml-auto`: on a
-       * wide window that stranded a lone chip at the far edge, where it read as
-       * an unrelated control instead of as this album's tags. */}
-      {album.genres.length > 0 && (
-        <div className="ml-1 flex flex-wrap items-center gap-1.5">
-          {album.genres.map((genre) => (
-            <span
-              key={genre}
-              className="rounded-md bg-default/70 px-2 py-0.5 text-[0.6875rem] text-foreground"
-            >
-              {genre}
-            </span>
-          ))}
-        </div>
-      )}
+      <OverflowMenu onDelete={onDelete} />
     </div>
   );
 }

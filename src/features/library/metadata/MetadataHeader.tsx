@@ -13,26 +13,32 @@ function useSubtitle(track: LibraryTrack): string {
 
 export function MetadataHeader({
   track,
+  isEditing,
   onClose,
 }: {
   track: LibraryTrack;
+  isEditing: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation("library");
   const subtitle = useSubtitle(track);
 
   return (
-    // items-end: the text block sits on the artwork's baseline rather than
-    // floating at its centre. pt > pb on purpose: a centred row inside this
-    // band reads as an accident, not a layout.
-    <header className="relative flex shrink-0 items-end gap-5 bg-gradient-to-br from-metadata-header-from to-metadata-header-to px-7 pt-12 pb-5 text-white">
-      <MetadataArtwork artUrl={track.artUrl} />
+    // The same accent-soft → surface wash the library heroes wear, not the old
+    // saturated indigo band with white text: the drawer now speaks the album
+    // page's language. `items-end` sits the text block on the artwork's baseline
+    // rather than floating it at centre — a centred row inside this band reads as
+    // an accident, not a layout. A hairline closes the band so it never bleeds
+    // into the fields.
+    <header className="relative flex shrink-0 items-end gap-5 border-b border-separator/60 bg-gradient-to-b from-accent-soft/70 via-accent-soft/20 to-transparent px-7 pt-14 pb-6">
+      <MetadataArtwork artUrl={track.artUrl} isEditing={isEditing} />
       {/* pr-8 keeps the title clear of the absolutely-placed close button. */}
       <div className="min-w-0 flex-1 pr-8">
-        <h2 className="truncate text-lg leading-tight font-semibold tracking-tight">
+        <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("metadata.eyebrow")}</p>
+        <h2 className="mt-1 truncate text-xl leading-tight font-semibold tracking-tight text-foreground">
           {track.title || t("unknownTitle")}
         </h2>
-        <p className="mt-0 text-[0.78125rem] leading-tight text-white/75">{subtitle}</p>
+        <p className="mt-1.5 truncate text-[0.8125rem] leading-tight text-muted">{subtitle}</p>
       </div>
       <Button
         isIconOnly
@@ -40,7 +46,7 @@ export function MetadataHeader({
         size="sm"
         onPress={onClose}
         aria-label={t("metadata.close")}
-        className="absolute top-4 right-4 rounded-full bg-white/15 text-white hover:bg-white/25"
+        className="absolute top-4 right-4 rounded-full bg-default/60 text-muted transition-colors hover:bg-default hover:text-foreground"
       >
         <X className="size-4" />
       </Button>

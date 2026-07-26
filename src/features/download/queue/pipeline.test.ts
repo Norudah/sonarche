@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jobPipeline, trackPipeline } from "@/features/download/queue/pipeline";
+import { canRetry, jobPipeline, trackPipeline } from "@/features/download/queue/pipeline";
 import { albumTrack, job, report } from "@/features/download/testFixtures";
 
 /** The pipeline is read as three states left to right; assert on those. */
@@ -9,19 +9,11 @@ const details = (steps: ReturnType<typeof jobPipeline>) => steps.map((s) => s.de
 
 describe("jobPipeline", () => {
   it("leaves every step pending while the job is queued", () => {
-    expect(states(jobPipeline(job({ status: "queued" }), null, null))).toEqual([
-      "pending",
-      "pending",
-      "pending",
-    ]);
+    expect(states(jobPipeline(job({ status: "queued" }), null, null))).toEqual(["pending", "pending", "pending"]);
   });
 
   it("marks the running step active and the ones before it done", () => {
-    expect(states(jobPipeline(job({ status: "importing" }), null, null))).toEqual([
-      "done",
-      "active",
-      "pending",
-    ]);
+    expect(states(jobPipeline(job({ status: "importing" }), null, null))).toEqual(["done", "active", "pending"]);
   });
 
   it("reports a finished-but-unidentified single as empty, not done", () => {
@@ -46,6 +38,32 @@ describe("jobPipeline", () => {
       tracks: [albumTrack({ status: "done" })],
     });
     expect(states(jobPipeline(album, null, null))).toEqual(["done", "done", "done"]);
+  });
+
+  it("reads a finished album that lost a track as partial, not failed", () => {
+    // Regression: a 24-track playlist with one video pulled from YouTube used
+    // to come back `failed`, so the row painted all three stages red and
+    // claimed the import never ran — while 23 tracks had in fact landed.
+    const album = job({
+      kind: "album",
+      status: "done",
+      report: null,
+      tracks: [albumTrack({ index: 1, status: "done" }), albumTrack({ index: 2, status: "failed" })],
+    });
+    expect(states(jobPipeline(album, null, null))).toEqual(["partial", "partial", "partial"]);
+    // The tally stays on screen — that is what makes "partial" readable.
+    expect(details(jobPipeline(album, null, null))).toEqual(["1/2", "1/2", "1/2"]);
+  });
+
+  it("offers a retry on a partial album and on an outright failure, never on a clean run", () => {
+    const partial = job({
+      kind: "album",
+      status: "done",
+      tracks: [albumTrack({ status: "done" }), albumTrack({ index: 2, status: "failed" })],
+    });
+    expect(canRetry(partial)).toBe(true);
+    expect(canRetry(job({ status: "failed" }))).toBe(true);
+    expect(canRetry(job({ kind: "album", status: "done", tracks: [albumTrack({ status: "done" })] }))).toBe(false);
   });
 
   it("fails the step the job died on and keeps the later ones pending", () => {
@@ -97,21 +115,9 @@ describe("jobPipeline", () => {
 
 describe("trackPipeline", () => {
   it("walks the three stages as the track advances", () => {
-    expect(trackPipeline(albumTrack({ status: "pending" }), false)).toEqual([
-      "pending",
-      "pending",
-      "pending",
-    ]);
-    expect(trackPipeline(albumTrack({ status: "downloading" }), false)).toEqual([
-      "active",
-      "pending",
-      "pending",
-    ]);
-    expect(trackPipeline(albumTrack({ status: "downloaded" }), false)).toEqual([
-      "done",
-      "pending",
-      "pending",
-    ]);
+    expect(trackPipeline(albumTrack({ status: "pending" }), false)).toEqual(["pending", "pending", "pending"]);
+    expect(trackPipeline(albumTrack({ status: "downloading" }), false)).toEqual(["active", "pending", "pending"]);
+    expect(trackPipeline(albumTrack({ status: "downloaded" }), false)).toEqual(["done", "pending", "pending"]);
   });
 
   it("keeps enrich active on an imported track until the album-wide pass reaches it", () => {
@@ -130,10 +136,6 @@ describe("trackPipeline", () => {
   });
 
   it("stops at the download step when the track failed", () => {
-    expect(trackPipeline(albumTrack({ status: "failed" }), false)).toEqual([
-      "failed",
-      "pending",
-      "pending",
-    ]);
+    expect(trackPipeline(albumTrack({ status: "failed" }), false)).toEqual(["failed", "pending", "pending"]);
   });
 });

@@ -11,13 +11,7 @@ import type { ReactNode, RefObject } from "react";
  */
 const ScrollportContext = createContext<RefObject<HTMLElement | null> | null>(null);
 
-export function ScrollportProvider({
-  value,
-  children,
-}: {
-  value: RefObject<HTMLElement | null>;
-  children: ReactNode;
-}) {
+export function ScrollportProvider({ value, children }: { value: RefObject<HTMLElement | null>; children: ReactNode }) {
   return <ScrollportContext.Provider value={value}>{children}</ScrollportContext.Provider>;
 }
 

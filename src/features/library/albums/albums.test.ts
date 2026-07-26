@@ -49,9 +49,7 @@ describe("album route round-trip", () => {
   };
 
   it("survives spaces and punctuation in either half", () => {
-    const albums = groupAlbums([
-      track({ album: "Hotline Miami OST", albumArtist: "Various Artists" }),
-    ]);
+    const albums = groupAlbums([track({ album: "Hotline Miami OST", albumArtist: "Various Artists" })]);
     const { artist, title } = decodeParams(albumPath("Various Artists", "Hotline Miami OST"));
     expect(findAlbum(albums, artist, title)?.title).toBe("Hotline Miami OST");
   });
@@ -154,7 +152,6 @@ describe("groupAlbums", () => {
     const [album] = groupAlbums([complete({ id: 1 }), complete({ id: 2, genre: null })]);
     expect(album.completeness).toBeCloseTo(13 / 14);
   });
-
 });
 
 describe("sortAlbums", () => {
@@ -186,12 +183,7 @@ describe("sortAlbums", () => {
   });
 
   it("orders by descending year and parks the undated album at the end", () => {
-    expect(titles(sortAlbums(albums, "year"))).toEqual([
-      "Currents",
-      "Random Access Memories",
-      "Discovery",
-      "Untitled",
-    ]);
+    expect(titles(sortAlbums(albums, "year"))).toEqual(["Currents", "Random Access Memories", "Discovery", "Untitled"]);
   });
 
   it("does not mutate its input", () => {

@@ -2,6 +2,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { Ellipsis, FileText, Link, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
@@ -10,8 +11,11 @@ import { usePlayer } from "@/shared/player/PlayerContext";
  * shifting sideways — when an album is expanded. */
 const ACTIONS_ROW = "flex min-w-[6.5rem] items-center justify-end gap-1";
 
-const TRIGGER =
-  "flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-default/60 hover:text-foreground";
+/* The exact icon-button of the album tracklist: round, muted, filling on hover.
+ * The queue used square `rounded-lg` triggers, which read as a different app's
+ * table next to the round controls everywhere else. */
+const ACTION =
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /** The video this row came from, so it can be pasted back into the input. */
 function CopySourceItem({ url }: { url: string }) {
@@ -36,14 +40,7 @@ interface RowActionsProps {
   isRetrying?: boolean;
 }
 
-export function RowActions({
-  track,
-  sourceUrl,
-  onInspect,
-  onDelete,
-  onRetry,
-  isRetrying,
-}: RowActionsProps) {
+export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isRetrying }: RowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
@@ -52,47 +49,48 @@ export function RowActions({
   return (
     <div className={ACTIONS_ROW}>
       {onRetry && (
-        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
       )}
       {track && (
         <>
-          <Button
-            variant="tertiary"
-            size="sm"
-            isIconOnly
+          <button
+            type="button"
+            className={ACTION}
             aria-label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
-            onPress={() =>
-              play({
-                id: track.id,
-                src: track.audioUrl,
-                title: track.title,
-                subtitle: track.artist,
-                artUrl: track.artUrl,
-                duration: track.length,
-              })
+            onClick={() =>
+              // A queue of one, on purpose: a download row is a lone item, not
+              // a browsing context to keep playing through.
+              play([
+                {
+                  id: track.id,
+                  src: track.audioUrl,
+                  title: track.title,
+                  subtitle: track.artist,
+                  artUrl: track.artUrl,
+                  duration: track.length,
+                  albumUrl: track.album.trim()
+                    ? albumPath(track.albumArtist.trim() || track.artist.trim(), track.album)
+                    : null,
+                  artistUrl: track.artist.trim() ? artistPath(track.artist) : null,
+                },
+              ])
             }
           >
             {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
-          </Button>
-          <Button
-            variant="tertiary"
-            size="sm"
-            isIconOnly
-            aria-label={t("queue.inspect")}
-            onPress={() => onInspect(track)}
-          >
+          </button>
+          <button type="button" className={ACTION} aria-label={t("queue.inspect")} onClick={() => onInspect(track)}>
             <FileText className="size-4" />
-          </Button>
+          </button>
         </>
       )}
       {/* Outside the `track` guard: a row that never reached the library — a
        * failed download, a dropped duplicate — is precisely the one whose
        * source URL the user wants back. */}
       <Dropdown.Root>
-        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={ACTION}>
           <Ellipsis className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">
@@ -123,36 +121,26 @@ interface AlbumRowActionsProps {
 
 /** An album row has no single library item behind it, so it offers the one
  * action that applies to the whole batch rather than the per-track set. */
-export function AlbumRowActions({
-  trackIds,
-  sourceUrl,
-  onDelete,
-  onRetry,
-  isRetrying,
-}: AlbumRowActionsProps) {
+export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetrying }: AlbumRowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tLibrary } = useTranslation("library");
 
   return (
     <div className={ACTIONS_ROW}>
       {onRetry && (
-        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
       )}
       <Dropdown.Root>
-        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={TRIGGER}>
+        <Dropdown.Trigger aria-label={t("queue.moreActions")} className={ACTION}>
           <Ellipsis className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">
           <Dropdown.Menu>
             <CopySourceItem url={sourceUrl} />
-            <Dropdown.Item
-              id="delete-album"
-              isDisabled={trackIds.length === 0}
-              onAction={onDelete}
-            >
+            <Dropdown.Item id="delete-album" isDisabled={trackIds.length === 0} onAction={onDelete}>
               <Trash2 className="size-4" />
               {tLibrary("deleteAlbum.action")}
             </Dropdown.Item>

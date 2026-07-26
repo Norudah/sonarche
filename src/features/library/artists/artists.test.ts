@@ -73,27 +73,6 @@ describe("groupArtists", () => {
     expect(artist.span).toBeNull();
   });
 
-  it("takes the four most recent distinct covers, newest first", () => {
-    const [artist] = artistsOf([
-      track({ id: 1, album: "1", albumArtist: "A", year: 1990, artUrl: "a.jpg" }),
-      track({ id: 2, album: "2", albumArtist: "A", year: 1991, artUrl: "b.jpg" }),
-      track({ id: 3, album: "3", albumArtist: "A", year: 1992, artUrl: "c.jpg" }),
-      track({ id: 4, album: "4", albumArtist: "A", year: 1993, artUrl: "d.jpg" }),
-      track({ id: 5, album: "5", albumArtist: "A", year: 1994, artUrl: "e.jpg" }),
-    ]);
-
-    expect(artist.artUrls).toEqual(["e.jpg", "d.jpg", "c.jpg", "b.jpg"]);
-  });
-
-  it("does not repeat one cover shared by every album", () => {
-    const [artist] = artistsOf([
-      track({ id: 1, album: "One", albumArtist: "A", artUrl: "same.jpg" }),
-      track({ id: 2, album: "Two", albumArtist: "A", artUrl: "same.jpg" }),
-    ]);
-
-    expect(artist.artUrls).toEqual(["same.jpg"]);
-  });
-
   it("ranks genres by how many albums carry them", () => {
     const [artist] = artistsOf([
       track({ id: 1, album: "One", albumArtist: "A", genre: "House" }),
@@ -122,9 +101,7 @@ describe("appearancesOf", () => {
   });
 
   it("does not claim a remix credited to a different artist", () => {
-    const tracks = [
-      track({ id: 1, title: "Remix", artist: "Daft Punk Remix", albumArtist: "Someone" }),
-    ];
+    const tracks = [track({ id: 1, title: "Remix", artist: "Daft Punk Remix", albumArtist: "Someone" })];
 
     expect(appearancesOf(tracks, "Daft Punk")).toEqual([]);
   });

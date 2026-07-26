@@ -20,7 +20,7 @@ export function TrackIndexCell({ index, isCurrent, isPlaying, onPlay, label }: T
       type="button"
       onClick={onPlay}
       aria-label={label}
-      className="relative flex size-7 cursor-pointer items-center justify-center rounded-md text-[0.8125rem] tabular-nums text-muted outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="relative flex size-7 cursor-pointer items-center justify-center rounded-full text-[0.8125rem] tabular-nums text-muted outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       <span className="flex items-center justify-center transition-opacity group-hover/row:opacity-0">
         {showPause ? <Equalizer className="text-accent" /> : index}

@@ -10,17 +10,30 @@ import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import {
   albumsWithGenre,
+  familyKeyOf,
   findFamily,
   findGenre,
   groupFamilies,
   listGenres,
 } from "@/features/library/genres/genres";
 import { GenreHero } from "@/features/library/genres/GenreHero";
+import { GenreSelect } from "@/features/library/GenreSelect";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
+import { scopeTracks } from "@/features/library/tracks/scope";
+import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
+import { TrackResults } from "@/features/library/tracks/TrackResults";
+import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTrackFilter";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { parseViewMode } from "@/features/library/viewMode";
+import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
 import { PageContainer } from "@/shared/ui/PageContainer";
+
+/** The page is already a family and, when refined, a genre — so it offers
+ * neither. The category is the one axis that still cuts across what is left.
+ * Module-level so the array identity is stable across renders. */
+const AXES: readonly TrackAxis[] = ["category"];
 
 /** Inspects a family, or a genre inside it — the `genre` query param is what
  * decides, so the selection survives navigating away and back without the page
@@ -28,9 +41,11 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function GenreDetailView() {
   const { t } = useTranslation("library");
   const { family: key = "" } = useParams();
-  const genreName = useSearchParams()[0].get("genre") ?? undefined;
+  const [params] = useSearchParams();
+  const genreName = params.get("genre") ?? undefined;
+  const mode = parseViewMode(params);
   const library = useLibrary();
-  const playTrack = usePlayTrack();
+  const { playOrdered, playShuffled } = usePlayQueue();
   const labelOf = useFamilyLabel();
 
   const { family, genre } = useMemo(() => {
@@ -38,8 +53,7 @@ export function GenreDetailView() {
     const families = groupFamilies(tracks, groupAlbums(tracks));
     return {
       family: findFamily(families, key),
-      genre:
-        genreName == null ? null : findGenre(listGenres(families, tracks.length), key, genreName),
+      genre: genreName == null ? null : findGenre(listGenres(families, tracks.length), key, genreName),
     };
   }, [library.data, key, genreName]);
 
@@ -50,6 +64,16 @@ export function GenreDetailView() {
     [family, genreName],
   );
   const artists = useMemo(() => sortArtists(groupArtists(albums), "name"), [albums]);
+
+  const isTracks = mode === "tracks";
+  const subjectTracks = useMemo(() => {
+    if (!family) return [];
+    return scopeTracks(albums, library.data ?? [], (track) =>
+      genreName != null ? track.genre === genreName : familyKeyOf(track) === family.key,
+    );
+  }, [family, genreName, albums, library.data]);
+
+  const explorer = useTrackFilter(subjectTracks, AXES);
 
   if (library.isPending) {
     return (
@@ -83,6 +107,9 @@ export function GenreDetailView() {
   if (genreName != null && !genre) return <Navigate to={paths.libraryGenres} replace />;
 
   const subject = genre ?? family;
+  // What the hero starts is what the page is showing: the whole subject in the
+  // overview, the filtered list in the tracks mode.
+  const queue = () => (isTracks ? explorer.visible : subjectTracks);
 
   return (
     <PageContainer>
@@ -90,33 +117,43 @@ export function GenreDetailView() {
         family={family.key}
         familyLabel={labelOf(family.key)}
         genre={genre?.name ?? null}
-        albums={family.albums}
         albumCount={subject.albums.length}
         trackCount={subject.trackCount}
         artistCount={subject.artistCount}
         share={subject.share}
+        onPlay={() => playOrdered(queue())}
+        onShuffle={() => playShuffled(queue())}
+        actions={<ViewModeSwitch overviewLabel={t("genres.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 
-      <SubGenreChips family={family.key} subs={family.subs} selected={genre?.name ?? null} />
+      {/* The chips belong above a shelf. In the tracks mode the same choice
+       * rides the bar as a pill instead — two rows of controls for one param is
+       * how a page starts costing more height than it shows. */}
+      {!isTracks && <SubGenreChips subs={family.subs} selected={genre?.name ?? null} />}
 
-      {/* A family can hold tracks and no album at all — every one of them is a
-       * minority on a record filed elsewhere. Saying so beats an empty shelf. */}
-      {/* Keyed on the family, not on the genre. Re-keying on the genre threw
-       * away every card and rebuilt the shelf on what is only a filter change,
-       * which is what made the page jump. Album and artist keys are stable, so
-       * flipping a chip now removes and adds the cards that actually differ and
-       * leaves the rest where they are. */}
-      {albums.length === 0 ? (
+      {isTracks ? (
+        <>
+          <TrackFilterBar
+            state={explorer}
+            leading={<GenreSelect options={family.subs} selected={genre?.name ?? null} />}
+          />
+          <TrackResults state={explorer} />
+        </>
+      ) : albums.length === 0 ? (
+        /* A family can hold tracks and no album at all — every one of them is a
+         * minority on a record filed elsewhere. Saying so is honest, and the
+         * tracks are one switch away rather than pasted in below. */
         <p className="py-16 text-center text-sm text-muted">{t("genres.noAlbums")}</p>
       ) : (
         <>
+          {/* Keyed on the family, not on the genre. Re-keying on the genre threw
+           * away every card and rebuilt the shelf on what is only a filter
+           * change, which is what made the page jump. Album and artist keys are
+           * stable, so flipping a chip now removes and adds the cards that
+           * actually differ and leaves the rest where they are. */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid
-              albums={albums}
-              animationKey={family.key}
-              onPlay={(album) => playTrack(album.tracks[0])}
-            />
+            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playOrdered(album.tracks)} />
           </section>
 
           <section className="flex flex-col gap-3">
@@ -124,7 +161,7 @@ export function GenreDetailView() {
             <ArtistGrid
               artists={artists}
               animationKey={family.key}
-              onPlay={(artist) => playTrack(artist.albums[0].tracks[0])}
+              onPlay={(artist) => playOrdered(artist.albums.flatMap((album) => album.tracks))}
             />
           </section>
         </>

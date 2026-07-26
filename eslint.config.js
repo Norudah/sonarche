@@ -6,8 +6,9 @@ import tseslint from "typescript-eslint";
 /**
  * Deliberately narrow: correctness rules only, no formatting.
  *
- * Nothing here reformats code — the project writes to ~100 columns and a
- * formatter would rewrite every file to its own taste for no defect caught.
+ * Nothing here reformats code — that is prettier's job now (`.prettierrc`,
+ * `npm run format`), and duplicating it in the linter only produces two tools
+ * arguing over the same line.
  * The rules kept are the ones that catch bugs a type-check does not: stale
  * hook dependencies above all, which is how the album hero's observer ended up
  * never attaching.
@@ -26,10 +27,7 @@ export default tseslint.config(
     },
     rules: {
       // Unused args are how a callback documents the signature it is handed.
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
 
       // Warnings, not errors, and on purpose. These two landed with react-hooks
       // v7 and flag patterns this codebase uses deliberately, each with a

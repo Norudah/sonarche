@@ -20,9 +20,7 @@ export function ArtistAppearances({ tracks, name }: { tracks: LibraryTrack[]; na
     <section className="flex flex-col gap-3">
       <div>
         <h2 className="text-lg font-semibold tracking-tight">{t("artists.appearances")}</h2>
-        <p className="mt-0.5 text-[0.8125rem] text-muted">
-          {t("artists.appearancesHint", { name })}
-        </p>
+        <p className="mt-0.5 text-[0.8125rem] text-muted">{t("artists.appearancesHint", { name })}</p>
       </div>
       <TrackTable tracks={tracks} animationKey={name} />
     </section>

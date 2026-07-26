@@ -4,6 +4,7 @@ import type { LibraryTrack } from "@/features/library/api";
 import {
   COMPLETENESS_KEYS,
   countFilled,
+  diffFields,
   formatBitrate,
   toFieldValues,
 } from "@/features/library/metadata/fields";
@@ -27,20 +28,20 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     audioUrl: "asset://music/monster.m4a",
     artUrl: null,
     bonusSource: null,
+    mbTrackId: null,
+    suspectMatch: false,
+    category: null,
+    soundtrack: false,
     ...over,
   };
 }
 
 describe("toFieldValues", () => {
-  it("prints the track number with its total when both are known", () => {
-    expect(toFieldValues(track({ track: 2, trackTotal: 12 })).track).toBe("2 / 12");
+  it("prints the track number alone — the total is album-level, edited elsewhere", () => {
+    expect(toFieldValues(track({ track: 2, trackTotal: 12 })).track).toBe("2");
   });
 
-  it("prints the track number alone when the total is unknown", () => {
-    expect(toFieldValues(track({ track: 2, trackTotal: null })).track).toBe("2");
-  });
-
-  it("leaves the track empty when there is no number, even with a total", () => {
+  it("leaves the track empty when there is no number", () => {
     expect(toFieldValues(track({ track: null, trackTotal: 12 })).track).toBe("");
   });
 
@@ -71,6 +72,35 @@ describe("countFilled", () => {
       track({ title: "", artist: "", albumArtist: "", album: "", year: null, track: null, genre: null }),
     );
     expect(countFilled(empty)).toBe(0);
+  });
+
+  it("never counts the category — optional by nature, in or out", () => {
+    const bare = countFilled(toFieldValues(track({ category: null })));
+    const tagged = countFilled(toFieldValues(track({ category: "Video Games" })));
+    expect(tagged).toBe(bare);
+  });
+});
+
+describe("diffFields", () => {
+  it("returns nothing when the draft matches the live values", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live })).toEqual({});
+  });
+
+  it("emits only the changed fields, under their beets wire keys", () => {
+    const live = toFieldValues(track());
+    const patch = diffFields(live, { ...live, title: "New Title", albumArtist: "V.A." });
+    expect(patch).toEqual({ title: "New Title", albumartist: "V.A." });
+  });
+
+  it("carries an emptied field through as an empty string, not a drop", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, genre: "" })).toEqual({ genre: "" });
+  });
+
+  it("ships a category edit under beets' grouping key", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, category: "Video Games" })).toEqual({ grouping: "Video Games" });
   });
 });
 

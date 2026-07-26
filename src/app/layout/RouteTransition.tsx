@@ -7,7 +7,7 @@ import { durations, easings } from "@/shared/motion/tokens";
 /**
  * Fades the routed content in on navigation. Opacity only, and only on arrival.
  *
- * Only the <Outlet /> is wrapped: the sidebar, topbar and player are the stable
+ * Only the <Outlet /> is wrapped: the sidebar and the player are the stable
  * frame the app is navigating *inside*, and animating them would undo that.
  *
  * Two things this deliberately no longer does.

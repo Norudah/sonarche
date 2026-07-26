@@ -2,12 +2,11 @@
   "appName": "Sonarche",
   "nav": {
     "download": "Downloads",
+    "history": "History",
     "metadata": "Metadata",
-    "addPlaylist": "Add a playlist",
     "sections": {
       "explorer": "Explore",
-      "arche": "Arche",
-      "playlists": "Playlists"
+      "arche": "Arche"
     }
   },
   "settings": "Settings"

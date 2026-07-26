@@ -11,13 +11,7 @@ export interface AlbumDeletion {
   trackIds: number[];
 }
 
-export function DeleteAlbumDialog({
-  album,
-  onClose,
-}: {
-  album: AlbumDeletion | null;
-  onClose: () => void;
-}) {
+export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | null; onClose: () => void }) {
   const { t } = useTranslation("library");
   const remove = useDeleteTracks();
 

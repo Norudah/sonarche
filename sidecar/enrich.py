@@ -13,7 +13,9 @@ import tempfile
 
 import metadata
 import protocol
+import provenance
 import provisional
+import suspect
 from report import build_report
 
 _ACOUSTID_LOOKUP = "https://api.acoustid.org/v2/lookup"
@@ -21,8 +23,11 @@ _ACOUSTID_LOOKUP = "https://api.acoustid.org/v2/lookup"
 _MIN_SCORE = 0.6
 # The text fallback has no fingerprint safety net: only apply near-perfect hits.
 _MAX_TEXT_DISTANCE = 0.10
-# Fingerprints occasionally map to several recordings; try the best few.
-_MAX_RECORDINGS = 3
+# Fingerprints occasionally map to several recordings; try the best few. Five
+# rather than three so a less-submitted sibling (the French edition of a song
+# whose English version dominates AcoustID) stays in the candidate set — the
+# album batch's coverage check can only pick a release its recordings reached.
+_MAX_RECORDINGS = 5
 
 
 def _decode(value) -> str:
@@ -145,6 +150,48 @@ def work_fields(merged) -> dict:
     return {key: value for key, value in dict(merged).items() if key not in _FILE_FIELDS}
 
 
+def find_album_row(lib, release_id: str | None):
+    """The library's existing album row for a MusicBrainz release id, or None.
+    One release, one row: every path that files a matched item goes through
+    this before creating a new row, so two jobs landing on the same release
+    stop growing sibling rows (and %aunique stops suffixing their folders)."""
+    from beets.dbcore.query import MatchQuery
+
+    if not release_id:
+        return None
+    for album in lib.albums(MatchQuery("mb_albumid", release_id)):
+        return album
+    return None
+
+
+def _album_row_for(lib, item):
+    """The album row `item` belongs on now that its tags are (re)written.
+
+    A match can change the item's release (re-enrich flipping an edition):
+    rewriting the row it happens to sit on would rename the folder under its
+    siblings' feet. Instead the item joins the library's row for its new
+    release — reusing an existing one, else a fresh one — and the row it left
+    is dropped once empty."""
+    album = item.get_album()
+    release_id = item.mb_albumid or ""
+    if not release_id or (album is not None and (album.mb_albumid or "") == release_id):
+        # Singleton items (album-batch tracks that fell back to per-track
+        # enrich) have no album row at all: without one, the cover fetch
+        # bails out and the file lands under Non-Album/. Create it, exactly
+        # like a regular -A import would have.
+        return album if album is not None else lib.add_album([item])
+
+    target = find_album_row(lib, release_id)
+    if target is not None:
+        item.album_id = target.id
+        item.store()
+    else:
+        target = lib.add_album([item])
+    if album is not None and not list(album.items()):
+        album.remove(delete=False, with_items=False)
+    return target
+
+
 def store_and_file(lib, item, sync_album: bool = True) -> None:
     """Persist the item, push its tags to the file, make sure it belongs to an
     album row, and move it to the path its metadata now dictates.
@@ -170,13 +217,7 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
     #      cover. Syncing first gives each album its own <artist>/<album>/ dir.
     #   2. beets' duplicate check keys on albumartist+album; two blank rows look
     #      like duplicates, making it skip every later untagged import.
-    album = item.get_album()
-    if album is None:
-        # Singleton items (album-batch tracks that fell back to per-track
-        # enrich) have no album row at all: without one, the cover fetch
-        # bails out and the file lands under Non-Album/. Create it, exactly
-        # like a regular -A import would have.
-        album = lib.add_album([item])
+    album = _album_row_for(lib, item)
     if sync_album:
         for key in library.Album.item_keys:
             album[key] = item[key]
@@ -358,6 +399,7 @@ def enrich_one(
         raise RuntimeError(f"file not found: {path}")
 
     recordings: list[str] = []
+    fingerprinted = False
     api_key = params.get("acoustid_key")
     if api_key:
         # item_id lets the album batch's UI animate the matching child row.
@@ -365,6 +407,7 @@ def enrich_one(
             request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
         )
         duration, fingerprint = _fingerprint(params["fpcalc"], path)
+        fingerprinted = True
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id}
         )
@@ -394,11 +437,13 @@ def enrich_one(
         if not rank[0] and rank[1] == 0:  # clean studio album: nothing beats it
             break
 
+    source = "acoustid" if track_info is not None else None
     if track_info is None:
         rec_id = _text_fallback(item, params.get("artist"), params.get("title"))
         if rec_id:
             try:
                 album_info, track_info, _ = _album_for_recording(rec_id)
+                source = "text" if track_info is not None else None
             except Exception as exc:
                 protocol.log(f"enrich: fallback recording {rec_id} failed: {exc}")
 
@@ -418,4 +463,17 @@ def enrich_one(
 
     # Re-read: _text_fallback may have mutated the in-memory item without storing.
     fresh = lib.get_item(item.id)
+    if fresh is not None and (fingerprinted or matched):
+        # Provenance goes on the fresh row, never the in-memory item: the item
+        # may carry the fallback's unstored hint mutations.
+        if fingerprinted:
+            provenance.mark_fingerprinted(fresh)
+        if matched and source:
+            provenance.mark_match(fresh, source)
+            if suspect.mark(fresh, params.get("title")):
+                protocol.log(
+                    f"enrich: item {item.id} flagged {suspect.TITLE_MISMATCH}: "
+                    f"« {params.get('title')} » matched « {fresh.title} »"
+                )
+        fresh.store()
     return {"matched": matched, "report": build_report(fresh) if fresh else None}

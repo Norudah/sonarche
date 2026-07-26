@@ -1,5 +1,6 @@
 import type { Album } from "@/features/library/albums/albums";
 import type { LibraryTrack } from "@/features/library/api";
+import { FAMILY_NONE, familyKeyOf } from "@/features/library/genres/genres";
 import { normalize } from "@/shared/lib/text";
 
 export interface Artist {
@@ -12,21 +13,44 @@ export interface Artist {
   trackCount: number;
   /** Summed playtime in seconds across every album. */
   length: number;
-  /** Up to four distinct covers, most recent album first — the mosaic thumbnail. */
-  artUrls: string[];
   /** Earliest and latest dated album, or null when nothing is dated. */
   span: { from: number; to: number } | null;
   /** Distinct genres across the discography, most frequent first. */
   genres: string[];
+  /** Dominant browse family, by plurality of tracks — the key that picks the
+   * artist's genre avatar. A sentinel (`FAMILY_OTHER`/`FAMILY_NONE`) when the
+   * discography carries no classified genre; the avatar falls back for those. */
+  family: string;
 }
 
-/** Newest first for the mosaic, oldest first for the discography — hence the
- * two call sites rather than one shared comparator. Undated albums always sink. */
+/** Oldest first: a discography reads by era. Undated albums always sink. */
 function byYearAscending(a: Album, b: Album): number {
   if (a.year == null && b.year == null) return a.title.localeCompare(b.title);
   if (a.year == null) return 1;
   if (b.year == null) return -1;
   return a.year - b.year;
+}
+
+/** Plurality of the tracks' browse family. Ties break on the lexically smaller
+ * key so the pick is stable across renders, never on Map iteration order. */
+function dominantFamily(albums: Album[]): string {
+  const counts = new Map<string, number>();
+  for (const album of albums) {
+    for (const track of album.tracks) {
+      const key = familyKeyOf(track);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+
+  let best = FAMILY_NONE;
+  let bestCount = -1;
+  for (const [key, count] of counts) {
+    if (count > bestCount || (count === bestCount && key < best)) {
+      best = key;
+      bestCount = count;
+    }
+  }
+  return best;
 }
 
 function spanOf(albums: Album[]): Artist["span"] {
@@ -43,17 +67,6 @@ function distinctGenres(albums: Album[]): string[] {
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([genre]) => genre);
-}
-
-/** Four at most, and distinct: an artist whose albums all share one cover gets a
- * single full-bleed tile instead of the same image printed four times. */
-function mosaicCovers(albums: Album[]): string[] {
-  const seen = new Set<string>();
-  for (const album of [...albums].reverse()) {
-    if (album.artUrl) seen.add(album.artUrl);
-    if (seen.size === 4) break;
-  }
-  return Array.from(seen);
 }
 
 /**
@@ -79,9 +92,9 @@ export function groupArtists(albums: Album[]): Artist[] {
       albums: ordered,
       trackCount: ordered.reduce((sum, album) => sum + album.tracks.length, 0),
       length: ordered.reduce((sum, album) => sum + album.length, 0),
-      artUrls: mosaicCovers(ordered),
       span: spanOf(ordered),
       genres: distinctGenres(ordered),
+      family: dominantFamily(ordered),
     };
   });
 }
@@ -127,9 +140,7 @@ export function filterArtists(artists: Artist[], query: string): Artist[] {
   if (terms.length === 0) return artists;
 
   return artists.filter((artist) => {
-    const haystack = normalize(
-      [artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "),
-    );
+    const haystack = normalize([artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

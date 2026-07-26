@@ -18,10 +18,7 @@ interface ArtistGridProps {
  */
 export function ArtistGrid({ artists, animationKey = "", onPlay }: ArtistGridProps) {
   return (
-    <div
-      key={animationKey}
-      className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-7"
-    >
+    <div key={animationKey} className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-7">
       {artists.map((artist, position) => (
         <ArtistCard
           key={artist.name}

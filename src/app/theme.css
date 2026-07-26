@@ -51,6 +51,45 @@
      success/warning scale. Dialed down to match their chroma. */
   --danger: oklch(0.6 0.17 25);
   --danger-foreground: var(--snow);
+
+  /* Artist genre avatar — swap `accent` alone to re-tint every motif's
+     picked-out detail without touching a path. Currently graphite. */
+  --artist-avatar-bg: oklch(0.962 0.014 277);
+  --artist-avatar-ink: var(--accent);
+  --artist-avatar-accent: oklch(0.44 0.012 277);
+
+  /* Genre family identity tones — one fixed colour per browse family (the 13
+     roots of the sidecar's genre tree; a closed, curated set, which is what
+     makes a pre-decided identity legitimate). Muted on purpose: chroma stays
+     well under the accent's 0.21 so thirteen hues read as one family of
+     colours, not a rainbow competing with the indigo. Consumed only through
+     tone.ts — components never reference these directly. Dark-theme variants
+     land with the theme toggle pass. */
+  --family-pop: oklch(0.62 0.12 340);
+  --family-rock: oklch(0.55 0.11 25);
+  --family-metal: oklch(0.45 0.03 277);
+  --family-electronic: oklch(0.58 0.11 220);
+  --family-hip-hop: oklch(0.5 0.1 300);
+  --family-jazz: oklch(0.52 0.09 50);
+  --family-blues: oklch(0.5 0.1 250);
+  --family-soul-funk: oklch(0.6 0.11 40);
+  --family-folk: oklch(0.55 0.08 130);
+  --family-country: oklch(0.56 0.08 95);
+  --family-reggae: oklch(0.55 0.11 150);
+  --family-latin: oklch(0.6 0.13 15);
+  --family-classical: oklch(0.55 0.05 277);
+
+  /* Category identity tones — same doctrine and volume as the family tones,
+     for the taxonomy's known values (free values fall back to grey in
+     categories/tone.ts). Hues picked between the family ones so the two card
+     shelves never look like the same page recolored. */
+  --category-music: oklch(0.56 0.09 225);
+  --category-video-games: oklch(0.58 0.11 190);
+  --category-film: oklch(0.55 0.09 70);
+  --category-series: oklch(0.54 0.1 260);
+  --category-anime: oklch(0.62 0.12 355);
+  --category-cartoon: oklch(0.62 0.13 40);
+  --category-musical: oklch(0.53 0.1 315);
 }
 
 [data-theme="dark"] {
@@ -60,6 +99,21 @@
 
   --danger: oklch(0.65 0.17 25);
   --danger-foreground: var(--snow);
+
+  --artist-avatar-bg: oklch(0.3 0.03 277);
+  --artist-avatar-ink: oklch(0.82 0.09 277);
+  --artist-avatar-accent: oklch(0.68 0.015 277);
+}
+
+/* --- Artist genre avatar -------------------------------------------------- */
+
+/* A line-art genre motif on a coloured disc, standing in for the artist photo
+   we deliberately don't fetch (see genreArt.tsx). Fully token-driven so the
+   whole set re-tints from three variables (defined per theme above): `ink` is
+   the primary stroke via currentColor, `accent` the one picked-out detail. */
+.artist-avatar {
+  background: var(--artist-avatar-bg);
+  color: var(--artist-avatar-ink);
 }
 
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
@@ -106,10 +160,9 @@
 /* --- App-level design tokens (theme-agnostic) ----------------------------- */
 
 @theme {
-  /* App chrome dimensions — consume via w-sidebar / h-topbar / h-player, etc.
+  /* App chrome dimensions — consume via w-sidebar / h-player, etc.
      Centralized so the shell layout never carries magic numbers. */
-  --spacing-sidebar: 13.5rem;
-  --spacing-topbar: 2.25rem;
+  --spacing-sidebar: 15rem;
   --spacing-player: 5.5rem;
 
   /* Source brand colors — not semantic app colors: they identify a third
@@ -139,9 +192,7 @@
   --default-transition-timing-function: var(--ease-out-fluid);
 
   /* Typography */
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* A queue row that just landed. Two animations, because the two properties
      have to live on different elements:

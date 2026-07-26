@@ -20,6 +20,10 @@
     "choicePlaylist": "Whole playlist",
     "confirmHint": "→ confirm with Fetch"
   },
+  "history": {
+    "title": "History",
+    "lede": "Every download, newest first."
+  },
   "queue": {
     "heading": "Activity",
     "empty": "No downloads yet. Paste a link to get started.",
@@ -48,6 +52,7 @@
       "active": "in progress",
       "done": "done",
       "empty": "Not found",
+      "partial": "partial",
       "failed": "failed"
     },
     "awaiting": "Awaiting",
@@ -58,6 +63,7 @@
     "inLibrary": "In library",
     "partiallyInLibrary": "Partial",
     "removedFromLibrary": "Removed",
+    "openInLibrary": "Open in library",
     "inspect": "Inspect metadata",
     "delete": "Delete track",
     "moreActions": "More actions",
@@ -67,12 +73,18 @@
     "trackCount_other": "{{count}} tracks",
     "expand": "Show tracks",
     "collapse": "Hide tracks",
+    "partialTracks": "{{failed}} of {{total}} tracks unavailable",
     "failedWith": "Failed — {{error}}",
     "retry": "Retry",
     "matched": "Match found",
     "matchNone": "None",
     "duplicate": "Duplicate skipped",
     "noReport": "No report",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "pageOf": "{{page}} / {{pageCount}}",
+    "seeAll": "Full history",
+    "recentHeading": "Recent downloads",
     "clearHistory": "Clear history",
     "clearHistoryTitle": "Clear download history?",
     "clearHistoryBody": "Completed and failed downloads will be removed from this list. Tracks already imported stay in your library.",

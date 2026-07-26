@@ -20,6 +20,9 @@ export interface Album {
   formats: string[];
   /** Share of tracked metadata fields that are filled, 0…1. */
   completeness: number;
+  /** Tracks whose every tracked field is filled. Counted here rather than in
+   * the hero: it rides the pass `completeness` already makes over the tracks. */
+  fullyTagged: number;
 }
 
 /**
@@ -62,11 +65,18 @@ function distinctGenres(tracks: LibraryTrack[]): string[] {
  * genre should read as nearly complete, which a per-track "all or nothing"
  * count would not convey.
  */
-function completenessOf(tracks: LibraryTrack[]): number {
+function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged: number } {
   const total = tracks.length * COMPLETENESS_KEYS.length;
-  if (total === 0) return 1;
-  const filled = tracks.reduce((sum, track) => sum + countFilled(toFieldValues(track)), 0);
-  return filled / total;
+  let filled = 0;
+  let fullyTagged = 0;
+
+  for (const track of tracks) {
+    const count = countFilled(toFieldValues(track));
+    filled += count;
+    if (count === COMPLETENESS_KEYS.length) fullyTagged += 1;
+  }
+
+  return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
 }
 
 /**
@@ -97,7 +107,7 @@ export function groupAlbums(tracks: LibraryTrack[]): Album[] {
       length: ordered.reduce((sum, track) => sum + (track.length ?? 0), 0),
       artUrl: ordered.find((track) => track.artUrl)?.artUrl ?? null,
       formats: Array.from(new Set(ordered.map((track) => track.format).filter(Boolean))).sort(),
-      completeness: completenessOf(ordered),
+      ...tagStatsOf(ordered),
     };
   });
 }
@@ -110,9 +120,7 @@ export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
   switch (sort) {
     case "artist":
       // Within an artist, chronological: a discography reads by era, not A→Z.
-      return sorted.sort(
-        (a, b) => a.artist.localeCompare(b.artist) || (a.year ?? 0) - (b.year ?? 0),
-      );
+      return sorted.sort((a, b) => a.artist.localeCompare(b.artist) || (a.year ?? 0) - (b.year ?? 0));
     case "title":
       return sorted.sort((a, b) => a.title.localeCompare(b.title));
     case "year":
@@ -128,9 +136,7 @@ export function filterAlbums(albums: Album[], query: string): Album[] {
   if (terms.length === 0) return albums;
 
   return albums.filter((album) => {
-    const haystack = normalize(
-      [album.title, album.artist, album.year ?? "", ...album.genres].join(" "),
-    );
+    const haystack = normalize([album.title, album.artist, album.year ?? "", ...album.genres].join(" "));
     return terms.every((term) => haystack.includes(term));
   });
 }

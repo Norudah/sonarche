@@ -1,11 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
-import { genrePath } from "@/app/routes";
 import type { SubGenre } from "@/features/library/genres/genres";
+import { searchWith } from "@/features/library/queryParams";
 
 interface SubGenreChipsProps {
-  family: string;
   subs: SubGenre[];
   /** null = the whole family. Comes from the route, not from local state. */
   selected: string | null;
@@ -29,11 +28,12 @@ interface SubGenreChipsProps {
  * Refining which genre you are looking at is one visit to this family, not six
  * places you went.
  */
-export function SubGenreChips({ family, subs, selected }: SubGenreChipsProps) {
+export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
   const { t } = useTranslation("library");
-  // Carried through untouched: replacing the entry must not rewrite where it
-  // came from, or the back arrow would start pointing at this page itself.
-  const { state } = useLocation();
+  // Only `?genre=` is this control's to change. Rebuilding the whole query from
+  // the family and the genre alone dropped `?view=`, so flipping a chip in the
+  // tracks mode threw the page back to its overview.
+  const [params] = useSearchParams();
 
   if (subs.length === 0) return null;
 
@@ -45,12 +45,7 @@ export function SubGenreChips({ family, subs, selected }: SubGenreChipsProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link
-        to={genrePath(family)}
-        replace
-        state={state}
-        className={chip(selected == null)}
-      >
+      <Link to={{ search: searchWith(params, "genre", null) }} replace className={chip(selected == null)}>
         {t("genres.allSubs")}
       </Link>
       {subs.map((sub) => {
@@ -58,15 +53,12 @@ export function SubGenreChips({ family, subs, selected }: SubGenreChipsProps) {
         return (
           <Link
             key={sub.name}
-            to={isActive ? genrePath(family) : genrePath(family, sub.name)}
+            to={{ search: searchWith(params, "genre", isActive ? null : sub.name) }}
             replace
-            state={state}
             className={chip(isActive)}
           >
             {sub.name}
-            <span className="ml-1.5 tabular-nums opacity-60">
-              {sub.trackCount}
-            </span>
+            <span className="ml-1.5 tabular-nums opacity-60">{sub.trackCount}</span>
           </Link>
         );
       })}

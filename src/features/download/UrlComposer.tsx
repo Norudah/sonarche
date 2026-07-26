@@ -34,24 +34,23 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
 
   const detected = detectUrlKind(url);
   const chosenKind = mixedChoice?.url === url ? mixedChoice.kind : null;
-  const kind: JobKind | null =
-    detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
+  const kind: JobKind | null = detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
   const canSubmit = url.trim() !== "" && kind != null && !isPending;
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
   return (
     <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-4">
-      {/* Vertical fade so the hero dissolves into the page instead of ending on
-       * a hard edge. Accent only: the amber halo that used to sit here was a
-       * blurred circle, and `overflow-hidden` cut it off mid-blur — which read
-       * as a hard orange line across the panel rather than as a glow. */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent/12 via-accent/5 to-transparent" />
+      {/* The same accent wash every library hero sits on — `accent-soft` fading
+       * to the page background — so this landing band reads as one family with
+       * the album, artist and genre headers rather than a screen of its own.
+       * Ending on the opaque background (not `transparent`) keeps the ramp in
+       * one colour family and dissolves it with no seam; see the library's
+       * `HeroWash` for the full reasoning. */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background" />
 
       <div className="relative flex flex-col gap-4">
-        <p className="text-xs font-semibold tracking-widest text-accent uppercase">{t("eyebrow")}</p>
-        <h1 className="text-4xl font-bold tracking-tight text-balance whitespace-pre-line">
-          {t("title")}
-        </h1>
+        <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-balance whitespace-pre-line">{t("title")}</h1>
 
         <SourceBadges isYouTubeDetected={detected != null} />
 
@@ -68,9 +67,9 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
         >
           <InputGroup.Root
             fullWidth
-            className="rounded-xl border-separator bg-surface shadow-xs focus-within:ring-2 focus-within:ring-accent/30"
+            className="rounded-full border-separator bg-surface shadow-xs focus-within:ring-2 focus-within:ring-accent/30"
           >
-            <InputGroup.Prefix className="rounded-l-xl px-4 text-muted">
+            <InputGroup.Prefix className="rounded-l-full pr-1 pl-5 text-muted">
               <Link2 className="size-4" />
             </InputGroup.Prefix>
             <InputGroup.Input
@@ -94,7 +93,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               type="submit"
               variant="primary"
               size="lg"
-              className="h-full rounded-xl px-7 shadow-md shadow-accent/25"
+              className="h-full rounded-full px-7 shadow-md shadow-accent/25"
               isDisabled={!canSubmit}
             >
               <Download className="size-4" />
@@ -114,10 +113,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               transition={springs.soft}
               className="overflow-hidden"
             >
-              <KindChoice
-                value={chosenKind}
-                onChange={(next) => setMixedChoice({ url, kind: next })}
-              />
+              <KindChoice value={chosenKind} onChange={(next) => setMixedChoice({ url, kind: next })} />
             </motion.div>
           )}
         </AnimatePresence>

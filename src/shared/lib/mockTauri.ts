@@ -79,31 +79,88 @@ const jobs = [
     artist: "Various Artists",
     createdAt: now - 500,
     tracks: [
-      albumTrack({ index: 1, videoId: "a1", title: "Intro (Blizzard)", duration: 154, status: "done", itemId: 2, downloadAttempts: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "a2", title: "Hollywood Heights", duration: 231, status: "imported", itemId: 8, downloadAttempts: 1, report: trackReport(8, false) }),
+      albumTrack({
+        index: 1,
+        videoId: "a1",
+        title: "Intro (Blizzard)",
+        duration: 154,
+        status: "done",
+        // 200 is the first Hotline Miami OST item below: a job row's link
+        // resolves through its item ids, so reusing an unrelated id here sent
+        // the row to someone else's record.
+        itemId: 200,
+        downloadAttempts: 2,
+        report: trackReport(200, true),
+      }),
+      albumTrack({
+        index: 2,
+        videoId: "a2",
+        title: "Hollywood Heights",
+        duration: 231,
+        status: "imported",
+        itemId: 201,
+        downloadAttempts: 1,
+        report: trackReport(201, false),
+      }),
       albumTrack({ index: 3, videoId: "a3", title: "Java", duration: 197, status: "downloading", downloadAttempts: 2 }),
-      albumTrack({ index: 4, videoId: "a4", title: "Untitled (Deleted Video)", status: "failed", error: "yt-dlp: video unavailable", downloadAttempts: 3 }),
+      albumTrack({
+        index: 4,
+        videoId: "a4",
+        title: "Untitled (Deleted Video)",
+        status: "failed",
+        error: "yt-dlp: video unavailable",
+        downloadAttempts: 3,
+      }),
       albumTrack({ index: 5, videoId: "a5", title: "Rust", duration: 243 }),
     ],
   }),
-  job({ status: "downloading", title: "Nothing Else Matters", artist: "Metallica", duration: 386, thumbnail: thumb("#0bd", "#07a"), createdAt: now - 1000 }),
+  job({
+    status: "downloading",
+    title: "Nothing Else Matters",
+    artist: "Metallica",
+    duration: 386,
+    thumbnail: thumb("#0bd", "#07a"),
+    createdAt: now - 1000,
+  }),
   job({ status: "queued", createdAt: now - 2000 }),
   job({ status: "importing", title: "Knock Knock", artist: "Scattle", duration: 213, createdAt: now - 3000 }),
-  job({ status: "enriching", title: "Nothing Else Matters", artist: "Metallica", duration: 386, createdAt: now - 3500 }),
   job({
-    status: "done", title: "Monster", artist: "Skillet", duration: 178, thumbnail: thumb("#fb0", "#e40"), createdAt: now - 4000,
+    status: "enriching",
+    title: "Nothing Else Matters",
+    artist: "Metallica",
+    duration: 386,
+    createdAt: now - 3500,
+  }),
+  job({
+    status: "done",
+    title: "Monster",
+    artist: "Skillet",
+    duration: 178,
+    thumbnail: thumb("#fb0", "#e40"),
+    createdAt: now - 4000,
     report: {
-      item_id: 2, mb_matched: true, source: "MusicBrainz",
+      item_id: 2,
+      mb_matched: true,
+      source: "MusicBrainz",
       fields: { title: true, artist: true, album: true, year: true, track: true, genre: false },
-      cover: true, cover_source: "Cover Art Archive",
+      cover: true,
+      cover_source: "Cover Art Archive",
     },
   }),
   job({
-    status: "done", title: "Commander's Theme", artist: "The Algorithm", duration: 201, createdAt: now - 5000,
+    status: "done",
+    title: "Commander's Theme",
+    artist: "The Algorithm",
+    duration: 201,
+    createdAt: now - 5000,
     report: {
-      item_id: 5, mb_matched: false, provisional: true, source: null,
+      item_id: 5,
+      mb_matched: false,
+      provisional: true,
+      source: null,
       fields: { title: true, artist: true, album: false, year: false, track: false, genre: false },
-      cover: false, cover_source: null,
+      cover: false,
+      cover_source: null,
     },
   }),
   job({
@@ -115,14 +172,77 @@ const jobs = [
     thumbnail: thumb("#2c8", "#083"),
     createdAt: now - 5500,
     tracks: [
-      albumTrack({ index: 1, videoId: "b1", title: "Hero", duration: 187, status: "done", itemId: 2, report: trackReport(2, true) }),
-      albumTrack({ index: 2, videoId: "b2", title: "Monster", duration: 178, status: "done", itemId: 9, report: trackReport(9, false, true) }),
+      albumTrack({
+        index: 1,
+        videoId: "b1",
+        title: "Hero",
+        duration: 187,
+        status: "done",
+        itemId: 2,
+        report: trackReport(2, true),
+      }),
+      albumTrack({
+        index: 2,
+        videoId: "b2",
+        title: "Monster",
+        duration: 178,
+        status: "done",
+        itemId: 9,
+        report: trackReport(9, false, true),
+      }),
       // Content duplicate dropped by the enrich step (same recording as #1).
-      albumTrack({ index: 3, videoId: "b3", title: "Hero (Official Video)", duration: 187, status: "done", itemId: 11, duplicateOf: 2 }),
+      albumTrack({
+        index: 3,
+        videoId: "b3",
+        title: "Hero (Official Video)",
+        duration: 187,
+        status: "done",
+        itemId: 11,
+        duplicateOf: 2,
+      }),
     ],
   }),
-  job({ status: "failed", failedStep: "download", error: "yt-dlp: video unavailable", downloadAttempts: 3, createdAt: now - 6000 }),
-  job({ status: "failed", failedStep: "import", title: "Some Track", artist: "Someone", error: "beet import failed (exit 1)", createdAt: now - 7000 }),
+  // A playlist that landed while one video was pulled from YouTube. The batch
+  // stays `done` — the library gained the rest — and the row reports the loss
+  // as amber rather than painting the whole pipeline red.
+  job({
+    kind: "album",
+    status: "done",
+    error: "1 of 4 tracks failed",
+    url: "https://youtube.com/playlist?list=OLAK5uy_partial",
+    title: "Cars (Original Soundtrack)",
+    artist: "Various Artists",
+    thumbnail: thumb("#e11", "#711"),
+    createdAt: now - 5800,
+    tracks: [
+      albumTrack({ index: 1, videoId: "d1", title: "Real Gone", duration: 213, status: "done", itemId: 202 }),
+      albumTrack({ index: 2, videoId: "d2", title: "Route 66", duration: 165, status: "done", itemId: 201 }),
+      albumTrack({
+        index: 3,
+        videoId: "d3",
+        title: "Life Is a Highway",
+        status: "failed",
+        error: "yt-dlp: video unavailable (copyright claim)",
+        downloadAttempts: 3,
+      }),
+      albumTrack({ index: 4, videoId: "d4", title: "Sh-Boom", duration: 158, status: "done", itemId: 200 }),
+    ],
+  }),
+  job({
+    status: "failed",
+    failedStep: "download",
+    error: "yt-dlp: video unavailable",
+    downloadAttempts: 3,
+    createdAt: now - 6000,
+  }),
+  job({
+    status: "failed",
+    failedStep: "import",
+    title: "Some Track",
+    artist: "Someone",
+    error: "beet import failed (exit 1)",
+    createdAt: now - 7000,
+  }),
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
@@ -160,6 +280,13 @@ const libraryTracks = [
     art_path: thumb("#334", "#112"),
     // Adopted bonus track: exercises the origin note in the metadata drawer.
     bonus_source: "Awake: Deluxe Edition",
+    mb_trackid: "rec-monster",
+    suspect_match: false,
+    // The ordinary case of the axis, so the filter bar's category menu has two
+    // values to choose between rather than the single one an OST-only fixture
+    // would give it (a one-option menu hides itself).
+    category: "Music",
+    soundtrack: false,
   },
   // [title, artist, album, genre, bucket, length, year, track, cover]. The
   // bucket is what `sidecar/genre_tree.py` actually resolves for that genre,
@@ -183,7 +310,17 @@ const libraryTracks = [
       ["Harder Better Faster", "Daft Punk", "Discovery", "French House", "Electronic", 224, 2001, 3, "#22d3ee|#0e7490"],
       ["Get Lucky", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 369, 2013, 8, "#1f2937|#111827"],
       ["Instant Crush", "Daft Punk", "Random Access Memories", "Disco", "Electronic", 337, 2013, 5, "#1f2937|#111827"],
-      ["The Less I Know the Better", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 216, 2015, 4, "#fb923c|#c2410c"],
+      [
+        "The Less I Know the Better",
+        "Tame Impala",
+        "Currents",
+        "Psychedelic Pop",
+        "Pop",
+        216,
+        2015,
+        4,
+        "#fb923c|#c2410c",
+      ],
       ["Let It Happen", "Tame Impala", "Currents", "Psychedelic Pop", "Pop", 467, 2015, 1, "#fb923c|#c2410c"],
       ["Nights", "Frank Ocean", "Blonde", null, null, 307, 2016, 5, "#bef264|#84cc16"],
       ["Ivy", "Frank Ocean", "Blonde", null, null, 249, 2016, 3, "#bef264|#84cc16"],
@@ -214,6 +351,10 @@ const libraryTracks = [
     path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
+    mb_trackid: null,
+    suspect_match: false,
+    category: null,
+    soundtrack: false,
   })),
 
   // Compilation: the album artist is "Various Artists" while every track has
@@ -223,6 +364,10 @@ const libraryTracks = [
       ["Hydrogen", "M|O|O|N", 1, 269],
       ["Roller Mobster", "Carpenter Brut", 2, 231],
       ["Knock Knock", "Scattle", 3, 213],
+      // Credited to an artist who owns records elsewhere: the guest spot. It is
+      // what the artist page's tracks mode marks as an appearance, and the three
+      // above — who own nothing — are the case that must *not* become a link.
+      ["Midnight City (HM Edit)", "M83", 4, 241],
     ] as const
   ).map(([title, artist, trackNo, length], index) => ({
     id: 200 + index,
@@ -242,6 +387,44 @@ const libraryTracks = [
     path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
     art_path: thumb("#f43f5e", "#7c2d12"),
     bonus_source: null,
+    mb_trackid: null,
+    suspect_match: false,
+    // Categorized soundtrack: the Categories page's first card.
+    category: "Video Games",
+    soundtrack: true,
+  })),
+
+  // Spirit regression: a cross-language match flagged for review, and the
+  // same recording filed twice (the single re-imported inside a playlist) —
+  // both land on the metadata page's review lines.
+  ...(
+    [
+      [300, "You Can’t Take Me", 1, true],
+      [301, "You Can’t Take Me", 2, false],
+    ] as const
+  ).map(([id, title, trackNo, flagged]) => ({
+    id,
+    title,
+    artist: "Bryan Adams",
+    album: "Spirit: Stallion of the Cimarron",
+    album_artist: "Bryan Adams",
+    year: 2002,
+    genre: "Art Rock",
+    genre_bucket: "Rock",
+    track: trackNo,
+    track_total: 2,
+    length: 265,
+    bitrate: 256000,
+    format: "AAC",
+    path: `/Users/dev/Music/Sonarche/Bryan Adams/${title}.m4a`,
+    art_path: thumb("#d97706", "#78350f"),
+    bonus_source: null,
+    mb_trackid: "rec-yctm",
+    suspect_match: flagged,
+    // MB typed the release a soundtrack but no category is set yet — the
+    // drawer's pre-suggestion case.
+    category: null,
+    soundtrack: true,
   })),
 ];
 
@@ -252,10 +435,9 @@ const libraryTracks = [
  * generation suffix — otherwise 10 000 tracks would collapse into 13 albums
  * and the grid would never be exercised.
  */
-function inflate<T extends { id: number; album: string; album_artist: string }>(
-  seed: T[],
-  total: number,
-): T[] {
+function inflate<
+  T extends { id: number; album: string; album_artist: string; mb_trackid: string | null; suspect_match: boolean },
+>(seed: T[], total: number): T[] {
   if (total <= seed.length) return seed;
   return Array.from({ length: total }, (_, i) => {
     const source = seed[i % seed.length];
@@ -267,13 +449,15 @@ function inflate<T extends { id: number; album: string; album_artist: string }>(
           id: 10_000 + i,
           album: `${source.album} (${generation})`,
           album_artist: `${source.album_artist} ${generation}`,
+          // Clones share the source's recording only nominally — carrying it
+          // over would flood the duplicates line at ?tracks=10000.
+          mb_trackid: null,
+          suspect_match: false,
         };
   });
 }
 
-const requestedTracks = Number(
-  new URLSearchParams(window.location.search).get("tracks") ?? 0,
-);
+const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
 const responses: Record<string, unknown> = {
   get_env_status: {
@@ -324,6 +508,22 @@ export function installMockTauri() {
         if (!target) return {};
         Object.assign(target, { status: "queued", error: null, failedStep: null });
         return target;
+      }
+      // Apply edits to the in-memory seed so a re-list reflects them — without
+      // this the drawer would "save" and then snap back to the static fixture.
+      if (cmd === "update_tracks") {
+        const wireKey: Record<string, string> = { albumartist: "album_artist", tracktotal: "track_total" };
+        const numeric = new Set(["year", "track", "tracktotal"]);
+        let updated = 0;
+        for (const u of (payload?.updates as { id: number; fields: Record<string, string> }[]) ?? []) {
+          const target = libraryTracks.find((track) => track.id === u.id) as Record<string, unknown> | undefined;
+          if (!target) continue;
+          for (const [key, value] of Object.entries(u.fields)) {
+            target[wireKey[key] ?? key] = numeric.has(key) ? Number(value) || null : value || null;
+          }
+          updated += 1;
+        }
+        return { updated };
       }
       return responses[cmd] ?? {};
     },

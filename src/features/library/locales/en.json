@@ -5,15 +5,32 @@
     "albums": "Albums",
     "artists": "Artists",
     "genres": "Genres",
+    "categories": "Categories",
     "comingSoon": "Coming soon."
+  },
+  "categories": {
+    "back": "Categories",
+    "categoryCount_one": "{{count}} category",
+    "categoryCount_other": "{{count}} categories",
+    "categorizedCount_one": "{{count}} categorized track",
+    "categorizedCount_other": "{{count}} categorized tracks",
+    "empty": "A category notes a track's context — video games, film… — independently of its genre. Set it from an album's or a track's metadata inspection and the shelves will build themselves here.",
+    "emptyAction": "Browse albums",
+    "noAlbums": "No album carries this category yet.",
+    "values": {
+      "music": "Music",
+      "videoGames": "Video Games",
+      "film": "Films",
+      "series": "Series",
+      "anime": "Anime",
+      "cartoon": "Cartoons",
+      "musical": "Musicals"
+    },
+    "overviewMode": "Albums & artists"
   },
   "genres": {
     "eyebrow": "Genre",
     "back": "Genres",
-    "scope": {
-      "families": "Families",
-      "genres": "Genres"
-    },
     "other": "Other",
     "none": "No genre",
     "familyCount_one": "{{count}} family",
@@ -26,14 +43,21 @@
     "fixInMetadata": "Fix in Metadata",
     "shareOfLibrary": "{{percent}} % of the library",
     "allSubs": "All",
+    "moreSubs_one": "+{{count}} more",
+    "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
+    "sort": {
+      "size": "Size",
+      "name": "Name"
+    },
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
     "recomputing": "Recomputing…",
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
-    "recomputeFailed": "Recompute failed, try again in a moment."
+    "recomputeFailed": "Recompute failed, try again in a moment.",
+    "overviewMode": "Albums & artists"
   },
   "albums": {
     "eyebrow": "Album",
@@ -48,6 +72,16 @@
       "artist": "Artist",
       "title": "Title",
       "year": "Year"
+    },
+    "rematch": "Re-match",
+    "rematching": "Re-matching…",
+    "rematchDone": "{{matched}}/{{total}} tracks identified",
+    "edit": "Edit",
+    "inspectAction": "Inspect",
+    "moreActions": "More actions",
+    "tagScoreHint": "Metadata fields filled in on this track",
+    "stats": {
+      "taggedCount": "{{tagged}}/{{total}} tracks complete"
     }
   },
   "artists": {
@@ -62,7 +96,9 @@
       "name": "Name",
       "albums": "Albums",
       "tracks": "Tracks"
-    }
+    },
+    "overviewMode": "Discography",
+    "guest": "Guest"
   },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",
@@ -73,19 +109,46 @@
   "totalPlaytime": "{{hours}} hr {{minutes}}",
   "totalPlaytimeMinutes": "{{minutes}} min",
   "playAll": "Play all",
+  "playShuffled": "Shuffle",
   "columns": {
+    "number": "No.",
     "title": "Title",
     "artist": "Artist",
     "album": "Album",
     "genre": "Genre",
     "duration": "Duration",
-    "actions": "Actions"
+    "actions": "Actions",
+    "tags": "Tags"
   },
   "search": {
     "placeholder": "Search…",
     "label": "Search tracks",
     "noResults": "No track matches “{{query}}”.",
     "clear": "Clear search"
+  },
+  "filters": {
+    "family": "Family",
+    "allFamilies": "All families",
+    "category": "Category",
+    "allCategories": "All categories",
+    "genre": "Genre",
+    "allGenres": "All genres",
+    "more": "Filters",
+    "decade": "Decade",
+    "decadeValue": "{{decade}}s",
+    "toFix": "To fix",
+    "subset": "{{shown}} of {{total}}"
+  },
+  "triage": {
+    "missingYear": "Missing year",
+    "genreMissing": "Missing genre",
+    "genreOffTree": "Genre outside the tree",
+    "missingArtwork": "Missing artwork",
+    "tracklistGaps": "Gapped tracklist",
+    "clearFilter": "Remove the “{{filter}}” filter",
+    "noResults": "Nothing matches the active filter.",
+    "suspectMatch": "Match to review",
+    "duplicateRecording": "Duplicate tracks"
   },
   "loadFailed": "Unable to load the library",
   "empty": "Your library is empty for now.",
@@ -94,6 +157,7 @@
   "unknownArtist": "Unknown artist",
   "metadata": {
     "title": "Metadata",
+    "eyebrow": "Track",
     "inspect": "Inspect metadata",
     "changeArtwork": "Change image",
     "reenrich": "Re-run auto-match",
@@ -112,15 +176,42 @@
       "year": "Year",
       "track": "Track no.",
       "genre": "Genre",
-      "genreBucket": "Parent genre"
+      "genreBucket": "Parent genre",
+      "category": "Category"
     },
     "close": "Close",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save",
+    "saving": "Saving…",
+    "saveFailed": "Save failed, try again in a moment.",
     "completeness": "Completeness — {{filled}}/{{total}} fields",
-    "derived": "derived",
-    "viewAlbum": "View album"
+    "derived": "not counted",
+    "viewAlbum": "View album",
+    "optional": "optional, not counted",
+    "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category."
+  },
+  "albumMetadata": {
+    "eyebrow": "Album",
+    "completion": "Completion",
+    "common": "Common fields",
+    "commonHint": "Edited once, written to every track.",
+    "specific": "Track-specific fields",
+    "specificHint": "Edited one track at a time.",
+    "multipleValues": "Multiple values",
+    "varied": "varies",
+    "tracklist": "Tracks",
+    "propagate": {
+      "prompt": "You changed “{{from}}” to “{{to}}”. Apply it to other tracks that still show “{{from}}”?",
+      "apply_one": "Apply to {{count}} track",
+      "apply_other": "Apply to {{count}} tracks"
+    },
+    "applyGenre": {
+      "prompt": "This change may hold for the whole record.",
+      "all_one": "Apply to {{count}} track",
+      "all_other": "Apply to {{count}} tracks",
+      "one": "This track only"
+    }
   },
   "delete": {
     "action": "Delete track",
@@ -137,6 +228,9 @@
     "action": "Delete album"
   },
   "sort": {
-    "label": "Sort by"
-  }
+    "label": "Sort by",
+    "byColumn": "Sort by {{column}}"
+  },
+  "breadcrumb": "Breadcrumb",
+  "back": "Back"
 }

@@ -6,26 +6,30 @@ import { AlbumTrackRow } from "@/features/library/albums/AlbumTrackRow";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 
-const COLUMN =
-  "px-3 pb-2 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+// No alignment in the base: `${COLUMN} text-center` looks like it wins, but
+// Tailwind resolves conflicts by stylesheet order, not by class-string order,
+// so a `text-left` baked in here silently beat the "#" column's override.
+const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 /**
- * Deliberately not `TrackTable`: an album's tracklist drops the Album and Genre
- * columns (both are album-level and already in the header), keeps its own fixed
- * order, and only shows an artist column on a compilation. Bending one table to
- * cover both shapes would have meant a variant prop toggling four columns.
+ * Deliberately not `TrackTable`: an album's tracklist drops the Album column
+ * (album-level, already in the header), keeps its own fixed order, and carries
+ * a per-track tag score the library-wide table has no room for. Genre used to
+ * be dropped on the same "album-level" reasoning — until a record legitimately
+ * mixed genres (the Spirit soundtrack), which is exactly what the album view
+ * would then hide. Bending one table to cover both shapes would have meant a
+ * variant prop toggling four columns.
  */
 export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const { playFrom } = usePlayQueue();
 
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
-  const inspected =
-    inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
-
-  const showArtist = new Set(album.tracks.map((track) => track.artist)).size > 1;
+  const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
   return (
     <>
@@ -33,11 +37,13 @@ export function AlbumTrackList({ album }: { album: Album }) {
         <table className="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-0.5">
           <thead>
             <tr className="[&>th]:border-b [&>th]:border-separator/60">
-              <th className={`${COLUMN} w-14`}>#</th>
-              <th className={COLUMN}>{t("columns.title")}</th>
-              {showArtist && <th className={`${COLUMN} w-[22%]`}>{t("columns.artist")}</th>}
+              <th className={`${COLUMN} w-14 text-center`}>#</th>
+              <th className={`${COLUMN} text-left`}>{t("columns.title")}</th>
+              <th className={`${COLUMN} w-[22%] text-left`}>{t("columns.artist")}</th>
+              <th className={`${COLUMN} w-[16%] text-left`}>{t("columns.genre")}</th>
+              <th className={`${COLUMN} w-20 text-left`}>{t("columns.tags")}</th>
               <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
-              <th className={`${COLUMN} w-16`}>
+              <th className={`${COLUMN} w-28`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>
@@ -48,8 +54,8 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 key={track.id}
                 track={track}
                 position={position + 1}
-                showArtist={showArtist}
                 style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
+                onPlay={() => playFrom(album.tracks, position)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
               />
@@ -58,11 +64,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
         </table>
       </div>
 
-      <MetadataDrawer
-        track={inspected}
-        onClose={() => setInspectedId(null)}
-        onDelete={setDeleting}
-      />
+      <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
     </>
   );

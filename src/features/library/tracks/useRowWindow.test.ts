@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack } from "@/features/library/api";
-import {
-  everyRow,
-  ROW_HEIGHT,
-  windowFromSlices,
-  type Slice,
-} from "@/features/library/tracks/useRowWindow";
+import { everyRow, ROW_HEIGHT, windowFromSlices, type Slice } from "@/features/library/tracks/useRowWindow";
 
 function makeTracks(n: number): LibraryTrack[] {
   return Array.from({ length: n }, (_, i) => ({ id: i, title: `Track ${i}` })) as LibraryTrack[];

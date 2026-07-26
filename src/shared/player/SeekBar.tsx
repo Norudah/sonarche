@@ -17,9 +17,7 @@ export function SeekBar() {
 
   return (
     <div className="flex w-full items-center gap-3">
-      <span className="w-10 text-right text-xs tabular-nums text-muted">
-        {formatDuration(currentTime)}
-      </span>
+      <span className="w-10 text-right text-xs tabular-nums text-muted">{formatDuration(currentTime)}</span>
       <Slider
         className="player-slider flex-1"
         aria-label={t("seek")}

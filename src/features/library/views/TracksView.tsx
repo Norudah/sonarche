@@ -1,42 +1,38 @@
 import { Alert, Spinner } from "@heroui/react";
-import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import { useLibrary } from "@/features/library/hooks";
-import { filterTracks, totalPlaytime } from "@/features/library/tracks/filter";
+import { totalPlaytime } from "@/features/library/tracks/filter";
+import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
+import { TrackResults } from "@/features/library/tracks/TrackResults";
 import { TracksHeader } from "@/features/library/tracks/TracksHeader";
-import { TrackTable } from "@/features/library/tracks/TrackTable";
-import { usePlayTrack } from "@/features/library/usePlayTrack";
-import { fade } from "@/shared/motion/tokens";
+import { useTrackFilter } from "@/features/library/tracks/useTrackFilter";
+import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function TracksView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
-  const playTrack = usePlayTrack();
-  const [query, setQuery] = useState("");
+  const { playOrdered, playShuffled } = usePlayQueue();
 
-  const tracks = library.data ?? [];
-  const visible = useMemo(() => filterTracks(tracks, query), [tracks, query]);
+  const tracks = useMemo(() => library.data ?? [], [library.data]);
   const playtime = useMemo(() => totalPlaytime(tracks), [tracks]);
-
-  const playAll = () => {
-    const first = visible[0];
-    if (first) playTrack(first);
-  };
+  // No `axes` argument: the library-wide explorer owns every one of them.
+  const explorer = useTrackFilter(tracks);
 
   return (
     <PageContainer>
       <TracksHeader
         count={tracks.length}
         playtime={playtime}
-        query={query}
-        onQueryChange={setQuery}
-        onPlayAll={playAll}
+        onPlayAll={() => playOrdered(explorer.visible)}
+        onShuffleAll={() => playShuffled(explorer.visible)}
       />
+
+      <TrackFilterBar state={explorer} />
 
       {library.isPending && (
         <div className="flex justify-center py-16">
@@ -53,30 +49,20 @@ export function TracksView() {
         </Alert>
       )}
 
-      {library.data && tracks.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">♪</p>
-          <p className="text-muted">{t("empty")}</p>
-          <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-            {t("goToDownload")}
-          </Link>
-        </div>
+      {library.data && (
+        <TrackResults
+          state={explorer}
+          empty={
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-4xl">♪</p>
+              <p className="text-muted">{t("empty")}</p>
+              <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
+                {t("goToDownload")}
+              </Link>
+            </div>
+          }
+        />
       )}
-
-      {/* Fades in rather than replacing the table in one frame — the search is
-       * live, so this state appears mid-keystroke. */}
-      {tracks.length > 0 && visible.length === 0 && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={fade}
-          className="py-16 text-center text-sm text-muted"
-        >
-          {t("search.noResults", { query })}
-        </motion.p>
-      )}
-
-      {visible.length > 0 && <TrackTable tracks={visible} animationKey={query} />}
     </PageContainer>
   );
 }

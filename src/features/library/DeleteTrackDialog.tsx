@@ -53,9 +53,7 @@ export function DeleteTrackDialog({
             </AlertDialog.Header>
             <AlertDialog.Body>
               <p>{t("delete.body", { title: shown?.title || t("unknownTitle") })}</p>
-              {remove.isError && (
-                <p className="mt-2 text-sm text-danger">{t("delete.failed")}</p>
-              )}
+              {remove.isError && <p className="mt-2 text-sm text-danger">{t("delete.failed")}</p>}
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button variant="secondary" onPress={onClose} isDisabled={remove.isPending}>

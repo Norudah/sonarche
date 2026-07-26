@@ -39,6 +39,7 @@ def _handlers():
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remove": library.remove,
+        "library_update": library.update,
         "genres_recompute": genres.recompute,
     }
 
