@@ -21,7 +21,6 @@ fn main() {
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
         .manage(player::PlayerState::default())
-        .manage(now_playing::NowPlayingState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
             app.manage(state);

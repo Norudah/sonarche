@@ -33,14 +33,39 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # AAC and the library is 100% AAC, so any other codec would be a silent import bug
 # rather than a file we should quietly play.
 rodio = { version = "0.22", default-features = false, features = ["playback", "mp4"] }
+
 # OS media session: media keys, Control Center, the lock screen. Playback moved
 # out of the webview, and `navigator.mediaSession` only exposes a session for a
 # page playing a media element — so the OS side has to be spoken to directly.
-# Uses Apple's public MPNowPlayingInfoCenter/MPRemoteCommandCenter (not the
-# private MediaRemote), and covers MPRIS/SMTC if we ever leave macOS.
+# Apple's public MPNowPlayingInfoCenter/MPRemoteCommandCenter, never the private
+# MediaRemote.
 #
-# Known debt: on macOS it pulls the pre-objc2 generation (cocoa/objc/block), and
-# `block 0.1.6` already trips a future-incompatibility warning. Not urgent —
-# nothing breaks today — but the exit is `objc2-media-player`, the maintained
-# bindings, at the cost of writing the platform code ourselves.
-souvlaki = "0.8"
+# These are the objc2 bindings, generated from Apple's own headers and the
+# maintained line. `souvlaki` gave us the same session for ~40 lines of caller
+# code, but on macOS it rides the retired objc/cocoa/block generation, and
+# `block 0.1.6` declares a static of uninhabited type — accepted today, a hard
+# error in a future rustc. That is a build that stops working on its own, so it
+# comes out before v1 rather than after. Only the classes we speak to are
+# enabled; the framework's default feature set is the whole of MediaPlayer.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSDictionary",
+    "NSString",
+    "NSValue",
+] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSImage"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFCGTypes"] }
+objc2-media-player = { version = "0.3", default-features = false, features = [
+    "std",
+    "block2",
+    "objc2-app-kit",
+    "objc2-core-foundation",
+    "MPMediaItem",
+    "MPNowPlayingInfoCenter",
+    "MPRemoteCommand",
+    "MPRemoteCommandCenter",
+    "MPRemoteCommandEvent",
+] }
+block2 = "0.6"

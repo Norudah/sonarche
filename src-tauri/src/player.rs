@@ -23,7 +23,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::{AppError, AppResult};
-use crate::now_playing::NowPlayingState;
+use crate::now_playing;
 
 /// The output device and the queue feeding it.
 ///
@@ -419,7 +419,7 @@ pub fn spawn_status_loop(app: AppHandle) {
                         let _ = app.emit("player:ended", ());
                         // Clear the OS panel rather than leaving a finished
                         // track sitting there looking merely paused.
-                        let _ = app.state::<NowPlayingState>().clear(&app);
+                        now_playing::clear();
                     }
                     // The front emptied the engine itself: a stop is its own
                     // doing and needs no answer.
@@ -437,11 +437,7 @@ pub fn spawn_status_loop(app: AppHandle) {
             if worth_emitting(previous.as_ref(), &status) {
                 let _ = app.emit("player:status", &status);
                 if status.loaded {
-                    let _ = app.state::<NowPlayingState>().set_playback(
-                        &app,
-                        status.is_playing,
-                        status.position,
-                    );
+                    now_playing::set_playback(status.is_playing, status.position);
                 }
             }
             previous = Some(status);
