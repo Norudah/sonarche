@@ -17,6 +17,7 @@ import {
   listGenres,
 } from "@/features/library/genres/genres";
 import { GenreHero } from "@/features/library/genres/GenreHero";
+import { GenreSelect } from "@/features/library/GenreSelect";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
@@ -64,6 +65,7 @@ export function GenreDetailView() {
   );
   const artists = useMemo(() => sortArtists(groupArtists(albums), "name"), [albums]);
 
+  const isTracks = mode === "tracks";
   const subjectTracks = useMemo(() => {
     if (!family) return [];
     return scopeTracks(albums, library.data ?? [], (track) =>
@@ -107,7 +109,7 @@ export function GenreDetailView() {
   const subject = genre ?? family;
   // What the hero starts is what the page is showing: the whole subject in the
   // overview, the filtered list in the tracks mode.
-  const queue = () => (mode === "tracks" ? explorer.visible : subjectTracks);
+  const queue = () => (isTracks ? explorer.visible : subjectTracks);
 
   return (
     <PageContainer>
@@ -124,11 +126,17 @@ export function GenreDetailView() {
         actions={<ViewModeSwitch overviewLabel={t("genres.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 
-      <SubGenreChips subs={family.subs} selected={genre?.name ?? null} />
+      {/* The chips belong above a shelf. In the tracks mode the same choice
+       * rides the bar as a pill instead — two rows of controls for one param is
+       * how a page starts costing more height than it shows. */}
+      {!isTracks && <SubGenreChips subs={family.subs} selected={genre?.name ?? null} />}
 
-      {mode === "tracks" ? (
+      {isTracks ? (
         <>
-          <TrackFilterBar state={explorer} />
+          <TrackFilterBar
+            state={explorer}
+            leading={<GenreSelect options={family.subs} selected={genre?.name ?? null} />}
+          />
           <TrackResults state={explorer} />
         </>
       ) : albums.length === 0 ? (

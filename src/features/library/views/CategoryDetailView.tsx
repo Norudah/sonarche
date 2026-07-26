@@ -11,6 +11,7 @@ import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import { albumsInCategory, findCategory, groupCategories } from "@/features/library/categories/categories";
 import { CategoryGenreChips } from "@/features/library/categories/CategoryGenreChips";
 import { CategoryHero } from "@/features/library/categories/CategoryHero";
+import { GenreSelect } from "@/features/library/GenreSelect";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { scopeTracks } from "@/features/library/tracks/scope";
@@ -58,6 +59,7 @@ export function CategoryDetailView() {
     );
   }, [category, genreName, albums, library.data]);
 
+  const isTracks = mode === "tracks";
   const explorer = useTrackFilter(subjectTracks, AXES);
 
   if (library.isPending) {
@@ -90,32 +92,34 @@ export function CategoryDetailView() {
   const genre = genreName != null ? category.genres.find((entry) => entry.name === genreName) : null;
   if (genreName != null && !genre) return <Navigate to={paths.libraryCategories} replace />;
 
-  const trackCount = genre ? genre.trackCount : category.trackCount;
-  // The refined depth keeps the share honest: the genre's own slice of the
-  // library, derived from the category's (both count the same tracks).
-  const share = category.trackCount === 0 ? 0 : category.share * (trackCount / category.trackCount);
-  const queue = () => (mode === "tracks" ? explorer.visible : subjectTracks);
+  // What the pills launch is what the page is showing, genre chip included —
+  // the same contract as the tracks page, whose pair starts the filtered list.
+  // The hero's counts deliberately do not follow: they state the category.
+  const queue = () => (isTracks ? explorer.visible : subjectTracks);
 
   return (
     <PageContainer>
       <CategoryHero
-        category={category.name}
         categoryLabel={labelOf(category.name)}
-        genre={genre?.name ?? null}
-        albumCount={albums.length}
-        trackCount={trackCount}
-        artistCount={artists.length}
-        share={share}
+        albumCount={category.albums.length}
+        trackCount={category.trackCount}
+        artistCount={category.artistCount}
+        share={category.share}
         onPlay={() => playOrdered(queue())}
         onShuffle={() => playShuffled(queue())}
         actions={<ViewModeSwitch overviewLabel={t("categories.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 
-      <CategoryGenreChips genres={category.genres} selected={genre?.name ?? null} />
+      {/* Same split as the genre page: chips above the shelves, one pill in the
+       * bar when the page is a list. */}
+      {!isTracks && <CategoryGenreChips genres={category.genres} selected={genre?.name ?? null} />}
 
-      {mode === "tracks" ? (
+      {isTracks ? (
         <>
-          <TrackFilterBar state={explorer} />
+          <TrackFilterBar
+            state={explorer}
+            leading={<GenreSelect options={category.genres} selected={genre?.name ?? null} />}
+          />
           <TrackResults state={explorer} />
         </>
       ) : albums.length === 0 ? (

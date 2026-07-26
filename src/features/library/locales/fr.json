@@ -127,6 +127,8 @@
     "allFamilies": "Toutes les familles",
     "category": "Catégorie",
     "allCategories": "Toutes les catégories",
+    "genre": "Genre",
+    "allGenres": "Tous les genres",
     "more": "Filtres",
     "decade": "Décennie",
     "decadeValue": "années {{decade}}",
@@ -225,5 +227,6 @@
     "label": "Trier par",
     "byColumn": "Trier par {{column}}"
   },
-  "breadcrumb": "Fil d'ariane"
+  "breadcrumb": "Fil d'ariane",
+  "back": "Retour"
 }

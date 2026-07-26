@@ -25,10 +25,10 @@ interface FacetMenuProps {
  * One browsing axis as a pill menu.
  *
  * Hidden below two options: a menu whose only choice is the one thing already on
- * screen — the lone family of a single-artist page — is a control that cannot do
- * anything, and four of those in a row is how a filter bar starts feeling like a
- * dashboard. The scope decides which pills exist, so nothing has to be turned
- * off page by page.
+ * screen — the lone family of a single-artist page, the lone genre of a family
+ * that has just one — is a control that cannot do anything, and four of those in
+ * a row is how a filter bar starts feeling like a dashboard. The scope decides
+ * which pills exist, so nothing has to be turned off page by page.
  *
  * Dropdown rather than Select, and for the reason `SortSelect` gives: Select owns
  * its trigger's field chrome, while Dropdown.Trigger is a bare button we can

@@ -127,6 +127,8 @@
     "allFamilies": "All families",
     "category": "Category",
     "allCategories": "All categories",
+    "genre": "Genre",
+    "allGenres": "All genres",
     "more": "Filters",
     "decade": "Decade",
     "decadeValue": "{{decade}}s",
@@ -225,5 +227,6 @@
     "label": "Sort by",
     "byColumn": "Sort by {{column}}"
   },
-  "breadcrumb": "Breadcrumb"
+  "breadcrumb": "Breadcrumb",
+  "back": "Back"
 }
