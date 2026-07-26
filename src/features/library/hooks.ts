@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack, updateTracks } from "@/features/library/api";
 
@@ -60,6 +61,11 @@ export function useUpdateTracks() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updateTracks,
+    // Deliberately not awaited: the caller's own `onSuccess` has to run in this
+    // same tick, before the refetch lands. Renaming a record depends on it — the
+    // album route is built from (artist, title), so the panel must move the URL
+    // to the new name while the old data is still on screen. `AlbumDetailView`
+    // holds the page steady across the gap.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },
@@ -83,19 +89,28 @@ export function useReenrichTrack() {
  * rather than eighteen times mid-flight. */
 export function useReenrichAlbum() {
   const queryClient = useQueryClient();
-  return useMutation({
+  // Twenty-nine sequential network round-trips is a wait, not a blink: a
+  // spinner alone leaves the user unable to decide whether to sit through it.
+  const [progress, setProgress] = useState<{ done: number; matched: number; total: number } | null>(null);
+
+  const mutation = useMutation({
     mutationFn: async (ids: number[]) => {
       let matched = 0;
-      for (const id of ids) {
+      setProgress({ done: 0, matched: 0, total: ids.length });
+      for (const [index, id] of ids.entries()) {
         const result = await reenrichTrack(id);
         if (result.matched) matched += 1;
+        setProgress({ done: index + 1, matched, total: ids.length });
       }
       return { matched, total: ids.length };
     },
-    onSuccess: () => {
+    onSettled: () => {
+      setProgress(null);
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },
   });
+
+  return { ...mutation, progress };
 }
 
 export function useRecomputeGenres() {

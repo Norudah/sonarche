@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
 
-import { paths } from "@/app/routes";
-import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
+import { albumPath, paths } from "@/app/routes";
+import { findAlbum, findAlbumLike, groupAlbums, type Album } from "@/features/library/albums/albums";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
-import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
+import { AlbumInspectModal } from "@/features/library/albums/inspect/AlbumInspectModal";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
@@ -22,9 +22,12 @@ export function AlbumDetailView() {
   const { playOrdered, playShuffled } = usePlayQueue();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
+  /** The last record this route resolved to — see the rename note below. */
+  const [held, setHeld] = useState<Album | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
-  const album = useMemo(() => findAlbum(groupAlbums(library.data ?? []), artist, title), [library.data, artist, title]);
+  const albums = groupAlbums(library.data ?? []);
+  const album = useMemo(() => findAlbum(albums, artist, title), [albums, artist, title]);
 
   if (library.isPending) {
     return (
@@ -49,10 +52,21 @@ export function AlbumDetailView() {
     );
   }
 
-  // Not only a bad key: deleting the album's last track refetches the library
-  // and this page outlives its own subject. Bouncing back to the shelf beats
-  // stranding the user on an "album not found" screen they just caused.
-  // `replace` so Back does not walk straight into the dead route again.
+  if (album && album !== held) setHeld(album);
+
+  // Renaming a record from the panel moves the very identity this route is built
+  // from, so the URL stops matching anything. The record is still there — find it
+  // by its tracks and send the route after it, rather than reading the mismatch
+  // as a deletion. `replace` so Back does not walk into the dead name.
+  if (!album && held) {
+    const renamed = findAlbumLike(albums, held);
+    if (renamed) return <Navigate to={albumPath(renamed.artist, renamed.title)} replace />;
+  }
+
+  // Nothing left under this route and nothing that used to be: deleting the
+  // album's last track refetches the library and this page outlives its own
+  // subject. Bouncing back to the shelf beats stranding the user on an "album
+  // not found" screen they just caused.
   if (!album) return <Navigate to={paths.libraryAlbums} replace />;
 
   return (
@@ -69,7 +83,7 @@ export function AlbumDetailView() {
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />
-      <AlbumMetadataDrawer album={inspecting ? album : null} onClose={() => setInspecting(false)} />
+      <AlbumInspectModal album={inspecting ? album : null} onClose={() => setInspecting(false)} />
     </PageContainer>
   );
 }

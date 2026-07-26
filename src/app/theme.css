@@ -116,6 +116,25 @@
   color: var(--artist-avatar-ink);
 }
 
+/* --- Field help tooltip --------------------------------------------------- */
+
+/* HeroUI's tooltip is white on white with a shadow, padded `p-2` and set to
+   `break-all` — a sentence of help renders as a pale box with words split
+   mid-syllable. Ours is ink-on-white's opposite: a dark slab that reads as an
+   annotation over the panel rather than as another card in it.
+   Imported after @heroui/styles, so these win at equal specificity. */
+.tooltip-ink {
+  @apply max-w-72 bg-foreground px-3 py-2 text-[0.75rem] leading-relaxed text-background;
+  overflow-wrap: break-word;
+  word-break: normal;
+  text-wrap: pretty;
+
+  & [data-slot="overlay-arrow"] {
+    @apply stroke-transparent;
+    fill: var(--color-foreground);
+  }
+}
+
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
 
 /* Seekbar — accent color, thumb 1rem */
@@ -203,6 +222,15 @@
      only ever used on that source's badge. */
   --color-youtube: oklch(0.52 0.21 27);
   --color-youtube-soft: oklch(0.95 0.03 27);
+
+  /* Panel wash — the backdrop of the metadata surfaces' secondary areas: the
+     album modal's identity column, both panels' action bars, the tracklist's
+     column header. HeroUI's `surface-secondary` (oklch 0.9524) is a real grey
+     at this size: spread over a whole column it reads as dull, and it swallows
+     anything tinted the same way sitting on it — the category chips vanished
+     into it, leaving bare text. This is the barely-there tint the design uses,
+     one notch off white, so chips and inputs still stand out on top of it. */
+  --color-panel: oklch(0.985 0.0015 286);
 
   /* Metadata drawer header — a decorative gradient, same hue as the app's
      indigo accent but starting darker so it resolves into --accent rather

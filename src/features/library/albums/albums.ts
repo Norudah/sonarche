@@ -168,3 +168,18 @@ export const filterAlbums = createTextFilter<Album>((album) =>
 export function findAlbum(albums: Album[], artist: string, title: string): Album | null {
   return albums.find((album) => album.artist === artist && album.title === title) ?? null;
 }
+
+/**
+ * The same record after its name moved — found by the one thing a rename cannot
+ * touch, the ids of its tracks.
+ *
+ * Album identity is (album artist, title), so editing either makes the old
+ * identity vanish and a new one appear. Anything holding the old one — the
+ * detail route, the shelf's open panel — would otherwise conclude the record was
+ * deleted. Matching on track ids sidesteps the whole question of whether the URL
+ * or the refetch lands first.
+ */
+export function findAlbumLike(albums: Album[], previous: Album): Album | null {
+  const ids = new Set(previous.tracks.map((track) => track.id));
+  return albums.find((album) => album.tracks.some((track) => ids.has(track.id))) ?? null;
+}
