@@ -3,6 +3,8 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
+use serde::Deserialize;
+use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -13,7 +15,33 @@ use uuid::Uuid;
 use crate::error::{AppError, AppResult};
 use crate::python_env::AppPaths;
 
-type Pending = Arc<Mutex<HashMap<String, oneshot::Sender<Value>>>>;
+/// A reply, still as the bytes the sidecar wrote.
+///
+/// `RawValue` rather than `Value` because of one caller: the library listing is
+/// ~6.4 MB of JSON at 10 000 tracks, and parsing that into a tree only to
+/// serialize it straight back out for the IPC allocates a map and a string per
+/// field per track, twice, for nothing. Kept raw, it is copied once and handed
+/// to Tauri as-is. Every other reply is a handful of bytes and gets parsed on
+/// arrival by whoever wants a `Value` — see `SidecarState::request`.
+type Reply = Result<Box<RawValue>, String>;
+
+type Pending = Arc<Mutex<HashMap<String, oneshot::Sender<Reply>>>>;
+
+/// Just enough of a response line to route it. `result` deliberately stays raw:
+/// naming it `Value` here would reintroduce the parse this type exists to skip.
+#[derive(Deserialize)]
+struct Envelope {
+    id: Option<String>,
+    event: Option<String>,
+    ok: Option<bool>,
+    result: Option<Box<RawValue>>,
+    error: Option<EnvelopeError>,
+}
+
+#[derive(Deserialize)]
+struct EnvelopeError {
+    message: Option<String>,
+}
 
 struct SidecarHandle {
     child: Child,
@@ -50,22 +78,61 @@ pub struct SidecarState {
     read: SidecarChannel,
 }
 
+/// What a response line asks this side to do.
+enum Routed {
+    /// A progress event: no id, forwarded whole to the front.
+    Event,
+    /// A reply to the request with this id.
+    Reply(String, Reply),
+    /// Nothing to do — an id we are not waiting on, or an unparseable line.
+    Ignore,
+}
+
+/// Read one response line.
+///
+/// Settling ok/error here rather than in the caller is deliberate: past this
+/// point the payload is opaque bytes, so this is the last place that can tell a
+/// result from a failure without parsing it a second time.
+fn route(line: &str) -> Routed {
+    let Ok(msg) = serde_json::from_str::<Envelope>(line) else {
+        return Routed::Ignore;
+    };
+    if msg.event.is_some() {
+        return Routed::Event;
+    }
+    let Some(id) = msg.id else {
+        return Routed::Ignore;
+    };
+    // A result the sidecar reported as absent is `null`, not an error: some
+    // commands legitimately answer with nothing.
+    let reply = if msg.ok == Some(true) {
+        Ok(msg.result.unwrap_or_else(|| RawValue::NULL.to_owned()))
+    } else {
+        Err(msg
+            .error
+            .and_then(|e| e.message)
+            .unwrap_or_else(|| "unknown sidecar error".into()))
+    };
+    Routed::Reply(id, reply)
+}
+
 fn spawn_stdout_reader(app: AppHandle, stdout: tokio::process::ChildStdout, pending: Pending) {
     tauri::async_runtime::spawn(async move {
         let mut lines = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            match serde_json::from_str::<Value>(&line) {
-                Ok(msg) if msg.get("event").is_some() => {
-                    let _ = app.emit("sidecar:event", &msg);
-                }
-                Ok(msg) => {
-                    if let Some(id) = msg.get("id").and_then(|v| v.as_str()) {
-                        if let Some(tx) = pending.lock().await.remove(id) {
-                            let _ = tx.send(msg);
-                        }
+            match route(&line) {
+                Routed::Event => match RawValue::from_string(line) {
+                    Ok(raw) => {
+                        let _ = app.emit("sidecar:event", raw);
+                    }
+                    Err(err) => eprintln!("[sidecar] undeliverable event: {err}"),
+                },
+                Routed::Reply(id, reply) => {
+                    if let Some(tx) = pending.lock().await.remove(&id) {
+                        let _ = tx.send(reply);
                     }
                 }
-                Err(_) => eprintln!("[sidecar] non-JSON on stdout: {line}"),
+                Routed::Ignore => eprintln!("[sidecar] unroutable on stdout: {line}"),
             }
         }
         eprintln!("[sidecar] stdout closed");
@@ -146,7 +213,7 @@ impl SidecarChannel {
         cmd: &str,
         params: Value,
         timeout: Duration,
-    ) -> AppResult<Value> {
+    ) -> AppResult<Box<RawValue>> {
         let id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
 
@@ -179,23 +246,14 @@ impl SidecarChannel {
             handle.pending.clone()
         };
 
-        let response = match tokio::time::timeout(timeout, rx).await {
-            Ok(Ok(msg)) => msg,
-            Ok(Err(_)) => return Err(AppError::Sidecar("sidecar exited unexpectedly".into())),
+        match tokio::time::timeout(timeout, rx).await {
+            Ok(Ok(Ok(result))) => Ok(result),
+            Ok(Ok(Err(message))) => Err(AppError::Sidecar(message)),
+            Ok(Err(_)) => Err(AppError::Sidecar("sidecar exited unexpectedly".into())),
             Err(_) => {
                 pending.lock().await.remove(&id);
-                return Err(AppError::Sidecar(format!("request '{cmd}' timed out")));
+                Err(AppError::Sidecar(format!("request '{cmd}' timed out")))
             }
-        };
-
-        if response.get("ok").and_then(Value::as_bool) == Some(true) {
-            Ok(response.get("result").cloned().unwrap_or(Value::Null))
-        } else {
-            let message = response
-                .pointer("/error/message")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown sidecar error");
-            Err(AppError::Sidecar(message.to_string()))
         }
     }
 
@@ -209,6 +267,10 @@ impl SidecarChannel {
 impl SidecarState {
     /// Anything that downloads, imports, enriches or writes tags. Serial, and
     /// free to take as long as it takes.
+    ///
+    /// Parses the reply into a `Value` for the caller's convenience: these
+    /// replies are a handful of fields (`{"updated": 3}`, `{"matched": true}`),
+    /// so the tree costs nothing and the callers read it.
     pub async fn request(
         &self,
         app: &AppHandle,
@@ -216,22 +278,104 @@ impl SidecarState {
         params: Value,
         timeout: Duration,
     ) -> AppResult<Value> {
-        self.work.request(app, cmd, params, timeout).await
+        let raw = self.work.request(app, cmd, params, timeout).await?;
+        Ok(serde_json::from_str(raw.get())?)
     }
 
-    /// Read-only queries the UI waits on. Never queues behind `request`.
+    /// Read-only queries the UI waits on. Never queues behind `request`, and
+    /// answers in the sidecar's own bytes — nothing here inspects the payload,
+    /// and the listing is far too big to parse for the privilege of not
+    /// looking at it.
     pub async fn read(
         &self,
         app: &AppHandle,
         cmd: &str,
         params: Value,
         timeout: Duration,
-    ) -> AppResult<Value> {
+    ) -> AppResult<Box<RawValue>> {
         self.read.request(app, cmd, params, timeout).await
     }
 
     pub async fn shutdown(&self) {
         self.work.shutdown().await;
         self.read.shutdown().await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn reply_of(line: &str) -> (String, Reply) {
+        match route(line) {
+            Routed::Reply(id, reply) => (id, reply),
+            _ => panic!("expected a reply for: {line}"),
+        }
+    }
+
+    #[test]
+    fn result_is_handed_back_as_the_bytes_the_sidecar_wrote() {
+        // The whole point of the read channel: no reserialization, so the
+        // payload must come out byte-identical, key order included.
+        let payload = r#"{"tracks":[{"id":1,"title":"Lucy","length":200.1}]}"#;
+        let (id, reply) = reply_of(&format!(r#"{{"id":"abc","ok":true,"result":{payload}}}"#));
+
+        assert_eq!(id, "abc");
+        assert_eq!(reply.expect("ok reply").get(), payload);
+    }
+
+    #[test]
+    fn a_raw_result_serializes_as_json_not_as_an_escaped_string() {
+        // What the IPC does with the command's return value. A `RawValue` that
+        // serialized as a quoted string would reach the front as text, and
+        // `listLibrary` would map over a string instead of tracks — so this is
+        // the assertion the read channel actually rests on.
+        let payload = r#"{"tracks":[{"id":1,"title":"Lucy"}]}"#;
+        let (_, reply) = reply_of(&format!(r#"{{"id":"abc","ok":true,"result":{payload}}}"#));
+
+        let wire = serde_json::to_string(&reply.expect("ok reply")).expect("serializes");
+
+        assert_eq!(wire, payload);
+    }
+
+    #[test]
+    fn failure_carries_the_sidecar_message() {
+        let (_, reply) =
+            reply_of(r#"{"id":"abc","ok":false,"error":{"code":"internal","message":"boom"}}"#);
+
+        assert_eq!(reply.expect_err("error reply"), "boom");
+    }
+
+    #[test]
+    fn failure_without_a_message_still_fails() {
+        let (_, reply) = reply_of(r#"{"id":"abc","ok":false}"#);
+
+        assert_eq!(reply.expect_err("error reply"), "unknown sidecar error");
+    }
+
+    #[test]
+    fn ok_without_a_result_is_null_rather_than_an_error() {
+        let (_, reply) = reply_of(r#"{"id":"abc","ok":true}"#);
+
+        assert_eq!(reply.expect("ok reply").get(), "null");
+    }
+
+    #[test]
+    fn progress_events_are_forwarded_not_matched_to_a_request() {
+        // Events carry no id; routing one as a reply would drop it and leave
+        // the real request hanging until its timeout.
+        assert!(matches!(
+            route(r#"{"event":"download_progress","data":{"percent":42.0}}"#),
+            Routed::Event
+        ));
+    }
+
+    #[test]
+    fn garbage_on_stdout_is_ignored_rather_than_fatal() {
+        assert!(matches!(route("not json at all"), Routed::Ignore));
+        assert!(matches!(
+            route(r#"{"ok":true,"result":{}}"#),
+            Routed::Ignore
+        ));
     }
 }

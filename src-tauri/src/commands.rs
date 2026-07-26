@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use serde::Deserialize;
+use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
@@ -71,7 +72,10 @@ pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus>
 }
 
 #[tauri::command]
-pub async fn list_library(app: AppHandle, state: State<'_, SidecarState>) -> AppResult<Value> {
+pub async fn list_library(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+) -> AppResult<Box<RawValue>> {
     let paths = AppPaths::resolve(&app)?;
     // The read channel: the listing is what the UI blocks on, and it must not
     // wait out an album download running on the work channel.
