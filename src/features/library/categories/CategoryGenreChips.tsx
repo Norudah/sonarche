@@ -1,11 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 
-import { categoryPath } from "@/app/routes";
 import type { CategoryGenre } from "@/features/library/categories/categories";
+import { searchWith } from "@/features/library/queryParams";
 
 interface CategoryGenreChipsProps {
-  category: string;
   genres: CategoryGenre[];
   /** null = the whole category. Comes from the route, not local state. */
   selected: string | null;
@@ -14,9 +13,11 @@ interface CategoryGenreChipsProps {
 /** SubGenreChips' twin on the category page: the same replace-not-push
  * navigation, the active chip toggling back up, state carried through so the
  * breadcrumb keeps pointing where the page was entered from. */
-export function CategoryGenreChips({ category, genres, selected }: CategoryGenreChipsProps) {
+export function CategoryGenreChips({ genres, selected }: CategoryGenreChipsProps) {
   const { t } = useTranslation("library");
   const { state } = useLocation();
+  // See SubGenreChips: this control owns `?genre=` and nothing else.
+  const [params] = useSearchParams();
 
   if (genres.length === 0) return null;
 
@@ -28,7 +29,7 @@ export function CategoryGenreChips({ category, genres, selected }: CategoryGenre
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link to={categoryPath(category)} replace state={state} className={chip(selected == null)}>
+      <Link to={{ search: searchWith(params, "genre", null) }} replace state={state} className={chip(selected == null)}>
         {t("genres.allSubs")}
       </Link>
       {genres.map((genre) => {
@@ -36,7 +37,7 @@ export function CategoryGenreChips({ category, genres, selected }: CategoryGenre
         return (
           <Link
             key={genre.name}
-            to={isActive ? categoryPath(category) : categoryPath(category, genre.name)}
+            to={{ search: searchWith(params, "genre", isActive ? null : genre.name) }}
             replace
             state={state}
             className={chip(isActive)}

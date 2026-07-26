@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { groupAlbums } from "@/features/library/albums/albums";
-import {
-  albumsInCategory,
-  categoryTracks,
-  findCategory,
-  groupCategories,
-} from "@/features/library/categories/categories";
+import { albumsInCategory, findCategory, groupCategories } from "@/features/library/categories/categories";
 import { track } from "@/features/library/testFixtures";
+import { scopeTracks } from "@/features/library/tracks/scope";
 
 // A video-game OST crossing two genres, a film soundtrack, and plain
 // uncategorized albums around them.
@@ -127,15 +123,24 @@ describe("albumsInCategory", () => {
   });
 });
 
-describe("categoryTracks", () => {
+// The category page's own scope, as the view composes it: `scopeTracks` over the
+// shelf with the category predicate. Kept here rather than in `scope.test.ts`
+// because what is being checked is this axis' rule, not the helper's.
+describe("a category's own tracks", () => {
+  const queueOf = (category: string, genre: string | null) => {
+    const found = findCategory(categories, category)!;
+    return scopeTracks(
+      albumsInCategory(found, genre),
+      tracks,
+      (item) => item.category === found.name && (genre == null || item.genre === genre),
+    ).map((item) => item.id);
+  };
+
   it("queues only the categorized tracks, never their album siblings", () => {
-    const film = findCategory(categories, "Film");
-    expect(categoryTracks(film!, film!.albums, null).map((item) => item.id)).toEqual([4]);
+    expect(queueOf("Film", null)).toEqual([4]);
   });
 
   it("narrows the queue with the selected genre", () => {
-    const games = findCategory(categories, "Video Games");
-    const queued = categoryTracks(games!, albumsInCategory(games!, "Synthwave"), "Synthwave");
-    expect(queued.map((item) => item.id)).toEqual([1, 2]);
+    expect(queueOf("Video Games", "Synthwave")).toEqual([1, 2]);
   });
 });

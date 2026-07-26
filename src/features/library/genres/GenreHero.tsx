@@ -1,13 +1,11 @@
-import { ListMusic } from "lucide-react";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
-import { genrePath, genreTracksPath, paths } from "@/app/routes";
+import { genrePath, paths } from "@/app/routes";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
-import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 
 /**
  * Back to wherever this page was entered from.
@@ -51,6 +49,10 @@ interface GenreHeroProps {
   share: number;
   onPlay: () => void;
   onShuffle: () => void;
+  /** Beside the play pills — the view switcher, which took the place the old
+   * "view tracks" link held. Every detail hero puts it there, so the control
+   * never moves between subjects. */
+  actions?: ReactNode;
   ref?: Ref<HTMLElement>;
 }
 
@@ -78,6 +80,7 @@ export function GenreHero({
   share,
   onPlay,
   onShuffle,
+  actions,
   ref,
 }: GenreHeroProps) {
   const { t } = useTranslation("library");
@@ -107,16 +110,16 @@ export function GenreHero({
 
           {/* In the band, like the album and artist heroes: the three detail
            * pages answer "how do I start this" in the same place. It is also
-           * what fills the dead strip that used to sit above the genre chips. */}
+           * what fills the dead strip that used to sit above the genre chips.
+           *
+           * A "view tracks" pill used to sit beside them, leading out to the
+           * global explorer with a chip on it. The tracks are a mode of *this*
+           * page now, so the view switcher takes that exact spot — and the
+           * category pages, which never got a pill of their own, get the same
+           * door for free. */}
           <div className="mt-5">
             <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
-              {/* The page shows shelves — albums and artists — so the track
-                  count in the meta line had no door of its own. This is it:
-                  the explorer, filtered on exactly this subject. */}
-              <Link to={genreTracksPath(family, genre)} className={HERO_PILL_SECONDARY}>
-                <ListMusic className="size-4 text-accent" />
-                {t("genres.viewTracks")}
-              </Link>
+              {actions}
             </HeroPlayButtons>
           </div>
         </div>

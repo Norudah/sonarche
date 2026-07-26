@@ -85,4 +85,8 @@ export const layoutIds = {
   settingsNavIndicator: "sonarche-settings-nav-indicator",
   /** The album/track pill in the composer's segmented control. */
   kindChoice: "sonarche-kind-choice",
+  /** The overview/tracks pill in a scoped page's view switcher. Its own id
+   * because the two switches can be on screen in the same app but never in the
+   * same place — sharing one would tween a pill across half the window. */
+  viewMode: "sonarche-view-mode",
 } as const;

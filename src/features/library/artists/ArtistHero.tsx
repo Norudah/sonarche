@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
@@ -31,6 +31,8 @@ interface ArtistHeroProps {
   artist: Artist;
   onPlay: () => void;
   onShuffle: () => void;
+  /** The view switcher, in the same spot as on the genre and category heroes. */
+  actions?: ReactNode;
   ref?: Ref<HTMLElement>;
 }
 
@@ -44,7 +46,7 @@ interface ArtistHeroProps {
  * play counter exists; a hero that states a number nothing measures is worse
  * than a hero that states less.
  */
-export function ArtistHero({ artist, onPlay, onShuffle, ref }: ArtistHeroProps) {
+export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHeroProps) {
   const { t } = useTranslation("library");
 
   const span =
@@ -101,7 +103,9 @@ export function ArtistHero({ artist, onPlay, onShuffle, ref }: ArtistHeroProps) 
              * would wipe an unbounded number of albums behind one click, and
              * nothing here makes that scope visible before it happens. */}
             <div className="mt-5">
-              <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+              <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
+                {actions}
+              </HeroPlayButtons>
             </div>
           </div>
         </div>

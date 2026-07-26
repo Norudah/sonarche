@@ -95,12 +95,3 @@ export function albumsInCategory(category: Category, genre: string | null): Albu
     album.tracks.some((track) => track.category === category.name && track.genre === genre),
   );
 }
-
-/** The tracks "play" queues from a category page: the categorized tracks
- * themselves (narrowed by genre when one is selected), never their albums'
- * other tracks. Album order follows the shelf, tracks keep their album order. */
-export function categoryTracks(category: Category, albums: Album[], genre: string | null): LibraryTrack[] {
-  return albums.flatMap((album) =>
-    album.tracks.filter((track) => track.category === category.name && (genre == null || track.genre === genre)),
-  );
-}

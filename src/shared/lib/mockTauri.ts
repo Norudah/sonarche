@@ -282,7 +282,10 @@ const libraryTracks = [
     bonus_source: "Awake: Deluxe Edition",
     mb_trackid: "rec-monster",
     suspect_match: false,
-    category: null,
+    // The ordinary case of the axis, so the filter bar's category menu has two
+    // values to choose between rather than the single one an OST-only fixture
+    // would give it (a one-option menu hides itself).
+    category: "Music",
     soundtrack: false,
   },
   // [title, artist, album, genre, bucket, length, year, track, cover]. The
@@ -361,6 +364,10 @@ const libraryTracks = [
       ["Hydrogen", "M|O|O|N", 1, 269],
       ["Roller Mobster", "Carpenter Brut", 2, 231],
       ["Knock Knock", "Scattle", 3, 213],
+      // Credited to an artist who owns records elsewhere: the guest spot. It is
+      // what the artist page's tracks mode marks as an appearance, and the three
+      // above — who own nothing — are the case that must *not* become a link.
+      ["Midnight City (HM Edit)", "M83", 4, 241],
     ] as const
   ).map(([title, artist, trackNo, length], index) => ({
     id: 200 + index,

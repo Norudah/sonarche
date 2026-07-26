@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
@@ -41,6 +41,8 @@ interface CategoryHeroProps {
   share: number;
   onPlay: () => void;
   onShuffle: () => void;
+  /** The view switcher, in the same spot as on the genre and artist heroes. */
+  actions?: ReactNode;
   ref?: Ref<HTMLElement>;
 }
 
@@ -56,6 +58,7 @@ export function CategoryHero({
   share,
   onPlay,
   onShuffle,
+  actions,
   ref,
 }: CategoryHeroProps) {
   const { t } = useTranslation("library");
@@ -79,7 +82,9 @@ export function CategoryHero({
           <p className="mt-2 truncate text-[0.8125rem] text-muted">{meta.join(" · ")}</p>
 
           <div className="mt-5">
-            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+            <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
+              {actions}
+            </HeroPlayButtons>
           </div>
         </div>
       </div>

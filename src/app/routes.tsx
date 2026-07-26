@@ -23,7 +23,7 @@ import { SettingsLayout } from "@/features/settings/SettingsLayout";
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
 // public import site for the many callers that already use it.
-export { albumPath, artistPath, categoryPath, genrePath, genreTracksPath, paths, triagePaths } from "@/app/paths";
+export { albumPath, artistPath, categoryPath, genrePath, paths, triagePaths } from "@/app/paths";
 
 // A memory router has no URL to deep-link, so in dev a `?route=` param seeds the
 // initial entry — the only way to land a browser (or an automated one) straight

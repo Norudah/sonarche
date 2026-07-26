@@ -8,25 +8,32 @@ import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
-import {
-  albumsInCategory,
-  categoryTracks,
-  findCategory,
-  groupCategories,
-} from "@/features/library/categories/categories";
+import { albumsInCategory, findCategory, groupCategories } from "@/features/library/categories/categories";
 import { CategoryGenreChips } from "@/features/library/categories/CategoryGenreChips";
 import { CategoryHero } from "@/features/library/categories/CategoryHero";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { scopeTracks } from "@/features/library/tracks/scope";
+import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
+import { TrackResults } from "@/features/library/tracks/TrackResults";
+import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTrackFilter";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { parseViewMode } from "@/features/library/viewMode";
+import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
 import { PageContainer } from "@/shared/ui/PageContainer";
+
+/** The category is the page and the genre chips own `?genre=`, so what is left
+ * to offer is the family — "in Video Games, only the electronic tracks". */
+const AXES: readonly TrackAxis[] = ["family"];
 
 /** Inspects a category, or one genre inside it — the genre page's twin, with
  * the `genre` query param deciding the depth so chip flips never remount. */
 export function CategoryDetailView() {
   const { t } = useTranslation("library");
   const { category: name = "" } = useParams();
-  const genreName = useSearchParams()[0].get("genre") ?? undefined;
+  const [params] = useSearchParams();
+  const genreName = params.get("genre") ?? undefined;
+  const mode = parseViewMode(params);
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
   const labelOf = useCategoryLabel();
@@ -41,6 +48,17 @@ export function CategoryDetailView() {
     [category, genreName],
   );
   const artists = useMemo(() => sortArtists(groupArtists(albums), "name"), [albums]);
+
+  const subjectTracks = useMemo(() => {
+    if (!category) return [];
+    return scopeTracks(
+      albums,
+      library.data ?? [],
+      (track) => track.category === category.name && (genreName == null || track.genre === genreName),
+    );
+  }, [category, genreName, albums, library.data]);
+
+  const explorer = useTrackFilter(subjectTracks, AXES);
 
   if (library.isPending) {
     return (
@@ -76,7 +94,7 @@ export function CategoryDetailView() {
   // The refined depth keeps the share honest: the genre's own slice of the
   // library, derived from the category's (both count the same tracks).
   const share = category.trackCount === 0 ? 0 : category.share * (trackCount / category.trackCount);
-  const queue = () => categoryTracks(category, albums, genreName ?? null);
+  const queue = () => (mode === "tracks" ? explorer.visible : subjectTracks);
 
   return (
     <PageContainer>
@@ -90,11 +108,17 @@ export function CategoryDetailView() {
         share={share}
         onPlay={() => playOrdered(queue())}
         onShuffle={() => playShuffled(queue())}
+        actions={<ViewModeSwitch overviewLabel={t("categories.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 
-      <CategoryGenreChips category={category.name} genres={category.genres} selected={genre?.name ?? null} />
+      <CategoryGenreChips genres={category.genres} selected={genre?.name ?? null} />
 
-      {albums.length === 0 ? (
+      {mode === "tracks" ? (
+        <>
+          <TrackFilterBar state={explorer} />
+          <TrackResults state={explorer} />
+        </>
+      ) : albums.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">{t("categories.noAlbums")}</p>
       ) : (
         <>
