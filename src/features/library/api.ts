@@ -16,6 +16,10 @@ export interface LibraryTrack {
   format: string;
   path: string;
   audioUrl: string;
+  /** The album cover at display size (beets' 500px rendition), not the CAA
+   * original we archive beside it. Every surface draws it at 384px or less, so
+   * there is no call site the original would serve better — see
+   * `art_paths_by_album` in the sidecar. */
   artUrl: string | null;
   /** Origin release title when the track is a bonus adopted into this album
    * (deluxe/regional edition filed with the main album), else null. */

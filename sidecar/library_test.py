@@ -5,7 +5,6 @@ import unittest
 
 from library import (
     _apply_fields,
-    _art_path,
     _coerce_int,
     art_paths_by_album,
     expand_db_path,
@@ -57,27 +56,6 @@ class FirstGenreTest(unittest.TestCase):
 
     def test_leading_blank_segment_is_skipped(self):
         self.assertEqual(first_genre("\\␀Metal"), "Metal")
-
-
-class ArtPathTest(unittest.TestCase):
-    def test_prefers_hq_cover_next_to_artpath(self):
-        with tempfile.TemporaryDirectory() as art_dir:
-            artpath = os.path.join(art_dir, "cover.jpg")
-            hq = os.path.join(art_dir, "cover-hq.jpg")
-            open(artpath, "wb").close()
-            open(hq, "wb").close()
-
-            self.assertEqual(_art_path(artpath), hq)
-
-    def test_falls_back_to_artpath_without_hq(self):
-        with tempfile.TemporaryDirectory() as art_dir:
-            artpath = os.path.join(art_dir, "cover.jpg")
-            open(artpath, "wb").close()
-
-            self.assertEqual(_art_path(artpath), artpath)
-
-    def test_no_artpath_yields_none(self):
-        self.assertIsNone(_art_path(None))
 
 
 def _db_with(items=(), albums=(), attributes=()):
@@ -149,6 +127,18 @@ class ArtPathsByAlbumTest(unittest.TestCase):
         conn = _db_with(albums=[(1, None)])
 
         self.assertEqual(art_paths_by_album(conn, "/music"), {1: None})
+
+    def test_archived_hq_cover_is_not_what_the_ui_gets(self):
+        """The 500px rendition is the display path even when the CAA original
+        sits right next to it: the UI draws covers at 384px at the very most,
+        and a 5000px original costs ~100 MB of bitmap to do it."""
+        with tempfile.TemporaryDirectory() as art_dir:
+            artpath = os.path.join(art_dir, "cover.jpg")
+            open(artpath, "wb").close()
+            open(os.path.join(art_dir, "cover-hq.jpg"), "wb").close()
+            conn = _db_with(albums=[(1, artpath.encode())])
+
+            self.assertEqual(art_paths_by_album(conn, "/music"), {1: artpath})
 
     def test_unknown_album_id_misses_rather_than_raising(self):
         """A singleton has no album_id; the lookup must return None, not blow up."""

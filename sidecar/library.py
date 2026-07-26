@@ -73,29 +73,23 @@ def first_genre(stored: str | None) -> str | None:
     return next(iter(split_multi(stored)), None)
 
 
-def _art_path(artpath: str | None) -> str | None:
-    """Sonarche displays the HQ cover (cover-hq.*) next to beets' own artpath
-    (the 500px thumb it embeds/tracks); fall back to the artpath itself for
-    albums enriched before the HQ/thumb split."""
-    if not artpath:
-        return None
-    art_dir = os.path.dirname(artpath)
-    for ext in ("jpg", "png"):
-        hq_path = os.path.join(art_dir, f"cover-hq.{ext}")
-        if os.path.exists(hq_path):
-            return hq_path
-    return artpath
-
-
 def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     """Resolve every album's cover once, up front.
 
+    This is beets' own artpath — the 500px rendition `set_album_art` writes and
+    embeds — and *not* the cover-hq.* we archive next to it. Nothing on screen
+    is wider than the album hero (192pt, 384px on retina), so the HQ never had
+    a pixel to spare: it was decoded at up to 5000x5000 to be drawn into a 40px
+    list thumbnail, which costs ~100 MB of bitmap per cover instead of ~1 MB.
+    The archive keeps the original on disk; the UI reads the rendition sized
+    for it, and gets its own path back the day a full-size cover view exists.
+
     Cover art is an album-level property; resolving it per track meant one
-    query and two stat() calls each, to answer a question with one answer per
-    album. Keeps the work proportional to albums, not tracks.
+    query each, to answer a question with one answer per album. Keeps the work
+    proportional to albums, not tracks.
     """
     return {
-        row["id"]: _art_path(expand_db_path(row["artpath"], library_dir))
+        row["id"]: expand_db_path(row["artpath"], library_dir)
         for row in conn.execute("SELECT id, artpath FROM albums")
     }
 
