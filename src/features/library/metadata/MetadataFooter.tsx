@@ -1,106 +1,153 @@
-import { Loader2, Sparkles } from "lucide-react";
-import { motion } from "motion/react";
+import { Check, Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
 import { useReenrichTrack } from "@/features/library/hooks";
 import { PrimaryPill } from "@/features/library/metadata/PrimaryPill";
+import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
 
-/** Re-runs the acoustic match over this one track — the album hero's pill, scoped
- * to a single row, same word and half-turn sparkle. Sits where a delete used to;
- * deletion already lives in the row's overflow menu, so the panel doesn't repeat
- * it. Its result is stated on the line above rather than as a toast. */
-function RematchButton({ track }: { track: LibraryTrack }) {
-  const { t } = useTranslation("library");
-  const reenrich = useReenrichTrack();
-
-  return (
-    <button
-      type="button"
-      disabled={reenrich.isPending}
-      onClick={() => reenrich.mutate(track.id)}
-      className={`${HERO_PILL_SECONDARY} group/rematch cursor-pointer disabled:cursor-default disabled:opacity-60`}
-    >
-      {reenrich.isPending ? (
-        <Loader2 className="size-4 animate-spin text-accent" />
-      ) : (
-        <Sparkles className="size-4 text-accent transition-transform duration-500 ease-out group-hover/rematch:rotate-180 motion-reduce:transition-none" />
-      )}
-      {reenrich.isPending ? t("albums.rematching") : t("albums.rematch")}
-    </button>
-  );
-}
-
-interface MetadataFooterProps {
-  track: LibraryTrack;
-  isEditing: boolean;
-  isSaving: boolean;
-  saveFailed: boolean;
-  onEdit: () => void;
-  onCancel: () => void;
-  onSave: () => void;
-}
+export type SaveFeedback = { kind: "saved"; tracks: number } | { kind: "failed" } | null;
 
 /**
- * The panel's action bar. Re-match sits on the left in both modes; the right is
- * the mode's own control — Modifier while reading, Annuler + Enregistrer while
- * editing. The re-match result rides the line above, answering the question its
- * button just asked.
+ * The track panel's action bar — the album modal's, at one track's scale.
+ *
+ * Re-match sits on the left and is shut while anything is pending: it rewrites
+ * tags from MusicBrainz, and running it over a draft used to undo the match on
+ * save without a word.
  */
 export function MetadataFooter({
   track,
-  isEditing,
+  changed,
+  feedback,
   isSaving,
-  saveFailed,
-  onEdit,
-  onCancel,
+  onDiscard,
   onSave,
-}: MetadataFooterProps) {
+  onDismissFeedback,
+}: {
+  track: LibraryTrack;
+  /** How many fields the draft moves. Zero means there is nothing to save. */
+  changed: number;
+  feedback: SaveFeedback;
+  isSaving: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+  onDismissFeedback: () => void;
+}) {
   const { t } = useTranslation("library");
-  const reenrich = useReenrichTrack();
+  const rematch = useReenrichTrack();
+  const isDirty = changed > 0;
 
-  // A save error owns the feedback line while editing; re-match feedback takes
-  // it back in read mode.
-  const feedback = saveFailed
-    ? { text: t("metadata.saveFailed"), tone: "text-danger" }
-    : reenrich.isError
-      ? { text: t("metadata.reenrichFailed"), tone: "text-danger" }
-      : reenrich.isSuccess
-        ? reenrich.data.matched
-          ? { text: t("metadata.reenrichMatched"), tone: "text-success" }
-          : { text: t("metadata.reenrichUnmatched"), tone: "text-muted" }
+  // A save's own feedback owns the line; the re-match result takes it back once
+  // there is nothing pending.
+  const line: SaveFeedback | { kind: "matched" } | { kind: "unmatched" } = feedback
+    ? feedback
+    : rematch.isError
+      ? { kind: "failed" }
+      : rematch.isSuccess
+        ? rematch.data.matched
+          ? { kind: "matched" }
+          : { kind: "unmatched" }
         : null;
 
   return (
-    <footer className="flex flex-col gap-2.5 border-t border-separator px-7 py-3.5">
-      {feedback && <p className={`text-[0.8125rem] ${feedback.tone}`}>{feedback.text}</p>}
+    <footer className="flex shrink-0 flex-col border-t border-separator bg-panel">
+      <AnimatePresence>
+        {line && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={springs.snappy}
+            className="overflow-hidden"
+          >
+            <div
+              className={`flex items-center gap-2.5 px-6 py-2.5 text-[0.8125rem] ${
+                line.kind === "failed" ? "bg-danger/8" : line.kind === "unmatched" ? "" : "bg-success/10"
+              }`}
+            >
+              {line.kind === "failed" ? (
+                <TriangleAlert className="size-4 shrink-0 text-danger" />
+              ) : line.kind === "unmatched" ? (
+                <span className="size-2 shrink-0 rounded-full bg-muted/50" />
+              ) : (
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-success-foreground">
+                  <Check className="size-3" strokeWidth={3} />
+                </span>
+              )}
+              <span className="min-w-0 text-foreground">
+                {line.kind === "saved" ? (
+                  <strong className="font-semibold">{t("albumMetadata.saved", { count: line.tracks })}</strong>
+                ) : line.kind === "failed" ? (
+                  <>
+                    <strong className="font-semibold">{t("metadata.saveFailed")}</strong>{" "}
+                    <span className="text-muted">{t("albumMetadata.saveFailedSafe")}</span>
+                  </>
+                ) : line.kind === "matched" ? (
+                  t("metadata.reenrichMatched")
+                ) : (
+                  <span className="text-muted">{t("metadata.reenrichUnmatched")}</span>
+                )}
+              </span>
+              {line.kind === "saved" && (
+                <button
+                  type="button"
+                  onClick={onDismissFeedback}
+                  aria-label={t("metadata.close")}
+                  className="ml-auto shrink-0 cursor-pointer rounded-full p-1 text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+                >
+                  <Check className="size-3.5" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="flex items-center justify-between gap-3">
-        <RematchButton track={track} />
+      <div className="flex items-center gap-2.5 px-6 py-3">
+        {/* The reason rides a tooltip rather than a paragraph beside the button:
+            spelled out in a 31rem drawer it wrapped onto six lines and pushed
+            the actions off the bottom. */}
+        <ActionHelp text={isDirty ? t("albumMetadata.rematch.blocked") : t("metadata.help.rematch")}>
+          <button
+            type="button"
+            disabled={isDirty || rematch.isPending}
+            onClick={() => rematch.mutate(track.id)}
+            className={`${HERO_PILL_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
+          >
+            {rematch.isPending ? (
+              <Loader2 className="size-4 animate-spin text-accent" />
+            ) : (
+              <Sparkles className="size-4 text-accent transition-transform duration-500 ease-out group-hover/rematch:rotate-180 motion-reduce:transition-none" />
+            )}
+            {rematch.isPending ? t("albums.rematching") : t("albums.rematch")}
+          </button>
+        </ActionHelp>
 
-        <div className="flex items-center gap-2.5">
-          {isEditing ? (
-            <>
-              {/* Newly arrived with edit mode, so it pops in rather than blinking on. */}
+        {/* Actions only, pinned right: the pending count lives in the header,
+            so nothing here changes width as you type. */}
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <AnimatePresence>
+            {isDirty && (
               <motion.button
                 type="button"
-                onClick={onCancel}
+                onClick={onDiscard}
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.6, opacity: 0 }}
                 transition={springs.bouncy}
-                className={`${HERO_PILL_SECONDARY} cursor-pointer`}
+                className={`${HERO_PILL_SECONDARY} shrink-0 cursor-pointer`}
               >
                 {t("metadata.cancel")}
               </motion.button>
-              <PrimaryPill onPress={onSave} isPending={isSaving}>
-                {isSaving ? t("metadata.saving") : t("metadata.save")}
-              </PrimaryPill>
-            </>
-          ) : (
-            <PrimaryPill onPress={onEdit}>{t("metadata.edit")}</PrimaryPill>
-          )}
+            )}
+          </AnimatePresence>
+
+          <PrimaryPill onPress={onSave} isPending={isSaving} isDisabled={!isDirty}>
+            {isSaving ? t("metadata.saving") : t("metadata.save")}
+          </PrimaryPill>
         </div>
       </div>
     </footer>
