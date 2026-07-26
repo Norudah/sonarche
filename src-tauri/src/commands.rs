@@ -73,8 +73,10 @@ pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus>
 #[tauri::command]
 pub async fn list_library(app: AppHandle, state: State<'_, SidecarState>) -> AppResult<Value> {
     let paths = AppPaths::resolve(&app)?;
+    // The read channel: the listing is what the UI blocks on, and it must not
+    // wait out an album download running on the work channel.
     state
-        .request(
+        .read(
             &app,
             "library_list",
             json!({

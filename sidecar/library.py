@@ -154,7 +154,16 @@ def handle(_request_id: str, params: dict) -> dict:
     library_dir = params["library_dir"]
     # Read-only: the URI form makes that a guarantee rather than a convention,
     # so a bug here can never touch the library beets owns.
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    #
+    # The busy timeout is load-bearing now that this runs on its own sidecar
+    # process: an import on the work channel holds a write lock for as long as
+    # beets needs, and this connection has to wait it out rather than come back
+    # "database is locked" — which, before the split, could not happen at all
+    # because requests were serial. Explicit and raised from sqlite3's own 5s
+    # default, which a measured 8s lock already breaks. Still well under the
+    # caller's 60s query timeout, so a genuinely stuck writer surfaces as a
+    # timeout rather than as a hang.
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=20.0)
     conn.row_factory = sqlite3.Row
     try:
         art_by_album = art_paths_by_album(conn, library_dir)

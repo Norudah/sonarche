@@ -21,9 +21,33 @@ struct SidecarHandle {
     pending: Pending,
 }
 
+/// One sidecar process and the requests in flight on it.
+///
+/// A channel is strictly serial by construction: `main.py` reads one line,
+/// runs its handler to completion, and only then reads the next. That is why
+/// there are two of them (see `SidecarState`) rather than one shared pipe.
+#[derive(Default)]
+struct SidecarChannel {
+    inner: Mutex<Option<SidecarHandle>>,
+}
+
+/// Two sidecar processes, split by what the request does rather than by which
+/// module answers it.
+///
+/// The Python loop handles one request at a time, and the work it does is not
+/// short: an album enrich fingerprints every track, calls MusicBrainz, the
+/// Cover Art Archive and Last.fm, and paces itself with real sleeps between
+/// them — minutes, routinely. On a single pipe every read queued behind that,
+/// so opening the library during a download waited out the whole album and then
+/// failed on the 60s query timeout, with nothing actually broken.
+///
+/// `read` answers the listing and nothing else. It opens the beets DB read-only
+/// (`mode=ro`), so the split costs no write safety: the writer stays alone on
+/// `work`, and the reader cannot become a second one.
 #[derive(Default)]
 pub struct SidecarState {
-    inner: Mutex<Option<SidecarHandle>>,
+    work: SidecarChannel,
+    read: SidecarChannel,
 }
 
 fn spawn_stdout_reader(app: AppHandle, stdout: tokio::process::ChildStdout, pending: Pending) {
@@ -115,8 +139,8 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
     })
 }
 
-impl SidecarState {
-    pub async fn request(
+impl SidecarChannel {
+    async fn request(
         &self,
         app: &AppHandle,
         cmd: &str,
@@ -175,9 +199,39 @@ impl SidecarState {
         }
     }
 
-    pub async fn shutdown(&self) {
+    async fn shutdown(&self) {
         if let Some(mut handle) = self.inner.lock().await.take() {
             let _ = handle.child.start_kill();
         }
+    }
+}
+
+impl SidecarState {
+    /// Anything that downloads, imports, enriches or writes tags. Serial, and
+    /// free to take as long as it takes.
+    pub async fn request(
+        &self,
+        app: &AppHandle,
+        cmd: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> AppResult<Value> {
+        self.work.request(app, cmd, params, timeout).await
+    }
+
+    /// Read-only queries the UI waits on. Never queues behind `request`.
+    pub async fn read(
+        &self,
+        app: &AppHandle,
+        cmd: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> AppResult<Value> {
+        self.read.request(app, cmd, params, timeout).await
+    }
+
+    pub async fn shutdown(&self) {
+        self.work.shutdown().await;
+        self.read.shutdown().await;
     }
 }
