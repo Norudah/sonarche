@@ -7,6 +7,7 @@ import {
   duplicateRecordingTracks,
   GENRE_MISSING,
   GENRE_OFF_TREE,
+  NO_TRIAGE,
 } from "@/features/library/tracks/triage";
 
 /** One clickable count — the page's doctrine is that every number is a door
@@ -56,10 +57,9 @@ function doorsOf(doors: TriageDoor[]): { count: number; doors: TriageDoor[] } {
  * same predicates, so a door always opens on exactly as many items as it said.
  */
 export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): TriageLine[] {
-  const none = { missingYear: false, genre: null, family: null, suspectMatch: false, duplicateRecording: false };
-  const missingYear = applyTrackTriage(tracks, { ...none, missingYear: true });
-  const genreMissing = applyTrackTriage(tracks, { ...none, genre: GENRE_MISSING });
-  const genreOffTree = applyTrackTriage(tracks, { ...none, genre: GENRE_OFF_TREE });
+  const missingYear = applyTrackTriage(tracks, { ...NO_TRIAGE, missingYear: true });
+  const genreMissing = applyTrackTriage(tracks, { ...NO_TRIAGE, genre: GENRE_MISSING });
+  const genreOffTree = applyTrackTriage(tracks, { ...NO_TRIAGE, genre: GENRE_OFF_TREE });
   const suspect = tracks.filter((track) => track.suspectMatch);
   const duplicated = duplicateRecordingTracks(tracks);
   const missingArtwork = albums.filter((album) => album.artUrl == null);

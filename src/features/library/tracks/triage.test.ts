@@ -9,12 +9,21 @@ function paramsOf(path: string): URLSearchParams {
 }
 
 function triage(over: Partial<TrackTriage> = {}): TrackTriage {
-  return { missingYear: false, genre: null, family: null, suspectMatch: false, duplicateRecording: false, ...over };
+  return {
+    missingYear: false,
+    genre: null,
+    family: null,
+    category: null,
+    decade: null,
+    suspectMatch: false,
+    duplicateRecording: false,
+    ...over,
+  };
 }
 
 const library = [
-  track({ id: 1, year: 2001, genre: "Grunge", genreBucket: "rock" }),
-  track({ id: 2, year: null, genre: "Gamelan", genreBucket: null }),
+  track({ id: 1, year: 2001, genre: "Grunge", genreBucket: "rock", category: "Music" }),
+  track({ id: 2, year: null, genre: "Gamelan", genreBucket: null, category: "Video Games" }),
   track({ id: 3, year: 1994, genre: null, genreBucket: null }),
   track({ id: 4, year: null, genre: "", genreBucket: null }),
 ];
@@ -31,6 +40,19 @@ describe("parseTrackTriage", () => {
   it("is inert on unrelated or unknown params", () => {
     expect(parseTrackTriage(new URLSearchParams(""))).toEqual(triage());
     expect(parseTrackTriage(new URLSearchParams("missing=artwork&foo=bar"))).toEqual(triage());
+  });
+
+  it("reads the filter bar's own axes", () => {
+    expect(parseTrackTriage(new URLSearchParams("category=Film"))).toEqual(triage({ category: "Film" }));
+    expect(parseTrackTriage(new URLSearchParams("decade=1990"))).toEqual(triage({ decade: 1990 }));
+  });
+
+  it("normalises a decade and drops an unparsable one", () => {
+    // A hand-edited or stale URL must land somewhere sensible rather than
+    // filtering the list down to nothing.
+    expect(parseTrackTriage(new URLSearchParams("decade=1994")).decade).toBe(1990);
+    expect(parseTrackTriage(new URLSearchParams("decade=nineties")).decade).toBeNull();
+    expect(parseTrackTriage(new URLSearchParams("decade=")).decade).toBeNull();
   });
 });
 
@@ -64,9 +86,26 @@ describe("applyTrackTriage", () => {
     expect(applyTrackTriage(library, triage({ family: "__none__" })).map((t) => t.id)).toEqual([3, 4]);
   });
 
+  it("keeps only tracks carrying a category", () => {
+    expect(applyTrackTriage(library, triage({ category: "Video Games" })).map((t) => t.id)).toEqual([2]);
+    expect(applyTrackTriage(library, triage({ category: "Film" }))).toEqual([]);
+  });
+
+  it("keeps only tracks of a decade, undated ones excluded", () => {
+    expect(applyTrackTriage(library, triage({ decade: 2000 })).map((t) => t.id)).toEqual([1]);
+    expect(applyTrackTriage(library, triage({ decade: 1990 })).map((t) => t.id)).toEqual([3]);
+  });
+
   it("composes active filters", () => {
     const both = triage({ missingYear: true, genre: "missing" });
     expect(applyTrackTriage(library, both).map((t) => t.id)).toEqual([4]);
+  });
+
+  it("composes a browsing axis with a correction filter", () => {
+    // The two kinds of filter share one pass: a category plus a decade narrows
+    // to their intersection, not to whichever ran last.
+    expect(applyTrackTriage(library, triage({ category: "Music", decade: 2000 })).map((t) => t.id)).toEqual([1]);
+    expect(applyTrackTriage(library, triage({ category: "Music", decade: 1990 }))).toEqual([]);
   });
 
   it("keeps only flagged matches under ?suspect=match", () => {
