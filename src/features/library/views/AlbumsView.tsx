@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
-import { filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
+import { ALBUM_SORTS, filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
 import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
+import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
+import { SortSelect } from "@/features/library/SortSelect";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
@@ -53,13 +55,17 @@ export function AlbumsView() {
       <AlbumsHeader
         albumCount={albums.length}
         trackCount={albums.reduce((sum, album) => sum + album.tracks.length, 0)}
-        query={query}
-        onQueryChange={setQuery}
-        sort={sort}
-        onSortChange={setSort}
       />
 
-      <TriageChips chips={chips} countLabel={t("albumCount", { count: triaged.length })} />
+      <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={albums.length}>
+        <SortSelect
+          options={ALBUM_SORTS}
+          value={sort}
+          onChange={setSort}
+          labelOf={(option) => t(`albums.sort.${option}`)}
+        />
+        <TriageChips chips={chips} />
+      </ExplorerBar>
 
       {library.isPending && (
         <div className="flex justify-center py-16">

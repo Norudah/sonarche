@@ -9,6 +9,7 @@ import { groupAlbums } from "@/features/library/albums/albums";
 import { FamilyList } from "@/features/library/genres/FamilyList";
 import { countGenres, FAMILY_NONE, filterFamilies, groupFamilies } from "@/features/library/genres/genres";
 import { GenresHeader } from "@/features/library/genres/GenresHeader";
+import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { fade } from "@/shared/motion/tokens";
@@ -47,12 +48,16 @@ export function GenresView() {
 
   return (
     <PageContainer>
-      <GenresHeader
-        familyCount={families.length}
-        genreCount={countGenres(families)}
-        unclassifiedCount={unclassified}
+      <GenresHeader familyCount={families.length} genreCount={countGenres(families)} unclassifiedCount={unclassified} />
+
+      {/* Nothing on the left: this shelf has no sort — the cards are ordered by
+          size and that ordering is the page. The bar exists all the same, so
+          search sits where it sits on every other explorer. */}
+      <ExplorerBar
         query={query}
         onQueryChange={setQuery}
+        shown={visibleFamilies.length}
+        total={families.filter((family) => family.key !== FAMILY_NONE).length}
       />
 
       {library.isPending && (

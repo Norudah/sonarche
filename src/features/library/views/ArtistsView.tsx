@@ -6,9 +6,17 @@ import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
-import { filterArtists, groupArtists, sortArtists, type ArtistSort } from "@/features/library/artists/artists";
+import {
+  ARTIST_SORTS,
+  filterArtists,
+  groupArtists,
+  sortArtists,
+  type ArtistSort,
+} from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
+import { ExplorerBar } from "@/features/library/ExplorerBar";
+import { SortSelect } from "@/features/library/SortSelect";
 import { useLibrary } from "@/features/library/hooks";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
@@ -31,11 +39,16 @@ export function ArtistsView() {
       <ArtistsHeader
         artistCount={artists.length}
         albumCount={artists.reduce((sum, artist) => sum + artist.albums.length, 0)}
-        query={query}
-        onQueryChange={setQuery}
-        sort={sort}
-        onSortChange={setSort}
       />
+
+      <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={artists.length}>
+        <SortSelect
+          options={ARTIST_SORTS}
+          value={sort}
+          onChange={setSort}
+          labelOf={(option) => t(`artists.sort.${option}`)}
+        />
+      </ExplorerBar>
 
       {library.isPending && (
         <div className="flex justify-center py-16">
