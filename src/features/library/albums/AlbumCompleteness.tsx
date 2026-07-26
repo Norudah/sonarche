@@ -1,5 +1,4 @@
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
@@ -9,54 +8,6 @@ const SIZE = 80;
 const STROKE = 6;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/**
- * Counts up to `target` so the figure lands with the arc instead of sitting
- * finished while the ring is still drawing.
- *
- * A raw `requestAnimationFrame` rather than a Motion value: Motion animates
- * styles, and what changes here is text content. The ramp is eased out, matching
- * the arc's own easing, so the two stay together for the whole run.
- *
- * Seeded with the real figure and starting only once a frame actually fires: if
- * frames never come — a background tab, a starved main thread — the number
- * shows the truth and simply does not animate, rather than freezing on a wrong
- * "0". `prefers-reduced-motion` is checked by hand because MotionProvider's
- * `reducedMotion="user"` only governs Motion components, and this is not one.
- */
-function useCountUp(target: number, duration: number): number {
-  const [value, setValue] = useState(target);
-  const fromRef = useRef(0);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-
-    const from = fromRef.current;
-    if (from === target) return;
-
-    let frame = 0;
-    let started: number | null = null;
-
-    const tick = (now: number) => {
-      started ??= now;
-      const t = Math.min((now - started) / (duration * 1000), 1);
-      const eased = 1 - (1 - t) ** 3;
-      const current = Math.round(from + (target - from) * eased);
-      setValue(current);
-      fromRef.current = current;
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target, duration]);
-
-  return prefersReducedMotion() ? target : value;
-}
 
 /**
  * How complete this album's metadata is — the one number the app exists to move,
@@ -83,7 +34,6 @@ export function AlbumCompleteness({ album }: { album: Album }) {
 
   // Floor, not round: 99.6% must not display as a complete 100%.
   const target = Math.floor(album.completeness * 100);
-  const percent = useCountUp(target, durations.reveal);
   const isComplete = target === 100;
 
   return (
@@ -113,25 +63,25 @@ export function AlbumCompleteness({ album }: { album: Album }) {
           />
         </svg>
 
-        {/* The figure is the label of the ring, so it is centred in it rather
-            than placed beside it. `tabular-nums` keeps the digits from jittering
-            as the count runs through two- and three-digit values. */}
+        {/* The ring carries the count itself, not a percentage of it: "18/20"
+            is the same fact the caption underneath used to repeat in other
+            words, and it is the one you can act on. The arc still does the
+            proportion, which is all the percentage was ever for. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={
-              "text-lg leading-none font-bold tracking-tight tabular-nums " +
+              "text-base leading-none font-bold tracking-tight tabular-nums " +
               (isComplete ? "text-success" : "text-warning")
             }
           >
-            {percent}
-            <span className="ml-0.5 text-[0.625rem] font-semibold">%</span>
+            {album.fullyTagged}
+            <span className="opacity-60">/</span>
+            {album.tracks.length}
           </span>
         </div>
       </div>
 
-      <p className="text-[0.6875rem] text-muted">
-        {t("albums.stats.taggedCount", { tagged: album.fullyTagged, total: album.tracks.length })}
-      </p>
+      <p className="text-[0.6875rem] text-muted">{t("albums.stats.tracksComplete")}</p>
     </div>
   );
 }
