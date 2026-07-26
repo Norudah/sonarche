@@ -1,9 +1,11 @@
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import type { TrackSort, TrackSortKey } from "@/features/library/tracks/sort";
 import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTopOnFilterChange } from "@/features/library/tracks/useTopOnFilterChange";
@@ -23,9 +25,64 @@ interface TrackTableProps {
    * approach as the download queue (see `row-cascade` in theme.css).
    */
   animationKey?: string;
+  /** Active ordering, or null for the library's own. Absent on the tables that
+   * are not a queryable list — an artist's guest spots, a genre's fallback. */
+  sort?: TrackSort | null;
+  /** A column header was clicked. Absent means the headers are plain labels. */
+  onSort?: (key: TrackSortKey) => void;
+  /** Album artist of the surrounding page, when it has one. */
+  guestOwner?: string;
 }
 
-export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
+/**
+ * A column header that orders the list.
+ *
+ * The control belongs to the thing it orders: a table has headers, so it sorts
+ * from them, while the album and artist shelves — grids, with no headers to
+ * click — keep their `SortSelect`. Two idioms, each where it is the obvious one.
+ */
+function SortableColumn({
+  column,
+  label,
+  className,
+  sort,
+  onSort,
+}: {
+  column: TrackSortKey;
+  label: string;
+  className: string;
+  sort: TrackSort | null;
+  onSort: (key: TrackSortKey) => void;
+}) {
+  const { t } = useTranslation("library");
+  const isActive = sort?.key === column;
+  const Arrow = sort?.dir === "desc" ? ArrowDown : ArrowUp;
+
+  return (
+    <th
+      className={className}
+      // The live ordering for a screen reader, which cannot see the arrow.
+      aria-sort={isActive ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        aria-label={t("sort.byColumn", { column: label })}
+        className={
+          "inline-flex cursor-pointer items-center gap-1 rounded outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
+          (isActive ? "text-accent" : "hover:text-foreground")
+        }
+      >
+        {label}
+        {/* The slot is held empty so a column does not widen when it becomes the
+         * sorted one — which shifted every header to its right. */}
+        <span className="flex w-3 justify-center">{isActive && <Arrow className="size-3" />}</span>
+      </button>
+    </th>
+  );
+}
+
+export function TrackTable({ tracks, animationKey = "", sort = null, onSort, guestOwner }: TrackTableProps) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
@@ -36,6 +93,13 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
   // Derive from the live list, not a snapshot: re-enrich mutates the track and
   // the drawer must show the new album/artwork after the query refetches.
   const inspected = inspectedId != null ? (tracks.find((t) => t.id === inspectedId) ?? null) : null;
+
+  const column = (key: TrackSortKey, label: string, className: string) =>
+    onSort ? (
+      <SortableColumn column={key} label={label} className={className} sort={sort} onSort={onSort} />
+    ) : (
+      <th className={className}>{label}</th>
+    );
 
   return (
     <>
@@ -48,11 +112,11 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
           <thead>
             <tr className="[&>th]:border-b [&>th]:border-separator/60">
               <th className={`${COLUMN} w-14 text-center`}>#</th>
-              <th className={`${COLUMN} text-left`}>{t("columns.title")}</th>
-              <th className={`${COLUMN} w-[18%] text-left`}>{t("columns.artist")}</th>
-              <th className={`${COLUMN} w-[18%] text-left`}>{t("columns.album")}</th>
-              <th className={`${COLUMN} w-32 text-left`}>{t("columns.genre")}</th>
-              <th className={`${COLUMN} w-16 text-right`}>{t("columns.duration")}</th>
+              {column("title", t("columns.title"), `${COLUMN} text-left`)}
+              {column("artist", t("columns.artist"), `${COLUMN} w-[18%] text-left`)}
+              {column("album", t("columns.album"), `${COLUMN} w-[18%] text-left`)}
+              {column("genre", t("columns.genre"), `${COLUMN} w-32 text-left`)}
+              {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
               <th className={`${COLUMN} w-28`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
@@ -76,6 +140,7 @@ export function TrackTable({ tracks, animationKey = "" }: TrackTableProps) {
                 // Capped: a 300-track library must not take ten seconds to
                 // unfold, and only the rows near the top are on screen anyway.
                 style={{ "--row-stagger": `${Math.min(index, 10) * 0.025}s` } as CSSProperties}
+                guestOwner={guestOwner}
                 // The visible list is the row's playback context: what plays
                 // next is what the user is looking at, filters included.
                 onPlay={() => playFrom(tracks, index)}

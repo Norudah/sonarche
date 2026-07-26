@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
+import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
@@ -11,6 +13,11 @@ import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
 
+/* Underline on hover only. A row holds two of these and permanently underlined
+ * text would turn the table into a page of links; the pointer plus the reveal is
+ * enough to say they are one. */
+const CELL_LINK = "block truncate outline-none hover:text-foreground hover:underline focus-visible:text-foreground";
+
 interface TrackRowProps {
   track: LibraryTrack;
   index: number;
@@ -19,6 +26,9 @@ interface TrackRowProps {
    * every one of them instead of playing once for the list. */
   cascade?: boolean;
   style?: CSSProperties;
+  /** Album artist of the page this row is on, when it has one. A row filed under
+   * anyone else is a guest spot and says so. */
+  guestOwner?: string;
   /** Launch playback at this row, in the list's own context. The table owns
    * the list, so the table decides what the queue is. */
   onPlay: () => void;
@@ -26,11 +36,31 @@ interface TrackRowProps {
   onDelete: () => void;
 }
 
-export function TrackRow({ track, index, cascade = true, style, onPlay, onInspect, onDelete }: TrackRowProps) {
+export function TrackRow({
+  track,
+  index,
+  cascade = true,
+  style,
+  guestOwner,
+  onPlay,
+  onInspect,
+  onDelete,
+}: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
   const isCurrent = current?.id === track.id;
+
+  // Who the record is filed under — the album artist, or the track's own when
+  // beets left it empty. Both the album route and the guest test key off it.
+  const owner = track.albumArtist.trim() || track.artist.trim();
+  // An artist page exists per *album* artist, so only a credited artist who owns
+  // the record has one. A featuring credit on someone else's album leads
+  // nowhere, and a link into a page that redirects straight back out is worse
+  // than plain text.
+  const artistLink = owner === track.artist.trim() && owner !== "" ? artistPath(owner) : null;
+  const albumLink = track.album.trim() !== "" ? albumPath(owner, track.album) : null;
+  const isGuest = guestOwner != null && owner !== guestOwner;
 
   return (
     <tr
@@ -72,11 +102,30 @@ export function TrackRow({ track, index, cascade = true, style, onPlay, onInspec
       </td>
 
       <td className={CELL}>
-        <span className="block truncate">{track.artist || t("unknownArtist")}</span>
+        {artistLink ? (
+          <Link to={artistLink} className={CELL_LINK}>
+            {track.artist}
+          </Link>
+        ) : (
+          <span className="block truncate">{track.artist || t("unknownArtist")}</span>
+        )}
       </td>
 
       <td className={CELL}>
-        <span className="block truncate">{track.album || t("metadata.emptyValue")}</span>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isGuest && (
+            <span className="shrink-0 rounded bg-default/70 px-1 text-[0.625rem] font-semibold uppercase">
+              {t("artists.guest")}
+            </span>
+          )}
+          {albumLink ? (
+            <Link to={albumLink} className={CELL_LINK}>
+              {track.album}
+            </Link>
+          ) : (
+            <span className="block truncate">{t("metadata.emptyValue")}</span>
+          )}
+        </div>
       </td>
 
       <td className={CELL}>
