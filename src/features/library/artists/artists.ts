@@ -1,7 +1,7 @@
 import type { Album } from "@/features/library/albums/albums";
 import type { LibraryTrack } from "@/features/library/api";
 import { FAMILY_NONE, familyKeyOf } from "@/features/library/genres/genres";
-import { normalize } from "@/shared/lib/text";
+import { createTextFilter } from "@/shared/lib/search";
 
 export interface Artist {
   /** Album artist. Also the identity and the route segment — beets gives us no
@@ -135,15 +135,9 @@ export function sortArtists(artists: Artist[], sort: ArtistSort): Artist[] {
 
 /** Same contract as `filterAlbums`: every term must match somewhere, so
  * "daft dis" finds Daft Punk through Discovery. */
-export function filterArtists(artists: Artist[], query: string): Artist[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return artists;
-
-  return artists.filter((artist) => {
-    const haystack = normalize([artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "));
-    return terms.every((term) => haystack.includes(term));
-  });
-}
+export const filterArtists = createTextFilter<Artist>((artist) =>
+  [artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "),
+);
 
 export function findArtist(artists: Artist[], name: string): Artist | null {
   return artists.find((artist) => artist.name === name) ?? null;

@@ -30,7 +30,6 @@ const PREVIOUS_RESTARTS_AFTER = 3;
 interface PlayerControls {
   current: PlayableTrack | null;
   isPlaying: boolean;
-  volume: number;
   /** Launch a set from the clicked track. A solo play is a queue of one. */
   play: (tracks: PlayableTrack[], startIndex?: number) => void;
   /** "Play all": launch a set from the top, forcing sequential order. */
@@ -42,13 +41,19 @@ interface PlayerControls {
   next: () => void;
   previous: () => void;
   seek: (time: number) => void;
-  setVolume: (value: number) => void;
 }
 
 /** Where the playhead is. Changes several times a second during playback. */
 interface PlayerProgress {
   currentTime: number;
   duration: number;
+}
+
+/** Output level. Its own context because a drag moves it dozens of times a
+ * second, and only the volume slider draws it. */
+interface PlayerVolume {
+  volume: number;
+  setVolume: (value: number) => void;
 }
 
 /** The queue and its modes. Only the transport toggles and the queue panel
@@ -61,7 +66,7 @@ interface PlayerQueue {
 }
 
 /**
- * Three contexts rather than one, and the split is the whole point.
+ * Four contexts rather than one, and the split is the whole point.
  *
  * `timeupdate` fires about four times a second, so a single context value
  * carrying `currentTime` changed four times a second — and re-rendered every
@@ -69,13 +74,19 @@ interface PlayerQueue {
  * `isPlaying` alone, so a 300-track library was re-rendering 300 rows four
  * times a second to redraw a playhead none of them display.
  *
- * Only the seek bar subscribes to progress, and only the transport toggles and
- * the queue panel subscribe to the queue. Rows sit on the stable controls half
- * and re-render when something they actually show changes.
+ * Volume is split off for the same reason and was missed the first time: a
+ * slider drag moves it dozens of times a second, and it rode on the controls
+ * value that every row subscribes to, so dragging it re-rendered the whole
+ * mounted list to move a control none of them own.
+ *
+ * The rule the split follows: a value belongs with the controls only if it
+ * changes when the user acts on *playback*. Anything that changes continuously
+ * — a playhead, a drag — gets its own context and its own subscribers.
  */
 const ControlsContext = createContext<PlayerControls | null>(null);
 const ProgressContext = createContext<PlayerProgress | null>(null);
 const QueueContext = createContext<PlayerQueue | null>(null);
+const VolumeContext = createContext<PlayerVolume | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -285,11 +296,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useMediaSession({ current, isPlaying, toggle, next, previous });
 
   const controls = useMemo<PlayerControls>(
-    () => ({ current, isPlaying, volume, play, playOrdered, playShuffled, toggle, next, previous, seek, setVolume }),
-    [current, isPlaying, volume, play, playOrdered, playShuffled, toggle, next, previous, seek, setVolume],
+    () => ({ current, isPlaying, play, playOrdered, playShuffled, toggle, next, previous, seek }),
+    [current, isPlaying, play, playOrdered, playShuffled, toggle, next, previous, seek],
   );
 
   const progress = useMemo<PlayerProgress>(() => ({ currentTime, duration }), [currentTime, duration]);
+
+  const volumeValue = useMemo<PlayerVolume>(() => ({ volume, setVolume }), [volume, setVolume]);
 
   const queueValue = useMemo<PlayerQueue>(
     () => ({ queue, toggleShuffle, cycleRepeat, jumpTo }),
@@ -300,8 +313,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     <ControlsContext.Provider value={controls}>
       <ProgressContext.Provider value={progress}>
         <QueueContext.Provider value={queueValue}>
-          {children}
-          <audio ref={audioRef} onVolumeChange={() => setVolumeState(audioRef.current?.volume ?? 1)} />
+          <VolumeContext.Provider value={volumeValue}>
+            {children}
+            <audio ref={audioRef} onVolumeChange={() => setVolumeState(audioRef.current?.volume ?? 1)} />
+          </VolumeContext.Provider>
         </QueueContext.Provider>
       </ProgressContext.Provider>
     </ControlsContext.Provider>
@@ -330,5 +345,13 @@ export function usePlayerProgress(): PlayerProgress {
 export function usePlayerQueue(): PlayerQueue {
   const ctx = useContext(QueueContext);
   if (!ctx) throw new Error("usePlayerQueue must be used within a PlayerProvider");
+  return ctx;
+}
+
+/** Output level. Call this from the control that draws it, never from a parent
+ * that merely renders one — a drag would take the parent's subtree with it. */
+export function usePlayerVolume(): PlayerVolume {
+  const ctx = useContext(VolumeContext);
+  if (!ctx) throw new Error("usePlayerVolume must be used within a PlayerProvider");
   return ctx;
 }

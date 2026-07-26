@@ -1,4 +1,4 @@
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
@@ -46,6 +46,12 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const newJobIds = useNewJobIds(jobs.map((job) => job.id));
 
+  // Above the early return, where a hook has to live — and memoised because
+  // this page re-renders on every job event, which during an album download is
+  // several times a second, and rebuilding an index of the whole library each
+  // time is the one thing here that scales with the library rather than the queue.
+  const trackById = useMemo(() => new Map((library.data ?? []).map((track) => [track.id, track])), [library.data]);
+
   if (jobs.length === 0) {
     return (
       <p className="rounded-2xl border border-separator/60 bg-surface px-6 py-10 text-center text-sm text-muted">
@@ -63,7 +69,6 @@ export function QueueTable({ jobs, downloadPercent, enrichStages }: QueueTablePr
     });
   };
 
-  const trackById = new Map((library.data ?? []).map((track) => [track.id, track]));
   const libraryLoaded = library.data != null;
   const libraryTrackFor = (itemId: number | null) =>
     itemId != null && libraryLoaded ? trackById.get(itemId) : undefined;

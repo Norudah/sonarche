@@ -1,6 +1,6 @@
 import type { LibraryTrack } from "@/features/library/api";
 import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
-import { normalize } from "@/shared/lib/text";
+import { createTextFilter } from "@/shared/lib/search";
 
 export interface Album {
   /** Stable, URL-safe identity for the album route. See `albumKey`. */
@@ -158,15 +158,9 @@ export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
 
 /** Same contract as `filterTracks`: every whitespace-separated term must match
  * somewhere, so "daft disc" finds Discovery. */
-export function filterAlbums(albums: Album[], query: string): Album[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return albums;
-
-  return albums.filter((album) => {
-    const haystack = normalize([album.title, album.artist, album.year ?? "", ...album.genres].join(" "));
-    return terms.every((term) => haystack.includes(term));
-  });
-}
+export const filterAlbums = createTextFilter<Album>((album) =>
+  [album.title, album.artist, album.year ?? "", ...album.genres].join(" "),
+);
 
 /** Looked up by the pair the route carries, not by a joined key: the router
  * hands back already-decoded segments, and re-joining them just to split them

@@ -1,6 +1,6 @@
 import type { Album } from "@/features/library/albums/albums";
 import type { LibraryTrack } from "@/features/library/api";
-import { normalize } from "@/shared/lib/text";
+import { createTextFilter } from "@/shared/lib/search";
 
 /** A genre that resolves to no browse family — the sidecar's `genre_tree`
  * only promotes 13 roots, everything else (african, asian, world…) lands here. */
@@ -241,15 +241,9 @@ export function countGenres(families: Family[]): number {
  * shelves already answer — and it made typing a name that appears nowhere on
  * screen surface a card, which reads as a bug rather than a search.
  */
-export function filterFamilies(families: Family[], query: string): Family[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return families;
-
-  return families.filter((family) => {
-    const haystack = normalize([family.key, ...family.subs.map((sub) => sub.name)].join(" "));
-    return terms.every((term) => haystack.includes(term));
-  });
-}
+export const filterFamilies = createTextFilter<Family>((family) =>
+  [family.key, ...family.subs.map((sub) => sub.name)].join(" "),
+);
 
 export function findFamily(families: Family[], key: string): Family | null {
   return families.find((family) => family.key === key) ?? null;

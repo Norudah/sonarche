@@ -2,8 +2,16 @@ import { Button, Slider } from "@heroui/react";
 import { Volume1, Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-export function VolumeControl({ volume, onVolumeChange }: { volume: number; onVolumeChange: (value: number) => void }) {
+import { usePlayerVolume } from "@/shared/player/PlayerContext";
+
+/**
+ * Subscribes to the volume itself rather than taking it as a prop: a drag moves
+ * the value dozens of times a second, and passing it down would re-render the
+ * player bar — and everything else it renders — on every one of them.
+ */
+export function VolumeControl() {
   const { t } = useTranslation("player");
+  const { volume, setVolume } = usePlayerVolume();
   const muted = volume === 0;
   const Icon = muted ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
@@ -13,7 +21,7 @@ export function VolumeControl({ volume, onVolumeChange }: { volume: number; onVo
         variant="ghost"
         size="sm"
         isIconOnly
-        onPress={() => onVolumeChange(muted ? 1 : 0)}
+        onPress={() => setVolume(muted ? 1 : 0)}
         aria-label={muted ? t("unmute") : t("mute")}
       >
         <Icon className="size-4" />
@@ -25,7 +33,7 @@ export function VolumeControl({ volume, onVolumeChange }: { volume: number; onVo
         minValue={0}
         maxValue={1}
         step={0.01}
-        onChange={(value) => onVolumeChange(value as number)}
+        onChange={(value) => setVolume(value as number)}
       >
         <Slider.Track>
           <Slider.Fill />

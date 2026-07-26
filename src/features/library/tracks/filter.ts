@@ -1,19 +1,11 @@
 import type { LibraryTrack } from "@/features/library/api";
-import { normalize } from "@/shared/lib/text";
+import { createTextFilter } from "@/shared/lib/search";
 
 /** Free-text search over the fields the list actually shows. Every whitespace
  * separated term must match somewhere, so "daft disc" finds Digital Love. */
-export function filterTracks(tracks: LibraryTrack[], query: string): LibraryTrack[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return tracks;
-
-  return tracks.filter((track) => {
-    const haystack = normalize(
-      [track.title, track.artist, track.album, track.albumArtist, track.genre ?? ""].join(" "),
-    );
-    return terms.every((term) => haystack.includes(term));
-  });
-}
+export const filterTracks = createTextFilter<LibraryTrack>((track) =>
+  [track.title, track.artist, track.album, track.albumArtist, track.genre ?? ""].join(" "),
+);
 
 /** Total playtime, split for i18n: a locale decides how to write "21 h 08". */
 export function totalPlaytime(tracks: LibraryTrack[]): { hours: number; minutes: number } {
