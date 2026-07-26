@@ -1,7 +1,7 @@
 import { LayoutGrid, ListMusic } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { parseViewMode, withViewMode, type ViewMode } from "@/features/library/viewMode";
 import { layoutIds, springs } from "@/shared/motion/tokens";
@@ -15,16 +15,12 @@ const SEGMENT =
 
 function Segment({ mode, current, children }: { mode: ViewMode; current: ViewMode; children: ReactNode }) {
   const [params] = useSearchParams();
-  // Carried through untouched: replacing the entry must not rewrite where it
-  // came from, or a hero's back arrow would start pointing at its own page.
-  const { state } = useLocation();
   const isActive = current === mode;
 
   return (
     <Link
       to={{ search: `?${withViewMode(params, mode)}` }}
       replace
-      state={state}
       aria-current={isActive ? "true" : undefined}
       className={SEGMENT + (isActive ? " text-accent" : " text-muted hover:text-foreground")}
     >

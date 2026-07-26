@@ -77,7 +77,6 @@ export function FamilyCard({ family, label, style }: FamilyCardProps) {
         </span>
         <MotionLink
           to={genrePath(family.key)}
-          state={{ fromGenres: true }}
           aria-label={label}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.94 }}
@@ -94,7 +93,6 @@ export function FamilyCard({ family, label, style }: FamilyCardProps) {
             <MotionLink
               key={sub.name}
               to={genrePath(family.key, sub.name)}
-              state={{ fromGenres: true }}
               whileHover={{ scale: 1.07 }}
               whileTap={{ scale: 0.95 }}
               transition={springs.snappy}
@@ -107,7 +105,6 @@ export function FamilyCard({ family, label, style }: FamilyCardProps) {
           {hiddenCount > 0 && (
             <MotionLink
               to={genrePath(family.key)}
-              state={{ fromGenres: true }}
               whileHover={{ scale: 1.07 }}
               whileTap={{ scale: 0.95 }}
               transition={springs.snappy}

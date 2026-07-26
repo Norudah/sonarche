@@ -36,7 +36,6 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
         to={artistPath(artist.name)}
         // Lets the artist page know it can go *back* rather than pushing a fresh
         // entry, which is what makes the grid's scroll position survive.
-        state={{ fromGrid: true }}
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <ArtistAvatar

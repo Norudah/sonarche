@@ -115,7 +115,6 @@ export function ArtistDetailView() {
             <AlbumGrid
               albums={artist.albums}
               animationKey={artist.name}
-              fromArtist
               onPlay={(album) => playOrdered(album.tracks)}
             />
           </section>

@@ -1,6 +1,5 @@
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
 
 import { paths } from "@/app/routes";
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
@@ -10,22 +9,6 @@ import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
-
-function ArtistBreadcrumb({ name }: { name: string }) {
-  const { t } = useTranslation("library");
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const cameFromGrid = (state as { fromGrid?: boolean } | null)?.fromGrid === true;
-
-  return (
-    <HeroBreadcrumb
-      label={t("breadcrumb")}
-      backLabel={t("artists.back")}
-      current={name}
-      onBack={() => (cameFromGrid ? navigate(-1) : navigate(paths.libraryArtists))}
-    />
-  );
-}
 
 interface ArtistHeroProps {
   artist: Artist;
@@ -67,7 +50,13 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
       <HeroWash />
 
       <div className="relative">
-        <ArtistBreadcrumb name={artist.name} />
+        <HeroBreadcrumb
+          label={t("breadcrumb")}
+          up={paths.libraryArtists}
+          upLabel={t("artists.back")}
+          current={artist.name}
+          actions={actions}
+        />
 
         <div className="mt-5 flex items-end gap-6">
           {/* Matches the album hero's 192px cover box, as a circle: the two
@@ -103,9 +92,7 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
              * would wipe an unbounded number of albums behind one click, and
              * nothing here makes that scope visible before it happens. */}
             <div className="mt-5">
-              <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle}>
-                {actions}
-              </HeroPlayButtons>
+              <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
             </div>
           </div>
         </div>

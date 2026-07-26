@@ -1,6 +1,6 @@
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link } from "react-router";
 
 import { artistPath, paths } from "@/app/routes";
 import { AlbumActions } from "@/features/library/albums/AlbumActions";
@@ -12,34 +12,6 @@ import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroWash } from "@/features/library/HeroWash";
 import { formatDuration } from "@/shared/lib/format";
-
-/**
- * The crumb *steps back* through history when we arrived from a grid, so the
- * shelf comes back exactly as it was left — scroll, search and sort intact. A
- * plain `<Link>` would push a new entry and rebuild the grid from the top,
- * which is the most irritating way to lose someone's place. Falls back to a
- * normal navigation when the album page was opened cold and there is nothing
- * behind it.
- *
- * The label names where the crumb actually lands: an album opened from an
- * artist's discography that offers "Albums" is lying about its own history.
- */
-function AlbumBreadcrumb({ artist, title }: { artist: string; title: string }) {
-  const { t } = useTranslation("library");
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const from = (state as { fromGrid?: boolean; fromArtist?: boolean } | null) ?? {};
-  const fallback = from.fromArtist ? artistPath(artist) : paths.libraryAlbums;
-
-  return (
-    <HeroBreadcrumb
-      label={t("breadcrumb")}
-      backLabel={from.fromArtist ? artist : t("albums.back")}
-      current={title}
-      onBack={() => (from.fromGrid ? navigate(-1) : navigate(fallback))}
-    />
-  );
-}
 
 /**
  * The way *out* of an album and into everything else by the same artist — the
@@ -99,7 +71,12 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }
       <HeroWash />
 
       <div className="relative">
-        <AlbumBreadcrumb artist={album.artist} title={album.title} />
+        <HeroBreadcrumb
+          label={t("breadcrumb")}
+          up={paths.libraryAlbums}
+          upLabel={t("albums.back")}
+          current={album.title}
+        />
 
         <div className="mt-5 flex items-end gap-6">
           <AlbumCover artUrl={album.artUrl} className="size-48 shrink-0 rounded-xl shadow-xl shadow-accent/20" />

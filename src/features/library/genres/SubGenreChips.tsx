@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import type { SubGenre } from "@/features/library/genres/genres";
 import { searchWith } from "@/features/library/queryParams";
@@ -30,9 +30,6 @@ interface SubGenreChipsProps {
  */
 export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
   const { t } = useTranslation("library");
-  // Carried through untouched: replacing the entry must not rewrite where it
-  // came from, or the back arrow would start pointing at this page itself.
-  const { state } = useLocation();
   // Only `?genre=` is this control's to change. Rebuilding the whole query from
   // the family and the genre alone dropped `?view=`, so flipping a chip in the
   // tracks mode threw the page back to its overview.
@@ -48,7 +45,7 @@ export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link to={{ search: searchWith(params, "genre", null) }} replace state={state} className={chip(selected == null)}>
+      <Link to={{ search: searchWith(params, "genre", null) }} replace className={chip(selected == null)}>
         {t("genres.allSubs")}
       </Link>
       {subs.map((sub) => {
@@ -58,7 +55,6 @@ export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
             key={sub.name}
             to={{ search: searchWith(params, "genre", isActive ? null : sub.name) }}
             replace
-            state={state}
             className={chip(isActive)}
           >
             {sub.name}
