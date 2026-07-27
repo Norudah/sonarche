@@ -18,7 +18,8 @@
       "copy": "Copy",
       "copied": "Copied",
       "recheck": "Check again",
-      "recheckHint": "Run the command in a terminal, then come back here."
+      "recheckHint": "Run the command in a terminal, then come back here.",
+      "found": "Found on the machine — Python {{version}}"
     },
     "engine": {
       "title": "The download engine",
@@ -35,7 +36,8 @@
         "fetching": "Fetching {{pkg}}…",
         "installing": "Installing packages…",
         "done": "Environment ready."
-      }
+      },
+      "log": "Show the installation log"
     },
     "acoustid": {
       "title": "The AcoustID key",
@@ -61,7 +63,8 @@
         "empty": "The field is empty."
       },
       "unreachable": "Could not reach AcoustID. Check your connection and try again.",
-      "skip": "Continue without — tracks will be tagged by guesswork"
+      "skip": "Continue without — tracks will be tagged by guesswork",
+      "replace": "Paste a new key to replace this one"
     }
   }
 }

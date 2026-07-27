@@ -30,7 +30,7 @@ function ScanRail({ label }: { label: string }) {
   );
 }
 
-export function EnginePanel() {
+export function EnginePanel({ isInstalled }: { isInstalled: boolean }) {
   const { t } = useTranslation("onboarding");
   const setup = useSetupEnv();
   const logs = useSetupLogs(setup.isPending);
@@ -63,13 +63,17 @@ export function EnginePanel() {
           </Swap>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <Button variant="primary" onPress={() => setup.mutate()}>
-            <Download className="size-4" />
-            {setup.isError ? t("steps.engine.retry") : t("steps.engine.action")}
-          </Button>
-          <p className="text-xs text-muted">{t("steps.engine.duration")}</p>
-        </div>
+        // Nothing to press once it is in place: this panel is re-opened to read
+        // what happened, not to be invited to do it again.
+        !isInstalled && (
+          <div className="flex items-center gap-3">
+            <Button variant="primary" onPress={() => setup.mutate()}>
+              <Download className="size-4" />
+              {setup.isError ? t("steps.engine.retry") : t("steps.engine.action")}
+            </Button>
+            <p className="text-xs text-muted">{t("steps.engine.duration")}</p>
+          </div>
+        )
       )}
 
       {logs.length > 0 && (
@@ -83,7 +87,7 @@ export function EnginePanel() {
             <motion.span initial={false} animate={{ rotate: showLog ? 180 : 0 }} transition={springs.snappy}>
               <ChevronDown className="size-3.5" />
             </motion.span>
-            {t("steps.engine.detail")}
+            {isInstalled ? t("steps.engine.log") : t("steps.engine.detail")}
           </button>
 
           <AnimatePresence initial={false}>

@@ -43,7 +43,7 @@ function LinkRow({ label, hint, url }: { label: string; hint: string; url: strin
   );
 }
 
-export function AcoustidPanel({ onSkip }: { onSkip: () => void }) {
+export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean; onSkip: () => void }) {
   const { t } = useTranslation("onboarding");
   const [key, setKey] = useState("");
   const save = useSaveAcoustidKey();
@@ -81,7 +81,7 @@ export function AcoustidPanel({ onSkip }: { onSkip: () => void }) {
               autoComplete="off"
               value={key}
               onChange={(event) => setKey(event.target.value)}
-              placeholder={t("steps.acoustid.placeholder")}
+              placeholder={isConfigured ? t("steps.acoustid.replace") : t("steps.acoustid.placeholder")}
               aria-label={t("steps.acoustid.fieldLabel")}
               className="py-2.5"
             />
@@ -96,13 +96,17 @@ export function AcoustidPanel({ onSkip }: { onSkip: () => void }) {
         {save.isError && <p className="text-[0.8125rem] text-danger">{t("steps.acoustid.unreachable")}</p>}
       </form>
 
-      <button
-        type="button"
-        onClick={onSkip}
-        className="cursor-pointer self-start rounded-sm text-xs text-muted underline-offset-4 transition-colors outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent/40"
-      >
-        {t("steps.acoustid.skip")}
-      </button>
+      {/* Nothing left to pass over once a key is in: the way out only exists
+          while the step is still asking. */}
+      {!isConfigured && (
+        <button
+          type="button"
+          onClick={onSkip}
+          className="cursor-pointer self-start rounded-sm text-xs text-muted underline-offset-4 transition-colors outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          {t("steps.acoustid.skip")}
+        </button>
+      )}
     </div>
   );
 }

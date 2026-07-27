@@ -18,7 +18,8 @@
       "copy": "Copier",
       "copied": "Copié",
       "recheck": "Re-vérifier",
-      "recheckHint": "Lance la commande dans un terminal, puis reviens ici."
+      "recheckHint": "Lance la commande dans un terminal, puis reviens ici.",
+      "found": "Trouvé sur la machine — Python {{version}}"
     },
     "engine": {
       "title": "Le moteur de téléchargement",
@@ -35,7 +36,8 @@
         "fetching": "Récupération de {{pkg}}…",
         "installing": "Installation des paquets…",
         "done": "Environnement prêt."
-      }
+      },
+      "log": "Voir le journal de l'installation"
     },
     "acoustid": {
       "title": "La clé AcoustID",
@@ -61,7 +63,8 @@
         "empty": "Le champ est vide."
       },
       "unreachable": "Impossible de joindre AcoustID. Vérifie ta connexion et réessaie.",
-      "skip": "Continuer sans — les pistes seront taguées à l'estime"
+      "skip": "Continuer sans — les pistes seront taguées à l'estime",
+      "replace": "Colle une nouvelle clé pour remplacer celle-ci"
     }
   }
 }

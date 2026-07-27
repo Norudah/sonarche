@@ -1,6 +1,6 @@
-import { Check, Minus } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import type { ReactNode } from "react";
+import { Check, ChevronDown, Minus } from "lucide-react";
+import { motion } from "motion/react";
+import { type ReactNode, useState } from "react";
 
 import type { SetupStep } from "@/features/onboarding/steps";
 import { pop, springs } from "@/shared/motion/tokens";
@@ -50,12 +50,32 @@ export interface StepRowProps {
   title: string;
   /** The right-hand column: a verdict once settled, a nudge while it is open. */
   summary?: ReactNode;
-  /** Rendered only while the step is the one being acted on. */
   children?: ReactNode;
 }
 
 export function StepRow({ index, step, isLast, title, summary, children }: StepRowProps) {
-  const isOpen = step.state === "actionRequired" && children != null;
+  const [reopened, setReopened] = useState(false);
+
+  // A step you have cleared can be looked at again — the install log is the
+  // reason, but it holds for all of them: a walkthrough that seals each answer
+  // behind you is a walkthrough you cannot re-read. The one you are *on* has no
+  // toggle, because closing the step that is asking you something hides the ask.
+  const canToggle = children != null && (step.state === "satisfied" || step.state === "skipped");
+  const isOpen = children != null && (step.state === "actionRequired" || (canToggle && reopened));
+
+  const header = (
+    <>
+      <h2
+        className={
+          "min-w-0 flex-1 truncate text-left text-[0.9375rem] " +
+          (step.state === "pending" ? "text-muted" : "font-semibold")
+        }
+      >
+        {title}
+      </h2>
+      {summary}
+    </>
+  );
 
   return (
     <li className="flex gap-4">
@@ -69,33 +89,44 @@ export function StepRow({ index, step, isLast, title, summary, children }: StepR
       </div>
 
       <div className={"min-w-0 flex-1 " + (isLast ? "pb-0" : "pb-7")}>
-        <div className="flex min-h-7 items-center gap-3">
-          <h2
-            className={
-              "min-w-0 flex-1 truncate text-[0.9375rem] " + (step.state === "pending" ? "text-muted" : "font-semibold")
-            }
+        {canToggle ? (
+          <button
+            type="button"
+            aria-expanded={isOpen}
+            onClick={() => setReopened((open) => !open)}
+            className="flex min-h-7 w-full cursor-pointer items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            {title}
-          </h2>
-          {summary}
-        </div>
+            {header}
+            <motion.span initial={false} animate={{ rotate: isOpen ? 180 : 0 }} transition={springs.snappy}>
+              <ChevronDown className="size-4 text-muted" />
+            </motion.span>
+          </button>
+        ) : (
+          <div className="flex min-h-7 items-center gap-3">
+            {header}
+            {/* Keeps the titles of toggleable and non-toggleable rows on the
+                same vertical line instead of shifting by a chevron's width. */}
+            {children != null && <span className="size-4 shrink-0" />}
+          </div>
+        )}
 
-        {/* Height, not opacity: the steps below have to move out of the way, and
-            a panel that fades in over them reads as a popover. Same transition
-            as the download card's detail, for the same reason. */}
-        <AnimatePresence initial={false}>
-          {isOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={springs.soft}
-              className="overflow-hidden"
-            >
-              <div className="pt-3">{children}</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Collapsed rather than unmounted, and that is the point: the engine
+            panel holds the install log, which only exists in this component's
+            state. Unmounting it on completion — which an AnimatePresence exit
+            does — threw away the very thing there is to re-read.
+            Height, not opacity alone: the steps below have to move out of the
+            way, and a panel that fades in over them reads as a popover. */}
+        <motion.div
+          initial={false}
+          animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+          transition={springs.soft}
+          className="overflow-hidden"
+          // Collapsed content stays in the DOM, so it has to leave the tab order
+          // with it — otherwise focus walks into a panel nobody can see.
+          inert={!isOpen}
+        >
+          <div className="pt-3">{children}</div>
+        </motion.div>
       </div>
     </li>
   );
