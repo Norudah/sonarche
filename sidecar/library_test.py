@@ -5,6 +5,7 @@ import unittest
 
 from library import (
     _apply_fields,
+    update,
     _coerce_int,
     art_paths_by_album,
     expand_db_path,
@@ -342,6 +343,96 @@ class ApplyFieldsTest(unittest.TestCase):
         item = self._item(grouping="")
         self.assertEqual(_apply_fields(item, {"grouping": "Video Games"}), {"grouping"})
         self.assertEqual(item.grouping, "Video Games")
+
+
+class UpdateMovesTheFileTest(unittest.TestCase):
+    """Regression: renaming an album or its artist left the file under the old
+    folder. The database said one thing and the disk another, and only a real
+    move on a real file can prove that fixed."""
+
+    def setUp(self):
+        import struct
+
+        self.root = tempfile.mkdtemp()
+        self.music = os.path.join(self.root, "music")
+        os.makedirs(self.music)
+        self.db = os.path.join(self.root, "library.db")
+
+        source = os.path.join(self.root, "track.wav")
+        rate, seconds = 8000, 1
+        data = b"\x00\x00" * rate * seconds
+        header = (
+            b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt "
+            + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+            + b"data" + struct.pack("<I", len(data))
+        )
+        with open(source, "wb") as handle:
+            handle.write(header + data)
+
+        from beets.library import Item, Library
+
+        lib = Library(self.db, directory=self.music)
+        item = Item.from_path(source)
+        item.albumartist = "Old Artist"
+        item.artist = "Old Artist"
+        item.album = "Old Album"
+        item.title = "Track"
+        item.track = 1
+        lib.add(item)
+        lib.add_album([item])
+        item.move()
+        self.item_id = item.id
+        self.old_path = item.filepath
+        lib._close()
+
+    def _update(self, fields):
+        return update(
+            "req",
+            {
+                "beets_db": self.db,
+                "library_dir": self.music,
+                "updates": [{"id": self.item_id, "fields": fields}],
+            },
+        )
+
+    def _current_path(self):
+        from beets.library import Library
+
+        lib = Library(self.db, directory=self.music)
+        try:
+            return str(lib.get_item(self.item_id).filepath)
+        finally:
+            lib._close()
+
+    def test_renaming_the_album_refiles_the_track(self):
+        self.assertEqual(self._update({"album": "New Album"}), {"updated": 1})
+
+        moved = self._current_path()
+        self.assertIn(os.path.join("Old Artist", "New Album"), moved)
+        self.assertTrue(os.path.exists(moved))
+        self.assertFalse(os.path.exists(self.old_path), "the old file must not linger")
+
+    def test_renaming_the_album_artist_refiles_the_track(self):
+        self.assertEqual(self._update({"albumartist": "New Artist"}), {"updated": 1})
+
+        moved = self._current_path()
+        self.assertIn(os.path.join("New Artist", "Old Album"), moved)
+        self.assertTrue(os.path.exists(moved))
+
+    def test_the_emptied_folder_does_not_survive(self):
+        self._update({"album": "New Album"})
+
+        self.assertFalse(
+            os.path.isdir(os.path.join(self.music, "Old Artist", "Old Album")),
+            "a husk folder makes the library look like it holds two albums",
+        )
+
+    def test_an_edit_that_changes_no_filing_field_leaves_the_path_alone(self):
+        before = self._current_path()
+
+        self.assertEqual(self._update({"year": "2011"}), {"updated": 1})
+
+        self.assertEqual(self._current_path(), before)
 
 
 if __name__ == "__main__":
