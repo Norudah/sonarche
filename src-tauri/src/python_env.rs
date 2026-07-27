@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use serde::Serialize;
@@ -48,6 +48,9 @@ pub struct AppPaths {
     pub venv_dir: PathBuf,
     pub staging_dir: PathBuf,
     pub beets_config: PathBuf,
+    /// The same config with cover embedding off, used only by the library
+    /// import. See `write_beets_config` for why the two cannot be one.
+    pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
     pub library_dir: PathBuf,
     pub sidecar_main: PathBuf,
@@ -85,6 +88,7 @@ impl AppPaths {
             venv_dir: data.join("venv"),
             staging_dir: data.join("staging"),
             beets_config: data.join("beets").join("config.yaml"),
+            beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir,
             sidecar_main: sidecar_dir.join("main.py"),
@@ -335,8 +339,30 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
 
 /// Single config site for beets: the CLI importer reads it via `--config` and
 /// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
+///
+/// Written twice, differing in one line. `embedart: auto` bakes the album's
+/// cover into every track, which costs nothing on a download — the staged file
+/// is alone in an empty folder when the import stage runs, so there is no art
+/// to bake — and is ruinous on a library import, where the cover is already
+/// sitting beside the tracks. Measured on a real import: 314 MB of duplicated
+/// images across 1.17 GB, one full-size copy per track, 88 MB for a single
+/// 18-track album. The interface reads the folder's file and never the tag, so
+/// the embedding only ever served other players.
+///
+/// Two files rather than a flag on one, because beets takes a single
+/// `--config` and offers no way to override a key from the command line.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
-    let config = format!(
+    write_config_file(paths, &paths.beets_config, true).await?;
+    write_config_file(paths, &paths.beets_import_config, false).await
+}
+
+async fn write_config_file(paths: &AppPaths, target: &Path, embed_art: bool) -> AppResult<()> {
+    tokio::fs::write(target, beets_config_yaml(paths, embed_art)).await?;
+    Ok(())
+}
+
+fn beets_config_yaml(paths: &AppPaths, embed_art: bool) -> String {
+    format!(
         r#"directory: "{library}"
 library: "{db}"
 import:
@@ -358,7 +384,7 @@ musicbrainz:
 fetchart:
   auto: yes
 embedart:
-  auto: yes
+  auto: {embed_art}
 # auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
 # itself. Canonical tree + whitelist are ours (bundled sidecar resources):
 # the stored genre is the most specific tree node (count 3, specific first),
@@ -379,9 +405,8 @@ ui:
         db = paths.beets_db.display(),
         tree = paths.genres_tree.display(),
         whitelist = paths.genres_whitelist.display(),
-    );
-    tokio::fs::write(&paths.beets_config, config).await?;
-    Ok(())
+        embed_art = if embed_art { "yes" } else { "no" },
+    )
 }
 
 pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
@@ -441,4 +466,59 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
     write_beets_config(&paths).await?;
     emit_log(app, "Environment ready.");
     env_status(app).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paths() -> AppPaths {
+        let data = PathBuf::from("/data");
+        AppPaths {
+            venv_dir: data.join("venv"),
+            staging_dir: data.join("staging"),
+            beets_config: data.join("beets").join("config.yaml"),
+            beets_import_config: data.join("beets").join("config-import.yaml"),
+            beets_db: data.join("beets").join("library.db"),
+            library_dir: PathBuf::from("/music/Sonarche"),
+            sidecar_main: data.join("sidecar").join("main.py"),
+            requirements: data.join("sidecar").join("requirements.txt"),
+            genres_tree: data.join("sidecar").join("genres-tree.yaml"),
+            genres_whitelist: data.join("sidecar").join("genres-whitelist.txt"),
+            tools_dir: data.join("tools"),
+            python_archive: data.join("python.tar.gz"),
+            runtime_dir: data.join("runtime"),
+            wheels_dir: data.join("wheels"),
+        }
+    }
+
+    /// The one line the two configs may differ on, and the reason the second
+    /// file exists at all. A library import bakes the album's own cover into
+    /// every track when this is `yes` — measured at 314 MB of duplicated images
+    /// in a 1.17 GB library, 88 MB of it in a single 18-track album.
+    #[test]
+    fn the_import_config_is_the_app_config_with_cover_embedding_off() {
+        let app = beets_config_yaml(&paths(), true);
+        let import = beets_config_yaml(&paths(), false);
+
+        assert!(app.contains("embedart:\n  auto: yes"), "{app}");
+        assert!(import.contains("embedart:\n  auto: no"), "{import}");
+        // Nothing else may drift: the import writes into the same library, with
+        // the same paths, the same genre tree and the same clutter rules.
+        assert_eq!(
+            app.replace("auto: yes", "auto: no"),
+            import.replace("auto: yes", "auto: no")
+        );
+    }
+
+    /// Both point at the same library and the same database — the import is a
+    /// different way in, not a different shelf.
+    #[test]
+    fn both_configs_target_the_one_library() {
+        for embed_art in [true, false] {
+            let config = beets_config_yaml(&paths(), embed_art);
+            assert!(config.contains(r#"directory: "/music/Sonarche""#));
+            assert!(config.contains(r#"library: "/data/beets/library.db""#));
+        }
+    }
 }

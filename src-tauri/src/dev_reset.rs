@@ -138,6 +138,7 @@ mod tests {
             venv_dir: data.join("venv"),
             staging_dir: data.join("staging"),
             beets_config: data.join("beets").join("config.yaml"),
+            beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir: PathBuf::from("/music/Sonarche"),
             sidecar_main: data.join("sidecar").join("main.py"),

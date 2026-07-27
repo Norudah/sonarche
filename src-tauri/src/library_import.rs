@@ -86,7 +86,11 @@ async fn request(
             "library_import",
             json!({
                 "folder": folder,
-                "beets_config": paths.beets_config,
+                // The import config, not the app's: this is the one path where
+                // the album's cover is already on disk beside the tracks, and
+                // baking a copy of it into every one of them is how a 1.17 GB
+                // library ends up carrying 314 MB of duplicated images.
+                "beets_config": paths.beets_import_config,
             }),
             IMPORT_TIMEOUT,
         )
