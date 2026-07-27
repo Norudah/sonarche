@@ -492,7 +492,24 @@ export function emitMockEvent(event: string, payload: unknown) {
   for (const handler of listeners.get(event) ?? []) handler(payload);
 }
 
+/**
+ * A fake yt-dlp reporting bytes.
+ *
+ * The activity feed's rail is driven by these events, so without them the one
+ * thing this preview exists to show — a download visibly advancing — is a bar
+ * frozen at zero. Same reasoning as the fake playhead below: the state the UI
+ * spends its life in is the one a static fixture cannot reach.
+ */
+function tickDownloadProgress() {
+  let percent = 0;
+  window.setInterval(() => {
+    percent = (percent + 7) % 104;
+    emitMockEvent("sidecar:event", { event: "download_progress", data: { percent: Math.min(percent, 100) } });
+  }, 700);
+}
+
 export function installMockTauri() {
+  tickDownloadProgress();
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     transformCallback: (callback: (message: unknown) => void) => {

@@ -95,4 +95,8 @@ describe("mapJob", () => {
     expect(mapped.downloadAttempts).toBe(0);
     expect(mapped.tracks[0]).toMatchObject({ downloadAttempts: 0, duplicateOf: null });
   });
+
+  it("reads a job queued before the category option as carrying none", () => {
+    expect(mapJob(wireJob({ category: undefined })).category).toBeNull();
+  });
 });

@@ -6,10 +6,9 @@ import type { DownloadJob } from "@/features/download/api";
  * a reading preference. */
 export const HISTORY_PAGE_SIZE = 25;
 
-/** How many downloads the Downloads page keeps under the composer. The page is
- * about starting a download, not about auditing past ones — the rest lives in
- * History. */
-export const RECENT_JOBS = 3;
+/** How many finished downloads the Downloads page keeps under the composer.
+ * That page is about starting one; the archive is History's job. */
+export const RECENT_JOBS = 5;
 
 export interface JobPage {
   jobs: DownloadJob[];

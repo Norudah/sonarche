@@ -232,6 +232,15 @@
      one notch off white, so chips and inputs still stand out on top of it. */
   --color-panel: oklch(0.985 0.0015 286);
 
+  /* List tray — the recessed block a list of rows is filed onto (the download
+     feed, the history). It has to do two jobs at once that no existing step
+     does both of: read as a distinct area against the near-white background
+     (`panel`, one notch off white, disappears at this size), and stay light
+     enough that a white card laid on it still reads as lifted rather than as
+     one more grey box (`surface-secondary` at 0.9524 is too close to a real
+     grey for that). This sits between them. */
+  --color-tray: oklch(0.972 0.0015 286);
+
   /* Metadata drawer header — a decorative gradient, same hue as the app's
      indigo accent but starting darker so it resolves into --accent rather
      than sitting flat on it. Not semantic (single consumer), so it lives
@@ -303,6 +312,25 @@
     }
   }
 
+  /* The download rail's playhead on a stage that reports no progress of its own
+     (a lone file's import): it sweeps the segment instead of sitting at zero.
+     `alternate` rather than a loop — a handle that jumps back to the start
+     reads as a restart; one that comes back reads as searching. */
+  --animate-rail-scan: sonarche-rail-scan 1.6s var(--ease-out-fluid) infinite alternate;
+
+  /* The handle is anchored to the wrapper's right edge, so the wrapper starts
+     one full segment to the left and comes back: that puts the handle at the
+     segment's left edge at 0% and at its right edge at 100%. Sweeping 0 → 100
+     instead would walk it out of the segment entirely. */
+  @keyframes sonarche-rail-scan {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0%);
+    }
+  }
+
   /* Now-playing equalizer — used by the player when audio is playing. */
   --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
 
@@ -350,6 +378,13 @@
   }
 }
 
+/** A job card that just landed in the activity feed: the same wash-and-rise as
+    a new queue row, on one element instead of split across a cell and its child
+    (a card is an ordinary block, so a transform on it works). */
+@utility card-reveal {
+  animation: var(--animate-row-wash), var(--animate-row-rise);
+}
+
 /** Same staggered entrance for a plain element rather than a table row — an
     album card in a grid. `row-cascade` has to reach *into* a `<tr>` because a
     transform on a table-cell is unreliable; outside a table the element can
@@ -369,7 +404,8 @@
   .row-reveal > th,
   .row-cascade > td > *,
   .row-cascade > th > *,
-  .cascade-item {
+  .cascade-item,
+  .card-reveal {
     animation: none;
   }
 
@@ -377,5 +413,11 @@
      working, so removing it would leave a frozen screen with no explanation. */
   .animate-splash-bar {
     animation-duration: 2.4s;
+  }
+
+  /* The sweeping playhead is decoration on top of a stage the phase line already
+     names in words ("Rangement"), so nothing is lost by parking it. */
+  .animate-rail-scan {
+    animation: none;
   }
 }

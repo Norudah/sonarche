@@ -1,45 +1,61 @@
 import { Button, InputGroup } from "@heroui/react";
-import { Download, Link2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { ArrowDownToLine, Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { JobKind } from "@/features/download/api";
-import { KindChoice } from "@/features/download/KindChoice";
-import { SourceBadges } from "@/features/download/SourceBadges";
+import type { EnqueueRequest, JobKind } from "@/features/download/api";
+import { ComposerSettings } from "@/features/download/ComposerSettings";
+import { readLastCategory, writeLastCategory } from "@/features/download/lastCategory";
+import { YouTubeGlyph } from "@/features/download/YouTubeGlyph";
 import { detectUrlKind } from "@/features/download/urlKind";
-import { springs } from "@/shared/motion/tokens";
+import { Swap } from "@/shared/motion/Swap";
 import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
 
 interface UrlComposerProps {
-  onSubmit: (url: string, kind: JobKind) => void;
+  onSubmit: (request: EnqueueRequest) => void;
   isPending: boolean;
   /** Cleared by the page once the job is queued. */
   resetToken: number;
 }
 
+/**
+ * The one control this page exists for.
+ *
+ * Everything that decides what a link becomes lives in this single panel — the
+ * URL, whether it is a set or a track, and the tag it will be filed under —
+ * because the alternative is a form whose consequences are scattered across the
+ * screen. The panel is the hero: the heading above it is deliberately the same
+ * size as every other page's, and the weight goes to the machine, not the copy.
+ */
 export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProps) {
   const { t } = useTranslation("download");
   const [url, setUrl] = useState("");
-  // The mixed-URL choice is bound to the URL it was made for: editing the
-  // input invalidates it, no effect needed.
-  const [mixedChoice, setMixedChoice] = useState<{ url: string; kind: JobKind } | null>(null);
+  // The kind choice is bound to the URL it was made for: editing the input
+  // invalidates it, no effect needed.
+  const [choice, setChoice] = useState<{ url: string; kind: JobKind } | null>(null);
+  const [category, setCategory] = useState<string | null>(readLastCategory);
   const [lastReset, setLastReset] = useState(resetToken);
 
   if (resetToken !== lastReset) {
     setLastReset(resetToken);
     setUrl("");
-    setMixedChoice(null);
+    setChoice(null);
   }
 
   const detected = detectUrlKind(url);
-  const chosenKind = mixedChoice?.url === url ? mixedChoice.kind : null;
-  const kind: JobKind | null = detected === "album" ? "album" : detected === "mixed" ? chosenKind : "single";
-  const canSubmit = url.trim() !== "" && kind != null && !isPending;
+  // A link that can only be read one way decides for itself; anything else
+  // takes the user's answer, and failing that the album — a pasted playlist is
+  // what people come here with, and picking the single loses the other eleven.
+  const forced: JobKind | null = detected === "album" ? "album" : detected === "single" ? "single" : null;
+  const kind: JobKind = forced ?? (choice?.url === url ? choice.kind : "album");
+
+  const canSubmit = detected != null && !isPending;
+  // On the wrapper rather than the Button: `usePopOnActivate` writes a
+  // transform on the element it is handed, and HeroUI's Button owns its own.
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
   return (
-    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-4">
+    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-6">
       {/* The same accent wash every library hero sits on — `accent-soft` fading
        * to the page background — so this landing band reads as one family with
        * the album, artist and genre headers rather than a screen of its own.
@@ -48,75 +64,79 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
        * `HeroWash` for the full reasoning. */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background" />
 
-      <div className="relative flex flex-col gap-4">
-        <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-balance whitespace-pre-line">{t("title")}</h1>
+      <div className="relative flex flex-col gap-5">
+        <div>
+          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
+        </div>
 
-        <SourceBadges isYouTubeDetected={detected != null} />
-
-        {/* `items-stretch`, not `items-center`: the input's height comes from its
-         * own padding and the button's from its size variant, and the two never
-         * matched. Stretching makes the shorter one adopt the taller one's box
-         * instead of sitting centred inside it. */}
+        {/* Lifted by its shadow, never outlined. A hairline ring around a white
+         * card sitting on the accent wash draws the box before it draws the
+         * field, and focus is answered with a soft accent halo for the same
+         * reason — a 1px accent line on a rounded card reads as a validation
+         * error, not as "you are typing here". */}
         <form
-          className="flex items-stretch gap-3"
+          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-md transition-shadow focus-within:ring-4 focus-within:ring-accent-soft"
           onSubmit={(event) => {
             event.preventDefault();
-            if (canSubmit) onSubmit(url.trim(), kind);
+            if (canSubmit) onSubmit({ url: url.trim(), kind, category });
           }}
         >
-          <InputGroup.Root
-            fullWidth
-            className="rounded-full border-separator bg-surface shadow-xs focus-within:ring-2 focus-within:ring-accent/30"
-          >
-            <InputGroup.Prefix className="rounded-l-full pr-1 pl-5 text-muted">
-              <Link2 className="size-4" />
-            </InputGroup.Prefix>
-            <InputGroup.Input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder={t("urlPlaceholder")}
-              aria-label={t("urlLabel")}
-              className="py-3"
-            />
-          </InputGroup.Root>
-          {/* The button is the commit point of the whole page, so it gets the
-           * most feedback: it swells the moment the form becomes submittable,
-           * and gives under the press. */}
-          <motion.div
-            ref={submitRef}
-            whileTap={canSubmit ? { scale: 0.95 } : undefined}
-            transition={springs.snappy}
-            className="flex"
-          >
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="h-full rounded-full px-7 shadow-md shadow-accent/25"
-              isDisabled={!canSubmit}
-            >
-              <Download className="size-4" />
-              {t("download")}
-            </Button>
-          </motion.div>
-        </form>
+          {/* `items-stretch`, not `items-center`: the input's height comes from
+           * its own padding and the button's from its size variant, and the two
+           * never matched. Stretching makes the shorter one adopt the taller
+           * one's box instead of sitting centred inside it. */}
+          <div className="flex items-stretch gap-2 p-2">
+            <InputGroup.Root fullWidth className="border-none bg-transparent shadow-none">
+              {/* Recognising the link is the composer's first act, and it is
+               * reported where the link is rather than on a badge elsewhere:
+               * the neutral chain-link becomes YouTube's own mark, in its own
+               * red, the moment the paste lands. */}
+              <InputGroup.Prefix className="pr-3 pl-4 text-muted">
+                <Swap swapKey={detected != null ? "youtube" : "idle"} mode="cross" className="flex">
+                  {detected != null ? (
+                    <YouTubeGlyph className="size-[1.125rem] text-youtube" />
+                  ) : (
+                    <Link2 className="size-4" />
+                  )}
+                </Swap>
+              </InputGroup.Prefix>
+              <InputGroup.Input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder={t("urlPlaceholder")}
+                aria-label={t("urlLabel")}
+                className="py-2.5"
+              />
+            </InputGroup.Root>
 
-        {/* The choice is a question the page asks; it should arrive rather than
-         * appear, and leave rather than vanish, or the form jumps. */}
-        <AnimatePresence>
-          {detected === "mixed" && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={springs.soft}
-              className="overflow-hidden"
-            >
-              <KindChoice value={chosenKind} onChange={(next) => setMixedChoice({ url, kind: next })} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {/* The commit point of the page, so it gets the most feedback: it
+             * swells the moment the form becomes submittable, and gives under
+             * the press. */}
+            <div ref={submitRef} className="flex shrink-0">
+              <Button
+                type="submit"
+                variant="primary"
+                className="h-full rounded-xl px-5 transition-transform active:scale-[0.97]"
+                isDisabled={!canSubmit}
+              >
+                <ArrowDownToLine className="size-4" />
+                {t("download")}
+              </Button>
+            </div>
+          </div>
+
+          <ComposerSettings
+            kind={kind}
+            detected={detected}
+            onKindChange={(next) => setChoice({ url, kind: next })}
+            category={category}
+            onCategoryChange={(next) => {
+              setCategory(next);
+              writeLastCategory(next);
+            }}
+          />
+        </form>
       </div>
     </div>
   );

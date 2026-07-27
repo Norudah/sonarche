@@ -58,6 +58,7 @@ export function job(over: Partial<DownloadJob> = {}): DownloadJob {
     report: null,
     tracks: [],
     downloadAttempts: 0,
+    category: null,
     createdAt: 0,
     updatedAt: 0,
     ...over,

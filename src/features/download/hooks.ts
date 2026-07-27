@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import {
   clearJobHistory,
   type DownloadJob,
+  type EnqueueRequest,
   enqueueDownload,
-  type JobKind,
   listJobs,
   mapJob,
   retryJob,
@@ -49,7 +49,7 @@ export function useJobs() {
 export function useEnqueueDownload() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ url, kind }: { url: string; kind: JobKind }) => enqueueDownload(url, kind),
+    mutationFn: (request: EnqueueRequest) => enqueueDownload(request),
     onSuccess: (job) => upsertJob(queryClient, job),
   });
 }
