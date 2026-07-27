@@ -22,6 +22,7 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 
 
 def _handlers():
+    import acoustid_key
     import download
     import enrich
     import enrich_album
@@ -41,6 +42,7 @@ def _handlers():
         "library_remove": library.remove,
         "library_update": library.update,
         "genres_recompute": genres.recompute,
+        "acoustid_key_check": acoustid_key.handle,
     }
 
 

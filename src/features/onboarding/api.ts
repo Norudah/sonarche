@@ -38,3 +38,22 @@ export function getOnboardingState(): Promise<OnboardingState> {
 export function setOnboardingCompleted(completed: boolean): Promise<OnboardingState> {
   return invoke<OnboardingState>("set_onboarding_completed", { completed });
 }
+
+/** Why a key was turned down. `null` when it was accepted. */
+export type KeyRejection = "invalidKey" | "empty";
+
+export interface KeyCheck {
+  valid: boolean;
+  reason: KeyRejection | null;
+}
+
+/** Asks AcoustID whether it knows this key, before anything is stored. */
+export function checkAcoustidKey(key: string): Promise<KeyCheck> {
+  return invoke<KeyCheck>("check_acoustid_key", { key });
+}
+
+/** Same command the settings screen uses — the walkthrough is just an earlier
+ * door onto it. An empty value clears the stored key. */
+export function storeAcoustidKey(key: string): Promise<unknown> {
+  return invoke("set_api_key", { name: "acoustid", value: key });
+}

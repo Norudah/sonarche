@@ -19,6 +19,10 @@ use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
+        // The walkthrough has to hand the user off to acoustid.org to get a key,
+        // and a webview cannot open a browser on its own. Scoped to that one
+        // host in `capabilities/default.json`.
+        .plugin(tauri_plugin_opener::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
@@ -34,6 +38,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_env_status,
             commands::setup_env,
+            commands::check_acoustid_key,
             commands::get_onboarding_state,
             commands::set_onboarding_completed,
             commands::enqueue_download,

@@ -210,6 +210,26 @@ pub async fn recompute_genres(
     state.run(&app).await
 }
 
+/// Check an AcoustID key before it is stored, so a typo is caught while the
+/// user still has the key on screen rather than on the first failed download.
+/// Through the sidecar because that is where the HTTP client already lives —
+/// and by then the engine step is done, so the venv is guaranteed to be there.
+#[tauri::command]
+pub async fn check_acoustid_key(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    key: String,
+) -> AppResult<Box<RawValue>> {
+    state
+        .read(
+            &app,
+            "acoustid_key_check",
+            json!({ "key": key }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
 #[tauri::command]
 pub async fn get_onboarding_state(app: AppHandle) -> AppResult<OnboardingState> {
     onboarding::state(&app).await

@@ -459,13 +459,55 @@ function inflate<
 
 const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
+/**
+ * Which rung of the walkthrough to open on: `?setup=python` (nothing found),
+ * `?setup=engine` (an interpreter but no venv), anything else a healthy
+ * install. Pair with `?onboarding=1`, which makes the gate ignore the
+ * completion flag. Without this the first two steps are always satisfied and
+ * their panels — the ones with the copy, the install and the log — could not be
+ * looked at at all.
+ */
+const requestedSetup = new URLSearchParams(window.location.search).get("setup");
+
+const env = {
+  python: requestedSetup === "python" ? null : { path: "/opt/homebrew/bin/python3", version: "3.13.1" },
+  venvOk: requestedSetup !== "python" && requestedSetup !== "engine",
+  depsOk: requestedSetup !== "python" && requestedSetup !== "engine",
+  libraryDir: "/Users/dev/Music/Sonarche",
+};
+
+const onboarding = { completed: requestedSetup == null, acoustidConfigured: false };
+
+/** The lines `python_env.rs` emits, plus pip's, at a watchable pace. */
+const SETUP_SCRIPT = [
+  "Python: /opt/homebrew/bin/python3 (3.13.1)",
+  "Creating virtual environment...",
+  "Installing dependencies (this can take a few minutes)...",
+  "Collecting beets==2.12.0 (from -r requirements.txt (line 1))",
+  "Downloading beets-2.12.0-py3-none-any.whl (1.9 MB)",
+  "Collecting yt-dlp==2026.7.4 (from -r requirements.txt (line 2))",
+  "Collecting mutagen==1.47.0 (from -r requirements.txt (line 3))",
+  "Installing collected packages: mutagen, yt-dlp, beets",
+  "Environment ready.",
+];
+
+function runMockSetup(): Promise<unknown> {
+  return new Promise((resolve) => {
+    let index = 0;
+    const timer = window.setInterval(() => {
+      emitMockEvent("setup:log", SETUP_SCRIPT[index]);
+      index += 1;
+      if (index >= SETUP_SCRIPT.length) {
+        window.clearInterval(timer);
+        env.venvOk = true;
+        env.depsOk = true;
+        resolve(env);
+      }
+    }, 900);
+  });
+}
+
 const responses: Record<string, unknown> = {
-  get_env_status: {
-    python: { path: "/usr/bin/python3", version: "3.12.0" },
-    venvOk: true,
-    depsOk: true,
-    libraryDir: "/Users/dev/Music/Sonarche",
-  },
   list_jobs: jobs,
   list_library: { tracks: inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
@@ -531,10 +573,27 @@ export function installMockTauri() {
         return callbackId;
       }
       if (cmd.startsWith("plugin:event|")) return ++callbackId;
+      // No browser to hand off to; the walkthrough's link rows still exercise
+      // their own path.
+      if (cmd.startsWith("plugin:opener|")) return null;
       if (cmd === "set_api_key") {
         const key = apiKeys.find((k) => k.name === payload?.name);
         if (key) key.configured = String(payload?.value ?? "").trim() !== "";
+        if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
         return key;
+      }
+      if (cmd === "get_env_status") return { ...env };
+      if (cmd === "setup_env") return runMockSetup();
+      if (cmd === "get_onboarding_state") return { ...onboarding };
+      if (cmd === "set_onboarding_completed") {
+        onboarding.completed = Boolean(payload?.completed);
+        return { ...onboarding };
+      }
+      // Anything but `bad` passes, so both verdicts can be seen without a real
+      // key — and the rejection is the one worth looking at.
+      if (cmd === "check_acoustid_key") {
+        const valid = String(payload?.key ?? "").trim() !== "bad";
+        return { valid, reason: valid ? null : "invalidKey" };
       }
       if (cmd === "set_rate_limit_delay") {
         const field = preferenceFields[String(payload?.key)];

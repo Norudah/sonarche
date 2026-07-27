@@ -3,22 +3,65 @@
   "splash": {
     "checking": "Checking the environment…"
   },
-  "pythonMissing": {
-    "title": "Python 3.10+ required",
-    "description": "Music Manager needs a recent Python for its download and library engine. Install it with Homebrew, then check again.",
-    "retry": "Check again"
+  "walkthrough": {
+    "eyebrow": "Welcome",
+    "title": "Before the first play",
+    "lead": "Long enough to put the engine in place, and to give you real tags instead of guessed ones.",
+    "enter": "Enter {{app}}",
+    "libraryHint": "Your music will be filed in {{path}}"
   },
-  "setup": {
-    "title": "Preparing the environment",
-    "description": "The app will create an isolated Python environment and install yt-dlp and beets into it. Your system Python is left untouched.",
-    "install": "Install the environment",
-    "installing": "Installing…",
-    "starting": "Starting…",
-    "failed": "Installation failed"
-  },
-  "ready": {
-    "title": "Everything is ready",
-    "description": "The environment is in place. You can start filling your library.",
-    "action": "Enter Sonarche"
+  "steps": {
+    "python": {
+      "title": "The Python base",
+      "done": "Python {{version}}",
+      "body": "Sonarche runs on two Python tools, yt-dlp and beets. That means it needs Python 3.10 or newer on the machine. Nothing gets installed into it: the app builds its own environment alongside.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "recheck": "Check again",
+      "recheckHint": "Run the command in a terminal, then come back here."
+    },
+    "engine": {
+      "title": "The download engine",
+      "done": "Installed",
+      "body": "yt-dlp to fetch the audio, beets to file and tag it. Both are installed into an environment that belongs to Sonarche alone — your system Python is left untouched.",
+      "action": "Install the engine",
+      "retry": "Try again",
+      "duration": "A few minutes, depending on your connection.",
+      "detail": "Show the detail",
+      "failed": "Installation failed",
+      "phase": {
+        "starting": "Starting…",
+        "venv": "Creating the isolated environment…",
+        "fetching": "Fetching {{pkg}}…",
+        "installing": "Installing packages…",
+        "done": "Environment ready."
+      }
+    },
+    "acoustid": {
+      "title": "The AcoustID key",
+      "done": "Key saved",
+      "recommended": "Strongly recommended",
+      "skipped": "Skipped",
+      "body": "Without a key, Sonarche reads the video title and guesses: your tracks land marked \"Guessed tags\". With one, it listens to the file, computes its fingerprint and asks AcoustID — the track is identified, artist, album and year included. It's free, and it takes two minutes.",
+      "account": {
+        "label": "Create an AcoustID account",
+        "hint": "You can sign in with an account you already have."
+      },
+      "application": {
+        "label": "Register an application",
+        "hint": "Name it whatever you like — the key shows up right after."
+      },
+      "open": "Open",
+      "fieldLabel": "AcoustID API key",
+      "placeholder": "Paste your key here",
+      "check": "Check",
+      "checking": "Checking…",
+      "rejected": {
+        "invalidKey": "AcoustID doesn't recognise this key. Check that you copied the application's key, not the account's.",
+        "empty": "The field is empty."
+      },
+      "unreachable": "Could not reach AcoustID. Check your connection and try again.",
+      "skip": "Continue without — tracks will be tagged by guesswork"
+    }
   }
 }

@@ -10,8 +10,17 @@
 
 import type { EnvStatus } from "@/features/onboarding/api";
 
-/** Ordered: the walkthrough renders them in exactly this sequence. */
-export const SETUP_STEP_IDS = ["python", "engine", "acoustid", "library"] as const;
+/**
+ * Ordered, and the order is the point: nothing can be installed before an
+ * interpreter is found, and nothing can be fingerprinted before the engine
+ * exists. That is what earns the walkthrough its numbering — the steps are a
+ * real sequence, not a decorated list.
+ *
+ * Where the music lands is deliberately not among them: it is a fact to state
+ * at the end, not a task, and a numbered step that asks nothing would dilute
+ * the three that do.
+ */
+export const SETUP_STEP_IDS = ["python", "engine", "acoustid"] as const;
 
 export type SetupStepId = (typeof SETUP_STEP_IDS)[number];
 
@@ -46,7 +55,6 @@ const BLOCKING: Record<SetupStepId, boolean> = {
   // Strongly pushed, never enforced: without a key the app still runs, it just
   // guesses tags instead of identifying them.
   acoustid: false,
-  library: false,
 };
 
 function isSatisfied(id: SetupStepId, input: SetupInput): boolean {
@@ -59,10 +67,6 @@ function isSatisfied(id: SetupStepId, input: SetupInput): boolean {
       return env.venvOk && env.depsOk;
     case "acoustid":
       return input.acoustidConfigured;
-    case "library":
-      // The directory is created as a side effect of a healthy environment, so
-      // this step is a statement of where the music lands, not a task.
-      return env.venvOk && env.depsOk;
   }
 }
 

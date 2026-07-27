@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { onboardingForcedByDev } from "@/features/onboarding/devOverride";
 import { useCompleteOnboarding, useEnvStatus, useOnboardingState } from "@/features/onboarding/hooks";
-import { SetupFlow } from "@/features/onboarding/SetupFlow";
+import { SetupWalkthrough } from "@/features/onboarding/SetupWalkthrough";
 import { SplashScreen } from "@/features/onboarding/SplashScreen";
 import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
@@ -53,9 +53,10 @@ export function SetupGate({ children }: { children: ReactNode }) {
 
   if (gate === "onboarding") {
     return (
-      <SetupFlow
-        steps={steps}
-        onRetryPython={() => status.refetch()}
+      <SetupWalkthrough
+        env={status.data ?? null}
+        acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
+        onRecheckPython={() => status.refetch()}
         isCheckingPython={status.isFetching}
         onFinish={() => complete.mutate()}
         isFinishing={complete.isPending}

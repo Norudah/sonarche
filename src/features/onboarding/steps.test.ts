@@ -42,10 +42,9 @@ describe("buildSetupSteps", () => {
     expect(stateOf(steps, "acoustid")).toBe("pending");
   });
 
-  it("does not let an open optional step hold up the ones behind it", () => {
+  it("opens the optional step once the blocking ones are done", () => {
     const steps = buildSetupSteps({ env: env(), acoustidConfigured: false });
     expect(stateOf(steps, "acoustid")).toBe("actionRequired");
-    expect(stateOf(steps, "library")).toBe("satisfied");
   });
 
   it("reports a passed-over optional step as skipped, not as open", () => {

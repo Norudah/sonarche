@@ -3,22 +3,65 @@
   "splash": {
     "checking": "Vérification de l'environnement…"
   },
-  "pythonMissing": {
-    "title": "Python 3.10+ requis",
-    "description": "Music Manager a besoin d'un Python récent pour son moteur de téléchargement et de bibliothèque. Installe-le avec Homebrew puis relance la vérification.",
-    "retry": "Re-vérifier"
+  "walkthrough": {
+    "eyebrow": "Bienvenue",
+    "title": "Avant la première écoute",
+    "lead": "Le temps de mettre le moteur en place, et de te donner de vrais tags plutôt que des tags devinés.",
+    "enter": "Entrer dans {{app}}",
+    "libraryHint": "Ta musique sera rangée dans {{path}}"
   },
-  "setup": {
-    "title": "Préparation de l'environnement",
-    "description": "L'app va créer un environnement Python isolé et y installer yt-dlp et beets. Cela ne touche pas au Python de ton système.",
-    "install": "Installer l'environnement",
-    "installing": "Installation en cours…",
-    "starting": "Démarrage…",
-    "failed": "L'installation a échoué"
-  },
-  "ready": {
-    "title": "Tout est prêt",
-    "description": "L'environnement est en place. Tu peux commencer à remplir ta bibliothèque.",
-    "action": "Entrer dans Sonarche"
+  "steps": {
+    "python": {
+      "title": "Le socle Python",
+      "done": "Python {{version}}",
+      "body": "Sonarche s'appuie sur deux outils Python, yt-dlp et beets. Il lui faut donc un Python 3.10 ou plus récent sur la machine. Rien ne sera installé dedans : l'app se crée son propre environnement à côté.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "recheck": "Re-vérifier",
+      "recheckHint": "Lance la commande dans un terminal, puis reviens ici."
+    },
+    "engine": {
+      "title": "Le moteur de téléchargement",
+      "done": "Installé",
+      "body": "yt-dlp pour récupérer l'audio, beets pour ranger et taguer. Les deux sont installés dans un environnement qui n'appartient qu'à Sonarche — ton Python système n'est pas touché.",
+      "action": "Installer le moteur",
+      "retry": "Réessayer",
+      "duration": "Quelques minutes, selon ta connexion.",
+      "detail": "Voir le détail",
+      "failed": "L'installation a échoué",
+      "phase": {
+        "starting": "Démarrage…",
+        "venv": "Création de l'environnement isolé…",
+        "fetching": "Récupération de {{pkg}}…",
+        "installing": "Installation des paquets…",
+        "done": "Environnement prêt."
+      }
+    },
+    "acoustid": {
+      "title": "La clé AcoustID",
+      "done": "Clé enregistrée",
+      "recommended": "Vivement recommandé",
+      "skipped": "Passée",
+      "body": "Sans clé, Sonarche lit le titre de la vidéo et devine : tes pistes arrivent avec la mention « Tags devinés ». Avec une clé, il écoute le fichier, en calcule l'empreinte et interroge AcoustID — le morceau est identifié, avec son artiste, son album et son année. C'est gratuit, et ça prend deux minutes.",
+      "account": {
+        "label": "Créer un compte AcoustID",
+        "hint": "Connexion possible via un compte existant."
+      },
+      "application": {
+        "label": "Enregistrer une application",
+        "hint": "Nomme-la comme tu veux — la clé s'affiche juste après."
+      },
+      "open": "Ouvrir",
+      "fieldLabel": "Clé API AcoustID",
+      "placeholder": "Colle ta clé ici",
+      "check": "Vérifier",
+      "checking": "Vérification…",
+      "rejected": {
+        "invalidKey": "AcoustID ne reconnaît pas cette clé. Vérifie que tu as bien copié la clé de l'application, pas celle du compte.",
+        "empty": "Le champ est vide."
+      },
+      "unreachable": "Impossible de joindre AcoustID. Vérifie ta connexion et réessaie.",
+      "skip": "Continuer sans — les pistes seront taguées à l'estime"
+    }
   }
 }
