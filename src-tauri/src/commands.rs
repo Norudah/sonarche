@@ -19,6 +19,11 @@ use crate::sidecar::SidecarState;
 
 const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Bound on the category a download may carry. Generous next to the taxonomy's
+/// longest entry ("Video Games"); it exists so a pasted essay never reaches the
+/// tag writer.
+const MAX_CATEGORY_CHARS: usize = 100;
+
 #[tauri::command]
 pub async fn get_env_status(app: AppHandle) -> AppResult<EnvStatus> {
     python_env::env_status(&app).await
@@ -35,6 +40,7 @@ pub async fn enqueue_download(
     state: State<'_, JobsState>,
     url: String,
     kind: Option<JobKind>,
+    category: Option<String>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -43,8 +49,20 @@ pub async fn enqueue_download(
             "only http(s) URLs are allowed".into(),
         ));
     }
+    // Free text on purpose, like the metadata editor's own category field: the
+    // taxonomy the UI offers is a starter set, not a fence. Only the bounds are
+    // enforced, since this string ends up in a tag on every file the job writes.
+    let category = match category
+        .map(|c| c.trim().to_string())
+        .filter(|c| !c.is_empty())
+    {
+        Some(c) if c.chars().count() > MAX_CATEGORY_CHARS => {
+            return Err(AppError::InvalidInput("category is too long".into()))
+        }
+        other => other,
+    };
     state
-        .enqueue(&app, url, kind.unwrap_or(JobKind::Single))
+        .enqueue(&app, url, kind.unwrap_or(JobKind::Single), category)
         .await
 }
 
