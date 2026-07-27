@@ -598,6 +598,10 @@ export function installMockTauri() {
         if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
         return key;
       }
+      // The OS folder picker, standing in for a choice that cannot be made in a
+      // browser. Always the same folder, so the summary below is about it.
+      if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "get_env_status") return { ...env };
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
@@ -681,6 +685,38 @@ function tickPlayback() {
     }
     emitPlaybackStatus();
   }, 250);
+}
+
+/** The folder the mock picker always returns. Long enough to exercise the
+ * middle-truncation the real paths get. */
+const MOCK_IMPORT_FOLDER = "/Volumes/Backup/archive/2011/music/rips/FLAC";
+
+/**
+ * A library worth confirming: a few thousand tracks, tens of gigabytes, and a
+ * handful of files in formats the engine cannot decode — the caveat the summary
+ * exists to show. `?emptyImport` gives the other verdict, a folder with no music
+ * in it, which is the mistake people actually make.
+ */
+function mockScan(path: string): unknown {
+  if (new URLSearchParams(window.location.search).has("emptyImport")) {
+    return {
+      playable: 0,
+      unplayable: 0,
+      unplayableByExtension: {},
+      unplayableExamples: [],
+      bytes: 0,
+      truncated: false,
+    };
+  }
+
+  return {
+    playable: 4287,
+    unplayable: 25,
+    unplayableByExtension: { wma: 19, opus: 6 },
+    unplayableExamples: [`${path}/Old Rips/track01.wma`, `${path}/Podcasts/ep-114.opus`],
+    bytes: 31_400_000_000,
+    truncated: false,
+  };
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

@@ -29,9 +29,10 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # protocol, which reports twice the real duration (measured: 436.95s for a 218.45s
 # file, correct over plain HTTP) — hence the hand-rolled end-of-track cutoff it
 # needed. Reading the file directly sidesteps that transport entirely, and the
-# queue gives us gapless. `mp4` only: the download pipeline keeps YouTube's native
-# AAC and the library is 100% AAC, so any other codec would be a silent import bug
-# rather than a file we should quietly play.
+# queue gives us gapless.
+#
+# The format list was `mp4` alone while the only files in the library were the
+# app's own downloads. Importing an existing collection is what widened it.
 # Formats, not codecs: `mp4` carries both AAC and — with `symphonia-alac` —
 # Apple Lossless, `vorbis` pulls the Ogg demuxer along, `wav` brings the PCM
 # codecs AIFF also needs. Kept in step with `audio_formats::PLAYABLE`.
@@ -46,6 +47,10 @@ rodio = { version = "0.22", default-features = false, features = [
     "symphonia-aiff",
 ] }
 tauri-plugin-opener = "2.5.4"
+# The OS folder picker, for choosing a library to import. A webview file input
+# never yields a real directory path, and typing one is not a thing to ask of
+# someone. Scoped to the picker: no file read/write permission is granted.
+tauri-plugin-dialog = "2.7.2"
 
 # OS media session: media keys, Control Center, the lock screen. Playback moved
 # out of the webview, and `navigator.mediaSession` only exposes a session for a

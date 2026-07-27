@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::Deserialize;
@@ -10,6 +11,7 @@ use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
+use crate::library_scan::{self, ScanReport};
 use crate::now_playing::{self, NowPlayingTrack};
 use crate::onboarding::{self, OnboardingState};
 use crate::player::{self, PlaybackStatus, PlayerState};
@@ -81,6 +83,36 @@ pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) 
 #[tauri::command]
 pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
     Ok(state.clear_history().await)
+}
+
+/// Look at a folder the user is considering importing.
+///
+/// Read-only, and off the runtime: a music library is a deep tree and
+/// `read_dir` is blocking. The path comes from the front, so it is checked
+/// here — the two refusals below are the ones that would hurt.
+#[tauri::command]
+pub async fn scan_import_folder(app: AppHandle, path: String) -> AppResult<ScanReport> {
+    let root = PathBuf::from(&path);
+    let library = AppPaths::resolve(&app)?.library_dir;
+
+    // Importing the library into itself would have beets copy every file beside
+    // itself and re-import the copies. Nothing downstream would notice.
+    if root == library || root.starts_with(&library) {
+        return Err(AppError::InvalidInput(
+            "that folder is inside the Sonarche library".into(),
+        ));
+    }
+    // The other direction is just as bad: picking a parent of the library walks
+    // the library too, and the summary would count tracks already imported.
+    if library.starts_with(&root) {
+        return Err(AppError::InvalidInput(
+            "that folder contains the Sonarche library".into(),
+        ));
+    }
+
+    tokio::task::spawn_blocking(move || library_scan::scan(&root))
+        .await
+        .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))?
 }
 
 #[tauri::command]

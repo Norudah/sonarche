@@ -1,0 +1,23 @@
+{
+  "eyebrow": "Ajouter à la bibliothèque",
+  "title": "Amène la musique que tu as déjà.",
+  "choose": "Choisir un dossier…",
+  "chooseAnother": "Choisir un autre dossier",
+  "lead": "Sonarche lit le dossier, copie ce qu'il y trouve dans l'arche, et garde les tags existants. Tes fichiers d'origine ne bougent pas.",
+  "scanning": "Lecture du dossier…",
+  "scanFailed": "Impossible de lire ce dossier",
+  "found_one": "{{count, number}} piste",
+  "found_other": "{{count, number}} pistes",
+  "foundNone": "Aucune musique dans ce dossier",
+  "foundNoneHint": "Sonarche n'y a trouvé aucun fichier audio. Le bon dossier est celui qui contient les albums.",
+  "toCopy": "{{size}} à copier",
+  "units": ["o", "ko", "Mo", "Go", "To"],
+  "truncated": "Dossier très grand : le décompte s'arrête à 200 000 entrées, il y en a peut-être plus.",
+  "unplayable_one": "{{count, number}} fichier que Sonarche ne sait pas lire",
+  "unplayable_other": "{{count, number}} fichiers que Sonarche ne sait pas lire",
+  "unplayableFormats_one": "Format concerné : {{formats}}",
+  "unplayableFormats_other": "Formats concernés : {{formats}}",
+  "unplayableKept": "Ils sont importés quand même : leurs tags comptent, et ils gardent leur place dans leur album.",
+  "start": "Importer",
+  "notReady": "L'import lui-même arrive au prochain chantier."
+}

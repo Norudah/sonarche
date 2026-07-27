@@ -7,6 +7,7 @@ mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
+mod library_scan;
 mod now_playing;
 mod onboarding;
 mod player;
@@ -24,6 +25,7 @@ fn main() {
         // and a webview cannot open a browser on its own. Scoped to that one
         // host in `capabilities/default.json`.
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
@@ -53,6 +55,7 @@ fn main() {
             commands::set_rate_limit_delay,
             commands::delete_track,
             commands::update_tracks,
+            commands::scan_import_folder,
             commands::list_api_keys,
             commands::set_api_key,
             commands::reset_setup_dev,

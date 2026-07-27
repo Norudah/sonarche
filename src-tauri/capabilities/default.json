@@ -8,6 +8,7 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [{ "url": "https://acoustid.org/*" }]
-    }
+    },
+    "dialog:allow-open"
   ]
 }
