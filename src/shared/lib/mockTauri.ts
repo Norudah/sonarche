@@ -601,6 +601,15 @@ export function installMockTauri() {
       // The OS folder picker, standing in for a choice that cannot be made in a
       // browser. Always the same folder, so the summary below is about it.
       if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // Opt-in: an update prompt on every preview would sit over whatever is
+      // being looked at. `?update` is how you go and look at it on purpose.
+      if (cmd === "plugin:updater|check") {
+        return new URLSearchParams(window.location.search).has("update")
+          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: null, rawJson: {} }
+          : null;
+      }
+      if (cmd === "plugin:updater|download_and_install") return null;
+      if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
       if (cmd === "get_env_status") return { ...env };

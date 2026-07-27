@@ -5,6 +5,7 @@ import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
 import { SetupGate } from "@/features/onboarding/SetupGate";
+import { useUpdatePrompt } from "@/features/update/useUpdatePrompt";
 import { HistoryDepthProvider } from "@/shared/navigation/historyDepth";
 import { PlayerBar } from "@/shared/player/PlayerBar";
 import { ToastViewport } from "@/shared/toast/ToastViewport";
@@ -15,6 +16,8 @@ export function AppLayout() {
   // is ours to do; nothing upstream resets or restores it.
   const scrollRef = useRef<HTMLElement>(null);
   useScrollRestoration(scrollRef);
+  // Inside the shell, so the prompt has the toast viewport below it to land in.
+  useUpdatePrompt();
 
   return (
     // The provider wraps everything and lives outside the gate: the count has to

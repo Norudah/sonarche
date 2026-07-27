@@ -55,6 +55,10 @@ tauri-plugin-dialog = "2.7.2"
 # key and refuses any bundle that was not signed with the matching private one,
 # which is what keeps a hijacked download from installing itself.
 tauri-plugin-updater = "2.10.1"
+# Restart after an update installs. The new bundle is on disk but the running
+# process is still the old one, and asking someone to quit and reopen is how an
+# update gets postponed forever.
+tauri-plugin-process = "2.3.1"
 
 # OS media session: media keys, Control Center, the lock screen. Playback moved
 # out of the webview, and `navigator.mediaSession` only exposes a session for a

@@ -14,6 +14,8 @@ import metadataFr from "@/features/library/triage/locales/fr.json";
 import onboardingEn from "@/features/onboarding/locales/en.json";
 import onboardingFr from "@/features/onboarding/locales/fr.json";
 import settingsEn from "@/features/settings/locales/en.json";
+import updateEn from "@/features/update/locales/en.json";
+import updateFr from "@/features/update/locales/fr.json";
 import settingsFr from "@/features/settings/locales/fr.json";
 import playerEn from "@/shared/player/locales/en.json";
 import playerFr from "@/shared/player/locales/fr.json";
@@ -31,6 +33,7 @@ i18n.use(initReactI18next).init({
       library: libraryFr,
       metadata: metadataFr,
       settings: settingsFr,
+      update: updateFr,
       player: playerFr,
     },
     en: {
@@ -41,6 +44,7 @@ i18n.use(initReactI18next).init({
       library: libraryEn,
       metadata: metadataEn,
       settings: settingsEn,
+      update: updateEn,
       player: playerEn,
     },
   },
