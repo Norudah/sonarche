@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod audio_formats;
 mod commands;
 mod dev_reset;
 mod error;

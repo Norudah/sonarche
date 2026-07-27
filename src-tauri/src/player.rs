@@ -22,6 +22,7 @@ use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::audio_formats;
 use crate::error::{AppError, AppResult};
 use crate::now_playing;
 
@@ -107,9 +108,15 @@ pub fn amplitude_for(level: f32) -> f32 {
 /// and a demuxer that does not know where the file ends can only ever go
 /// forwards — every backwards seek came back `ForwardOnly` and silently did
 /// nothing. `try_from` reads the length from the file's own metadata.
+/// The extension is checked before the file is opened so an imported track we
+/// cannot decode says so in its own terms — symphonia's answer to an Opus
+/// stream is "unsupported feature", which tells the user nothing.
 fn decode(path: &str) -> AppResult<Decoder<BufReader<File>>> {
     if !Path::new(path).is_file() {
         return Err(AppError::InvalidInput(format!("no such file: {path}")));
+    }
+    if !audio_formats::is_playable(path) {
+        return Err(AppError::UnsupportedFormat(path.to_string()));
     }
     let file = File::open(path)?;
     Decoder::try_from(file)
@@ -489,6 +496,55 @@ mod tests {
         };
 
         assert!(matches!(err, AppError::InvalidInput(_)), "got {err:?}");
+    }
+
+    /// Missing is checked before format: a path that is both must read as
+    /// missing, otherwise a typo in an Opus filename is reported as a codec
+    /// problem.
+    #[test]
+    fn an_undecodable_file_is_named_as_such_and_not_as_a_playback_failure() {
+        let file = std::env::temp_dir().join("sonarche-format-test.opus");
+        std::fs::write(&file, b"not really an opus stream").expect("temp file");
+
+        let outcome = decode(&file.to_string_lossy());
+        std::fs::remove_file(&file).ok();
+
+        let Err(err) = outcome else {
+            panic!("an opus file should be refused");
+        };
+        assert!(matches!(err, AppError::UnsupportedFormat(_)), "got {err:?}");
+    }
+
+    /// Proves the widened `rodio` features are actually compiled in, not just
+    /// spelled correctly in `Cargo.toml`: this exact file failed to decode
+    /// before the engine knew anything but MP4. WAV because it is the one
+    /// format that can be written by hand — a header and the samples.
+    #[test]
+    fn decodes_a_format_the_engine_could_not_open_before() {
+        const SAMPLES: u32 = 100;
+        let bytes: u32 = SAMPLES * 2;
+        let mut wav = Vec::new();
+        wav.extend(b"RIFF");
+        wav.extend((36 + bytes).to_le_bytes());
+        wav.extend(b"WAVEfmt ");
+        wav.extend(16u32.to_le_bytes()); // chunk size
+        wav.extend(1u16.to_le_bytes()); // PCM
+        wav.extend(1u16.to_le_bytes()); // mono
+        wav.extend(44100u32.to_le_bytes()); // sample rate
+        wav.extend(88200u32.to_le_bytes()); // bytes per second
+        wav.extend(2u16.to_le_bytes()); // block align
+        wav.extend(16u16.to_le_bytes()); // bits per sample
+        wav.extend(b"data");
+        wav.extend(bytes.to_le_bytes());
+        wav.extend(std::iter::repeat_n(0u8, bytes as usize));
+
+        let file = std::env::temp_dir().join("sonarche-decode-test.wav");
+        std::fs::write(&file, &wav).expect("temp file");
+
+        let outcome = decode(&file.to_string_lossy());
+        std::fs::remove_file(&file).ok();
+
+        assert!(outcome.is_ok(), "wav should decode: {:?}", outcome.err());
     }
 
     #[test]

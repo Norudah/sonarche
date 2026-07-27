@@ -32,7 +32,19 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # queue gives us gapless. `mp4` only: the download pipeline keeps YouTube's native
 # AAC and the library is 100% AAC, so any other codec would be a silent import bug
 # rather than a file we should quietly play.
-rodio = { version = "0.22", default-features = false, features = ["playback", "mp4"] }
+# Formats, not codecs: `mp4` carries both AAC and — with `symphonia-alac` —
+# Apple Lossless, `vorbis` pulls the Ogg demuxer along, `wav` brings the PCM
+# codecs AIFF also needs. Kept in step with `audio_formats::PLAYABLE`.
+rodio = { version = "0.22", default-features = false, features = [
+    "playback",
+    "mp4",
+    "symphonia-alac",
+    "flac",
+    "mp3",
+    "vorbis",
+    "wav",
+    "symphonia-aiff",
+] }
 tauri-plugin-opener = "2.5.4"
 
 # OS media session: media keys, Control Center, the lock screen. Playback moved
