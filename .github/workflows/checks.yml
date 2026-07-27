@@ -1,0 +1,60 @@
+name: checks
+
+# The gate a change has to pass before it reaches main. Deliberately not a
+# build: `tauri build` fetches a 100 MB runtime and takes minutes, and none of
+# what it would catch is missed by compiling and testing both sides.
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  front:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+  rust:
+    # Ubuntu would need the whole GTK/webkit stack to compile a Tauri app;
+    # macOS is also the platform we ship, so it is the one that must be green.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # tauri-build wants the frontend output to exist; an empty one is enough
+      # to compile against, and building the real one here would only be slower.
+      - run: mkdir -p dist && touch dist/index.html
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r sidecar/requirements.txt
+      # The cover tests that need `sips` skip themselves off macOS; everything
+      # else here is plain Python over beets' API.
+      - run: python -m unittest discover -s sidecar -p "*_test.py"

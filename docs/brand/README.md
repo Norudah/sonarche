@@ -5,13 +5,13 @@ Ce fichier ne dit que comment refaire les fichiers.
 
 ## Les sources
 
-| Fichier | Rôle |
-| --- | --- |
-| `sonarche-mark.svg` | La marque, grille 24. Miroir de `src/shared/ui/SonarcheMark.tsx` — les deux doivent rester identiques. |
-| `sonarche-mark-small.svg` | Le jumeau simplifié, grille 16. Sous 32 px, les détails d'un pixel ne dessinent plus, ils salissent. |
-| `sonarche-tile.svg` | La tuile système 1024, marque complète. |
-| `sonarche-tile-small.svg` | La même tuile, jumeau dedans. Sert aux tailles 16 et 32. |
-| `sonarche-tile-1024.png` | Rendu de `sonarche-tile.svg`. Ne sert qu'à alimenter `tauri icon`. |
+| Fichier                   | Rôle                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `sonarche-mark.svg`       | La marque, grille 24. Miroir de `src/shared/ui/SonarcheMark.tsx` — les deux doivent rester identiques. |
+| `sonarche-mark-small.svg` | Le jumeau simplifié, grille 16. Sous 32 px, les détails d'un pixel ne dessinent plus, ils salissent.   |
+| `sonarche-tile.svg`       | La tuile système 1024, marque complète.                                                                |
+| `sonarche-tile-small.svg` | La même tuile, jumeau dedans. Sert aux tailles 16 et 32.                                               |
+| `sonarche-tile-1024.png`  | Rendu de `sonarche-tile.svg`. Ne sert qu'à alimenter `tauri icon`.                                     |
 
 ## Refaire le jeu d'icônes
 
