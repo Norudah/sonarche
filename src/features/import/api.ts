@@ -28,6 +28,9 @@ export function scanImportFolder(path: string): Promise<ScanReport> {
 export interface ImportOutcome {
   /** Album folders beets took on — comparable to the scan's `albumFolders`. */
   folders: number;
+  /** Covers too big to draw that were given a small rendition, the original
+   * kept beside them as `cover-hq.*`. */
+  renditions: number;
 }
 
 /** Copy a folder's music into the library. Resolves when beets is done, which

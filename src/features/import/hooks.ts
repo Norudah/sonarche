@@ -5,13 +5,15 @@ import { useEffect, useState } from "react";
 import { type ImportOutcome, startLibraryImport } from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
 
-/** How far beets has got, counted in album folders. */
-export interface ImportProgress {
-  folders: number;
-  /** The folder it is on, absolute. Null on the first tick, before beets has
-   * reached anything. */
-  folder: string | null;
-}
+/**
+ * How far the import has got. Two stages, because they count different things
+ * and a single bar pretending otherwise would stall at 100% for the second.
+ */
+export type ImportProgress =
+  /** beets copying, counted in album folders. */
+  | { stage: "copying"; folders: number; folder: string | null }
+  /** The cover pass that follows, counted in albums looked at. */
+  | { stage: "covers"; done: number; total: number };
 
 /**
  * Follow the import while it runs.
@@ -36,9 +38,17 @@ export function useImportProgress(active: boolean): ImportProgress | null {
 
   useEffect(() => {
     if (!active) return;
-    const unlisten = listen<{ event: string; data: ImportProgress }>("sidecar:event", (event) => {
-      if (event.payload.event !== "library_import_progress") return;
-      setProgress(event.payload.data);
+    const unlisten = listen<{ event: string; data: Record<string, unknown> }>("sidecar:event", (event) => {
+      const { event: name, data } = event.payload;
+      if (name === "library_import_progress") {
+        setProgress({
+          stage: "copying",
+          folders: Number(data.folders ?? 0),
+          folder: typeof data.folder === "string" ? data.folder : null,
+        });
+      } else if (name === "library_covers_progress") {
+        setProgress({ stage: "covers", done: Number(data.done ?? 0), total: Number(data.total ?? 0) });
+      }
     });
     return () => {
       void unlisten.then((off) => off());

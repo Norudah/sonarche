@@ -139,6 +139,9 @@ function PhaseBody({ phase, progress }: { phase: ImportPhase; progress: Progress
           <div className="flex flex-col gap-0.5">
             <p className="text-sm font-medium">{t("done")}</p>
             <p className="text-[0.8125rem] text-muted">{t("doneDetail", { count: phase.outcome.folders })}</p>
+            {phase.outcome.renditions > 0 && (
+              <p className="text-[0.8125rem] text-muted">{t("doneRenditions", { count: phase.outcome.renditions })}</p>
+            )}
           </div>
         </div>
       );

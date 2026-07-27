@@ -80,4 +80,41 @@ def handle(request_id: str, params: dict) -> dict:
     if code != 0:
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
 
-    return {"folders": folders}
+    return {"folders": folders, "renditions": _shrink_covers(request_id, params)}
+
+
+def _shrink_covers(request_id: str, params: dict) -> int:
+    """Give every oversized cover a small rendition to be drawn from.
+
+    An imported album keeps whatever cover its folder had — 5000x5000 is
+    ordinary — and that file lands in the slot the interface reads. Drawing it
+    means decoding it whole: 100 MB of pixels for a 40 px thumbnail. A
+    downloaded album never pays that because the download path writes a 500 px
+    rendition; imports had no such step, so this is it.
+
+    Over every album, not only the ones just imported: beets records nothing
+    about which those were, the check is a header read, and an album already
+    holding a rendition costs one `sips -g` to skip. Re-running is a no-op,
+    which is what makes it safe to do after each import.
+    """
+    from beets.library import Library
+
+    import covers
+    import enrich
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    try:
+        albums = [a for a in lib.albums() if a.artpath]
+        total = len(albums)
+        made = 0
+        for index, album in enumerate(albums, start=1):
+            if covers.ensure_display_rendition(enrich._decode(album.artpath)):
+                made += 1
+            protocol.send_event(
+                request_id,
+                "library_covers_progress",
+                {"done": index, "total": total, "renditions": made},
+            )
+        return made
+    finally:
+        lib._close()

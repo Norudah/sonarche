@@ -753,7 +753,17 @@ async function mockLibraryImport(folder: string): Promise<unknown> {
     });
   }
 
-  return { folders: MOCK_IMPORT_FOLDERS.length };
+  // The cover pass that follows the copy: a second count of different things,
+  // which the bar has to restart for rather than crawl the last inch.
+  for (let done = 1; done <= MOCK_IMPORT_FOLDERS.length; done += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    emitMockEvent("sidecar:event", {
+      event: "library_covers_progress",
+      data: { done, total: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(done / 2) },
+    });
+  }
+
+  return { folders: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2) };
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

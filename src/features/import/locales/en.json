@@ -27,5 +27,10 @@
   "doneDetail_one": "{{count, number}} folder added to the ark.",
   "doneDetail_other": "{{count, number}} folders added to the ark.",
   "seeLibrary": "Open the library",
-  "importAnother": "Import another folder"
+  "importAnother": "Import another folder",
+  "shrinking": "Preparing covers",
+  "coversProgress": "Cover {{done, number}} of {{total, number}}",
+  "shrinkingWhy": "Oversized covers get a display version. The original is kept beside it.",
+  "doneRenditions_one": "{{count, number}} cover got a display version.",
+  "doneRenditions_other": "{{count, number}} covers got a display version."
 }

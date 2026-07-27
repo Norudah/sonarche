@@ -27,5 +27,10 @@
   "doneDetail_one": "{{count, number}} dossier ajouté à l'arche.",
   "doneDetail_other": "{{count, number}} dossiers ajoutés à l'arche.",
   "seeLibrary": "Voir la bibliothèque",
-  "importAnother": "Importer un autre dossier"
+  "importAnother": "Importer un autre dossier",
+  "shrinking": "Préparation des pochettes",
+  "coversProgress": "Pochette {{done, number}} sur {{total, number}}",
+  "shrinkingWhy": "Les pochettes trop grandes reçoivent une version d'affichage. L'originale est conservée à côté.",
+  "doneRenditions_one": "{{count, number}} pochette a reçu une version d'affichage.",
+  "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage."
 }

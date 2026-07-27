@@ -57,7 +57,7 @@ describe("importPhase", () => {
   /** The scan result is still in the cache when the import finishes; the
    * finished import is what the screen is about. */
   it("prefers the outcome over the scan it came from", () => {
-    const outcome = { folders: 2 };
+    const outcome = { folders: 2, renditions: 1 };
 
     expect(importPhase(input({ report, outcome }))).toEqual({ kind: "imported", outcome });
   });

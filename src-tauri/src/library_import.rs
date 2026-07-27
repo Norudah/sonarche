@@ -35,6 +35,9 @@ pub struct ImportOutcome {
     /// Album folders beets took on. Comparable to the scan's `albumFolders`,
     /// which is what the progress bar counted against.
     pub folders: u64,
+    /// Covers that were too big to draw and got a small rendition, the
+    /// original kept beside it as `cover-hq.*`.
+    pub renditions: u64,
 }
 
 #[derive(Default)]
@@ -91,6 +94,10 @@ async fn request(
                 // baking a copy of it into every one of them is how a 1.17 GB
                 // library ends up carrying 314 MB of duplicated images.
                 "beets_config": paths.beets_import_config,
+                // The cover pass that follows the copy needs the library
+                // itself, not just the config beets was driven with.
+                "beets_db": paths.beets_db,
+                "library_dir": paths.library_dir,
             }),
             IMPORT_TIMEOUT,
         )
@@ -98,5 +105,6 @@ async fn request(
 
     Ok(ImportOutcome {
         folders: reply.get("folders").and_then(Value::as_u64).unwrap_or(0),
+        renditions: reply.get("renditions").and_then(Value::as_u64).unwrap_or(0),
     })
 }
