@@ -20,15 +20,32 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - uses: actions/checkout@v4
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
-        with:
-          ref: ${{ fromJSON(steps.release.outputs.pr || '{}').headBranchName }}
-
-      - name: Sync Cargo.lock on the release PR
+      # Resolved in a shell rather than with `fromJSON` in a template: in
+      # manifest mode the action fills `prs` (an array) and leaves `pr` empty,
+      # and `fromJSON('')` is a template error that fails the job before any
+      # step can guard against it. jq reads whichever one is there.
+      - name: Resolve the release PR branch
+        id: pr
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         env:
-          BRANCH: ${{ fromJSON(steps.release.outputs.pr || '{}').headBranchName }}
+          PR: ${{ steps.release.outputs.pr }}
+          PRS: ${{ steps.release.outputs.prs }}
+        run: |
+          branch=$(printf '%s' "${PR:-}" | jq -r '.headBranchName // empty' 2>/dev/null || true)
+          if [ -z "$branch" ]; then
+            branch=$(printf '%s' "${PRS:-}" | jq -r '.[0].headBranchName // empty' 2>/dev/null || true)
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: ${{ steps.pr.outputs.branch != '' }}
+        with:
+          ref: ${{ steps.pr.outputs.branch }}
+
+      - name: Sync Cargo.lock on the release PR
+        if: ${{ steps.pr.outputs.branch != '' }}
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 >/dev/null
           if ! git diff --quiet src-tauri/Cargo.lock; then

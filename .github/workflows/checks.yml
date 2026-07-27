@@ -39,9 +39,14 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      # tauri-build wants the frontend output to exist; an empty one is enough
-      # to compile against, and building the real one here would only be slower.
-      - run: mkdir -p dist && touch dist/index.html
+      # tauri-build checks that the frontend output and every declared resource
+      # exist before it will compile anything. Stubs rather than the real ones:
+      # this job bundles nothing, and fetching the 100 MB runtime to satisfy an
+      # existence check would double its length for no answer.
+      - name: Stub what tauri-build insists on finding
+        run: |
+          mkdir -p dist src-tauri/resources/wheels
+          touch dist/index.html src-tauri/resources/python.tar.gz
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml

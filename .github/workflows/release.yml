@@ -34,6 +34,9 @@ jobs:
             arch: x86_64
 
     runs-on: ${{ matrix.runner }}
+    # A release-please run that failed made no release; rebuilding onto the
+    # previous one would replace a shipped bundle with a different build.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
         with:
