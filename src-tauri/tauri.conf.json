@@ -43,5 +43,14 @@
       "resources/python.tar.gz": "python.tar.gz",
       "resources/wheels": "wheels"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUxNjM5N0FCRUJCMDlBNTQKUldSVW1yRHJxNWRqVVI4eW52Q1Rhckl4T09JTFd4VitWMStVREQyWUk0eWZZa3YwK0FHdVpnbTAK",
+      "endpoints": ["https://github.com/Norudah/sonarche/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

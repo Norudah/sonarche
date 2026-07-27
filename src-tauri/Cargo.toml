@@ -51,6 +51,10 @@ tauri-plugin-opener = "2.5.4"
 # never yields a real directory path, and typing one is not a thing to ask of
 # someone. Scoped to the picker: no file read/write permission is granted.
 tauri-plugin-dialog = "2.7.2"
+# In-app updates. Unsigned by Apple but signed by us: the app carries a public
+# key and refuses any bundle that was not signed with the matching private one,
+# which is what keeps a hijacked download from installing itself.
+tauri-plugin-updater = "2.10.1"
 
 # OS media session: media keys, Control Center, the lock screen. Playback moved
 # out of the webview, and `navigator.mediaSession` only exposes a session for a

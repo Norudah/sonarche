@@ -27,6 +27,7 @@ fn main() {
         // host in `capabilities/default.json`.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())

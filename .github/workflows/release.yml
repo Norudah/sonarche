@@ -95,10 +95,14 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Our own signature, not Apple's: the app is deliberately not
+          # code-signed (no paid Developer ID — the landing page explains the
+          # Gatekeeper screen), but every update bundle is signed with this key
+          # and the app refuses one signed with anything else.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           releaseId: ${{ steps.release.outputs.id }}
           args: --target ${{ matrix.arch }}-apple-darwin
-          # The app is not code-signed: no paid Developer ID, by decision. The
-          # landing page explains the Gatekeeper screen instead.
-          # `includeUpdaterJson` lands here with the updater plugin — it needs a
-          # signing key, and without one the step fails rather than skipping.
+          # The manifest installed apps poll. Both runners write it; the second
+          # merges its platform into the file the first uploaded.
+          includeUpdaterJson: true
