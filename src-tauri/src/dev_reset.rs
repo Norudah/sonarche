@@ -56,6 +56,9 @@ fn dirs_to_remove(paths: &AppPaths, targets: &ResetTargets) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if targets.venv {
         dirs.push(paths.venv_dir.clone());
+        // The unpacked interpreter goes with it: leaving it behind would skip
+        // the extraction step on the replay, which is now part of the install.
+        dirs.push(paths.runtime_dir.clone());
     }
     if targets.tools {
         dirs.push(paths.tools_dir.clone());
@@ -142,6 +145,9 @@ mod tests {
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
             genres_whitelist: data.join("sidecar").join("genres-whitelist.txt"),
             tools_dir: data.join("tools"),
+            python_archive: data.join("resources").join("python.tar.gz"),
+            runtime_dir: data.join("runtime"),
+            wheels_dir: data.join("resources").join("wheels"),
         }
     }
 
@@ -172,7 +178,10 @@ mod tests {
             venv: true,
             ..Default::default()
         };
-        assert_eq!(dirs_to_remove(&paths, &venv), vec![paths.venv_dir.clone()]);
+        assert_eq!(
+            dirs_to_remove(&paths, &venv),
+            vec![paths.venv_dir.clone(), paths.runtime_dir.clone()]
+        );
 
         let tools = ResetTargets {
             tools: true,

@@ -20,6 +20,14 @@ export default tseslint.config(
   // `.flat` and not the top-level entry: the latter is still the eslintrc shape
   // (plugins as an array of names), which flat config rejects outright.
   reactHooks.configs.flat["recommended-latest"],
+  // Build tooling runs in node, not in the webview: `process`, `fetch` and
+  // `console` are its vocabulary, and the browser globals below are not.
+  {
+    files: ["scripts/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {

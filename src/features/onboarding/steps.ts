@@ -81,7 +81,12 @@ export function buildSetupSteps(input: SetupInput): SetupStep[] {
   const skipped = new Set(input.skipped ?? []);
   let blocked = false;
 
-  return SETUP_STEP_IDS.map((id) => {
+  // The promise the data-driven model was built for: once the app carries its
+  // own interpreter, the Python step does not become a green line to scroll
+  // past — it stops existing, and the two that remain renumber themselves.
+  const ids = SETUP_STEP_IDS.filter((id) => id !== "python" || !input.env?.pythonBundled);
+
+  return ids.map((id) => {
     const blocking = BLOCKING[id];
     const satisfied = isSatisfied(id, input);
     let state: SetupStepState;

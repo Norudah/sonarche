@@ -37,7 +37,9 @@
         "installing": "Installing packages…",
         "done": "Environment ready."
       },
-      "log": "Show the installation log"
+      "log": "Show the installation log",
+      "bodyBundled": "yt-dlp to fetch the audio, beets to file and tag it. Everything ships with the app — its own Python, its own packages — and installs into a corner that belongs to Sonarche alone. Nothing already on your machine is touched.",
+      "durationBundled": "A few seconds — it is all here already, nothing to download."
     },
     "acoustid": {
       "title": "The AcoustID key",

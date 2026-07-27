@@ -37,7 +37,9 @@
         "installing": "Installation des paquets…",
         "done": "Environnement prêt."
       },
-      "log": "Voir le journal de l'installation"
+      "log": "Voir le journal de l'installation",
+      "bodyBundled": "yt-dlp pour récupérer l'audio, beets pour ranger et taguer. Tout est fourni avec l'app — son propre Python, ses propres paquets — et installé dans un coin qui n'appartient qu'à Sonarche. Rien de ce qui est déjà sur ta machine n'est touché.",
+      "durationBundled": "Quelques secondes — tout est déjà là, rien à télécharger."
     },
     "acoustid": {
       "title": "La clé AcoustID",

@@ -5,6 +5,7 @@ import { buildSetupSteps, canFinishSetup, gateState, type SetupStepId } from "@/
 
 const healthy: EnvStatus = {
   python: { path: "/opt/homebrew/bin/python3", version: "3.13.1" },
+  pythonBundled: false,
   venvOk: true,
   depsOk: true,
   libraryDir: "/music/Sonarche",
@@ -45,6 +46,17 @@ describe("buildSetupSteps", () => {
   it("opens the optional step once the blocking ones are done", () => {
     const steps = buildSetupSteps({ env: env(), acoustidConfigured: false });
     expect(stateOf(steps, "acoustid")).toBe("actionRequired");
+  });
+
+  it("drops the Python step entirely when the app ships an interpreter", () => {
+    const steps = buildSetupSteps({
+      env: env({ pythonBundled: true, venvOk: false, depsOk: false }),
+      acoustidConfigured: false,
+    });
+    expect(steps.map((step) => step.id)).toEqual(["engine", "acoustid"]);
+    // And the engine is the one being asked for, not held behind a step that
+    // no longer exists.
+    expect(stateOf(steps, "engine")).toBe("actionRequired");
   });
 
   it("reports a passed-over optional step as skipped, not as open", () => {

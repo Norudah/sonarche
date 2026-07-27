@@ -4,9 +4,9 @@
   "version": "0.8.0",
   "identifier": "com.rpierucci.sonarche",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run prepare:runtime && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run prepare:runtime && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -39,7 +39,9 @@
     "targets": "all",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "resources": {
-      "../sidecar": "sidecar"
+      "../sidecar": "sidecar",
+      "resources/python.tar.gz": "python.tar.gz",
+      "resources/wheels": "wheels"
     }
   }
 }

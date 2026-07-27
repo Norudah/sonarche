@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -30,7 +30,15 @@ function ScanRail({ label }: { label: string }) {
   );
 }
 
-export function EnginePanel({ isInstalled }: { isInstalled: boolean }) {
+export interface EnginePanelProps {
+  isInstalled: boolean;
+  /** The app carries its own interpreter and its own wheels, so this step
+   * unpacks rather than downloads — which changes both what it is and how
+   * long it takes. */
+  isBundled: boolean;
+}
+
+export function EnginePanel({ isInstalled, isBundled }: EnginePanelProps) {
   const { t } = useTranslation("onboarding");
   const setup = useSetupEnv();
   const logs = useSetupLogs(setup.isPending);
@@ -44,7 +52,9 @@ export function EnginePanel({ isInstalled }: { isInstalled: boolean }) {
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-sm">
-      <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("steps.engine.body")}</p>
+      <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">
+        {t(isBundled ? "steps.engine.bodyBundled" : "steps.engine.body")}
+      </p>
 
       {setup.isError && (
         <Alert status="danger">
@@ -71,7 +81,9 @@ export function EnginePanel({ isInstalled }: { isInstalled: boolean }) {
               <Download className="size-4" />
               {setup.isError ? t("steps.engine.retry") : t("steps.engine.action")}
             </Button>
-            <p className="text-xs text-muted">{t("steps.engine.duration")}</p>
+            <p className="text-xs text-muted">
+              {t(isBundled ? "steps.engine.durationBundled" : "steps.engine.duration")}
+            </p>
           </div>
         )
       )}

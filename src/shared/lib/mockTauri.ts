@@ -473,6 +473,9 @@ const env = {
   python: requestedSetup === "python" ? null : { path: "/opt/homebrew/bin/python3", version: "3.13.1" },
   venvOk: requestedSetup !== "python" && requestedSetup !== "engine",
   depsOk: requestedSetup !== "python" && requestedSetup !== "engine",
+  // `?bundled` previews the app once it carries its own interpreter: the
+  // Python step disappears and the remaining two renumber themselves.
+  pythonBundled: new URLSearchParams(window.location.search).has("bundled"),
   libraryDir: "/Users/dev/Music/Sonarche",
 };
 

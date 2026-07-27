@@ -52,7 +52,7 @@ export function SetupWalkthrough({
 
   const panels: Record<SetupStepId, React.ReactNode> = {
     python: <PythonPanel python={env?.python ?? null} onRecheck={onRecheckPython} isChecking={isCheckingPython} />,
-    engine: <EnginePanel isInstalled={Boolean(env?.venvOk && env.depsOk)} />,
+    engine: <EnginePanel isInstalled={Boolean(env?.venvOk && env.depsOk)} isBundled={Boolean(env?.pythonBundled)} />,
     acoustid: (
       <AcoustidPanel isConfigured={acoustidConfigured} onSkip={() => setSkipped((prev) => [...prev, "acoustid"])} />
     ),

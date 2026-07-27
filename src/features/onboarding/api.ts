@@ -7,6 +7,8 @@ export interface PythonInfo {
 
 export interface EnvStatus {
   python: PythonInfo | null;
+  /** The app ships its own interpreter, so finding one is not the user's job. */
+  pythonBundled: boolean;
   venvOk: boolean;
   depsOk: boolean;
   libraryDir: string;

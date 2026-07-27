@@ -33,7 +33,12 @@ pub struct PythonInfo {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvStatus {
+    /// The interpreter in use, once there is one.
     pub python: Option<PythonInfo>,
+    /// Whether the app ships its own. When it does, finding an interpreter is
+    /// not something the user can fail at, so the walkthrough drops that step
+    /// entirely rather than showing a rung nobody has to climb.
+    pub python_bundled: bool,
     pub venv_ok: bool,
     pub deps_ok: bool,
     pub library_dir: String,
@@ -50,6 +55,14 @@ pub struct AppPaths {
     pub genres_tree: PathBuf,
     pub genres_whitelist: PathBuf,
     pub tools_dir: PathBuf,
+    /// The interpreter the app ships, still packed. Unpacked at setup rather
+    /// than laid out as loose resources: the tree is full of symlinks and
+    /// executable bits, and `tar` is the thing that reliably restores both.
+    pub python_archive: PathBuf,
+    /// Where that archive lands. `runtime/python/bin/python3` afterwards.
+    pub runtime_dir: PathBuf,
+    /// Wheels shipped alongside, so the install needs no network.
+    pub wheels_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -58,6 +71,11 @@ impl AppPaths {
         let sidecar_dir = app
             .path()
             .resolve("sidecar", tauri::path::BaseDirectory::Resource)?;
+        let resource = |name: &str| {
+            app.path()
+                .resolve(name, tauri::path::BaseDirectory::Resource)
+                .unwrap_or_else(|_| data.join(name))
+        };
         let library_dir = app
             .path()
             .audio_dir()
@@ -74,11 +92,21 @@ impl AppPaths {
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
             genres_whitelist: sidecar_dir.join("genres-whitelist.txt"),
             tools_dir: data.join("tools"),
+            python_archive: resource("python.tar.gz"),
+            runtime_dir: data.join("runtime"),
+            wheels_dir: resource("wheels"),
         })
     }
 
     pub fn venv_python(&self) -> PathBuf {
         self.venv_dir.join("bin").join("python3")
+    }
+
+    /// The shipped interpreter once unpacked. Not necessarily present: it only
+    /// exists after setup has run, and not at all in a build made without
+    /// `npm run prepare:runtime`.
+    pub fn runtime_python(&self) -> PathBuf {
+        self.runtime_dir.join("python").join("bin").join("python3")
     }
 
     pub fn fpcalc(&self) -> PathBuf {
@@ -157,7 +185,17 @@ async fn probe(path: &str) -> Option<PythonInfo> {
     })
 }
 
-pub async fn discover_python() -> Option<PythonInfo> {
+/// The interpreter to build the venv from.
+///
+/// The shipped one wins whenever it is unpacked: it is the version the wheels
+/// were resolved against, and it cannot be upgraded out from under us by a
+/// `brew upgrade`. The PATH-free search is the fallback, for a build made
+/// without `npm run prepare:runtime` and for installs that predate bundling.
+pub async fn discover_python(paths: &AppPaths) -> Option<PythonInfo> {
+    let runtime = paths.runtime_python();
+    if let Some(info) = probe(&runtime.to_string_lossy()).await {
+        return Some(info);
+    }
     for candidate in PYTHON_CANDIDATES {
         if let Some(info) = probe(candidate).await {
             return Some(info);
@@ -166,11 +204,66 @@ pub async fn discover_python() -> Option<PythonInfo> {
     None
 }
 
+/// Unpack the shipped interpreter, once. A no-op when the app carries none.
+async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
+    if tokio::fs::try_exists(paths.runtime_python())
+        .await
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+    if !tokio::fs::try_exists(&paths.python_archive)
+        .await
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+
+    emit_log(app, "Unpacking the bundled Python...");
+    // Wiped first: a half-extracted tree from an interrupted run would pass the
+    // existence check above on some paths and fail on others.
+    let _ = tokio::fs::remove_dir_all(&paths.runtime_dir).await;
+    tokio::fs::create_dir_all(&paths.runtime_dir).await?;
+
+    let mut cmd = Command::new("/usr/bin/tar");
+    cmd.arg("-xzf")
+        .arg(&paths.python_archive)
+        .arg("-C")
+        .arg(&paths.runtime_dir);
+    run_streamed(app, cmd, "python extraction").await?;
+
+    if !tokio::fs::try_exists(paths.runtime_python())
+        .await
+        .unwrap_or(false)
+    {
+        return Err(AppError::Setup(
+            "bundled Python missing after unpack".into(),
+        ));
+    }
+    Ok(())
+}
+
+// A venv's `bin/python3` is an absolute symlink to the interpreter it was built
+// from, so a bundled interpreter raises an obvious question: what happens when
+// the user drags the app from Downloads to Applications? Nothing — and that is
+// precisely why the archive is unpacked into the app data directory instead of
+// being read in place from inside the .app. That path does not travel with the
+// bundle, so the symlink cannot go stale and no repair machinery is warranted.
+// Deleting the runtime is the only way to break it, and re-running the setup
+// puts it back at the same path, which heals the symlink on its own.
+
 pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     let paths = AppPaths::resolve(app)?;
-    let python = discover_python().await;
+    let python = discover_python(&paths).await;
+    let python_bundled = tokio::fs::try_exists(&paths.python_archive)
+        .await
+        .unwrap_or(false)
+        || tokio::fs::try_exists(paths.runtime_python())
+            .await
+            .unwrap_or(false);
     let venv_python = paths.venv_python();
     let venv_ok = tokio::fs::try_exists(&venv_python).await.unwrap_or(false);
+
     // Keep the beets config's `directory:` in sync with library_dir on every check, not just
     // first setup — otherwise an existing install can keep importing into a stale path after
     // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
@@ -196,6 +289,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     };
     Ok(EnvStatus {
         python,
+        python_bundled,
         venv_ok,
         deps_ok,
         library_dir: paths.library_dir.display().to_string(),
@@ -292,7 +386,10 @@ ui:
 
 pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
     let paths = AppPaths::resolve(app)?;
-    let python = discover_python().await.ok_or(AppError::PythonNotFound)?;
+    ensure_runtime(app, &paths).await?;
+    let python = discover_python(&paths)
+        .await
+        .ok_or(AppError::PythonNotFound)?;
 
     tokio::fs::create_dir_all(&paths.staging_dir).await?;
     tokio::fs::create_dir_all(paths.beets_config.parent().unwrap_or(&paths.staging_dir)).await?;
@@ -311,18 +408,34 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg(&paths.venv_dir);
     run_streamed(app, venv_cmd, "venv creation").await?;
 
+    // Shipped wheels when we have them: beets pulls numpy, scipy, numba and
+    // llvmlite, which is most of a 76 MB download and the whole reason the
+    // install used to be measured in minutes. `--no-index` also makes this the
+    // one step that no longer needs the network.
+    let vendored = tokio::fs::try_exists(&paths.wheels_dir)
+        .await
+        .unwrap_or(false);
     emit_log(
         app,
-        "Installing dependencies (this can take a few minutes)...",
+        if vendored {
+            "Installing dependencies from the bundled wheels..."
+        } else {
+            "Installing dependencies (this can take a few minutes)..."
+        },
     );
     let mut pip_cmd = Command::new(paths.venv_python());
     pip_cmd
         .arg("-m")
         .arg("pip")
         .arg("install")
-        .arg("--disable-pip-version-check")
-        .arg("-r")
-        .arg(&paths.requirements);
+        .arg("--disable-pip-version-check");
+    if vendored {
+        pip_cmd
+            .arg("--no-index")
+            .arg("--find-links")
+            .arg(&paths.wheels_dir);
+    }
+    pip_cmd.arg("-r").arg(&paths.requirements);
     run_streamed(app, pip_cmd, "pip install").await?;
 
     write_beets_config(&paths).await?;
