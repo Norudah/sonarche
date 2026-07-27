@@ -19,5 +19,10 @@
   "goToAlbum": "View album",
   "goToArtist": "View artist",
   "nowPlaying": "Now playing",
-  "upNext": "Up next"
+  "upNext": "Up next",
+  "unsupportedFormat": "Unsupported format",
+  "unsupportedFormatDetail": "“{{title}}” is a .{{extension}} file — Sonarche can't play that format.",
+  "unsupportedFormatDetailUnknown": "“{{title}}” is in a format Sonarche can't play.",
+  "unreadable": "Can't play this track",
+  "unreadableDetail": "“{{title}}” could not be opened."
 }

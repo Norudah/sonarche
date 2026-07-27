@@ -258,6 +258,19 @@ const preferenceFields: Record<string, keyof typeof preferences> = {
   download: "downloadDelaySeconds",
 };
 
+/** The fixture track the engine cannot decode — one Opus file in a library of
+ * AAC, which is exactly what importing someone's existing collection produces.
+ * A format the player refuses is a state the UI has to draw, so it needs to be
+ * reachable by clicking a row rather than only in a real install. */
+const UNPLAYABLE_TITLE = "Wait";
+
+/** Whether the mock engine would open this file. Mirrors the decoder's own
+ * list (`src-tauri/src/audio_formats.rs`), short of the formats no fixture
+ * uses. */
+function isPlayablePath(path: string): boolean {
+  return /\.(mp3|flac|m4a|m4b|mp4|aac|ogg|oga|wav|wave|aiff|aif|aifc)$/i.test(path);
+}
+
 // One track matching the "Monster" job's item_id; the other done job's item is
 // deliberately absent so the "removed from library" state is visible too.
 const libraryTracks = [
@@ -347,8 +360,8 @@ const libraryTracks = [
     track_total: 12,
     length,
     bitrate: 256000,
-    format: "AAC",
-    path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
+    format: title === UNPLAYABLE_TITLE ? "Opus" : "AAC",
+    path: `/Users/dev/Music/Sonarche/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
     mb_trackid: null,
@@ -673,6 +686,12 @@ function tickPlayback() {
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
   switch (cmd) {
     case "player_load":
+      // The one failure the player has to speak out loud. Refused here the way
+      // the real engine refuses it — same wording, because the front reads that
+      // prefix to name the format (see shared/player/playbackError.ts).
+      if (!isPlayablePath(String(payload?.path ?? ""))) {
+        throw `unsupported audio format: ${String(payload?.path ?? "")}`;
+      }
       // A plausible length, since there is no file to decode.
       playback.position = 0;
       playback.duration = 214;

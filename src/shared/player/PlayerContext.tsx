@@ -17,6 +17,7 @@ import {
   type QueueState,
 } from "@/shared/player/queue";
 import type { PlayableTrack } from "@/shared/player/types";
+import { useReportPlaybackFailure } from "@/shared/player/useReportPlaybackFailure";
 
 /** Pressing previous inside a track's opening seconds means "go back one";
  * after that it means "start this one over". The universal threshold. */
@@ -128,6 +129,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    * every load, which drops the engine's queue along with whatever was in it. */
   const preloadedRef = useRef<PlayableTrack | null>(null);
 
+  const reportFailure = useReportPlaybackFailure();
+
   /** Take a track as the playing one, without touching the engine.
    *
    * Everything a launch does apart from the load itself, because the gapless
@@ -169,13 +172,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           if (loadingRef.current !== token) return;
           if (decoded != null) setDuration(decoded);
         },
-        () => {
+        (error: unknown) => {
           if (loadingRef.current !== token) return;
           setIsPlaying(false);
+          reportFailure(error, track.title);
         },
       );
     },
-    [adopt],
+    [adopt, reportFailure],
   );
 
   /** Move the playhead. Set locally first so the thumb lands where it was
@@ -225,8 +229,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!track) return;
     preloadedRef.current = track;
     void engine.enqueue(track.path).catch(() => {
-      // Unreadable. Let the track run out and take the ordinary path, which
-      // reports the failure where the user can see it.
+      // Unreadable. Stay quiet here and let the track run out: the ordinary
+      // path re-opens the same file through `loadTrack`, which is where the
+      // failure gets said. Speaking now would say it eight seconds early, about
+      // a track the user is not listening to yet.
       if (preloadedRef.current === track) preloadedRef.current = null;
     });
   }, []);

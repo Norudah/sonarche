@@ -7,6 +7,7 @@ import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { HistoryDepthProvider } from "@/shared/navigation/historyDepth";
 import { PlayerBar } from "@/shared/player/PlayerBar";
+import { ToastViewport } from "@/shared/toast/ToastViewport";
 import { ScrollportProvider } from "@/shared/ui/Scrollport";
 
 export function AppLayout() {
@@ -47,6 +48,11 @@ export function AppLayout() {
             </div>
           </div>
           <PlayerBar />
+          {/* Mounted beside the player bar, not above it in the tree: the
+              viewport is positioned against the bar, and the two only ever
+              appear together — the onboarding walkthrough replaces this whole
+              chrome and speaks for itself. */}
+          <ToastViewport />
         </div>
       </SetupGate>
     </HistoryDepthProvider>

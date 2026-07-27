@@ -135,6 +135,17 @@
   }
 }
 
+/* --- Toast viewport ------------------------------------------------------- */
+
+/* HeroUI's `bottom end` region is pinned to `bottom-4`, which puts a toast on
+   top of the player bar — over the transport controls, the one strip that has
+   to stay reachable while a message is up. Lifted by the bar's own height so
+   the two stack instead of overlapping.
+   Imported after @heroui/styles, so this wins at equal specificity. */
+.toast-region-lifted {
+  bottom: calc(var(--spacing-player) + 1rem);
+}
+
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
 
 /* Seekbar — accent color, thumb 1rem */
