@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sonarche — la marque</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #11131d;
+        --accent: #6163f2;
+        --paper: #fdfdfb;
+        --muted: #6b6f8a;
+        --line: #e6e6ef;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        padding: 48px 56px 80px;
+      }
+      header {
+        max-width: 840px;
+        margin-bottom: 48px;
+      }
+      h1 {
+        font: 700 42px/1.05 "Space Grotesk";
+        letter-spacing: -0.025em;
+        margin: 0;
+      }
+      h1 em {
+        font:
+          italic 400 44px/1 "Instrument Serif",
+          serif;
+        color: var(--accent);
+      }
+      .tag {
+        font:
+          400 16px/1.65 ui-sans-serif,
+          system-ui;
+        color: var(--muted);
+        margin-top: 14px;
+      }
+      .tag b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      section {
+        border-top: 1px solid var(--line);
+        padding: 32px 0;
+      }
+      h2 {
+        font: 600 12px/1 "Space Grotesk";
+        letter-spacing: 0.22em;
+        color: var(--accent);
+        margin: 0 0 22px;
+      }
+      .grid {
+        display: flex;
+        gap: 42px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .note {
+        font:
+          400 14px/1.7 ui-sans-serif,
+          system-ui;
+        color: var(--muted);
+        max-width: 430px;
+      }
+      .note b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .note p {
+        margin: 0 0 12px;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 9px;
+      }
+      .cap {
+        font:
+          500 9px/1 ui-monospace,
+          Menlo,
+          monospace;
+        letter-spacing: 0.1em;
+        color: #a3a6bb;
+      }
+      svg {
+        display: block;
+      }
+      .tile {
+        border-radius: 22.5%;
+        background: linear-gradient(150deg, #ffffff, #e8e7f8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 22px rgba(66, 64, 182, 0.14);
+      }
+      .t128 {
+        width: 128px;
+        height: 128px;
+      }
+      .t128 svg {
+        width: 116px;
+        height: 116px;
+      }
+      .t64 {
+        width: 64px;
+        height: 64px;
+      }
+      .t64 svg {
+        width: 58px;
+        height: 58px;
+      }
+      .t32 {
+        width: 32px;
+        height: 32px;
+      }
+      .t32 svg {
+        width: 30px;
+        height: 30px;
+      }
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      .lockup svg {
+        width: 58px;
+        height: 58px;
+      }
+      .word {
+        font: 700 32px/1 "Space Grotesk";
+        letter-spacing: 0.012em;
+      }
+      .lockup.sm svg {
+        width: 30px;
+        height: 30px;
+      }
+      .lockup.sm .word {
+        font-size: 18px;
+      }
+      .swatches {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .sw {
+        width: 112px;
+      }
+      .sw i {
+        display: block;
+        height: 52px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .sw b {
+        display: block;
+        font: 600 12px/1.5 "Space Grotesk";
+        margin-top: 8px;
+      }
+      .sw span {
+        display: block;
+        font:
+          400 11px/1.5 ui-monospace,
+          Menlo,
+          monospace;
+        color: var(--muted);
+      }
+      .rules {
+        display: flex;
+        gap: 34px;
+        flex-wrap: wrap;
+      }
+      .rules div {
+        max-width: 240px;
+        font:
+          400 13px/1.65 ui-sans-serif,
+          system-ui;
+        color: var(--muted);
+      }
+      .rules b {
+        display: block;
+        color: var(--ink);
+        font: 600 13px/1.6 "Space Grotesk";
+        margin-bottom: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <defs>
+        <clipPath id="tete" clipPathUnits="userSpaceOnUse">
+          <path d="M7.5 12V9.75C7.5 8.85 8.4 8.2 9.7 8 10.5 7.88 13.5 7.88 14.3 8 15.6 8.2 16.5 8.85 16.5 9.75V12Z" />
+        </clipPath>
+      </defs>
+      <symbol id="mark" viewBox="0 0 24 24">
+        <g fill="#6163f2">
+          <rect x="9.56" y="5.8" width="0.5" height="1.25" rx="0.25" />
+          <rect x="10.44" y="4.8" width="0.5" height="2.25" rx="0.25" />
+          <rect x="11.31" y="3.8" width="0.5" height="3.25" rx="0.25" />
+          <rect x="12.19" y="5.05" width="0.5" height="2" rx="0.25" />
+          <rect x="13.06" y="4.3" width="0.5" height="2.75" rx="0.25" />
+          <rect x="13.94" y="5.55" width="0.5" height="1.5" rx="0.25" />
+        </g>
+        <path
+          d="M7.5 12V9.75C7.5 8.85 8.4 8.2 9.7 8 10.5 7.88 13.5 7.88 14.3 8 15.6 8.2 16.5 8.85 16.5 9.75V12Z"
+          fill="#c5cbef"
+        />
+        <g clip-path="url(#tete)">
+          <rect x="7.5" y="7.8" width="9" height="0.85" fill="#e2e7fc" />
+          <rect x="7.5" y="11.4" width="9" height="0.6" fill="#a5aede" />
+        </g>
+        <rect x="9" y="9.05" width="2" height="2" rx="0.75" fill="#222652" />
+        <rect x="13" y="9.05" width="2" height="2" rx="0.75" fill="#222652" />
+        <circle cx="9.6" cy="9.65" r="0.42" fill="#818cf9" />
+        <circle cx="13.6" cy="9.65" r="0.42" fill="#818cf9" />
+        <rect x="3" y="9" width="2" height="3" rx="0.5" fill="#efa831" />
+        <rect x="3" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8" />
+        <rect x="3" y="10.3" width="2" height="0.5" fill="#fae1b8" />
+        <rect x="5.1" y="10" width="1.5" height="2" rx="0.45" fill="#3d4097" />
+        <rect x="5.1" y="10" width="1.5" height="0.4" rx="0.2" fill="#818cf9" />
+        <rect x="5.1" y="10.9" width="1.5" height="0.45" fill="#818cf9" />
+        <rect x="17.4" y="10" width="1.5" height="2" rx="0.45" fill="#3d4097" />
+        <rect x="17.4" y="10" width="1.5" height="0.4" rx="0.2" fill="#818cf9" />
+        <rect x="17.4" y="10.9" width="1.5" height="0.45" fill="#818cf9" />
+        <rect x="19" y="9" width="2" height="3" rx="0.5" fill="#efa831" />
+        <rect x="19" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8" />
+        <rect x="19" y="10.3" width="2" height="0.5" fill="#fae1b8" />
+        <rect x="1.6" y="12" width="20.8" height="1.1" rx="0.55" fill="#818cf9" />
+        <path
+          d="M2.2 13.2h19.6q.75 0 .65.75l-.45 2.6q-.6 3.25-3.4 3.25H5.4q-2.8 0-3.4-3.25l-.45-2.6q-.1-.75.65-.75Z"
+          fill="#3d4097"
+        />
+        <path d="M2.2 13.2h19.6q.75 0 .65.75H1.55q-.1-.75.65-.75Z" fill="#4f52c1" />
+        <path d="M3.7 16.5h16.6l-.3 1.15q-.75 2.45-2.9 2.45H6.9q-2.15 0-2.9-2.45Z" fill="#2e3172" />
+        <path d="M3.7 16.5h16.6l-.14.55H3.84Z" fill="#3d4097" />
+        <g fill="#818cf9">
+          <circle cx="5.6" cy="15" r="0.45" />
+          <circle cx="9.7" cy="15" r="0.45" />
+          <circle cx="14.3" cy="15" r="0.45" />
+          <circle cx="18.4" cy="15" r="0.45" />
+        </g>
+      </symbol>
+      <symbol id="marksm" viewBox="0 0 16 16">
+        <g fill="#6163f2">
+          <rect x="6.3" y="4" width="0.5" height="1" rx="0.25" />
+          <rect x="7.3" y="3" width="0.5" height="2" rx="0.25" />
+          <rect x="8.3" y="3.5" width="0.5" height="1.5" rx="0.25" />
+          <rect x="9.3" y="3.8" width="0.5" height="1.2" rx="0.25" />
+        </g>
+        <path
+          d="M5 8V6.6C5 6.05 5.6 5.65 6.4 5.55 6.9 5.48 9.1 5.48 9.6 5.55 10.4 5.65 11 6.05 11 6.6V8Z"
+          fill="#c5cbef"
+        />
+        <rect x="6.2" y="6.4" width="1.2" height="1.2" rx="0.45" fill="#222652" />
+        <rect x="8.6" y="6.4" width="1.2" height="1.2" rx="0.45" fill="#222652" />
+        <rect x="2" y="6.2" width="1.4" height="1.8" rx="0.35" fill="#efa831" />
+        <rect x="3.6" y="6.8" width="1" height="1.2" rx="0.3" fill="#3d4097" />
+        <rect x="11.4" y="6.8" width="1" height="1.2" rx="0.3" fill="#3d4097" />
+        <rect x="12.6" y="6.2" width="1.4" height="1.8" rx="0.35" fill="#efa831" />
+        <rect x="1" y="8" width="14" height="0.8" rx="0.4" fill="#818cf9" />
+        <path
+          d="M1.4 8.7h13.2q.5 0 .45.5l-.3 1.75q-.4 2.2-2.3 2.2H3.55q-1.9 0-2.3-2.2l-.3-1.75q-.05-.5.45-.5Z"
+          fill="#3d4097"
+        />
+        <path d="M2.5 10.9h11l-.2.8q-.5 1.65-1.95 1.65H4.65q-1.45 0-1.95-1.65Z" fill="#2e3172" />
+      </symbol>
+    </svg>
+
+    <header>
+      <h1>Sonarche — <em>une arche qui vous regarde</em></h1>
+      <div class="tag">
+        Le nom porte deux mots. <b>Son</b> : le vôtre, le nôtre — votre musique. <b>Arche</b> : celle de Noé, qui sauve
+        ce qu'on y embarque. La marque est ce navire, chargé de containers, avec deux yeux sur la cabine et l'onde
+        au-dessus du toit.
+      </div>
+    </header>
+
+    <section>
+      <h2>LA MARQUE</h2>
+      <div class="grid">
+        <svg viewBox="0 0 24 24" width="230" height="230"><use href="#mark" /></svg>
+        <div class="note">
+          <p>
+            Trois registres empilés. En bas la <b>coque</b>, deux bordés et quatre hublots. Au milieu le <b>pont</b>, où
+            quatre containers sont chargés. En haut la <b>tête</b>, avec ses deux yeux.
+          </p>
+          <p>
+            Et au-dessus, l'<b>onde</b> — six barres fines à bouts ronds, reprises de la maquette de la landing. C'est
+            le seul élément qui échappe aux formes du navire : le vaisseau est bâti d'aplats et d'arcs, le son est lisse
+            et libre. Ce contraste porte l'identité plus que n'importe quelle silhouette.
+          </p>
+          <p>
+            Il n'y a pas de toit. La casquette qui coiffait la cabine a été retirée pour que l'onde soit la seule chose
+            posée sur l'arche.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>LA TÊTE</h2>
+      <div class="grid">
+        <svg viewBox="6.6 7.4 10.8 5.4" width="300" height="150">
+          <use href="#mark" x="0" y="0" width="24" height="24" />
+        </svg>
+        <div class="note">
+          <p>
+            L'arc de la cabine est une <b>anse de panier</b> : un arc à trois centres, serré aux naissances et plat à la
+            clé. C'est la forme que les bâtisseurs emploient quand un demi-cercle serait trop évident — un plein cintre
+            a son rayon égal à sa demi-largeur, donc l'œil retrouve toujours le cercle. Ici il n'y a aucun cercle à
+            reconnaître.
+          </p>
+          <p>
+            La tête fait <b>9 de large pour 4,1 de haut</b>. Elle a été élargie sans écarter les yeux : c'est la joue
+            qui s'étend, pas le regard. Un visage paraît large par ses tempes.
+          </p>
+          <p>
+            Le <b>point clair dans chaque œil</b> n'est pas un détail : sans lui ce sont deux hublots, avec lui c'est un
+            regard. C'est le pixel qui fait vivre le navire.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>DEUX DESSINS, PAS UN</h2>
+      <div class="grid" style="align-items: flex-end">
+        <div class="cell">
+          <svg viewBox="0 0 24 24" width="120" height="120"><use href="#mark" /></svg
+          ><span class="cap">MARQUE · 120</span>
+        </div>
+        <div class="cell">
+          <svg viewBox="0 0 24 24" width="56" height="56"><use href="#mark" /></svg><span class="cap">MARQUE · 56</span>
+        </div>
+        <div class="cell">
+          <svg viewBox="0 0 24 24" width="24" height="24"><use href="#mark" /></svg
+          ><span class="cap">MARQUE · 24 ✗</span>
+        </div>
+        <div class="cell">
+          <svg viewBox="0 0 16 16" width="120" height="120"><use href="#marksm" /></svg
+          ><span class="cap">JUMEAU · 120</span>
+        </div>
+        <div class="cell">
+          <svg viewBox="0 0 16 16" width="24" height="24"><use href="#marksm" /></svg
+          ><span class="cap">JUMEAU · 24 ✓</span>
+        </div>
+        <div class="cell">
+          <svg viewBox="0 0 16 16" width="16" height="16"><use href="#marksm" /></svg
+          ><span class="cap">JUMEAU · 16</span>
+        </div>
+      </div>
+      <div class="note" style="max-width: 700px; margin-top: 22px">
+        Sous 32 px les détails d'un pixel — hublots, couvercles, sangles, liserés de bordé — cessent de dessiner et se
+        mettent à salir. Le <b>jumeau simplifié</b> les retire et garde la silhouette, la palette et les yeux. Deux
+        fichiers à tenir, mais c'est le prix d'une marque qui a du détail.
+      </div>
+    </section>
+
+    <section>
+      <h2>TUILE SYSTÈME</h2>
+      <div class="grid" style="align-items: flex-end">
+        <div class="cell">
+          <div class="tile t128">
+            <svg viewBox="0 0 24 24"><use href="#mark" /></svg>
+          </div>
+          <span class="cap">128</span>
+        </div>
+        <div class="cell">
+          <div class="tile t64">
+            <svg viewBox="0 0 24 24"><use href="#mark" /></svg>
+          </div>
+          <span class="cap">64</span>
+        </div>
+        <div class="cell">
+          <div class="tile t32">
+            <svg viewBox="0 0 16 16"><use href="#marksm" /></svg>
+          </div>
+          <span class="cap">32 · JUMEAU</span>
+        </div>
+        <div class="note" style="max-width: 340px">
+          Tuile claire, pas indigo : sur un fond indigo la cargaison ambrée s'éteint et le navire perd ce qui le rend
+          vivant. Grille macOS — carré de 824 dans un canevas de 1024, rayon 185. Source :
+          <b>sonarche-tile.svg</b>.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>SIGNATURE</h2>
+      <div class="grid" style="align-items: center">
+        <div class="lockup">
+          <svg viewBox="0 0 24 24"><use href="#mark" /></svg><span class="word">Sonarche</span>
+        </div>
+        <div class="lockup sm">
+          <svg viewBox="0 0 16 16"><use href="#marksm" /></svg><span class="word">Sonarche</span>
+        </div>
+        <div class="note" style="max-width: 300px">
+          Space Grotesk 700, interlettrage +0,012 em. L'écart entre la marque et le mot vaut le quart de la largeur de
+          la marque.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>COULEURS</h2>
+      <div class="swatches">
+        <div class="sw"><i style="background: #6163f2"></i><b>Onde</b><span>#6163f2</span></div>
+        <div class="sw"><i style="background: #818cf9"></i><b>Plat-bord</b><span>#818cf9</span></div>
+        <div class="sw"><i style="background: #c5cbef"></i><b>Tête</b><span>#c5cbef</span></div>
+        <div class="sw"><i style="background: #3d4097"></i><b>Bordé haut</b><span>#3d4097</span></div>
+        <div class="sw"><i style="background: #2e3172"></i><b>Bordé bas</b><span>#2e3172</span></div>
+        <div class="sw"><i style="background: #222652"></i><b>Yeux</b><span>#222652</span></div>
+        <div class="sw"><i style="background: #efa831"></i><b>Ambre</b><span>#efa831</span></div>
+      </div>
+      <div class="note" style="max-width: 700px; margin-top: 18px">
+        Toute la marque tient sur la rampe indigo que l'app utilise déjà. <b>L'ambre est le seul écart</b>, et il ne
+        sert qu'aux deux containers d'extrémité — ce sont eux qui ancrent le dessin quand tout le reste se referme en
+        petit. Les couleurs d'état de l'app (erreur, avertissement, succès) sont exclues : un rouge ou un vert sur un
+        container ferait lire un statut là où il n'y en a pas.
+      </div>
+    </section>
+
+    <section>
+      <h2>CE QU'ON NE FAIT PAS</h2>
+      <div class="rules">
+        <div>
+          <b>Rien sous les yeux.</b> Une porte, une écoutille, n'importe quoi de centré sous la tête devient un nez et
+          le navire vire au bonhomme.
+        </div>
+        <div>
+          <b>Pas de containers au ras du bord.</b> Ils doivent laisser deux cases de pont nu à chaque extrémité, sinon
+          ils lisent comme des bras.
+        </div>
+        <div>
+          <b>Pas de toit.</b> La barre au-dessus de la cabine a été retirée : l'onde est la seule chose posée sur
+          l'arche.
+        </div>
+        <div>
+          <b>Pas d'arc en plein cintre.</b> Le rayon doit dépasser la demi-largeur, sinon l'œil reconnaît un cercle
+          avant de reconnaître une fenêtre.
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+<!--
+  Sonarche — le jumeau simplifié, grille 16. À employer sous 32 px.
+  Même silhouette, même palette, mais les détails d'un pixel sautent :
+  hublots, couvercles, sangles, liserés de bordé. En dessous de 32 px ils
+  ne dessinent plus rien, ils salissent.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <g fill="#6163f2">
+    <rect x="6.3" y="4" width="0.5" height="1" rx="0.25"/>
+    <rect x="7.3" y="3" width="0.5" height="2" rx="0.25"/>
+    <rect x="8.3" y="3.5" width="0.5" height="1.5" rx="0.25"/>
+    <rect x="9.3" y="3.8" width="0.5" height="1.2" rx="0.25"/>
+  </g>
+
+  <path d="M5 8V6.6C5 6.05 5.6 5.65 6.4 5.55 6.9 5.48 9.1 5.48 9.6 5.55 10.4 5.65 11 6.05 11 6.6V8Z" fill="#c5cbef"/>
+  <rect x="6.2" y="6.4" width="1.2" height="1.2" rx="0.45" fill="#222652"/>
+  <rect x="8.6" y="6.4" width="1.2" height="1.2" rx="0.45" fill="#222652"/>
+
+  <rect x="2" y="6.2" width="1.4" height="1.8" rx="0.35" fill="#efa831"/>
+  <rect x="3.6" y="6.8" width="1" height="1.2" rx="0.3" fill="#3d4097"/>
+  <rect x="11.4" y="6.8" width="1" height="1.2" rx="0.3" fill="#3d4097"/>
+  <rect x="12.6" y="6.2" width="1.4" height="1.8" rx="0.35" fill="#efa831"/>
+
+  <rect x="1" y="8" width="14" height="0.8" rx="0.4" fill="#818cf9"/>
+  <path d="M1.4 8.7h13.2q.5 0 .45.5l-.3 1.75q-.4 2.2-2.3 2.2H3.55q-1.9 0-2.3-2.2l-.3-1.75q-.05-.5.45-.5Z" fill="#3d4097"/>
+  <path d="M2.5 10.9h11l-.2.8q-.5 1.65-1.95 1.65H4.65q-1.45 0-1.95-1.65Z" fill="#2e3172"/>
+</svg>
