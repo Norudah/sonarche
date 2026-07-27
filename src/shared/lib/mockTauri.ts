@@ -602,6 +602,7 @@ export function installMockTauri() {
       // browser. Always the same folder, so the summary below is about it.
       if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
+      if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
       if (cmd === "get_env_status") return { ...env };
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
@@ -714,9 +715,45 @@ function mockScan(path: string): unknown {
     unplayable: 25,
     unplayableByExtension: { wma: 19, opus: 6 },
     unplayableExamples: [`${path}/Old Rips/track01.wma`, `${path}/Podcasts/ep-114.opus`],
+    albumFolders: MOCK_IMPORT_FOLDERS.length,
     bytes: 31_400_000_000,
     truncated: false,
   };
+}
+
+/** The albums the mock import walks through. Named, because the point of the
+ * progress line is that it says which record is being copied. */
+const MOCK_IMPORT_FOLDERS = [
+  "Aphex Twin/Selected Ambient Works 85-92",
+  "Boards of Canada/Music Has the Right to Children",
+  "Burial/Untrue",
+  "Fever Ray/Fever Ray",
+  "Portishead/Dummy",
+  "The Avalanches/Since I Left You",
+];
+
+/**
+ * An import that takes visible time.
+ *
+ * Instant would hide the one state worth previewing. `?failImport` stops it
+ * partway instead — the failure has to be drawable too, and it is the state
+ * nobody thinks to look at.
+ */
+async function mockLibraryImport(folder: string): Promise<unknown> {
+  const failAt = new URLSearchParams(window.location.search).has("failImport") ? 3 : Infinity;
+
+  for (const [index, album] of MOCK_IMPORT_FOLDERS.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+    if (index + 1 === failAt) {
+      throw `beet import failed (exit 1): could not read ${folder}/${album}`;
+    }
+    emitMockEvent("sidecar:event", {
+      event: "library_import_progress",
+      data: { folders: index + 1, folder: `${folder}/${album}` },
+    });
+  }
+
+  return { folders: MOCK_IMPORT_FOLDERS.length };
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

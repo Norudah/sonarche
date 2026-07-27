@@ -11,6 +11,7 @@ use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
+use crate::library_import::{ImportOutcome, LibraryImportState};
 use crate::library_scan::{self, ScanReport};
 use crate::now_playing::{self, NowPlayingTrack};
 use crate::onboarding::{self, OnboardingState};
@@ -88,31 +89,27 @@ pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job
 /// Look at a folder the user is considering importing.
 ///
 /// Read-only, and off the runtime: a music library is a deep tree and
-/// `read_dir` is blocking. The path comes from the front, so it is checked
-/// here — the two refusals below are the ones that would hurt.
+/// `read_dir` is blocking.
 #[tauri::command]
 pub async fn scan_import_folder(app: AppHandle, path: String) -> AppResult<ScanReport> {
     let root = PathBuf::from(&path);
-    let library = AppPaths::resolve(&app)?.library_dir;
-
-    // Importing the library into itself would have beets copy every file beside
-    // itself and re-import the copies. Nothing downstream would notice.
-    if root == library || root.starts_with(&library) {
-        return Err(AppError::InvalidInput(
-            "that folder is inside the Sonarche library".into(),
-        ));
-    }
-    // The other direction is just as bad: picking a parent of the library walks
-    // the library too, and the summary would count tracks already imported.
-    if library.starts_with(&root) {
-        return Err(AppError::InvalidInput(
-            "that folder contains the Sonarche library".into(),
-        ));
-    }
+    library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_dir)?;
 
     tokio::task::spawn_blocking(move || library_scan::scan(&root))
         .await
         .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))?
+}
+
+/// Copy a folder's music into the library. Takes as long as it takes; progress
+/// reaches the page through the sidecar's own `library_import_progress` events.
+#[tauri::command]
+pub async fn start_library_import(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    state: State<'_, LibraryImportState>,
+    folder: String,
+) -> AppResult<ImportOutcome> {
+    state.run(&app, &sidecar, &folder).await
 }
 
 #[tauri::command]

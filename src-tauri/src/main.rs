@@ -7,6 +7,7 @@ mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
+mod library_import;
 mod library_scan;
 mod now_playing;
 mod onboarding;
@@ -29,6 +30,7 @@ fn main() {
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
+        .manage(library_import::LibraryImportState::default())
         .manage(player::PlayerState::default())
         .setup(|app| {
             let state = jobs::init(app.handle())?;
@@ -56,6 +58,7 @@ fn main() {
             commands::delete_track,
             commands::update_tracks,
             commands::scan_import_folder,
+            commands::start_library_import,
             commands::list_api_keys,
             commands::set_api_key,
             commands::reset_setup_dev,

@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { pickFolder, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderCard } from "@/features/import/FolderCard";
+import { useImportProgress, useLibraryImport } from "@/features/import/hooks";
+import { importPhase } from "@/features/import/phase";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function ImportPage() {
@@ -14,14 +16,28 @@ export function ImportPage() {
   // and its result belongs to that one choice — there is no key to cache it
   // under, and nothing should re-fetch it in the background.
   const scan = useMutation<ScanReport, unknown, string>({ mutationFn: scanImportFolder });
+  const run = useLibraryImport();
+  const progress = useImportProgress(run.isPending);
 
   const choose = async () => {
     const chosen = await pickFolder();
     // Closing the panel is an answer: keep whatever was already on screen.
     if (chosen == null) return;
     setFolder(chosen);
+    // A new folder makes the last import's verdict about someone else.
+    run.reset();
     scan.mutate(chosen);
   };
+
+  const phase = importPhase({
+    folder,
+    scanning: scan.isPending,
+    scanError: scan.isError ? String(scan.error) : null,
+    report: scan.data ?? null,
+    importing: run.isPending,
+    importError: run.isError ? String(run.error) : null,
+    outcome: run.data ?? null,
+  });
 
   return (
     <PageContainer>
@@ -38,10 +54,10 @@ export function ImportPage() {
 
           <FolderCard
             folder={folder}
-            report={scan.data ?? null}
-            isScanning={scan.isPending}
-            error={scan.isError ? String(scan.error) : null}
+            phase={phase}
+            progress={progress}
             onChoose={() => void choose()}
+            onStart={() => folder != null && run.mutate(folder)}
           />
         </div>
       </div>

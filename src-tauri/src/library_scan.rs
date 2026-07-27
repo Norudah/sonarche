@@ -45,6 +45,12 @@ pub struct ScanReport {
     /// A few unplayable files by name, for a screen that has to show rather
     /// than assert.
     pub unplayable_examples: Vec<String>,
+    /// Folders holding at least one audio file.
+    ///
+    /// beets imports a tree folder by folder and names each one as it goes, so
+    /// this is the denominator of the progress bar — the only count the import
+    /// can be measured against without asking beets how far it has to go.
+    pub album_folders: u64,
     /// Total bytes of every audio file found — what the copy will cost.
     pub bytes: u64,
     /// The walk hit `MAX_ENTRIES` and stopped. Every count above is a floor.
@@ -76,6 +82,29 @@ fn extension_of(path: &Path) -> Option<String> {
         .map(|ext| ext.to_string_lossy().to_lowercase())
 }
 
+/// Refuse a folder that overlaps the library, in either direction.
+///
+/// Both mistakes are easy to make from a file picker and neither is visible in
+/// the result: importing the library into itself has beets copy every file
+/// beside itself and re-import the copies, and importing a folder that
+/// *contains* the library walks it too, re-importing everything already in.
+///
+/// Checked here rather than at each call site so the scan and the import that
+/// follows it cannot disagree about what is allowed.
+pub fn ensure_outside_library(root: &Path, library: &Path) -> AppResult<()> {
+    if root.starts_with(library) {
+        return Err(AppError::InvalidInput(
+            "that folder is inside the Sonarche library".into(),
+        ));
+    }
+    if library.starts_with(root) {
+        return Err(AppError::InvalidInput(
+            "that folder contains the Sonarche library".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Walk `root` and report what an import would find.
 ///
 /// Blocking on purpose: it is a directory walk, and the caller runs it on a
@@ -95,6 +124,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         unplayable: 0,
         unplayable_by_extension: BTreeMap::new(),
         unplayable_examples: Vec::new(),
+        album_folders: 0,
         bytes: 0,
         truncated: false,
     };
@@ -109,6 +139,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         let Ok(entries) = fs::read_dir(&dir) else {
             continue;
         };
+        let mut holds_audio = false;
 
         for entry in entries.flatten() {
             seen += 1;
@@ -132,8 +163,15 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
                 continue;
             }
 
+            holds_audio = true;
             report.bytes += entry.metadata().map(|meta| meta.len()).unwrap_or(0);
             record(&mut report, &path);
+        }
+
+        // Counted per folder, not per file: an album spread over `Disc 1` and
+        // `Disc 2` is two folders to beets, and both are named as it goes.
+        if holds_audio {
+            report.album_folders += 1;
         }
     }
 
@@ -205,6 +243,25 @@ mod tests {
         assert!(!report.truncated);
     }
 
+    /// The progress denominator. Only folders with audio in them count — the
+    /// artist folders above them hold nothing beets will announce.
+    #[test]
+    fn counts_the_folders_beets_will_walk_not_the_ones_in_between() {
+        let tree = Tree::new("folders");
+        tree.file("Daft Punk/Discovery/01.m4a", 1)
+            .file("Daft Punk/Discovery/02.m4a", 1)
+            .file("Daft Punk/Homework/01.m4a", 1)
+            .file("Radiohead/In Rainbows/Disc 1/01.m4a", 1)
+            .file("Radiohead/In Rainbows/Disc 2/01.m4a", 1)
+            .file("Radiohead/In Rainbows/cover.jpg", 1);
+
+        let report = scan(&tree.0).expect("scan");
+
+        // Discovery, Homework, Disc 1, Disc 2 — not `Daft Punk`, not
+        // `Radiohead`, and not `In Rainbows`, which holds only the cover.
+        assert_eq!(report.album_folders, 4);
+    }
+
     #[test]
     fn separates_what_it_cannot_decode_and_says_which_formats() {
         let tree = Tree::new("mixed");
@@ -249,6 +306,29 @@ mod tests {
         let outcome = scan(&tree.0.join("lonely.mp3"));
 
         assert!(matches!(outcome, Err(AppError::InvalidInput(_))));
+    }
+
+    #[test]
+    fn refuses_a_folder_that_overlaps_the_library_either_way() {
+        let library = Path::new("/Users/me/Music/Sonarche");
+
+        // The library itself, and anything under it.
+        assert!(ensure_outside_library(library, library).is_err());
+        assert!(ensure_outside_library(&library.join("Daft Punk"), library).is_err());
+        // A parent of it walks the library too.
+        assert!(ensure_outside_library(Path::new("/Users/me/Music"), library).is_err());
+        assert!(ensure_outside_library(Path::new("/Users/me"), library).is_err());
+    }
+
+    #[test]
+    fn allows_a_folder_that_merely_shares_a_prefix() {
+        let library = Path::new("/Users/me/Music/Sonarche");
+
+        // `Sonarche-old` starts with the same *string* as the library but is a
+        // different folder — a check on characters rather than path components
+        // would refuse it.
+        assert!(ensure_outside_library(Path::new("/Users/me/Music/Sonarche-old"), library).is_ok());
+        assert!(ensure_outside_library(Path::new("/Volumes/Backup"), library).is_ok());
     }
 
     #[test]

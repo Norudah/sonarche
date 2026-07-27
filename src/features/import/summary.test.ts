@@ -9,6 +9,7 @@ function report(overrides: Partial<ScanReport> = {}): ScanReport {
     unplayable: 0,
     unplayableByExtension: {},
     unplayableExamples: [],
+    albumFolders: 0,
     bytes: 0,
     truncated: false,
     ...overrides,

@@ -19,5 +19,13 @@
   "unplayableFormats_other": "Formats affected: {{formats}}",
   "unplayableKept": "They are imported anyway: their tags still count, and they keep their place in their album.",
   "start": "Import",
-  "notReady": "The import itself lands in the next stage."
+  "importing": "Import in progress",
+  "progress": "Folder {{done, number}} of {{total, number}}",
+  "importFailed": "The import stopped",
+  "retry": "Try again",
+  "done": "Import finished",
+  "doneDetail_one": "{{count, number}} folder added to the ark.",
+  "doneDetail_other": "{{count, number}} folders added to the ark.",
+  "seeLibrary": "Open the library",
+  "importAnother": "Import another folder"
 }

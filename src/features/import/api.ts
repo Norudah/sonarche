@@ -11,6 +11,9 @@ export interface ScanReport {
   unplayableByExtension: Record<string, number>;
   /** A few of them by name, so the screen can show rather than assert. */
   unplayableExamples: string[];
+  /** Folders holding at least one audio file — the progress denominator, since
+   * beets imports a tree folder by folder and names each one as it goes. */
+  albumFolders: number;
   /** Total bytes of every audio file found. */
   bytes: number;
   /** The walk hit its ceiling: every count above is a floor. */
@@ -19,6 +22,18 @@ export interface ScanReport {
 
 export function scanImportFolder(path: string): Promise<ScanReport> {
   return invoke<ScanReport>("scan_import_folder", { path });
+}
+
+/** What the import did, once it is over. */
+export interface ImportOutcome {
+  /** Album folders beets took on — comparable to the scan's `albumFolders`. */
+  folders: number;
+}
+
+/** Copy a folder's music into the library. Resolves when beets is done, which
+ * on a real collection is minutes away. */
+export function startLibraryImport(folder: string): Promise<ImportOutcome> {
+  return invoke<ImportOutcome>("start_library_import", { folder });
 }
 
 /**
