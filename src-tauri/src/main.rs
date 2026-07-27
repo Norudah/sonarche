@@ -1,11 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod dev_reset;
 mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
 mod now_playing;
+mod onboarding;
 mod player;
 mod preferences;
 mod python_env;
@@ -32,6 +34,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_env_status,
             commands::setup_env,
+            commands::get_onboarding_state,
+            commands::set_onboarding_completed,
             commands::enqueue_download,
             commands::list_jobs,
             commands::retry_job,
@@ -45,6 +49,7 @@ fn main() {
             commands::update_tracks,
             commands::list_api_keys,
             commands::set_api_key,
+            commands::reset_setup_dev,
             commands::reset_library_dev,
             commands::player_load,
             commands::player_enqueue,

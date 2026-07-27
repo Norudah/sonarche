@@ -15,5 +15,10 @@
     "installing": "Installing…",
     "starting": "Starting…",
     "failed": "Installation failed"
+  },
+  "ready": {
+    "title": "Everything is ready",
+    "description": "The environment is in place. You can start filling your library.",
+    "action": "Enter Sonarche"
   }
 }

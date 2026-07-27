@@ -15,5 +15,10 @@
     "installing": "Installation en cours…",
     "starting": "Démarrage…",
     "failed": "L'installation a échoué"
+  },
+  "ready": {
+    "title": "Tout est prêt",
+    "description": "L'environnement est en place. Tu peux commencer à remplir ta bibliothèque.",
+    "action": "Entrer dans Sonarche"
   }
 }

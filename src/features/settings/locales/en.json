@@ -49,10 +49,39 @@
   "developer": {
     "category": "Developer",
     "title": "Developer tools",
-    "description": "Only visible in development builds. These tools are destructive and meant for testing the app, not using it.",
+    "description": "Only visible in development builds. These tools are for testing the app, not for using it.",
+    "resetSetup": {
+      "name": "Replay the setup",
+      "why": "Puts back what the app can rebuild on its own, so the first-run walkthrough can be gone through again. Leaves your audio files and the beets index alone.",
+      "action": "Replay",
+      "running": "Resetting…",
+      "done": "Reset. Restart the app to start over.",
+      "targets": {
+        "venv": {
+          "label": "Python environment",
+          "cost": "a few minutes to reinstall"
+        },
+        "tools": {
+          "label": "Downloaded tools (fpcalc)",
+          "cost": "one re-download"
+        },
+        "apiKeys": {
+          "label": "AcoustID key",
+          "cost": "you'll have to paste it back"
+        },
+        "history": {
+          "label": "Download history",
+          "cost": "finished jobs only"
+        },
+        "onboarding": {
+          "label": "First-run walkthrough",
+          "cost": "no side effect"
+        }
+      }
+    },
     "resetLibrary": {
-      "name": "Reset the library",
-      "why": "Deletes every audio file in the library and the beets database, for a clean slate between test runs.",
+      "name": "Delete the library",
+      "why": "Destructive: deletes every audio file in the library and the beets database, for a clean slate between test runs.",
       "action": "Wipe everything",
       "confirm": "Click again to confirm",
       "warning": "Every library file and the beets index will be permanently deleted.",

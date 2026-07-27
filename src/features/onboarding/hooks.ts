@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
-import { getEnvStatus, setupEnv } from "@/features/onboarding/api";
+import { getEnvStatus, getOnboardingState, setOnboardingCompleted, setupEnv } from "@/features/onboarding/api";
 
 export const envStatusKey = ["env-status"] as const;
+export const onboardingStateKey = ["onboarding-state"] as const;
 
 export function useEnvStatus() {
   return useQuery({
@@ -20,6 +21,24 @@ export function useSetupEnv() {
     mutationFn: setupEnv,
     onSuccess: (status) => {
       queryClient.setQueryData(envStatusKey, status);
+    },
+  });
+}
+
+export function useOnboardingState() {
+  return useQuery({
+    queryKey: onboardingStateKey,
+    queryFn: getOnboardingState,
+    staleTime: Infinity,
+  });
+}
+
+export function useCompleteOnboarding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => setOnboardingCompleted(true),
+    onSuccess: (state) => {
+      queryClient.setQueryData(onboardingStateKey, state);
     },
   });
 }

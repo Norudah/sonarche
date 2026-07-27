@@ -49,10 +49,39 @@
   "developer": {
     "category": "Développement",
     "title": "Outils de développement",
-    "description": "Visible uniquement en build de développement. Ces outils sont destructifs et servent à tester l'app, pas à l'utiliser.",
+    "description": "Visible uniquement en build de développement. Ces outils servent à tester l'app, pas à l'utiliser.",
+    "resetSetup": {
+      "name": "Rejouer l'installation",
+      "why": "Remet en place ce que l'app sait reconstruire seule, pour repasser par le parcours de première ouverture. Ne touche ni à tes fichiers audio, ni à l'index beets.",
+      "action": "Rejouer",
+      "running": "Réinitialisation…",
+      "done": "Réinitialisé. Relance l'app pour repartir du début.",
+      "targets": {
+        "venv": {
+          "label": "Environnement Python",
+          "cost": "quelques minutes de réinstallation"
+        },
+        "tools": {
+          "label": "Outils téléchargés (fpcalc)",
+          "cost": "un re-téléchargement"
+        },
+        "apiKeys": {
+          "label": "Clé AcoustID",
+          "cost": "il faudra la recoller"
+        },
+        "history": {
+          "label": "Historique des téléchargements",
+          "cost": "les jobs terminés seulement"
+        },
+        "onboarding": {
+          "label": "Parcours de première ouverture",
+          "cost": "sans effet de bord"
+        }
+      }
+    },
     "resetLibrary": {
-      "name": "Réinitialiser la bibliothèque",
-      "why": "Supprime tous les fichiers audio de la bibliothèque et la base beets, pour repartir de zéro entre deux tests.",
+      "name": "Supprimer la bibliothèque",
+      "why": "Destructif : supprime tous les fichiers audio de la bibliothèque et la base beets, pour repartir de zéro entre deux tests.",
       "action": "Tout effacer",
       "confirm": "Clique à nouveau pour confirmer",
       "warning": "Tous les fichiers de la bibliothèque et l'index beets seront définitivement supprimés.",

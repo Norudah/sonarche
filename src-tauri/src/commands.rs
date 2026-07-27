@@ -6,10 +6,12 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
+use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
 use crate::now_playing::{self, NowPlayingTrack};
+use crate::onboarding::{self, OnboardingState};
 use crate::player::{self, PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
@@ -208,26 +210,34 @@ pub async fn recompute_genres(
     state.run(&app).await
 }
 
+#[tauri::command]
+pub async fn get_onboarding_state(app: AppHandle) -> AppResult<OnboardingState> {
+    onboarding::state(&app).await
+}
+
+#[tauri::command]
+pub async fn set_onboarding_completed(
+    app: AppHandle,
+    completed: bool,
+) -> AppResult<OnboardingState> {
+    onboarding::set_completed(&app, completed).await
+}
+
+/// Dev-only: put back what the app can rebuild by itself. Never the library.
+#[tauri::command]
+pub async fn reset_setup_dev(
+    app: AppHandle,
+    state: State<'_, JobsState>,
+    targets: ResetTargets,
+) -> AppResult<()> {
+    dev_reset::reset_setup(&app, &state, targets).await
+}
+
 /// Dev-only: wipe the whole music library (audio files + beets DB) so bug-fix
 /// scenarios restart from a clean slate. Refused outright in release builds.
 #[tauri::command]
 pub async fn reset_library_dev(app: AppHandle) -> AppResult<()> {
-    if !cfg!(debug_assertions) {
-        return Err(AppError::InvalidInput(
-            "library reset is only available in dev builds".into(),
-        ));
-    }
-    let paths = AppPaths::resolve(&app)?;
-    if tokio::fs::try_exists(&paths.library_dir)
-        .await
-        .unwrap_or(false)
-    {
-        tokio::fs::remove_dir_all(&paths.library_dir).await?;
-    }
-    tokio::fs::create_dir_all(&paths.library_dir).await?;
-    let _ = tokio::fs::remove_file(&paths.beets_db).await;
-    eprintln!("[dev] library reset: files and beets DB wiped");
-    Ok(())
+    dev_reset::reset_library(&app).await
 }
 
 /// The only tags an edit may touch. Keys are beets' own item attribute names,
