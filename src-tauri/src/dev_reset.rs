@@ -17,6 +17,7 @@ use tauri::AppHandle;
 use crate::error::{AppError, AppResult};
 use crate::jobs::JobsState;
 use crate::python_env::AppPaths;
+use crate::sidecar::SidecarState;
 use crate::{preferences, settings};
 
 /// One checkbox each, rather than a single "reset everything": replaying the
@@ -67,10 +68,22 @@ fn dirs_to_remove(paths: &AppPaths, targets: &ResetTargets) -> Vec<PathBuf> {
 pub async fn reset_setup(
     app: &AppHandle,
     jobs: &JobsState,
+    sidecar: &SidecarState,
     targets: ResetTargets,
 ) -> AppResult<()> {
     ensure_dev("setup reset")?;
     let paths = AppPaths::resolve(app)?;
+
+    // Before the files go, not after: the sidecar is a long-lived process
+    // running the venv's interpreter. Deleting the venv underneath it leaves it
+    // very much alive — Unix keeps a running binary's inode — so the reinstall
+    // would finish and the *old* process would still be the one answering, out
+    // of a venv that no longer exists. A replay that leaves the previous engine
+    // in place is not a replay.
+    if targets.venv {
+        sidecar.shutdown().await;
+        eprintln!("[dev] setup reset: sidecar stopped");
+    }
 
     for dir in dirs_to_remove(&paths, &targets) {
         if tokio::fs::try_exists(&dir).await.unwrap_or(false) {

@@ -248,9 +248,10 @@ pub async fn set_onboarding_completed(
 pub async fn reset_setup_dev(
     app: AppHandle,
     state: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
     targets: ResetTargets,
 ) -> AppResult<()> {
-    dev_reset::reset_setup(&app, &state, targets).await
+    dev_reset::reset_setup(&app, &state, &sidecar, targets).await
 }
 
 /// Dev-only: wipe the whole music library (audio files + beets DB) so bug-fix

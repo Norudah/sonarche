@@ -18,7 +18,11 @@ import { useResetSetupDev } from "@/features/settings/hooks";
 export function SetupResetCard() {
   const { t } = useTranslation("settings");
   const reset = useResetSetupDev();
-  const [selected, setSelected] = useState<Set<SetupResetTargetName>>(new Set(["onboarding"]));
+  // The card says "replay the setup", so the default selection has to be one:
+  // the flag alone only replays the *screen*, with both engine steps already
+  // green — which looks like the button did nothing. The key stays unchecked,
+  // being the only item here that costs something real to put back.
+  const [selected, setSelected] = useState<Set<SetupResetTargetName>>(new Set(["venv", "tools", "onboarding"]));
 
   const toggle = (name: SetupResetTargetName, on: boolean) =>
     setSelected((prev) => {
