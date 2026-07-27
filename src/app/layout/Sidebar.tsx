@@ -1,10 +1,10 @@
 import { cn } from "@heroui/react";
 import {
-  AudioLines,
   ChevronLeft,
   Disc,
   Download,
   FileText,
+  FolderInput,
   History,
   Layers,
   Mic2,
@@ -22,6 +22,7 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 import { paths } from "@/app/routes";
 import { settingsCategories } from "@/features/settings/categories";
 import { layoutIds, springs } from "@/shared/motion/tokens";
+import { SonarcheMark } from "@/shared/ui/SonarcheMark";
 
 function NavItem({
   to,
@@ -96,6 +97,9 @@ function MainNav() {
     <div className="flex flex-col">
       <NavSection label={t("nav.sections.explorer")}>
         <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
+        {/* Directly under Downloads: the two ways music enters the ark, in the
+            order most people meet them. */}
+        <NavItem to={paths.import} label={t("nav.import")} icon={FolderInput} />
         <NavItem to={paths.history} label={t("nav.history")} icon={History} />
         <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
       </NavSection>
@@ -160,9 +164,9 @@ export function Sidebar() {
           reacts to presses that land on the element carrying the attribute,
           and a press on the logo or the wordmark would otherwise do nothing. */}
       <div data-tauri-drag-region className="flex items-center gap-3 px-6 pt-14 pb-7">
-        <div className="pointer-events-none flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-          <AudioLines className="size-5" />
-        </div>
+        {/* No tile behind it: the mark is a coloured illustration, not a glyph,
+            so an accent plate would fight its own indigo instead of carrying it. */}
+        <SonarcheMark className="pointer-events-none size-9 shrink-0" />
         <span className="pointer-events-none text-base font-semibold tracking-tight">{t("appName")}</span>
       </div>
 

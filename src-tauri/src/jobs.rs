@@ -23,6 +23,9 @@ const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const IMPORT_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const ENRICH_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3 * 60);
+/// Plain library writes (the post-enrich category stamp): a DB session and N
+/// tag writes, no network.
+const LIBRARY_TIMEOUT: Duration = Duration::from_secs(60);
 /// One request covers the whole album: N fingerprints + MB calls + covers.
 const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 /// The configured download delay is a floor, not a metronome: jittering it up
@@ -129,6 +132,12 @@ pub struct Job {
     /// Download attempts started for a single job; album jobs count per track.
     #[serde(default)]
     pub download_attempts: u32,
+    /// The library category (beets' `grouping`) the user picked when queueing —
+    /// context, not musical style. Written onto every item the job produced,
+    /// after enrich so the user's choice wins over whatever the pipeline set.
+    /// `None` means "don't touch it", which is what every pre-existing job does.
+    #[serde(default)]
+    pub category: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -348,6 +357,9 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     update_job(app, inner, id, |j| j.status = JobStatus::Enriching).await;
     match run_enrich(app, inner, id, item_id).await {
         Ok(result) => {
+            if let Some(category) = job.category.as_deref() {
+                apply_category(app, id, category, &[item_id]).await;
+            }
             job_log(id, "job done");
             update_job(app, inner, id, |j| {
                 j.status = JobStatus::Done;
@@ -542,6 +554,54 @@ pub async fn enrich_item(
             ENRICH_TIMEOUT,
         )
         .await
+}
+
+/// Stamp the job's category onto the items it produced, through the same
+/// `library_update` path the metadata editor uses — beets stays the one writer.
+///
+/// Runs *after* enrich, not before: enrich rewrites tags from the MusicBrainz
+/// match, and the category is the user's own axis, so it has to land last.
+/// Never fatal — a job that downloaded, imported and identified has done its
+/// work; a failed grouping write is a missing tag the user can set by hand, not
+/// a reason to paint the whole run red.
+async fn apply_category(app: &AppHandle, id: &str, category: &str, item_ids: &[i64]) {
+    if item_ids.is_empty() {
+        return;
+    }
+    let paths = match AppPaths::resolve(app) {
+        Ok(paths) => paths,
+        Err(err) => {
+            job_log(id, &format!("category not applied: {err}"));
+            return;
+        }
+    };
+    let updates: Vec<Value> = item_ids
+        .iter()
+        .map(|item_id| json!({ "id": item_id, "fields": { "grouping": category } }))
+        .collect();
+    let sidecar = app.state::<SidecarState>();
+    let result = sidecar
+        .request(
+            app,
+            "library_update",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "updates": updates,
+            }),
+            LIBRARY_TIMEOUT,
+        )
+        .await;
+    match result {
+        Ok(_) => job_log(
+            id,
+            &format!(
+                "category '{category}' applied to {} item(s)",
+                item_ids.len()
+            ),
+        ),
+        Err(err) => job_log(id, &format!("category '{category}' not applied: {err}")),
+    }
 }
 
 async fn run_import(app: &AppHandle, path: &str, singleton: bool) -> AppResult<Value> {
@@ -832,6 +892,18 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
+
+    // Duplicates dropped by enrich have no item left to tag.
+    if let Some(category) = job.category.as_deref() {
+        let kept: Vec<i64> = job
+            .tracks
+            .iter()
+            .filter(|t| t.duplicate_of.is_none())
+            .filter_map(|t| t.item_id)
+            .collect();
+        apply_category(app, id, category, &kept).await;
+    }
+
     let total = job.tracks.len();
     let failed = job
         .tracks
@@ -949,7 +1021,13 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
 }
 
 impl JobsState {
-    pub async fn enqueue(&self, app: &AppHandle, url: String, kind: JobKind) -> AppResult<Job> {
+    pub async fn enqueue(
+        &self,
+        app: &AppHandle,
+        url: String,
+        kind: JobKind,
+        category: Option<String>,
+    ) -> AppResult<Job> {
         let now = now_ms();
         let job = Job {
             id: Uuid::new_v4().to_string(),
@@ -967,6 +1045,7 @@ impl JobsState {
             report: None,
             tracks: Vec::new(),
             download_attempts: 0,
+            category,
             created_at: now,
             updated_at: now,
         };

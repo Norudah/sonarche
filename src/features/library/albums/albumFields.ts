@@ -67,18 +67,11 @@ export function commonBaseline(tracks: LibraryTrack[]): AlbumCommonBaseline {
   return baseline;
 }
 
-/** The album's parent genre (the browse family), derived per track by the
- * sidecar and surfaced read-only: uniform → the shared family, disagreeing →
- * mixed. Not a common field because it is computed, never written. */
-export function commonGenreBucket(tracks: LibraryTrack[]): CommonCell {
-  return cellOf(tracks.map((track) => track.genreBucket ?? ""));
-}
-
 /** The per-track editable cells shown in the tracklist. Track number rides here
  * (not a common field) because it is what actually orders the record. Genre is
  * in *both* places on purpose: edited here when the record genuinely mixes
- * genres, from the common field when it does not — the Spirit case showed an
- * album's tracks legitimately disagreeing. */
+ * genres, read back into the common field by `draftGenreCell` — the Spirit case
+ * showed an album's tracks legitimately disagreeing. */
 export interface TrackRowValues {
   track: string;
   title: string;
@@ -115,7 +108,7 @@ export function toAlbumDraft(tracks: LibraryTrack[], baseline: AlbumCommonBaseli
  * (clearing included). A *mixed* field counts only once the user gives it a
  * value: an untouched "multiple values" field must never blanket-wipe the album,
  * so an empty mixed field is left alone. */
-function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
+export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
   const patch: Partial<AlbumCommonValues> = {};
   for (const field of ALBUM_COMMON_FIELDS) {
     const cell = baseline[field];
@@ -160,39 +153,61 @@ export function buildAlbumUpdates(
   return updates;
 }
 
-/** An artist edit the user might want to repeat elsewhere on the record. */
-export interface ArtistPropagation {
-  from: string;
-  to: string;
-  /** Tracks still showing `from` in the draft — candidates, never auto-applied. */
-  candidateIds: number[];
+/**
+ * The genre as the record currently reads it — derived from the rows, never
+ * stored twice.
+ *
+ * Genre is the one tag that lives in both views, and holding it as its own
+ * common value let the two disagree: fan a row's genre out to the record and the
+ * common field would still show the old word until something wrote it too. Here
+ * the common field is a *reading* of the rows (their shared value, or how many
+ * they hold), and writing to it fans out. Nothing left to contradict.
+ */
+export function draftGenreCell(tracks: LibraryTrack[], draft: AlbumDraft): CommonCell & { distinct: number } {
+  const values = new Set(tracks.map((track) => (draft.rows[track.id]?.genre ?? track.genre ?? "").trim()));
+  if (values.size <= 1) return { value: [...values][0] ?? "", mixed: false, distinct: values.size };
+  return { value: "", mixed: true, distinct: values.size };
 }
 
-/**
- * Artist edits worth offering to propagate.
- *
- * For each row whose artist moved `from` → `to`, the *other* rows still sitting
- * at `from` are collected as candidates. Deliberately never auto-applied: `from`
- * may be legitimately correct on some of them (the non-featuring tracks of an
- * album where a few gained an "feat. Y"), so blanket "replace every occurrence"
- * is wrong on exactly the case this feature exists for. The caller presents the
- * candidates as a checklist; the user picks which ones actually change.
- */
-export function artistPropagations(tracks: LibraryTrack[], draft: AlbumDraft): ArtistPropagation[] {
-  // De-dupe by (from → to): several edited rows can share the same rename.
-  const moves = new Map<string, { from: string; to: string }>();
-  for (const track of tracks) {
-    const to = draft.rows[track.id]?.artist;
-    if (to == null || to === track.artist || track.artist.trim() === "") continue;
-    moves.set(`${track.artist}\u0000${to}`, { from: track.artist, to });
-  }
+/** How many distinct values a mixed field actually holds — "4 different values"
+ * is a fact about the tags, where the track count would only restate the size of
+ * the record. */
+export function distinctCommonCount(tracks: LibraryTrack[], field: AlbumCommonField): number {
+  return new Set(tracks.map((track) => fieldOf(track, field).trim())).size;
+}
 
-  const result: ArtistPropagation[] = [];
-  for (const { from, to } of moves.values()) {
-    const candidateIds = tracks
-      .filter((track) => track.artist === from && (draft.rows[track.id]?.artist ?? track.artist) === from)
-      .map((track) => track.id);
-    if (candidateIds.length > 0) result.push({ from, to, candidateIds });
+/** The per-row cells that moved, each mapped to the value it moved away from.
+ * Feeds the "modified" marks and their one-click revert: the panel is always
+ * editable now, so what has to read at a glance is not "can I type here" but
+ * "what have I changed". */
+export function rowOrigins(track: LibraryTrack, row: TrackRowValues | undefined): Partial<TrackRowValues> {
+  if (!row) return {};
+  const live = trackRowValues(track);
+  const origins: Partial<TrackRowValues> = {};
+  for (const key of Object.keys(live) as (keyof TrackRowValues)[]) {
+    if (row[key] !== live[key]) origins[key] = live[key];
   }
-  return result;
+  return origins;
+}
+
+/** What the footer counts.
+ *
+ * `fields` is how many *tags* the edit touches, counted once each however many
+ * rows carry them: setting the genre on a 29-track record is one change, not 29,
+ * and the same genre reached from the common field and from a row is still one.
+ * `tracks` is how many files the save would rewrite. Two different numbers, both
+ * worth stating — "3 changes on 2 tracks" is the sentence the footer makes. */
+export interface ChangeSummary {
+  fields: number;
+  tracks: number;
+}
+
+export function changeSummary(tracks: LibraryTrack[], baseline: AlbumCommonBaseline, draft: AlbumDraft): ChangeSummary {
+  const touched = new Set<string>(Object.keys(changedCommon(baseline, draft)));
+  for (const track of tracks) {
+    // `albumartist` is the common field's wire name; a row's `artist` is its own
+    // tag, so the two never collapse into each other.
+    for (const key of Object.keys(rowOrigins(track, draft.rows[track.id]))) touched.add(key);
+  }
+  return { fields: touched.size, tracks: buildAlbumUpdates(tracks, baseline, draft).length };
 }

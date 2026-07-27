@@ -5,8 +5,10 @@ import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
 import { SetupGate } from "@/features/onboarding/SetupGate";
+import { useUpdatePrompt } from "@/features/update/useUpdatePrompt";
 import { HistoryDepthProvider } from "@/shared/navigation/historyDepth";
 import { PlayerBar } from "@/shared/player/PlayerBar";
+import { ToastViewport } from "@/shared/toast/ToastViewport";
 import { ScrollportProvider } from "@/shared/ui/Scrollport";
 
 export function AppLayout() {
@@ -14,6 +16,8 @@ export function AppLayout() {
   // is ours to do; nothing upstream resets or restores it.
   const scrollRef = useRef<HTMLElement>(null);
   useScrollRestoration(scrollRef);
+  // Inside the shell, so the prompt has the toast viewport below it to land in.
+  useUpdatePrompt();
 
   return (
     // The provider wraps everything and lives outside the gate: the count has to
@@ -47,6 +51,11 @@ export function AppLayout() {
             </div>
           </div>
           <PlayerBar />
+          {/* Mounted beside the player bar, not above it in the tree: the
+              viewport is positioned against the bar, and the two only ever
+              appear together — the onboarding walkthrough replaces this whole
+              chrome and speaks for itself. */}
+          <ToastViewport />
         </div>
       </SetupGate>
     </HistoryDepthProvider>

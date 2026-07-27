@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { MetadataArtwork } from "@/features/library/metadata/MetadataArtwork";
+import { PendingBadge } from "@/features/library/metadata/PendingBadge";
 
 function useSubtitle(track: LibraryTrack): string {
   const { t } = useTranslation("library");
@@ -13,11 +14,12 @@ function useSubtitle(track: LibraryTrack): string {
 
 export function MetadataHeader({
   track,
-  isEditing,
+  pendingFields,
   onClose,
 }: {
   track: LibraryTrack;
-  isEditing: boolean;
+  /** Edits waiting to be written — stated here so the action bar can hold still. */
+  pendingFields: number;
   onClose: () => void;
 }) {
   const { t } = useTranslation("library");
@@ -31,7 +33,7 @@ export function MetadataHeader({
     // an accident, not a layout. A hairline closes the band so it never bleeds
     // into the fields.
     <header className="relative flex shrink-0 items-end gap-5 border-b border-separator/60 bg-gradient-to-b from-accent-soft/70 via-accent-soft/20 to-transparent px-7 pt-14 pb-6">
-      <MetadataArtwork artUrl={track.artUrl} isEditing={isEditing} />
+      <MetadataArtwork artUrl={track.artUrl} />
       {/* pr-8 keeps the title clear of the absolutely-placed close button. */}
       <div className="min-w-0 flex-1 pr-8">
         <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("metadata.eyebrow")}</p>
@@ -39,6 +41,9 @@ export function MetadataHeader({
           {track.title || t("unknownTitle")}
         </h2>
         <p className="mt-1.5 truncate text-[0.8125rem] leading-tight text-muted">{subtitle}</p>
+        <div className="mt-2 flex">
+          <PendingBadge fields={pendingFields} />
+        </div>
       </div>
       <Button
         isIconOnly

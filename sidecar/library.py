@@ -73,29 +73,23 @@ def first_genre(stored: str | None) -> str | None:
     return next(iter(split_multi(stored)), None)
 
 
-def _art_path(artpath: str | None) -> str | None:
-    """Sonarche displays the HQ cover (cover-hq.*) next to beets' own artpath
-    (the 500px thumb it embeds/tracks); fall back to the artpath itself for
-    albums enriched before the HQ/thumb split."""
-    if not artpath:
-        return None
-    art_dir = os.path.dirname(artpath)
-    for ext in ("jpg", "png"):
-        hq_path = os.path.join(art_dir, f"cover-hq.{ext}")
-        if os.path.exists(hq_path):
-            return hq_path
-    return artpath
-
-
 def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     """Resolve every album's cover once, up front.
 
+    This is beets' own artpath — the 500px rendition `set_album_art` writes and
+    embeds — and *not* the cover-hq.* we archive next to it. Nothing on screen
+    is wider than the album hero (192pt, 384px on retina), so the HQ never had
+    a pixel to spare: it was decoded at up to 5000x5000 to be drawn into a 40px
+    list thumbnail, which costs ~100 MB of bitmap per cover instead of ~1 MB.
+    The archive keeps the original on disk; the UI reads the rendition sized
+    for it, and gets its own path back the day a full-size cover view exists.
+
     Cover art is an album-level property; resolving it per track meant one
-    query and two stat() calls each, to answer a question with one answer per
-    album. Keeps the work proportional to albums, not tracks.
+    query each, to answer a question with one answer per album. Keeps the work
+    proportional to albums, not tracks.
     """
     return {
-        row["id"]: _art_path(expand_db_path(row["artpath"], library_dir))
+        row["id"]: expand_db_path(row["artpath"], library_dir)
         for row in conn.execute("SELECT id, artpath FROM albums")
     }
 
@@ -160,7 +154,16 @@ def handle(_request_id: str, params: dict) -> dict:
     library_dir = params["library_dir"]
     # Read-only: the URI form makes that a guarantee rather than a convention,
     # so a bug here can never touch the library beets owns.
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    #
+    # The busy timeout is load-bearing now that this runs on its own sidecar
+    # process: an import on the work channel holds a write lock for as long as
+    # beets needs, and this connection has to wait it out rather than come back
+    # "database is locked" — which, before the split, could not happen at all
+    # because requests were serial. Explicit and raised from sqlite3's own 5s
+    # default, which a measured 8s lock already breaks. Still well under the
+    # caller's 60s query timeout, so a genuinely stuck writer surfaces as a
+    # timeout rather than as a hang.
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=20.0)
     conn.row_factory = sqlite3.Row
     try:
         art_by_album = art_paths_by_album(conn, library_dir)
@@ -206,6 +209,10 @@ _TEXT_FIELDS = ("title", "artist", "albumartist", "album", "grouping")
 # audio is*, so only identity edits lift it — setting a category or fixing a
 # track number leaves the question open.
 _IDENTITY_FIELDS = frozenset(("title", "artist", "albumartist", "album"))
+# The fields the path format is built from (`$albumartist/$album/$track $title`
+# — the first two of which live on the album row). Editing one of these means
+# the track no longer belongs where it sits.
+_ALBUM_FIELDS = frozenset(("album", "albumartist"))
 # Integer tags: beets stores 0 for "absent", so an emptied field clears to 0.
 _INT_FIELDS = ("year", "track", "tracktotal")
 
@@ -264,10 +271,15 @@ def update(_request_id: str, params: dict) -> dict:
     instead of N process round-trips. Writes go through beets' API so DB and
     tags stay in sync (the source-of-truth invariant). A failed *tag* write is
     logged, not fatal — the DB store already holds the truth, and the file may
-    be momentarily locked or read-only."""
+    be momentarily locked or read-only.
+
+    An edit that changes the album or the artist changes where the file
+    *belongs*, so the file follows: the path format is the library's filing
+    system, and leaving a renamed album under its old folder makes the database
+    and the disk disagree about the same record."""
     from beets.library import Library
 
-    import protocol
+    import covers
     import provenance
 
     db_path = params["beets_db"]
@@ -276,6 +288,15 @@ def update(_request_id: str, params: dict) -> dict:
 
     lib = Library(db_path, directory=params["library_dir"])
     updated = 0
+    # Where each touched album's art sat before anything moved. Read once, and
+    # before the first move: afterwards the old folder is gone.
+    art_dirs: dict[int, str | None] = {}
+    # Album-level values an edit implies, per album. Filled from the items, so
+    # a drawer that fans one album name out over twelve tracks still yields one
+    # album to re-file.
+    album_edits: dict[int, dict[str, str]] = {}
+    solo: list = []
+
     for entry in params.get("updates") or []:
         item = lib.get_item(entry["id"])
         if item is None:
@@ -290,10 +311,48 @@ def update(_request_id: str, params: dict) -> dict:
         # answered, whichever way they decided.
         if changed & _IDENTITY_FIELDS and item.get(_SUSPECT_KEY):
             del item[_SUSPECT_KEY]
-        item.store()
-        try:
-            item.write()
-        except Exception as exc:
-            protocol.log(f"library.update: tag write failed for {entry['id']}: {exc}")
+
+        filing = changed & _ALBUM_FIELDS
+        if item.album_id is not None and filing:
+            art_dirs.setdefault(item.album_id, _album_art_dir(lib, item.album_id))
+            album_edits.setdefault(item.album_id, {}).update(
+                {key: getattr(item, key) for key in filing}
+            )
+            # Stored, not synced: the album pass below writes and moves every
+            # one of its items, and doing it here too would tag each file twice
+            # and move it to a destination the album has not caught up with.
+            item.store()
+        else:
+            solo.append(item)
         updated += 1
+
+    # An item's own fields never decide where it is filed — beets computes the
+    # destination from the *album* row, so setting `album` on twelve tracks and
+    # syncing each one moves nothing at all. The album is what has to change.
+    for album_id, fields in album_edits.items():
+        album = lib.get_album(album_id)
+        if album is None:
+            continue
+        for key, value in fields.items():
+            setattr(album, key, value)
+        album.try_sync(write=True, move=True)
+
+    # Singletons, and edits that do not change the filing (a year, a genre).
+    # A failed tag write stays non-fatal: `try_sync` goes through `try_write`,
+    # which logs rather than raises. `move` only ever touches files already
+    # inside the library.
+    for item in solo:
+        item.try_sync(write=True, move=True)
+
+    # beets moved its own cover.jpg with the items; `cover-hq.*` is ours and it
+    # knows nothing about it.
+    for album_id, old_dir in art_dirs.items():
+        covers.follow_hq_cover(lib, lib.get_album(album_id), old_dir, _decode)
+
     return {"updated": updated}
+
+
+def _album_art_dir(lib, album_id: int) -> str | None:
+    album = lib.get_album(album_id)
+    art = _decode(album.artpath) if album is not None and album.artpath else None
+    return os.path.dirname(art) if art else None

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -20,6 +21,10 @@
     "@tanstack/react-query": "^5.0.0",
     "@tanstack/react-virtual": "^3.14.7",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "i18next": "^25.0.0",
     "lucide-react": "^1.24.0",
     "motion": "^12.42.2",

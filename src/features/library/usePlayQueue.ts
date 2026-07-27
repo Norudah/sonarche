@@ -31,10 +31,11 @@ export function usePlayQueue(): PlayQueue {
     const albumArtist = track.albumArtist.trim() || track.artist.trim();
     return {
       id: track.id,
-      src: track.audioUrl,
+      path: track.path,
       title: track.title || t("unknownTitle"),
       subtitle: track.artist || t("unknownArtist"),
       artUrl: track.artUrl,
+      artPath: track.artPath,
       duration: track.length,
       albumUrl: track.album.trim() ? albumPath(albumArtist, track.album) : null,
       artistUrl: track.artist.trim() ? artistPath(track.artist) : null,

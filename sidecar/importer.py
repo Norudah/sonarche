@@ -8,39 +8,22 @@ the real matching, via the acoustic fingerprint."""
 import os
 import subprocess
 import sys
-import time
 import uuid
 
 import protocol
 from report import build_report
 
-# Flexible attribute stamped (--set) on singleton imports so the item can be
-# looked up exactly. Batch imports land seconds apart with identical blank
-# tags — the single-path "newest added since" heuristic mis-attributes there.
+# Flexible attribute stamped (--set) on every import so the item can be looked
+# up exactly, whatever the import mode. Album batches land seconds apart with
+# identical blank tags, so no "newest added since" heuristic can tell them
+# apart — and on the single path that heuristic also meant walking the entire
+# library through beets' ORM (one full Item, 98 fields, per track) to identify
+# the one file we had just handed it, which got slower with every download.
 _MARKER_FIELD = "sonarche_import_id"
 
 
 def _beet_bin() -> str:
     return os.path.join(os.path.dirname(sys.executable), "beet")
-
-
-def _find_imported_item(db_path: str, library_dir: str, since: float):
-    """The item added by this import, or None (e.g. duplicate skipped).
-
-    Requests are processed serially, so 'newest item added after the import
-    started' can only be ours.
-    """
-    from beets.library import Library
-
-    if not os.path.exists(db_path):
-        return None
-    lib = Library(db_path, directory=library_dir)
-    newest = None
-    for item in lib.items():
-        if item.added and item.added >= since - 1:
-            if newest is None or item.added > newest.added:
-                newest = item
-    return newest
 
 
 def _find_marked_item(db_path: str, library_dir: str, marker: str):
@@ -66,14 +49,13 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
 
-    started = time.time()
-    marker = None
-    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A", path]
+    marker = uuid.uuid4().hex
+    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A",
+           f"--set={_MARKER_FIELD}={marker}", path]
     if params.get("singleton"):
         # Album tracks are imported file by file; -s avoids one junk 1-item
         # album row per file (the real album row is created by enrich_album).
-        marker = uuid.uuid4().hex
-        cmd[-1:-1] = ["-s", f"--set={_MARKER_FIELD}={marker}"]
+        cmd.insert(-1, "-s")
     protocol.send_event(request_id, "import_progress", {"stage": "matching"})
 
     # Separate process: beets' own stdout stays out of our protocol stream.
@@ -86,10 +68,7 @@ def handle(request_id: str, params: dict) -> dict:
 
     report = None
     try:
-        if marker is not None:
-            item = _find_marked_item(params["beets_db"], params["library_dir"], marker)
-        else:
-            item = _find_imported_item(params["beets_db"], params["library_dir"], started)
+        item = _find_marked_item(params["beets_db"], params["library_dir"], marker)
         if item is not None:
             report = build_report(item)
     except Exception as exc:  # the import itself succeeded; a missing report must not fail it

@@ -26,7 +26,7 @@ use crate::jobs::{AlbumTrack, Job};
 /// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
 /// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
 /// EXISTS` don't need a bump.
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS jobs (
     item_id     INTEGER,
     report      TEXT,
     download_attempts INTEGER NOT NULL DEFAULT 0,
+    -- The category the user picked at enqueue time (beets' grouping tag),
+    -- applied to every item the job produces once enrich is through. NULL means
+    -- leave it alone, which is what every job written before this existed did.
+    category    TEXT,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -107,6 +111,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         "download_attempts",
         "INTEGER NOT NULL DEFAULT 0",
     )?;
+    add_column(conn, "jobs", "category", "TEXT")?;
     Ok(())
 }
 
@@ -175,6 +180,7 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
         report: report_from_text(row.get("report")?)?,
         tracks: Vec::new(),
         download_attempts: row.get::<_, i64>("download_attempts")? as u32,
+        category: row.get("category")?,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -201,9 +207,9 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
     conn.execute(
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
-            duration, staged_path, item_id, report, download_attempts,
+            duration, staged_path, item_id, report, download_attempts, category,
             created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         params![
             job.id,
             job.url,
@@ -219,6 +225,7 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
             job.item_id,
             report_to_text(&job.report)?,
             job.download_attempts as i64,
+            job.category,
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -413,6 +420,17 @@ mod tests {
     }
 
     #[test]
+    fn migrate_adds_the_category_column_to_an_older_file() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA_V1).unwrap();
+        assert!(!column_names(&conn, "jobs").contains(&"category".to_string()));
+
+        migrate(&conn).unwrap();
+
+        assert!(column_names(&conn, "jobs").contains(&"category".to_string()));
+    }
+
+    #[test]
     fn migrate_is_idempotent_on_a_current_file() {
         // A fresh file already has the column but is stamped user_version 0, so
         // open() runs the migration over it: it must not fail on a duplicate.
@@ -445,6 +463,7 @@ mod tests {
             report: Some(json!({ "item_id": 42, "completion": 0.8 })),
             tracks: Vec::new(),
             download_attempts: 1,
+            category: Some("Video Games".into()),
             created_at: 1000,
             updated_at: 1000,
         }

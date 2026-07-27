@@ -1,0 +1,68 @@
+<!--
+  Sonarche — la tuile système, 1024. Grille macOS : carré de 824 dans un
+  canevas de 1024, rayon 185. Tuile claire, choisie pour que la cargaison
+  ambrée chante — sur fond indigo elle se serait éteinte.
+  Ce fichier n'alimente aucune icône pour l'instant : `tauri icon` n'a pas
+  été relancé, src-tauri/icons porte toujours l'ancienne marque.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="tuile" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e8e7f8"/>
+    </linearGradient>
+    <clipPath id="tete">
+      <path d="M7.5 12V9.75C7.5 8.85 8.4 8.2 9.7 8 10.5 7.88 13.5 7.88 14.3 8 15.6 8.2 16.5 8.85 16.5 9.75V12Z"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tuile)"/>
+
+  <!-- Remonté de 14 px sur le centre géométrique : la coque pèse plus que
+       l'onde, donc un centrage exact fait tomber le navire dans le bas. -->
+  <g transform="translate(164 154) scale(29)">
+    <g fill="#6163f2">
+      <rect x="9.56" y="5.8" width="0.5" height="1.25" rx="0.25"/>
+      <rect x="10.44" y="4.8" width="0.5" height="2.25" rx="0.25"/>
+      <rect x="11.31" y="3.8" width="0.5" height="3.25" rx="0.25"/>
+      <rect x="12.19" y="5.05" width="0.5" height="2" rx="0.25"/>
+      <rect x="13.06" y="4.3" width="0.5" height="2.75" rx="0.25"/>
+      <rect x="13.94" y="5.55" width="0.5" height="1.5" rx="0.25"/>
+    </g>
+
+    <path d="M7.5 12V9.75C7.5 8.85 8.4 8.2 9.7 8 10.5 7.88 13.5 7.88 14.3 8 15.6 8.2 16.5 8.85 16.5 9.75V12Z" fill="#c5cbef"/>
+    <g clip-path="url(#tete)">
+      <rect x="7.5" y="7.8" width="9" height="0.85" fill="#e2e7fc"/>
+      <rect x="7.5" y="11.4" width="9" height="0.6" fill="#a5aede"/>
+    </g>
+    <rect x="9" y="9.05" width="2" height="2" rx="0.75" fill="#222652"/>
+    <rect x="13" y="9.05" width="2" height="2" rx="0.75" fill="#222652"/>
+    <circle cx="9.6" cy="9.65" r="0.42" fill="#818cf9"/>
+    <circle cx="13.6" cy="9.65" r="0.42" fill="#818cf9"/>
+
+    <rect x="3" y="9" width="2" height="3" rx="0.5" fill="#efa831"/>
+    <rect x="3" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8"/>
+    <rect x="3" y="10.3" width="2" height="0.5" fill="#fae1b8"/>
+    <rect x="5.1" y="10" width="1.5" height="2" rx="0.45" fill="#3d4097"/>
+    <rect x="5.1" y="10" width="1.5" height="0.4" rx="0.2" fill="#818cf9"/>
+    <rect x="5.1" y="10.9" width="1.5" height="0.45" fill="#818cf9"/>
+    <rect x="17.4" y="10" width="1.5" height="2" rx="0.45" fill="#3d4097"/>
+    <rect x="17.4" y="10" width="1.5" height="0.4" rx="0.2" fill="#818cf9"/>
+    <rect x="17.4" y="10.9" width="1.5" height="0.45" fill="#818cf9"/>
+    <rect x="19" y="9" width="2" height="3" rx="0.5" fill="#efa831"/>
+    <rect x="19" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8"/>
+    <rect x="19" y="10.3" width="2" height="0.5" fill="#fae1b8"/>
+
+    <rect x="1.6" y="12" width="20.8" height="1.1" rx="0.55" fill="#818cf9"/>
+    <path d="M2.2 13.2h19.6q.75 0 .65.75l-.45 2.6q-.6 3.25-3.4 3.25H5.4q-2.8 0-3.4-3.25l-.45-2.6q-.1-.75.65-.75Z" fill="#3d4097"/>
+    <path d="M2.2 13.2h19.6q.75 0 .65.75H1.55q-.1-.75.65-.75Z" fill="#4f52c1"/>
+    <path d="M3.7 16.5h16.6l-.3 1.15q-.75 2.45-2.9 2.45H6.9q-2.15 0-2.9-2.45Z" fill="#2e3172"/>
+    <path d="M3.7 16.5h16.6l-.14.55H3.84Z" fill="#3d4097"/>
+    <g fill="#818cf9">
+      <circle cx="5.6" cy="15" r="0.45"/>
+      <circle cx="9.7" cy="15" r="0.45"/>
+      <circle cx="14.3" cy="15" r="0.45"/>
+      <circle cx="18.4" cy="15" r="0.45"/>
+    </g>
+  </g>
+</svg>

@@ -14,6 +14,7 @@ release emerges."""
 import os
 import time
 
+import covers
 import enrich
 import metadata
 import protocol
@@ -723,30 +724,6 @@ def _adopt_art(keep, dying) -> None:
         pass
 
 
-def _follow_hq_cover(lib, album, old_dir: str | None) -> None:
-    """When the re-move renamed the album folder, beets relocated its own
-    artpath (item.move gives the album a chance to move its art) — but our
-    out-of-band cover-hq.* stayed behind. Bring it along and prune the husk."""
-    import shutil
-
-    fresh = lib.get_album(album.id)
-    art = enrich._decode(fresh.artpath) if fresh is not None and fresh.artpath else None
-    new_dir = os.path.dirname(art) if art else None
-    if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
-        return
-    for name in os.listdir(old_dir):
-        if name.startswith("cover-hq."):
-            try:
-                shutil.move(os.path.join(old_dir, name), os.path.join(new_dir, name))
-            except OSError as exc:
-                protocol.log(f"enrich_album: cover relocation failed: {exc}")
-    try:
-        if not os.listdir(old_dir):
-            os.rmdir(old_dir)
-    except OSError:
-        pass
-
-
 def _consolidate_album_rows(lib, items) -> list:
     """One album row per MusicBrainz release, library-wide.
 
@@ -794,7 +771,7 @@ def _consolidate_album_rows(lib, items) -> list:
                 item.move()
             except Exception as exc:
                 protocol.log(f"enrich_album: move failed: {exc}")
-        _follow_hq_cover(lib, keep, art_dir_before)
+        covers.follow_hq_cover(lib, keep, art_dir_before, enrich._decode)
         albums.append(keep)
     return albums
 

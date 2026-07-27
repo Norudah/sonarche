@@ -14,6 +14,16 @@ pub enum AppError {
     Setup(String),
     #[error("keychain error: {0}")]
     Keychain(String),
+    #[error("playback error: {0}")]
+    Playback(String),
+    /// Its own variant rather than a `Playback` message: the front draws this
+    /// one as a property of the track, not as a failure of the engine.
+    ///
+    /// A command rejects with this string and nothing else, so the prefix is a
+    /// contract with `src/shared/player/playbackError.ts` — changing the wording
+    /// turns an explained format into a generic "unreadable file".
+    #[error("unsupported audio format: {0}")]
+    UnsupportedFormat(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -32,3 +42,19 @@ impl Serialize for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The front reads this prefix to tell an undecodable format from any other
+    /// playback failure, and it only ever sees the rendered string. Reword the
+    /// variant and the message the user gets silently degrades — hence the
+    /// literal here rather than a round-trip through `to_string`.
+    #[test]
+    fn the_unsupported_format_wording_is_the_prefix_the_front_matches() {
+        let rendered = AppError::UnsupportedFormat("/Music/a.opus".into()).to_string();
+
+        assert_eq!(rendered, "unsupported audio format: /Music/a.opus");
+    }
+}

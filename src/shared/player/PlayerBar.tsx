@@ -6,9 +6,9 @@ import { Transport } from "@/shared/player/Transport";
 import { VolumeControl } from "@/shared/player/VolumeControl";
 
 export function PlayerBar() {
-  // Deliberately does not read the playhead or the queue — `SeekBar` and
-  // `Transport` subscribe on their own so this bar is not rebuilt with them.
-  const { current, isPlaying, volume, setVolume } = usePlayer();
+  // Deliberately does not read the playhead, the queue or the volume — those
+  // controls subscribe on their own so this bar is not rebuilt with them.
+  const { current, isPlaying } = usePlayer();
 
   return (
     <div className="flex h-player shrink-0 items-center border-t border-separator bg-surface px-6">
@@ -25,7 +25,7 @@ export function PlayerBar() {
        * keeping the outer edge. */}
       <div className="flex flex-1 items-center justify-end gap-3">
         <QueuePanel />
-        <VolumeControl volume={volume} onVolumeChange={setVolume} />
+        <VolumeControl />
       </div>
     </div>
   );

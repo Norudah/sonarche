@@ -51,7 +51,7 @@
       "size": "Taille",
       "name": "Nom"
     },
-    "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des disques classés ailleurs.",
+    "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des albums classés ailleurs.",
     "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
     "recomputing": "Recalcul en cours…",
@@ -81,7 +81,8 @@
     "moreActions": "Plus d'actions",
     "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
     "stats": {
-      "taggedCount": "{{tagged}}/{{total}} pistes complètes"
+      "taggedCount": "{{tagged}}/{{total}} pistes complètes",
+      "tracksComplete": "morceaux complets"
     }
   },
   "artists": {
@@ -176,8 +177,24 @@
       "year": "Année",
       "track": "N° piste",
       "genre": "Genre",
-      "genreBucket": "Genre parent",
+      "genreBucket": "Famille de genre",
       "category": "Catégorie"
+    },
+    "help": {
+      "open": "Aide : {{field}}",
+      "artistPair": {
+        "title": "L'un range, l'autre décrit",
+        "albumArtist": "Le nom sous lequel l'album est rangé : il regroupe les morceaux en un album et le fait apparaître dans la fiche de l'artiste. On y met l'artiste principal, même si certains morceaux ont des invités.",
+        "artist": "Qui joue ce morceau-là, invités compris. C'est ce que la lecture affiche et ce que la recherche interroge.",
+        "exampleLabel": "Exemple",
+        "example": "L'album reste rangé sous « {{artist}} », même si un titre est joué par « {{artist}} feat. … »."
+      },
+      "genre": "Le style du morceau, tel qu'il est écrit dans le fichier — le genre précis, pas la grande famille.",
+      "genreBucket": "La famille dans laquelle Sonarche range ce genre pour la navigation. Calculée automatiquement, et elle ne compte pas dans la complétion.",
+      "category": "À quoi correspond cet album : musique, bande originale de jeu, de film… Sert à séparer les bandes originales du reste dans l'exploration. La laisser vide ne pénalise pas la complétion.",
+      "track": "La position du morceau dans l'album : c'est ce qui donne l'ordre de lecture. Deux morceaux portant le même numéro se retrouvent dans un ordre arbitraire.",
+      "completion": "La part des champs de métadonnées déjà remplis sur cet album. Les champs facultatifs n'y entrent pas.",
+      "rematch": "Relance l'identification automatique : Sonarche ré-interroge MusicBrainz à partir de l'empreinte acoustique des fichiers et réécrit les tags reconnus. À faire avant tes corrections manuelles, pas après."
     },
     "close": "Fermer",
     "edit": "Modifier",
@@ -185,32 +202,103 @@
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "saveFailed": "L'enregistrement a échoué, réessaie dans un instant.",
-    "completeness": "Complétude — {{filled}}/{{total}} champs",
-    "derived": "hors comptage",
+    "completeness": "{{filled}} champs sur {{total}}",
+    "derived": "calculée, ne compte pas",
     "viewAlbum": "Voir l'album",
-    "optional": "optionnel, hors comptage",
-    "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie."
+    "optional": "ne compte pas dans la complétion",
+    "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie.",
+    "missingFields_one": "il manque {{fields}}",
+    "missingFields_other": "il manque {{fields}}",
+    "filedUnder": "album rangé sous {{artist}}"
   },
   "albumMetadata": {
-    "eyebrow": "Album",
-    "completion": "Complétion",
-    "common": "Champs communs",
-    "commonHint": "Modifié une fois, écrit sur chaque morceau.",
-    "specific": "Champs spécifiques",
-    "specificHint": "Modifié morceau par morceau.",
-    "multipleValues": "Valeurs multiples",
-    "varied": "varie",
-    "tracklist": "Morceaux",
-    "propagate": {
-      "prompt": "Tu as changé « {{from}} » en « {{to}} ». L'appliquer aux autres morceaux encore en « {{from}} » ?",
-      "apply_one": "Appliquer à {{count}} morceau",
-      "apply_other": "Appliquer à {{count}} morceaux"
+    "eyebrow": "Album · métadonnées",
+    "completion": {
+      "heading_one": "{{count}} des {{total}} morceaux est complet",
+      "heading_other": "{{count}} des {{total}} morceaux sont complets",
+      "allComplete_one": "Le morceau est complet",
+      "allComplete_other": "Les {{count}} morceaux sont complets",
+      "gap_one": "{{field}} · {{count}} à remplir",
+      "gap_other": "{{field}} · {{count}} à remplir",
+      "filled": "Au complet : {{fields}}.",
+      "showIncomplete_one": "Ne montrer que le morceau incomplet",
+      "showIncomplete_other": "Ne montrer que les {{count}} morceaux incomplets"
     },
-    "applyGenre": {
-      "prompt": "Ce changement peut valoir pour tout l'album.",
-      "all_one": "Appliquer à {{count}} morceau",
-      "all_other": "Appliquer aux {{count}} morceaux",
-      "one": "Ce morceau seul"
+    "common": {
+      "heading": "Ce qui vaut pour tout l'album",
+      "scope_one": "écrit sur {{count}} morceau",
+      "scope_other": "écrit sur {{count}} morceaux"
+    },
+    "tracks": {
+      "heading_one": "{{count}} morceau",
+      "heading_other": "{{count}} morceaux",
+      "filedUnder": "Rangé sous {{artist}} — la colonne Artiste dit qui joue chaque titre.",
+      "missing": "à renseigner",
+      "filtered": "Filtre : {{label}} · {{count}} sur {{total}}",
+      "clearFilter": "Retirer le filtre",
+      "cell": "{{field}} — {{title}}",
+      "statusComplete": "Morceau complet",
+      "statusIncomplete": "Morceau incomplet"
+    },
+    "bulk": {
+      "heading": "Sur tout l'album",
+      "renumber": "Renuméroter 1 → {{count}}",
+      "copyArtist": "Copier l'artiste de l'album",
+      "renumberHelp": "Réécrit les numéros de piste de 1 à {{count}}, dans l'ordre affiché.",
+      "copyArtistHelp": "Propose d'écrire l'artiste de l'album sur les morceaux — tu choisis lesquels, et les featurings ne sont pas cochés."
+    },
+    "mixed": {
+      "value_one": "{{count}} valeur",
+      "value_other": "{{count}} valeurs",
+      "hint_one": "Les morceaux ne s'accordent pas ici. Laisse vide pour n'y toucher à rien, ou écris une valeur pour l'imposer au morceau.",
+      "hint_other": "Les morceaux ne s'accordent pas ici. Laisse vide pour n'y toucher à rien, ou écris une valeur pour l'imposer aux {{count}} morceaux."
+    },
+    "offers": {
+      "pending_one": "{{count}} proposition à trancher",
+      "pending_other": "{{count}} propositions à trancher",
+      "sticky": "Reste affiché tant que tu n'as pas tranché.",
+      "genre": {
+        "eyebrow": "Genre · {{title}}",
+        "prompt_one": "{{count}} autre morceau porte encore « {{from}} ».",
+        "prompt_other": "{{count}} autres morceaux portent encore « {{from}} ».",
+        "applySame_one": "Appliquer au morceau en « {{from}} »",
+        "applySame_other": "Appliquer aux {{count}} morceaux en « {{from}} »",
+        "applyAll": "Aux {{count}} morceaux",
+        "dismiss": "Ce morceau seul"
+      },
+      "artist": {
+        "eyebrow": "Artiste · {{title}}",
+        "prompt": "Tu as changé « {{from}} » en « {{to}} ». Quels autres morceaux suivent ?",
+        "fillEyebrow": "Artiste de l'album",
+        "fillPrompt": "Écrire « {{to}} » sur quels morceaux ? Les morceaux qui portent déjà un autre artiste ne sont pas cochés — c'est souvent un featuring.",
+        "apply_one": "Appliquer à {{count}} morceau",
+        "apply_other": "Appliquer à {{count}} morceaux",
+        "dismiss": "Ne rien changer"
+      }
+    },
+    "changes": {
+      "modified": "modifié",
+      "revert": "Rétablir « {{value}} »",
+      "none": "Aucune modification",
+      "fields_one": "{{count}} modification",
+      "fields_other": "{{count}} modifications",
+      "tracks_one": "sur {{count}} morceau",
+      "tracks_other": "sur {{count}} morceaux"
+    },
+    "guard": {
+      "title": "Abandonner tes modifications ?",
+      "body_one": "{{count}} modification n'est pas encore écrite. Fermer maintenant la perd.",
+      "body_other": "{{count}} modifications ne sont pas encore écrites. Fermer maintenant les perd.",
+      "keepEditing": "Continuer l'édition",
+      "discard": "Abandonner"
+    },
+    "saved_one": "{{count}} morceau mis à jour.",
+    "saved_other": "{{count}} morceaux mis à jour.",
+    "saveFailedSafe": "Aucun fichier n'a été touché — tes modifications sont conservées.",
+    "retry": "Réessayer",
+    "rematch": {
+      "blocked": "Indisponible tant que des modifications sont en attente — le re-match réécrirait les tags.",
+      "progress": "{{done}} / {{total}} morceaux · {{matched}} identifiés"
     }
   },
   "delete": {

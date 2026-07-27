@@ -1,6 +1,6 @@
 import type { LibraryTrack } from "@/features/library/api";
 import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
-import { normalize } from "@/shared/lib/text";
+import { createTextFilter } from "@/shared/lib/search";
 
 export interface Album {
   /** Stable, URL-safe identity for the album route. See `albumKey`. */
@@ -79,12 +79,7 @@ function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged
   return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
 }
 
-/**
- * Albums are derived on the front: `list_library` returns flat items, and beets
- * has no album row we mirror. Identity is (album artist, album title) — not the
- * title alone, so two different "Greatest Hits" stay two albums.
- */
-export function groupAlbums(tracks: LibraryTrack[]): Album[] {
+function computeAlbums(tracks: LibraryTrack[]): Album[] {
   const groups = new Map<string, LibraryTrack[]>();
 
   for (const track of tracks) {
@@ -112,6 +107,38 @@ export function groupAlbums(tracks: LibraryTrack[]): Album[] {
   });
 }
 
+/**
+ * Cached on the array's identity, exactly like `facetsOf` and for the same
+ * reason — but the pressure here is navigation rather than mount count.
+ *
+ * Albums are derived on the front: `list_library` returns flat items, and beets
+ * has no album row we mirror. Identity is (album artist, album title) — not the
+ * title alone, so two different "Greatest Hits" stay two albums.
+ *
+ * Six surfaces need that grouping (the albums shelf, artists, genres,
+ * categories and the two detail views), each behind its own route, so a
+ * per-component `useMemo` threw the work away on every navigation and paid for
+ * it again on arrival — a full pass over the library to walk back into a page
+ * that was already computed a second ago. Keying on the array React Query
+ * handed out gives the first caller's work to all the others, and a refetch
+ * produces a new array, so the entry invalidates itself and the old one is
+ * collectable.
+ *
+ * Sharing the objects is deliberate and safe: nothing mutates an `Album`
+ * (`sortAlbums` copies, the triage filters), and stable identities let the
+ * memoisation downstream actually hold.
+ */
+const cache = new WeakMap<LibraryTrack[], Album[]>();
+
+export function groupAlbums(tracks: LibraryTrack[]): Album[] {
+  const hit = cache.get(tracks);
+  if (hit) return hit;
+
+  const computed = computeAlbums(tracks);
+  cache.set(tracks, computed);
+  return computed;
+}
+
 export const ALBUM_SORTS = ["artist", "title", "year"] as const;
 export type AlbumSort = (typeof ALBUM_SORTS)[number];
 
@@ -131,19 +158,28 @@ export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
 
 /** Same contract as `filterTracks`: every whitespace-separated term must match
  * somewhere, so "daft disc" finds Discovery. */
-export function filterAlbums(albums: Album[], query: string): Album[] {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return albums;
-
-  return albums.filter((album) => {
-    const haystack = normalize([album.title, album.artist, album.year ?? "", ...album.genres].join(" "));
-    return terms.every((term) => haystack.includes(term));
-  });
-}
+export const filterAlbums = createTextFilter<Album>((album) =>
+  [album.title, album.artist, album.year ?? "", ...album.genres].join(" "),
+);
 
 /** Looked up by the pair the route carries, not by a joined key: the router
  * hands back already-decoded segments, and re-joining them just to split them
  * again is where an album titled "50% Off" or an artist called "AC|DC" breaks. */
 export function findAlbum(albums: Album[], artist: string, title: string): Album | null {
   return albums.find((album) => album.artist === artist && album.title === title) ?? null;
+}
+
+/**
+ * The same record after its name moved — found by the one thing a rename cannot
+ * touch, the ids of its tracks.
+ *
+ * Album identity is (album artist, title), so editing either makes the old
+ * identity vanish and a new one appear. Anything holding the old one — the
+ * detail route, the shelf's open panel — would otherwise conclude the record was
+ * deleted. Matching on track ids sidesteps the whole question of whether the URL
+ * or the refetch lands first.
+ */
+export function findAlbumLike(albums: Album[], previous: Album): Album | null {
+  const ids = new Set(previous.tracks.map((track) => track.id));
+  return albums.find((album) => album.tracks.some((track) => ids.has(track.id))) ?? null;
 }

@@ -62,6 +62,10 @@ export interface DownloadJob {
   tracks: AlbumTrackJob[];
   /** Download attempts started for a single; album jobs count per track. */
   downloadAttempts: number;
+  /** The library category the job was queued with (beets' `grouping`), stamped
+   * onto every item it produced. Null on jobs queued before the option existed,
+   * and whenever the user chose to leave the axis alone. */
+  category: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -105,6 +109,7 @@ export interface WireJob {
   report: WireReport | null;
   tracks?: WireTrack[];
   downloadAttempts?: number;
+  category?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -146,11 +151,22 @@ export function mapJob(raw: WireJob): DownloadJob {
     report: mapReport(raw.report),
     tracks: (raw.tracks ?? []).map(mapTrack),
     downloadAttempts: raw.downloadAttempts ?? 0,
+    category: raw.category ?? null,
   };
 }
 
-export async function enqueueDownload(url: string, kind: JobKind): Promise<DownloadJob> {
-  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind }));
+/** What the composer sends: the link, what to make of it, and the options the
+ * advanced panel collected. Grouped rather than passed as loose positionals
+ * because the panel is where the next option will land too. */
+export interface EnqueueRequest {
+  url: string;
+  kind: JobKind;
+  /** Canonical category value, or null to leave the axis untouched. */
+  category: string | null;
+}
+
+export async function enqueueDownload({ url, kind, category }: EnqueueRequest): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind, category }));
 }
 
 export async function listJobs(): Promise<DownloadJob[]> {

@@ -5,9 +5,17 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
-import { ALBUM_SORTS, filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
+import {
+  ALBUM_SORTS,
+  filterAlbums,
+  findAlbumLike,
+  groupAlbums,
+  sortAlbums,
+  type Album,
+  type AlbumSort,
+} from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
-import { AlbumMetadataDrawer } from "@/features/library/AlbumMetadataDrawer";
+import { AlbumInspectModal } from "@/features/library/albums/inspect/AlbumInspectModal";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
@@ -28,13 +36,21 @@ export function AlbumsView() {
   const [params, setParams] = useSearchParams();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
-  const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
+  // No `useMemo`: `groupAlbums` caches on the array's identity, which every
+  // surface shares — a memo here would only add a second cache.
+  const albums = groupAlbums(library.data ?? []);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
 
-  // Derived from the live list, not a snapshot — same reasoning as the track
-  // drawer: a re-enrich refetch must update the open drawer, not a stale copy.
-  const inspected = inspectedKey != null ? (albums.find((album) => album.key === inspectedKey) ?? null) : null;
+  // Derived from the live list, not a snapshot — a re-enrich refetch must update
+  // the open panel, not a stale copy. Held across a rename: editing the album or its artist changes the very key
+  // this lookup uses, and dropping the panel mid-save is not what "you renamed
+  // it" should look like. The record is found again by its tracks.
+  const [heldInspect, setHeldInspect] = useState<Album | null>(null);
+  const byKey = inspectedKey != null ? (albums.find((album) => album.key === inspectedKey) ?? null) : null;
+  const inspected = byKey ?? (inspectedKey != null && heldInspect ? findAlbumLike(albums, heldInspect) : null);
+  if (inspected && inspected !== heldInspect) setHeldInspect(inspected);
+  if (inspected && inspected.key !== inspectedKey) setInspectedKey(inspected.key);
 
   // Removing a filter refines the entry we are on, it is not a new place —
   // same reasoning as the genre chips' `replace`.
@@ -112,7 +128,7 @@ export function AlbumsView() {
         />
       )}
 
-      <AlbumMetadataDrawer album={inspected} onClose={() => setInspectedKey(null)} />
+      <AlbumInspectModal album={inspected} onClose={() => setInspectedKey(null)} />
     </PageContainer>
   );
 }

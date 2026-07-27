@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { JobKind } from "@/features/download/api";
+import type { DetectedUrlKind } from "@/features/download/urlKind";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
 /* HeroUI's `.radio` is a column whose `.radio__content` row is the only
@@ -21,10 +22,21 @@ const SEGMENT = "relative mt-0 rounded-full";
 const SEGMENT_CONTENT =
   "relative gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
   "text-muted hover:text-foreground data-[selected]:text-accent";
+const SEGMENT_DISABLED = "cursor-not-allowed opacity-40 hover:text-muted";
 
-function Segment({ kind, selected, children }: { kind: JobKind; selected: JobKind | null; children: ReactNode }) {
+function Segment({
+  kind,
+  selected,
+  isDisabled,
+  children,
+}: {
+  kind: JobKind;
+  selected: JobKind;
+  isDisabled: boolean;
+  children: ReactNode;
+}) {
   return (
-    <Radio.Root value={kind} className={SEGMENT}>
+    <Radio.Root value={kind} isDisabled={isDisabled} className={SEGMENT}>
       {selected === kind && (
         <motion.span
           layoutId={layoutIds.kindChoice}
@@ -32,36 +44,53 @@ function Segment({ kind, selected, children }: { kind: JobKind; selected: JobKin
           className="absolute inset-0 rounded-full bg-surface shadow-xs"
         />
       )}
-      <Radio.Content className={SEGMENT_CONTENT}>{children}</Radio.Content>
+      <Radio.Content className={`${SEGMENT_CONTENT} ${isDisabled ? SEGMENT_DISABLED : ""}`}>{children}</Radio.Content>
     </Radio.Root>
   );
 }
 
-/** Shown only for a video opened from inside a playlist, where the URL alone
- * cannot say whether the user wants the set or the one track. */
-export function KindChoice({ value, onChange }: { value: JobKind | null; onChange: (kind: JobKind) => void }) {
+/**
+ * What to make of the pasted link: the whole set, or the one track.
+ *
+ * Always on screen once the composer is, rather than surfacing only for the
+ * ambiguous links it used to serve. Three reasons, all the same reason: a
+ * control that appears out of nowhere pushes the form open under the cursor; a
+ * control that is sometimes absent is a control the user does not know exists;
+ * and a link the URL can only read one way still deserves to *say* which way,
+ * rather than deciding in silence. So the switch stays put and the segment the
+ * link cannot honour goes flat.
+ */
+export function KindChoice({
+  value,
+  detected,
+  onChange,
+}: {
+  value: JobKind;
+  detected: DetectedUrlKind;
+  onChange: (kind: JobKind) => void;
+}) {
   const { t } = useTranslation("download");
+  // A plain video has no set to fetch; a playlist URL has no one track to pick.
+  // Both stay visible and inert; only a mixed link (a video opened from inside
+  // a playlist) is a real question, and there the user's answer decides.
+  const canAlbum = detected !== "single";
+  const canSingle = detected !== "album";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted">{t("detected.mixedLabel")}</span>
-
-      <RadioGroup
-        value={value ?? ""}
-        onChange={(next) => onChange(next as JobKind)}
-        aria-label={t("detected.mixed")}
-        className="flex flex-row gap-0.5 rounded-full bg-default/60 p-0.5"
-      >
-        <Segment kind="album" selected={value}>
-          <Disc3 className="size-3.5 shrink-0" />
-          {t("detected.choicePlaylist")}
-        </Segment>
-        <Segment kind="single" selected={value}>
-          <Music className="size-3.5 shrink-0" />
-          {t("detected.choiceTrack")}
-        </Segment>
-      </RadioGroup>
-
-      <span className="text-xs text-muted/70">{t("detected.confirmHint")}</span>
-    </div>
+    <RadioGroup
+      value={value}
+      onChange={(next) => onChange(next as JobKind)}
+      aria-label={t("detected.question")}
+      className="flex w-fit flex-row gap-0.5 rounded-full bg-default/60 p-0.5"
+    >
+      <Segment kind="album" selected={value} isDisabled={!canAlbum}>
+        <Disc3 className="size-3.5 shrink-0" />
+        {t("detected.choicePlaylist")}
+      </Segment>
+      <Segment kind="single" selected={value} isDisabled={!canSingle}>
+        <Music className="size-3.5 shrink-0" />
+        {t("detected.choiceTrack")}
+      </Segment>
+    </RadioGroup>
   );
 }

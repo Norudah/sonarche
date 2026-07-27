@@ -19,5 +19,10 @@
   "goToAlbum": "Voir l'album",
   "goToArtist": "Voir l'artiste",
   "nowPlaying": "En lecture",
-  "upNext": "À suivre"
+  "upNext": "À suivre",
+  "unsupportedFormat": "Format non pris en charge",
+  "unsupportedFormatDetail": "« {{title}} » est un fichier .{{extension}} — Sonarche ne lit pas ce format.",
+  "unsupportedFormatDetailUnknown": "« {{title}} » est dans un format que Sonarche ne lit pas.",
+  "unreadable": "Lecture impossible",
+  "unreadableDetail": "« {{title}} » n'a pas pu être ouvert."
 }

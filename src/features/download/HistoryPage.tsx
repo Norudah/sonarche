@@ -1,20 +1,26 @@
-import { Trash2 } from "lucide-react";
+import { Inbox, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { JobDeck, type JobSection } from "@/features/download/activity/JobDeck";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { useActiveDownloadProgress, useEnrichProgress, useJobs } from "@/features/download/hooks";
 import { Pagination } from "@/features/download/queue/Pagination";
 import { pageOfJobs } from "@/features/download/queue/page";
-import { QueueTable } from "@/features/download/QueueTable";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /**
  * The whole download history, paged.
  *
- * Split off the Downloads page, which is about starting a download and now
- * keeps only the last few rows: the jobs DB has no cap, so the full list is an
- * archive to consult, not something to scroll past on the way to the URL field.
+ * Split off the Downloads page, which is about starting a download and keeps
+ * only the last few: the jobs DB has no cap, so the full list is an archive to
+ * consult, not something to scroll past on the way to the URL field.
+ *
+ * Same cards as that page, not a table. This was the app's last spreadsheet —
+ * a grid of five technical columns in an interface whose language everywhere
+ * else is a row with a cover, a name and one verdict. Depth did not disappear
+ * with the columns: it moved into each row's own panel, where it is read on
+ * demand rather than spread across every row at once.
  */
 export function HistoryPage() {
   const { t } = useTranslation("download");
@@ -24,16 +30,31 @@ export function HistoryPage() {
 
   const all = useMemo(() => jobs.data ?? [], [jobs.data]);
   // `page` comes back clamped, so a history cleared from under page 4 lands on
-  // the last page that still exists instead of an empty table.
+  // the last page that still exists instead of an empty list.
   const { jobs: visible, page, pageCount } = pageOfJobs(all, requestedPage);
 
   const hasHistory = all.some((job) => job.status === "done" || job.status === "failed");
 
-  const hasActiveDownload = all.some((job) => job.status === "downloading");
-  const downloadPercent = useActiveDownloadProgress(hasActiveDownload);
+  const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
+  const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
 
-  const hasActiveEnrich = all.some((job) => job.status === "enriching");
-  const enrichStages = useEnrichProgress(hasActiveEnrich);
+  // One list, no sections: this page is the archive in one order, newest first.
+  const sections: JobSection[] = useMemo(
+    () => [
+      {
+        key: "history",
+        jobs: visible,
+        onTray: true,
+        empty: (
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-tray py-16 text-center">
+            <Inbox className="size-6 text-muted/50" />
+            <p className="text-sm font-medium">{t("history.empty")}</p>
+          </div>
+        ),
+      },
+    ],
+    [visible, t],
+  );
 
   return (
     <PageContainer>
@@ -53,7 +74,7 @@ export function HistoryPage() {
         </button>
       </header>
 
-      <QueueTable jobs={visible} downloadPercent={downloadPercent} enrichStages={enrichStages} />
+      <JobDeck sections={sections} downloadPercent={downloadPercent} enrichStages={enrichStages} />
 
       <Pagination page={page} pageCount={pageCount} onChange={setRequestedPage} />
 

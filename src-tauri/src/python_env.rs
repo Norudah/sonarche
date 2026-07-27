@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use serde::Serialize;
@@ -33,7 +33,12 @@ pub struct PythonInfo {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvStatus {
+    /// The interpreter in use, once there is one.
     pub python: Option<PythonInfo>,
+    /// Whether the app ships its own. When it does, finding an interpreter is
+    /// not something the user can fail at, so the walkthrough drops that step
+    /// entirely rather than showing a rung nobody has to climb.
+    pub python_bundled: bool,
     pub venv_ok: bool,
     pub deps_ok: bool,
     pub library_dir: String,
@@ -43,6 +48,9 @@ pub struct AppPaths {
     pub venv_dir: PathBuf,
     pub staging_dir: PathBuf,
     pub beets_config: PathBuf,
+    /// The same config with cover embedding off, used only by the library
+    /// import. See `write_beets_config` for why the two cannot be one.
+    pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
     pub library_dir: PathBuf,
     pub sidecar_main: PathBuf,
@@ -50,6 +58,14 @@ pub struct AppPaths {
     pub genres_tree: PathBuf,
     pub genres_whitelist: PathBuf,
     pub tools_dir: PathBuf,
+    /// The interpreter the app ships, still packed. Unpacked at setup rather
+    /// than laid out as loose resources: the tree is full of symlinks and
+    /// executable bits, and `tar` is the thing that reliably restores both.
+    pub python_archive: PathBuf,
+    /// Where that archive lands. `runtime/python/bin/python3` afterwards.
+    pub runtime_dir: PathBuf,
+    /// Wheels shipped alongside, so the install needs no network.
+    pub wheels_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -58,6 +74,11 @@ impl AppPaths {
         let sidecar_dir = app
             .path()
             .resolve("sidecar", tauri::path::BaseDirectory::Resource)?;
+        let resource = |name: &str| {
+            app.path()
+                .resolve(name, tauri::path::BaseDirectory::Resource)
+                .unwrap_or_else(|_| data.join(name))
+        };
         let library_dir = app
             .path()
             .audio_dir()
@@ -67,6 +88,7 @@ impl AppPaths {
             venv_dir: data.join("venv"),
             staging_dir: data.join("staging"),
             beets_config: data.join("beets").join("config.yaml"),
+            beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir,
             sidecar_main: sidecar_dir.join("main.py"),
@@ -74,11 +96,21 @@ impl AppPaths {
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
             genres_whitelist: sidecar_dir.join("genres-whitelist.txt"),
             tools_dir: data.join("tools"),
+            python_archive: resource("python.tar.gz"),
+            runtime_dir: data.join("runtime"),
+            wheels_dir: resource("wheels"),
         })
     }
 
     pub fn venv_python(&self) -> PathBuf {
         self.venv_dir.join("bin").join("python3")
+    }
+
+    /// The shipped interpreter once unpacked. Not necessarily present: it only
+    /// exists after setup has run, and not at all in a build made without
+    /// `npm run prepare:runtime`.
+    pub fn runtime_python(&self) -> PathBuf {
+        self.runtime_dir.join("python").join("bin").join("python3")
     }
 
     pub fn fpcalc(&self) -> PathBuf {
@@ -157,7 +189,17 @@ async fn probe(path: &str) -> Option<PythonInfo> {
     })
 }
 
-pub async fn discover_python() -> Option<PythonInfo> {
+/// The interpreter to build the venv from.
+///
+/// The shipped one wins whenever it is unpacked: it is the version the wheels
+/// were resolved against, and it cannot be upgraded out from under us by a
+/// `brew upgrade`. The PATH-free search is the fallback, for a build made
+/// without `npm run prepare:runtime` and for installs that predate bundling.
+pub async fn discover_python(paths: &AppPaths) -> Option<PythonInfo> {
+    let runtime = paths.runtime_python();
+    if let Some(info) = probe(&runtime.to_string_lossy()).await {
+        return Some(info);
+    }
     for candidate in PYTHON_CANDIDATES {
         if let Some(info) = probe(candidate).await {
             return Some(info);
@@ -166,11 +208,66 @@ pub async fn discover_python() -> Option<PythonInfo> {
     None
 }
 
+/// Unpack the shipped interpreter, once. A no-op when the app carries none.
+async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
+    if tokio::fs::try_exists(paths.runtime_python())
+        .await
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+    if !tokio::fs::try_exists(&paths.python_archive)
+        .await
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+
+    emit_log(app, "Unpacking the bundled Python...");
+    // Wiped first: a half-extracted tree from an interrupted run would pass the
+    // existence check above on some paths and fail on others.
+    let _ = tokio::fs::remove_dir_all(&paths.runtime_dir).await;
+    tokio::fs::create_dir_all(&paths.runtime_dir).await?;
+
+    let mut cmd = Command::new("/usr/bin/tar");
+    cmd.arg("-xzf")
+        .arg(&paths.python_archive)
+        .arg("-C")
+        .arg(&paths.runtime_dir);
+    run_streamed(app, cmd, "python extraction").await?;
+
+    if !tokio::fs::try_exists(paths.runtime_python())
+        .await
+        .unwrap_or(false)
+    {
+        return Err(AppError::Setup(
+            "bundled Python missing after unpack".into(),
+        ));
+    }
+    Ok(())
+}
+
+// A venv's `bin/python3` is an absolute symlink to the interpreter it was built
+// from, so a bundled interpreter raises an obvious question: what happens when
+// the user drags the app from Downloads to Applications? Nothing — and that is
+// precisely why the archive is unpacked into the app data directory instead of
+// being read in place from inside the .app. That path does not travel with the
+// bundle, so the symlink cannot go stale and no repair machinery is warranted.
+// Deleting the runtime is the only way to break it, and re-running the setup
+// puts it back at the same path, which heals the symlink on its own.
+
 pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     let paths = AppPaths::resolve(app)?;
-    let python = discover_python().await;
+    let python = discover_python(&paths).await;
+    let python_bundled = tokio::fs::try_exists(&paths.python_archive)
+        .await
+        .unwrap_or(false)
+        || tokio::fs::try_exists(paths.runtime_python())
+            .await
+            .unwrap_or(false);
     let venv_python = paths.venv_python();
     let venv_ok = tokio::fs::try_exists(&venv_python).await.unwrap_or(false);
+
     // Keep the beets config's `directory:` in sync with library_dir on every check, not just
     // first setup — otherwise an existing install can keep importing into a stale path after
     // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
@@ -196,6 +293,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     };
     Ok(EnvStatus {
         python,
+        python_bundled,
         venv_ok,
         deps_ok,
         library_dir: paths.library_dir.display().to_string(),
@@ -241,8 +339,30 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
 
 /// Single config site for beets: the CLI importer reads it via `--config` and
 /// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
+///
+/// Written twice, differing in one line. `embedart: auto` bakes the album's
+/// cover into every track, which costs nothing on a download — the staged file
+/// is alone in an empty folder when the import stage runs, so there is no art
+/// to bake — and is ruinous on a library import, where the cover is already
+/// sitting beside the tracks. Measured on a real import: 314 MB of duplicated
+/// images across 1.17 GB, one full-size copy per track, 88 MB for a single
+/// 18-track album. The interface reads the folder's file and never the tag, so
+/// the embedding only ever served other players.
+///
+/// Two files rather than a flag on one, because beets takes a single
+/// `--config` and offers no way to override a key from the command line.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
-    let config = format!(
+    write_config_file(paths, &paths.beets_config, true).await?;
+    write_config_file(paths, &paths.beets_import_config, false).await
+}
+
+async fn write_config_file(paths: &AppPaths, target: &Path, embed_art: bool) -> AppResult<()> {
+    tokio::fs::write(target, beets_config_yaml(paths, embed_art)).await?;
+    Ok(())
+}
+
+fn beets_config_yaml(paths: &AppPaths, embed_art: bool) -> String {
+    format!(
         r#"directory: "{library}"
 library: "{db}"
 import:
@@ -264,7 +384,7 @@ musicbrainz:
 fetchart:
   auto: yes
 embedart:
-  auto: yes
+  auto: {embed_art}
 # auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
 # itself. Canonical tree + whitelist are ours (bundled sidecar resources):
 # the stored genre is the most specific tree node (count 3, specific first),
@@ -285,14 +405,16 @@ ui:
         db = paths.beets_db.display(),
         tree = paths.genres_tree.display(),
         whitelist = paths.genres_whitelist.display(),
-    );
-    tokio::fs::write(&paths.beets_config, config).await?;
-    Ok(())
+        embed_art = if embed_art { "yes" } else { "no" },
+    )
 }
 
 pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
     let paths = AppPaths::resolve(app)?;
-    let python = discover_python().await.ok_or(AppError::PythonNotFound)?;
+    ensure_runtime(app, &paths).await?;
+    let python = discover_python(&paths)
+        .await
+        .ok_or(AppError::PythonNotFound)?;
 
     tokio::fs::create_dir_all(&paths.staging_dir).await?;
     tokio::fs::create_dir_all(paths.beets_config.parent().unwrap_or(&paths.staging_dir)).await?;
@@ -311,21 +433,92 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg(&paths.venv_dir);
     run_streamed(app, venv_cmd, "venv creation").await?;
 
+    // Shipped wheels when we have them: beets pulls numpy, scipy, numba and
+    // llvmlite, which is most of a 76 MB download and the whole reason the
+    // install used to be measured in minutes. `--no-index` also makes this the
+    // one step that no longer needs the network.
+    let vendored = tokio::fs::try_exists(&paths.wheels_dir)
+        .await
+        .unwrap_or(false);
     emit_log(
         app,
-        "Installing dependencies (this can take a few minutes)...",
+        if vendored {
+            "Installing dependencies from the bundled wheels..."
+        } else {
+            "Installing dependencies (this can take a few minutes)..."
+        },
     );
     let mut pip_cmd = Command::new(paths.venv_python());
     pip_cmd
         .arg("-m")
         .arg("pip")
         .arg("install")
-        .arg("--disable-pip-version-check")
-        .arg("-r")
-        .arg(&paths.requirements);
+        .arg("--disable-pip-version-check");
+    if vendored {
+        pip_cmd
+            .arg("--no-index")
+            .arg("--find-links")
+            .arg(&paths.wheels_dir);
+    }
+    pip_cmd.arg("-r").arg(&paths.requirements);
     run_streamed(app, pip_cmd, "pip install").await?;
 
     write_beets_config(&paths).await?;
     emit_log(app, "Environment ready.");
     env_status(app).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paths() -> AppPaths {
+        let data = PathBuf::from("/data");
+        AppPaths {
+            venv_dir: data.join("venv"),
+            staging_dir: data.join("staging"),
+            beets_config: data.join("beets").join("config.yaml"),
+            beets_import_config: data.join("beets").join("config-import.yaml"),
+            beets_db: data.join("beets").join("library.db"),
+            library_dir: PathBuf::from("/music/Sonarche"),
+            sidecar_main: data.join("sidecar").join("main.py"),
+            requirements: data.join("sidecar").join("requirements.txt"),
+            genres_tree: data.join("sidecar").join("genres-tree.yaml"),
+            genres_whitelist: data.join("sidecar").join("genres-whitelist.txt"),
+            tools_dir: data.join("tools"),
+            python_archive: data.join("python.tar.gz"),
+            runtime_dir: data.join("runtime"),
+            wheels_dir: data.join("wheels"),
+        }
+    }
+
+    /// The one line the two configs may differ on, and the reason the second
+    /// file exists at all. A library import bakes the album's own cover into
+    /// every track when this is `yes` — measured at 314 MB of duplicated images
+    /// in a 1.17 GB library, 88 MB of it in a single 18-track album.
+    #[test]
+    fn the_import_config_is_the_app_config_with_cover_embedding_off() {
+        let app = beets_config_yaml(&paths(), true);
+        let import = beets_config_yaml(&paths(), false);
+
+        assert!(app.contains("embedart:\n  auto: yes"), "{app}");
+        assert!(import.contains("embedart:\n  auto: no"), "{import}");
+        // Nothing else may drift: the import writes into the same library, with
+        // the same paths, the same genre tree and the same clutter rules.
+        assert_eq!(
+            app.replace("auto: yes", "auto: no"),
+            import.replace("auto: yes", "auto: no")
+        );
+    }
+
+    /// Both point at the same library and the same database — the import is a
+    /// different way in, not a different shelf.
+    #[test]
+    fn both_configs_target_the_one_library() {
+        for embed_art in [true, false] {
+            let config = beets_config_yaml(&paths(), embed_art);
+            assert!(config.contains(r#"directory: "/music/Sonarche""#));
+            assert!(config.contains(r#"library: "/data/beets/library.db""#));
+        }
+    }
 }

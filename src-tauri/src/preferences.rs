@@ -49,6 +49,16 @@ pub struct Preferences {
     pub acoustid_lookup_delay_seconds: f64,
     #[serde(default = "default_download")]
     pub download_delay_seconds: f64,
+    /// Whether the first-run walkthrough has been seen through to the end.
+    ///
+    /// Not derivable from the environment: once the venv is healthy, an
+    /// environment check can no longer tell "never onboarded" from "onboarded
+    /// and declined the optional steps", so the non-blocking steps (the
+    /// AcoustID key above all) would be unreachable forever. Defaults to false,
+    /// so an install that predates this field replays the walkthrough once —
+    /// which is the returning-user path we want to exercise anyway.
+    #[serde(default)]
+    pub onboarding_completed: bool,
 }
 
 fn default_lastfm() -> f64 {
@@ -67,6 +77,7 @@ impl Default for Preferences {
             lastfm_fetch_delay_seconds: LASTFM_DELAY.default,
             acoustid_lookup_delay_seconds: ACOUSTID_DELAY.default,
             download_delay_seconds: DOWNLOAD_DELAY.default,
+            onboarding_completed: false,
         }
     }
 }
@@ -82,6 +93,22 @@ pub async fn load(app: &AppHandle) -> AppResult<Preferences> {
         Err(_) => return Ok(Preferences::default()),
     };
     Ok(serde_json::from_str(&raw).unwrap_or_default())
+}
+
+async fn save(app: &AppHandle, prefs: &Preferences) -> AppResult<()> {
+    let path = store_path(app)?;
+    if let Some(dir) = path.parent() {
+        tokio::fs::create_dir_all(dir).await?;
+    }
+    tokio::fs::write(&path, serde_json::to_vec_pretty(prefs)?).await?;
+    Ok(())
+}
+
+pub async fn set_onboarding_completed(app: &AppHandle, completed: bool) -> AppResult<Preferences> {
+    let mut prefs = load(app).await?;
+    prefs.onboarding_completed = completed;
+    save(app, &prefs).await?;
+    Ok(prefs)
 }
 
 /// Sets one delay by its wire key. Unknown keys are rejected rather than
@@ -103,11 +130,6 @@ pub async fn set_rate_limit_delay(
         }
     };
     *field = seconds.clamp(limit.min, limit.max);
-
-    let path = store_path(app)?;
-    if let Some(dir) = path.parent() {
-        tokio::fs::create_dir_all(dir).await?;
-    }
-    tokio::fs::write(&path, serde_json::to_vec_pretty(&prefs)?).await?;
+    save(app, &prefs).await?;
     Ok(prefs)
 }

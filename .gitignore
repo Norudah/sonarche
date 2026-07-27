@@ -14,6 +14,10 @@ dist-ssr/
 target/
 src-tauri/target/
 
+# Bundled Python runtime — fetched by scripts/prepare-runtime.mjs, reproducible
+# from the pin in that file. A 100 MB binary in git is a binary forever.
+src-tauri/resources/
+
 # Python sidecar
 .venv/
 __pycache__/
@@ -34,3 +38,6 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Design and mockups
+docs/designs/

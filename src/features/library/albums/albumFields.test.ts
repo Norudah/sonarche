@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack } from "@/features/library/api";
 import {
-  artistPropagations,
   buildAlbumUpdates,
+  changeSummary,
   commonBaseline,
-  commonGenreBucket,
+  distinctCommonCount,
+  draftGenreCell,
+  rowOrigins,
   toAlbumDraft,
+  trackRowValues,
 } from "@/features/library/albums/albumFields";
 
 function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
@@ -27,6 +30,7 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     path: "/music/monster.m4a",
     audioUrl: "asset://music/monster.m4a",
     artUrl: null,
+    artPath: null,
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
@@ -151,52 +155,113 @@ describe("buildAlbumUpdates", () => {
   });
 });
 
-describe("commonGenreBucket", () => {
-  it("is uniform when every track derives the same family", () => {
-    expect(commonGenreBucket([track({ id: 1 }), track({ id: 2 })])).toEqual({ value: "Rock", mixed: false });
+describe("rowOrigins", () => {
+  it("reports only the cells that moved, each with the value it left", () => {
+    const live = track({ id: 1, title: "Monster", artist: "Skillet", genre: "Rock", track: 1 });
+    const row = { track: "1", title: "Monster (live)", artist: "Skillet", genre: "Post-Rock" };
+
+    expect(rowOrigins(live, row)).toEqual({ title: "Monster", genre: "Rock" });
   });
 
-  it("is mixed when the derived families disagree", () => {
-    const cell = commonGenreBucket([track({ id: 1, genreBucket: "Rock" }), track({ id: 2, genreBucket: "Pop" })]);
-    expect(cell.mixed).toBe(true);
+  it("reports nothing for an untouched row", () => {
+    const live = track({ id: 1 });
+    expect(rowOrigins(live, trackRowValues(live))).toEqual({});
+  });
+
+  it("treats clearing a cell as a move, so the revert stays reachable", () => {
+    const live = track({ id: 1, genre: "Rock" });
+    expect(rowOrigins(live, { ...trackRowValues(live), genre: "" })).toEqual({ genre: "Rock" });
   });
 });
 
-describe("artistPropagations", () => {
-  // Album artist X everywhere; two tracks are really "X feat Y".
-  const tracks = [track({ id: 1, artist: "X" }), track({ id: 2, artist: "X" }), track({ id: 3, artist: "X" })];
+describe("changeSummary", () => {
+  const tracks = [track({ id: 1 }), track({ id: 2 }), track({ id: 3 })];
+  const baseline = commonBaseline(tracks);
 
-  function draftWithArtist(over: Record<number, string>) {
+  it("counts a common field as one edit, however many tracks it writes to", () => {
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.common.genre = "Post-Rock";
+
+    // One edit by the user; three files rewritten.
+    expect(changeSummary(tracks, baseline, draft)).toEqual({ fields: 1, tracks: 3 });
+  });
+
+  it("adds per-row cells to the count and names only the tracks actually touched", () => {
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.rows[1].title = "Monster (live)";
+    draft.rows[2].artist = "Skillet feat. Lacey";
+
+    expect(changeSummary(tracks, baseline, draft)).toEqual({ fields: 2, tracks: 2 });
+  });
+
+  it("counts one tag once, however many rows carry it", () => {
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.rows[1].title = "One";
+    draft.rows[2].title = "Two";
+    draft.rows[3].title = "Three";
+
+    // Three files to rewrite, but the user changed one thing: the titles.
+    expect(changeSummary(tracks, baseline, draft)).toEqual({ fields: 1, tracks: 3 });
+  });
+
+  it("does not double-count a genre reached from both the common field and a row", () => {
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.common.genre = "Post-Rock";
+    for (const id of [1, 2, 3]) draft.rows[id].genre = "Post-Rock";
+
+    expect(changeSummary(tracks, baseline, draft)).toEqual({ fields: 1, tracks: 3 });
+  });
+
+  it("keeps the album artist and a row's artist apart — they are two tags", () => {
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.common.albumartist = "Skillet & Friends";
+    draft.rows[1].artist = "Skillet feat. Lacey";
+
+    expect(changeSummary(tracks, baseline, draft)).toEqual({ fields: 2, tracks: 3 });
+  });
+
+  it("reports nothing on an untouched draft", () => {
+    expect(changeSummary(tracks, baseline, toAlbumDraft(tracks, baseline))).toEqual({ fields: 0, tracks: 0 });
+  });
+
+  it("ignores a mixed field left empty — the save would not touch it either", () => {
+    const mixed = [track({ id: 1, genre: "Rock" }), track({ id: 2, genre: "Metal" })];
+    const mixedBaseline = commonBaseline(mixed);
+
+    expect(changeSummary(mixed, mixedBaseline, toAlbumDraft(mixed, mixedBaseline))).toEqual({ fields: 0, tracks: 0 });
+  });
+});
+
+describe("draftGenreCell", () => {
+  it("reads the shared genre off the rows", () => {
+    const tracks = [track({ id: 1 }), track({ id: 2 })];
     const draft = toAlbumDraft(tracks, commonBaseline(tracks));
-    for (const [id, artist] of Object.entries(over)) draft.rows[Number(id)].artist = artist;
-    return draft;
-  }
 
-  it("offers nothing when no artist moved", () => {
-    expect(artistPropagations(tracks, draftWithArtist({}))).toEqual([]);
+    expect(draftGenreCell(tracks, draft)).toEqual({ value: "Rock", mixed: false, distinct: 1 });
   });
 
-  it("offers the other tracks still at the old value as candidates", () => {
-    const prop = artistPropagations(tracks, draftWithArtist({ 1: "X feat Y" }));
-    expect(prop).toEqual([{ from: "X", to: "X feat Y", candidateIds: [2, 3] }]);
+  it("goes mixed the moment one row moves, and counts the values in play", () => {
+    const tracks = [track({ id: 1 }), track({ id: 2 }), track({ id: 3 })];
+    const draft = toAlbumDraft(tracks, commonBaseline(tracks));
+    draft.rows[1].genre = "Post-Rock";
+
+    expect(draftGenreCell(tracks, draft)).toEqual({ value: "", mixed: true, distinct: 2 });
   });
 
-  it("never lists the edited track itself as a candidate", () => {
-    const prop = artistPropagations(tracks, draftWithArtist({ 2: "X feat Y" }));
-    expect(prop[0].candidateIds).not.toContain(2);
-    expect(prop[0].candidateIds).toEqual([1, 3]);
-  });
+  it("follows a fan-out back to a single value", () => {
+    const tracks = [track({ id: 1, genre: "Rock" }), track({ id: 2, genre: "Metal" })];
+    const draft = toAlbumDraft(tracks, commonBaseline(tracks));
+    draft.rows[1].genre = "Post-Rock";
+    draft.rows[2].genre = "Post-Rock";
 
-  it("drops a candidate the user has already changed too", () => {
-    // Both 1 and 2 renamed to the same value: neither is a candidate for the other.
-    const prop = artistPropagations(tracks, draftWithArtist({ 1: "X feat Y", 2: "X feat Y" }));
-    expect(prop).toEqual([{ from: "X", to: "X feat Y", candidateIds: [3] }]);
+    expect(draftGenreCell(tracks, draft)).toEqual({ value: "Post-Rock", mixed: false, distinct: 1 });
   });
+});
 
-  it("does not propagate from an empty original artist", () => {
-    const bare = [track({ id: 1, artist: "" }), track({ id: 2, artist: "" })];
-    const draft = toAlbumDraft(bare, commonBaseline(bare));
-    draft.rows[1].artist = "New";
-    expect(artistPropagations(bare, draft)).toEqual([]);
+describe("distinctCommonCount", () => {
+  it("counts the values a field holds, not the tracks holding them", () => {
+    const tracks = [track({ id: 1, year: 2009 }), track({ id: 2, year: 2009 }), track({ id: 3, year: 2011 })];
+
+    expect(distinctCommonCount(tracks, "year")).toBe(2);
   });
 });

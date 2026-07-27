@@ -96,6 +96,20 @@ describe("groupAlbums", () => {
     expect(groupAlbums([track({ album: "   ", artist: "A" })])).toEqual([]);
   });
 
+  it("hands the same array back the same grouping, so a second surface pays nothing", () => {
+    const tracks = [track({ id: 1, album: "X" })];
+
+    expect(groupAlbums(tracks)).toBe(groupAlbums(tracks));
+  });
+
+  it("regroups a fresh array, so a refetch is never served a stale grouping", () => {
+    const before = groupAlbums([track({ id: 1, album: "X" })]);
+    const after = groupAlbums([track({ id: 1, album: "X" }), track({ id: 2, album: "Y" })]);
+
+    expect(before).not.toBe(after);
+    expect(after).toHaveLength(2);
+  });
+
   it("orders tracks by number and sinks the unnumbered ones to the end", () => {
     const [album] = groupAlbums([
       track({ id: 1, album: "X", title: "third", track: 3 }),

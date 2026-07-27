@@ -6,8 +6,10 @@ import {
   listApiKeys,
   type RateLimitKey,
   resetLibraryDev,
+  resetSetupDev,
   setApiKey,
   setRateLimitDelay,
+  type SetupResetTargets,
 } from "@/features/settings/api";
 
 export const apiKeysKey = ["settings", "apiKeys"];
@@ -37,6 +39,20 @@ export function useSetRateLimitDelay() {
     mutationFn: ({ key, seconds }: { key: RateLimitKey; seconds: number }) => setRateLimitDelay(key, seconds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesKey });
+    },
+  });
+}
+
+export function useResetSetupDev() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targets: SetupResetTargets) => resetSetupDev(targets),
+    onSuccess: () => {
+      // A blanket invalidation rather than a list of keys: the reset can move
+      // the environment, the walkthrough flag, the stored key and the history
+      // in one go, and enumerating them here would mean reaching into other
+      // features for their query keys just to keep the list in sync.
+      queryClient.invalidateQueries();
     },
   });
 }

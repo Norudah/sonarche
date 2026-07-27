@@ -1,0 +1,8 @@
+{
+  "available": "Mise à jour disponible",
+  "version": "Sonarche {{version}} est prêt à être installé.",
+  "install": "Installer",
+  "installing": "Installation en cours…",
+  "failed": "La mise à jour a échoué",
+  "failedHint": "Réessaie plus tard, ou télécharge la dernière version depuis GitHub."
+}

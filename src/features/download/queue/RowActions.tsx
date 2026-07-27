@@ -8,8 +8,11 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 
 /* Album rows carry one menu, track rows three controls. Reserving the width of
  * the larger set on both keeps the column from resizing — and every row from
- * shifting sideways — when an album is expanded. */
-const ACTIONS_ROW = "flex min-w-[6.5rem] items-center justify-end gap-1";
+ * shifting sideways — when an album is expanded. That reservation is a table
+ * concern: outside one (the activity feed's cards) it is dead space, hence
+ * `dense`. */
+const ACTIONS_ROW = "flex items-center justify-end gap-1";
+const ACTIONS_COLUMN = `${ACTIONS_ROW} min-w-[6.5rem]`;
 
 /* The exact icon-button of the album tracklist: round, muted, filling on hover.
  * The queue used square `rounded-lg` triggers, which read as a different app's
@@ -38,16 +41,18 @@ interface RowActionsProps {
   /** Retry is offered inline (not buried in the menu) on a failed row. */
   onRetry?: () => void;
   isRetrying?: boolean;
+  /** Drop the reserved column width — right outside a table. */
+  dense?: boolean;
 }
 
-export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isRetrying }: RowActionsProps) {
+export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isRetrying, dense }: RowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
   const isCurrent = track != null && current?.id === track.id;
 
   return (
-    <div className={ACTIONS_ROW}>
+    <div className={dense ? ACTIONS_ROW : ACTIONS_COLUMN}>
       {onRetry && (
         <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
@@ -66,10 +71,11 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
               play([
                 {
                   id: track.id,
-                  src: track.audioUrl,
+                  path: track.path,
                   title: track.title,
                   subtitle: track.artist,
                   artUrl: track.artUrl,
+                  artPath: track.artPath,
                   duration: track.length,
                   albumUrl: track.album.trim()
                     ? albumPath(track.albumArtist.trim() || track.artist.trim(), track.album)
@@ -117,16 +123,18 @@ interface AlbumRowActionsProps {
   onDelete: () => void;
   onRetry?: () => void;
   isRetrying?: boolean;
+  /** Drop the reserved column width — right outside a table. */
+  dense?: boolean;
 }
 
 /** An album row has no single library item behind it, so it offers the one
  * action that applies to the whole batch rather than the per-track set. */
-export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetrying }: AlbumRowActionsProps) {
+export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetrying, dense }: AlbumRowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tLibrary } = useTranslation("library");
 
   return (
-    <div className={ACTIONS_ROW}>
+    <div className={dense ? ACTIONS_ROW : ACTIONS_COLUMN}>
       {onRetry && (
         <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />

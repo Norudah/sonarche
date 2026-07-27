@@ -51,7 +51,7 @@
       "size": "Size",
       "name": "Name"
     },
-    "noAlbums": "No whole album falls under this genre — its tracks are a minority on records filed elsewhere.",
+    "noAlbums": "No whole album falls under this genre — its tracks are a minority on albums filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
     "recomputing": "Recomputing…",
@@ -81,7 +81,8 @@
     "moreActions": "More actions",
     "tagScoreHint": "Metadata fields filled in on this track",
     "stats": {
-      "taggedCount": "{{tagged}}/{{total}} tracks complete"
+      "taggedCount": "{{tagged}}/{{total}} tracks complete",
+      "tracksComplete": "tracks complete"
     }
   },
   "artists": {
@@ -176,8 +177,24 @@
       "year": "Year",
       "track": "Track no.",
       "genre": "Genre",
-      "genreBucket": "Parent genre",
+      "genreBucket": "Genre family",
       "category": "Category"
+    },
+    "help": {
+      "open": "Help: {{field}}",
+      "artistPair": {
+        "title": "One files it, the other describes it",
+        "albumArtist": "The name the album is filed under: it groups the tracks together and puts the album on that artist's page. Use the main artist, even when some tracks have guests.",
+        "artist": "Who plays this particular track, guests included. This is what playback shows and what search looks at.",
+        "exampleLabel": "Example",
+        "example": "The album stays filed under “{{artist}}” even when a track is played by “{{artist}} feat. …”."
+      },
+      "genre": "The track's style, as written in the file — the precise genre, not the broad family.",
+      "genreBucket": "The family Sonarche files this genre under for browsing. Computed automatically, and it doesn't count toward completion.",
+      "category": "What this album is: music, a game soundtrack, a film score… It keeps soundtracks apart from the rest when browsing. Leaving it empty doesn't hurt completion.",
+      "track": "The track's position in the album: this is what sets playback order. Two tracks sharing a number end up in an arbitrary order.",
+      "completion": "The share of this album's metadata fields already filled. Optional fields are left out of it.",
+      "rematch": "Re-runs the automatic identification: Sonarche queries MusicBrainz again from the files' acoustic fingerprint and rewrites the tags it recognises. Do this before your manual corrections, not after."
     },
     "close": "Close",
     "edit": "Edit",
@@ -185,32 +202,103 @@
     "save": "Save",
     "saving": "Saving…",
     "saveFailed": "Save failed, try again in a moment.",
-    "completeness": "Completeness — {{filled}}/{{total}} fields",
-    "derived": "not counted",
+    "completeness": "{{filled}} of {{total}} fields",
+    "derived": "computed, not counted",
     "viewAlbum": "View album",
-    "optional": "optional, not counted",
-    "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category."
+    "optional": "doesn't count toward completion",
+    "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category.",
+    "missingFields_one": "{{fields}} missing",
+    "missingFields_other": "{{fields}} missing",
+    "filedUnder": "album filed under {{artist}}"
   },
   "albumMetadata": {
-    "eyebrow": "Album",
-    "completion": "Completion",
-    "common": "Common fields",
-    "commonHint": "Edited once, written to every track.",
-    "specific": "Track-specific fields",
-    "specificHint": "Edited one track at a time.",
-    "multipleValues": "Multiple values",
-    "varied": "varies",
-    "tracklist": "Tracks",
-    "propagate": {
-      "prompt": "You changed “{{from}}” to “{{to}}”. Apply it to other tracks that still show “{{from}}”?",
-      "apply_one": "Apply to {{count}} track",
-      "apply_other": "Apply to {{count}} tracks"
+    "eyebrow": "Album · metadata",
+    "completion": {
+      "heading_one": "{{count}} of {{total}} tracks is complete",
+      "heading_other": "{{count}} of {{total}} tracks are complete",
+      "allComplete_one": "The track is complete",
+      "allComplete_other": "All {{count}} tracks are complete",
+      "gap_one": "{{field}} · {{count}} to fill",
+      "gap_other": "{{field}} · {{count}} to fill",
+      "filled": "Complete: {{fields}}.",
+      "showIncomplete_one": "Show only the incomplete track",
+      "showIncomplete_other": "Show only the {{count}} incomplete tracks"
     },
-    "applyGenre": {
-      "prompt": "This change may hold for the whole record.",
-      "all_one": "Apply to {{count}} track",
-      "all_other": "Apply to {{count}} tracks",
-      "one": "This track only"
+    "common": {
+      "heading": "What holds for the whole album",
+      "scope_one": "written to {{count}} track",
+      "scope_other": "written to {{count}} tracks"
+    },
+    "tracks": {
+      "heading_one": "{{count}} track",
+      "heading_other": "{{count}} tracks",
+      "filedUnder": "Filed under {{artist}} — the Artist column says who plays each title.",
+      "missing": "to fill in",
+      "filtered": "Filter: {{label}} · {{count}} of {{total}}",
+      "clearFilter": "Clear filter",
+      "cell": "{{field}} — {{title}}",
+      "statusComplete": "Track complete",
+      "statusIncomplete": "Track incomplete"
+    },
+    "bulk": {
+      "heading": "Across the record",
+      "renumber": "Renumber 1 → {{count}}",
+      "copyArtist": "Copy the album artist",
+      "renumberHelp": "Rewrites the track numbers 1 to {{count}}, in the order shown.",
+      "copyArtistHelp": "Offers to write the album artist onto the tracks — you pick which, and featurings start unticked."
+    },
+    "mixed": {
+      "value_one": "{{count}} value",
+      "value_other": "{{count}} values",
+      "hint_one": "The tracks disagree here. Leave it empty to change nothing, or type a value to write it to the track.",
+      "hint_other": "The tracks disagree here. Leave it empty to change nothing, or type a value to write it to all {{count}} tracks."
+    },
+    "offers": {
+      "pending_one": "{{count}} suggestion to answer",
+      "pending_other": "{{count}} suggestions to answer",
+      "sticky": "Stays until you answer it.",
+      "genre": {
+        "eyebrow": "Genre · {{title}}",
+        "prompt_one": "{{count}} other track still carries “{{from}}”.",
+        "prompt_other": "{{count}} other tracks still carry “{{from}}”.",
+        "applySame_one": "Apply to the “{{from}}” track",
+        "applySame_other": "Apply to the {{count}} “{{from}}” tracks",
+        "applyAll": "To all {{count}} tracks",
+        "dismiss": "This track only"
+      },
+      "artist": {
+        "eyebrow": "Artist · {{title}}",
+        "prompt": "You changed “{{from}}” to “{{to}}”. Which other tracks follow?",
+        "fillEyebrow": "Album artist",
+        "fillPrompt": "Write “{{to}}” to which tracks? Tracks already carrying another artist are left unticked — that is usually a featuring.",
+        "apply_one": "Apply to {{count}} track",
+        "apply_other": "Apply to {{count}} tracks",
+        "dismiss": "Change nothing"
+      }
+    },
+    "changes": {
+      "modified": "modified",
+      "revert": "Restore “{{value}}”",
+      "none": "No changes",
+      "fields_one": "{{count}} change",
+      "fields_other": "{{count}} changes",
+      "tracks_one": "on {{count}} track",
+      "tracks_other": "on {{count}} tracks"
+    },
+    "guard": {
+      "title": "Discard your changes?",
+      "body_one": "{{count}} change has not been written yet. Closing now loses it.",
+      "body_other": "{{count}} changes have not been written yet. Closing now loses them.",
+      "keepEditing": "Keep editing",
+      "discard": "Discard"
+    },
+    "saved_one": "{{count}} track updated.",
+    "saved_other": "{{count}} tracks updated.",
+    "saveFailedSafe": "No file was touched — your changes are kept.",
+    "retry": "Try again",
+    "rematch": {
+      "blocked": "Unavailable while changes are pending — a re-match would overwrite the tags.",
+      "progress": "{{done}} / {{total}} tracks · {{matched}} identified"
     }
   },
   "delete": {

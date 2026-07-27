@@ -10,7 +10,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `raw_value` for the sidecar's read channel: the library listing is passed
+# through as bytes instead of being parsed into a tree and reserialized. Tauri
+# happens to enable the feature too, but our own code is what needs it.
+serde_json = { version = "1", features = ["raw_value"] }
 tokio = { version = "1", features = ["macros", "process", "io-util", "sync", "time", "fs", "rt-multi-thread"] }
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
@@ -22,3 +25,73 @@ fastrand = "2"
 # Download-history store (our own DB, distinct from the beets library). `bundled`
 # ships SQLite with the binary — no system lib, matching the app's self-contained ethos.
 rusqlite = { version = "0.32", features = ["bundled"] }
+# Native audio playback. The webview's <audio> read every track through the asset
+# protocol, which reports twice the real duration (measured: 436.95s for a 218.45s
+# file, correct over plain HTTP) — hence the hand-rolled end-of-track cutoff it
+# needed. Reading the file directly sidesteps that transport entirely, and the
+# queue gives us gapless.
+#
+# The format list was `mp4` alone while the only files in the library were the
+# app's own downloads. Importing an existing collection is what widened it.
+# Formats, not codecs: `mp4` carries both AAC and — with `symphonia-alac` —
+# Apple Lossless, `vorbis` pulls the Ogg demuxer along, `wav` brings the PCM
+# codecs AIFF also needs. Kept in step with `audio_formats::PLAYABLE`.
+rodio = { version = "0.22", default-features = false, features = [
+    "playback",
+    "mp4",
+    "symphonia-alac",
+    "flac",
+    "mp3",
+    "vorbis",
+    "wav",
+    "symphonia-aiff",
+] }
+tauri-plugin-opener = "2.5.4"
+# The OS folder picker, for choosing a library to import. A webview file input
+# never yields a real directory path, and typing one is not a thing to ask of
+# someone. Scoped to the picker: no file read/write permission is granted.
+tauri-plugin-dialog = "2.7.2"
+# In-app updates. Unsigned by Apple but signed by us: the app carries a public
+# key and refuses any bundle that was not signed with the matching private one,
+# which is what keeps a hijacked download from installing itself.
+tauri-plugin-updater = "2.10.1"
+# Restart after an update installs. The new bundle is on disk but the running
+# process is still the old one, and asking someone to quit and reopen is how an
+# update gets postponed forever.
+tauri-plugin-process = "2.3.1"
+
+# OS media session: media keys, Control Center, the lock screen. Playback moved
+# out of the webview, and `navigator.mediaSession` only exposes a session for a
+# page playing a media element — so the OS side has to be spoken to directly.
+# Apple's public MPNowPlayingInfoCenter/MPRemoteCommandCenter, never the private
+# MediaRemote.
+#
+# These are the objc2 bindings, generated from Apple's own headers and the
+# maintained line. `souvlaki` gave us the same session for ~40 lines of caller
+# code, but on macOS it rides the retired objc/cocoa/block generation, and
+# `block 0.1.6` declares a static of uninhabited type — accepted today, a hard
+# error in a future rustc. That is a build that stops working on its own, so it
+# comes out before v1 rather than after. Only the classes we speak to are
+# enabled; the framework's default feature set is the whole of MediaPlayer.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSDictionary",
+    "NSString",
+    "NSValue",
+] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSImage"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFCGTypes"] }
+objc2-media-player = { version = "0.3", default-features = false, features = [
+    "std",
+    "block2",
+    "objc2-app-kit",
+    "objc2-core-foundation",
+    "MPMediaItem",
+    "MPNowPlayingInfoCenter",
+    "MPRemoteCommand",
+    "MPRemoteCommandCenter",
+    "MPRemoteCommandEvent",
+] }
+block2 = "0.6"

@@ -4,9 +4,9 @@
   "version": "0.8.0",
   "identifier": "com.rpierucci.sonarche",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run prepare:runtime && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run prepare:runtime && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -30,25 +30,27 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$AUDIO/Sonarche/**",
-          "$APPDATA/**"
-        ]
+        "scope": ["$AUDIO/Sonarche/**", "$APPDATA/**"]
       }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "resources": {
-      "../sidecar": "sidecar"
+      "../sidecar": "sidecar",
+      "resources/python.tar.gz": "python.tar.gz",
+      "resources/wheels": "wheels"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUxNjM5N0FCRUJCMDlBNTQKUldSVW1yRHJxNWRqVVI4eW52Q1Rhckl4T09JTFd4VitWMStVREQyWUk0eWZZa3YwK0FHdVpnbTAK",
+      "endpoints": ["https://github.com/Norudah/sonarche/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

@@ -116,6 +116,36 @@
   color: var(--artist-avatar-ink);
 }
 
+/* --- Field help tooltip --------------------------------------------------- */
+
+/* HeroUI's tooltip is white on white with a shadow, padded `p-2` and set to
+   `break-all` — a sentence of help renders as a pale box with words split
+   mid-syllable. Ours is ink-on-white's opposite: a dark slab that reads as an
+   annotation over the panel rather than as another card in it.
+   Imported after @heroui/styles, so these win at equal specificity. */
+.tooltip-ink {
+  @apply max-w-72 bg-foreground px-3 py-2 text-[0.75rem] leading-relaxed text-background;
+  overflow-wrap: break-word;
+  word-break: normal;
+  text-wrap: pretty;
+
+  & [data-slot="overlay-arrow"] {
+    @apply stroke-transparent;
+    fill: var(--color-foreground);
+  }
+}
+
+/* --- Toast viewport ------------------------------------------------------- */
+
+/* HeroUI's `bottom end` region is pinned to `bottom-4`, which puts a toast on
+   top of the player bar — over the transport controls, the one strip that has
+   to stay reachable while a message is up. Lifted by the bar's own height so
+   the two stack instead of overlapping.
+   Imported after @heroui/styles, so this wins at equal specificity. */
+.toast-region-lifted {
+  bottom: calc(var(--spacing-player) + 1rem);
+}
+
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
 
 /* Seekbar — accent color, thumb 1rem */
@@ -124,14 +154,47 @@
   border-inline-width: 0.5rem;
 }
 
+/* Four pixels of paint is not a target you can hit. A transparent band widens
+   the grab area to 20 px without thickening the line: the track is the element
+   the slider listens on, and a pointer landing on its pseudo-element hits the
+   track itself. Sits below the thumb and the fill in paint order, so neither
+   loses its own presses. */
+.player-slider .slider__track::before {
+  content: "";
+  position: absolute;
+  inset-block: -0.5rem;
+  inset-inline: 0;
+}
+
+/* The playhead marker. Hidden at rest so the bar stays a line rather than a
+   control, and revealed on hover of the grab band above — the moment the bar
+   becomes something you can act on is the moment it says so. Also revealed on
+   keyboard focus, where it was previously the focus ring that was invisible. */
 .player-slider .slider__thumb {
-  @apply opacity-0;
+  @apply bg-transparent opacity-0;
+  @apply transition-opacity duration-150 motion-reduce:transition-none;
   width: calc(1rem + 0.25rem);
 }
 
+.player-slider:not([data-disabled="true"]):hover .slider__thumb,
+.player-slider .slider__thumb[data-dragging="true"],
+.player-slider .slider__thumb[data-focus-visible="true"] {
+  @apply opacity-100;
+}
+
+/* A 3 px bar, not a dot: it marks a position on a timeline, and a line reads
+   as a cut where a disc reads as a handle to fling.
+   The hairline and the drop shadow are what make white work here — half the
+   marker sits on the indigo fill and half on the pale rail, and on the pale
+   side white alone is a ghost. HeroUI's own `shadow-field` is too faint at
+   this size, hence the override. */
 .player-slider .slider__thumb::after {
-  width: 1rem;
-  height: 1rem;
+  @apply rounded-full;
+  width: 0.1875rem;
+  height: 0.75rem;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.06),
+    0 1px 3px rgb(0 0 0 / 0.3);
 }
 
 /* Volume slider — thin gray bar, no visible thumb, no border artifacts */
@@ -170,6 +233,24 @@
      only ever used on that source's badge. */
   --color-youtube: oklch(0.52 0.21 27);
   --color-youtube-soft: oklch(0.95 0.03 27);
+
+  /* Panel wash — the backdrop of the metadata surfaces' secondary areas: the
+     album modal's identity column, both panels' action bars, the tracklist's
+     column header. HeroUI's `surface-secondary` (oklch 0.9524) is a real grey
+     at this size: spread over a whole column it reads as dull, and it swallows
+     anything tinted the same way sitting on it — the category chips vanished
+     into it, leaving bare text. This is the barely-there tint the design uses,
+     one notch off white, so chips and inputs still stand out on top of it. */
+  --color-panel: oklch(0.985 0.0015 286);
+
+  /* List tray — the recessed block a list of rows is filed onto (the download
+     feed, the history). It has to do two jobs at once that no existing step
+     does both of: read as a distinct area against the near-white background
+     (`panel`, one notch off white, disappears at this size), and stay light
+     enough that a white card laid on it still reads as lifted rather than as
+     one more grey box (`surface-secondary` at 0.9524 is too close to a real
+     grey for that). This sits between them. */
+  --color-tray: oklch(0.972 0.0015 286);
 
   /* Metadata drawer header — a decorative gradient, same hue as the app's
      indigo accent but starting darker so it resolves into --accent rather
@@ -242,6 +323,25 @@
     }
   }
 
+  /* The download rail's playhead on a stage that reports no progress of its own
+     (a lone file's import): it sweeps the segment instead of sitting at zero.
+     `alternate` rather than a loop — a handle that jumps back to the start
+     reads as a restart; one that comes back reads as searching. */
+  --animate-rail-scan: sonarche-rail-scan 1.6s var(--ease-out-fluid) infinite alternate;
+
+  /* The handle is anchored to the wrapper's right edge, so the wrapper starts
+     one full segment to the left and comes back: that puts the handle at the
+     segment's left edge at 0% and at its right edge at 100%. Sweeping 0 → 100
+     instead would walk it out of the segment entirely. */
+  @keyframes sonarche-rail-scan {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0%);
+    }
+  }
+
   /* Now-playing equalizer — used by the player when audio is playing. */
   --animate-equalizer: sonarche-equalizer 0.9s ease-in-out infinite;
 
@@ -289,6 +389,13 @@
   }
 }
 
+/** A job card that just landed in the activity feed: the same wash-and-rise as
+    a new queue row, on one element instead of split across a cell and its child
+    (a card is an ordinary block, so a transform on it works). */
+@utility card-reveal {
+  animation: var(--animate-row-wash), var(--animate-row-rise);
+}
+
 /** Same staggered entrance for a plain element rather than a table row — an
     album card in a grid. `row-cascade` has to reach *into* a `<tr>` because a
     transform on a table-cell is unreliable; outside a table the element can
@@ -308,7 +415,8 @@
   .row-reveal > th,
   .row-cascade > td > *,
   .row-cascade > th > *,
-  .cascade-item {
+  .cascade-item,
+  .card-reveal {
     animation: none;
   }
 
@@ -316,5 +424,11 @@
      working, so removing it would leave a frozen screen with no explanation. */
   .animate-splash-bar {
     animation-duration: 2.4s;
+  }
+
+  /* The sweeping playhead is decoration on top of a stage the phase line already
+     names in words ("Rangement"), so nothing is lost by parking it. */
+  .animate-rail-scan {
+    animation: none;
   }
 }

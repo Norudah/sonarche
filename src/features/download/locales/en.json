@@ -1,38 +1,66 @@
 {
   "eyebrow": "Add to library",
-  "title": "Paste a link,\nwe'll take it from there.",
+  "title": "Paste a link, we'll take it from there.",
   "urlLabel": "Video link",
-  "urlPlaceholder": "https://youtube.com/watch?v=…",
+  "urlPlaceholder": "Paste a YouTube video or playlist link",
   "download": "Fetch",
   "enqueueFailed": "Could not add to the queue",
   "unknownArtist": "Unknown artist",
-  "sources": {
-    "youtube": "YouTube",
-    "soundcloud": "SoundCloud",
-    "supported": "supported",
-    "detected": "link detected",
-    "soon": "soon"
-  },
   "detected": {
-    "mixed": "This link opens a track from inside a playlist. What should we fetch?",
-    "mixedLabel": "Playlist detected:",
+    "question": "Fetch the whole playlist, or this track only?",
     "choiceTrack": "This track only",
-    "choicePlaylist": "Whole playlist",
-    "confirmHint": "→ confirm with Fetch"
+    "choicePlaylist": "Whole playlist"
+  },
+  "options": {
+    "title": "Options",
+    "category": "Category",
+    "categoryHint": "Context, not musical style — where the music comes from. You can change it later on any track.",
+    "categoryNone": "None"
+  },
+  "activity": {
+    "inFlight": "In progress",
+    "recent": "Recent",
+    "expand": "Show details",
+    "collapse": "Hide details",
+    "percent": "{{value}} %",
+    "outOf": "{{done}} of {{total}}",
+    "phase": {
+      "queued": "Waiting its turn",
+      "download": "Fetching",
+      "import": "Filing",
+      "enrich": "Identifying",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "verdict": {
+      "matched": "Identified",
+      "partialMatch": "Identified {{matched}}/{{total}}",
+      "guessed": "Guessed tags",
+      "unmatched": "Not identified",
+      "lostTracks": "Partial {{kept}}/{{total}}",
+      "failed": "Failed"
+    },
+    "detail": {
+      "cover": "Cover",
+      "category": "Category",
+      "track": "Track",
+      "attempts": "Attempts"
+    },
+    "empty": {
+      "title": "Nothing has come through yet.",
+      "body": "The first link you paste shows up here, from fetching it to filing it."
+    }
   },
   "history": {
     "title": "History",
-    "lede": "Every download, newest first."
+    "lede": "Every download, newest first.",
+    "empty": "No downloads yet."
   },
   "queue": {
-    "heading": "Activity",
-    "empty": "No downloads yet. Paste a link to get started.",
-    "colMedia": "Media",
     "colPipeline": "Pipeline",
     "colMatch": "Match",
     "colTags": "Tags",
     "colLibrary": "Library",
-    "colActions": "Actions",
     "pipeline": {
       "download": {
         "idle": "Downloaded",
@@ -56,8 +84,6 @@
       "failed": "failed"
     },
     "awaiting": "Awaiting",
-    "provisional": "Guessed tags",
-    "provisionalHint": "No identification: these tags come from the video title, not MusicBrainz. Worth a second pass.",
     "copyUrl": "Copy source link",
     "attempts": "Download attempts",
     "inLibrary": "In library",
@@ -71,10 +97,6 @@
     "kindAlbum": "Album",
     "trackCount_one": "{{count}} track",
     "trackCount_other": "{{count}} tracks",
-    "expand": "Show tracks",
-    "collapse": "Hide tracks",
-    "partialTracks": "{{failed}} of {{total}} tracks unavailable",
-    "failedWith": "Failed — {{error}}",
     "retry": "Retry",
     "matched": "Match found",
     "matchNone": "None",
@@ -84,7 +106,6 @@
     "nextPage": "Next page",
     "pageOf": "{{page}} / {{pageCount}}",
     "seeAll": "Full history",
-    "recentHeading": "Recent downloads",
     "clearHistory": "Clear history",
     "clearHistoryTitle": "Clear download history?",
     "clearHistoryBody": "Completed and failed downloads will be removed from this list. Tracks already imported stay in your library.",

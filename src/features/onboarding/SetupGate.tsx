@@ -1,99 +1,67 @@
-import { Alert, Button, Card } from "@heroui/react";
+import { Alert } from "@heroui/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useEnvStatus, useSetupEnv, useSetupLogs } from "@/features/onboarding/hooks";
+import { onboardingForcedByDev } from "@/features/onboarding/devOverride";
+import { useCompleteOnboarding, useEnvStatus, useOnboardingState } from "@/features/onboarding/hooks";
+import { SetupWalkthrough } from "@/features/onboarding/SetupWalkthrough";
 import { SplashScreen } from "@/features/onboarding/SplashScreen";
-
-function Centered({ children }: { children: ReactNode }) {
-  return <div className="flex h-full items-center justify-center">{children}</div>;
-}
-
-function PythonMissing({ onRetry, checking }: { onRetry: () => void; checking: boolean }) {
-  const { t } = useTranslation("onboarding");
-  return (
-    <Centered>
-      <Card className="max-w-lg p-6">
-        <Card.Header>
-          <Card.Title>{t("pythonMissing.title")}</Card.Title>
-          <Card.Description>{t("pythonMissing.description")}</Card.Description>
-        </Card.Header>
-        <Card.Content className="flex flex-col gap-4">
-          <code className="rounded-lg bg-default/40 px-3 py-2 text-sm">brew install python</code>
-          <Button variant="primary" onPress={onRetry} isDisabled={checking}>
-            {t("pythonMissing.retry")}
-          </Button>
-        </Card.Content>
-      </Card>
-    </Centered>
-  );
-}
-
-function SetupNeeded() {
-  const { t } = useTranslation("onboarding");
-  const setup = useSetupEnv();
-  const logs = useSetupLogs(setup.isPending);
-
-  return (
-    <Centered>
-      <Card className="w-full max-w-2xl p-6">
-        <Card.Header>
-          <Card.Title>{t("setup.title")}</Card.Title>
-          <Card.Description>{t("setup.description")}</Card.Description>
-        </Card.Header>
-        <Card.Content className="flex flex-col gap-4">
-          {setup.isError && (
-            <Alert status="danger">
-              <Alert.Content>
-                <Alert.Title>{t("setup.failed")}</Alert.Title>
-                <Alert.Description>{String(setup.error)}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
-          {setup.isPending && (
-            <pre className="max-h-56 overflow-y-auto rounded-lg bg-default/40 p-3 text-xs leading-relaxed">
-              {logs.length > 0 ? logs.join("\n") : t("setup.starting")}
-            </pre>
-          )}
-          <Button variant="primary" onPress={() => setup.mutate()} isDisabled={setup.isPending}>
-            {setup.isPending ? t("setup.installing") : t("setup.install")}
-          </Button>
-        </Card.Content>
-      </Card>
-    </Centered>
-  );
-}
+import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
 /**
- * Nothing downstream renders until the Python environment is known to be usable.
+ * Nothing downstream renders until the walkthrough is done with the window.
  * Wraps the whole shell, not just the routed content: see `SplashScreen` for
  * why a half-interactive sidebar was worse than a full-window wait.
+ *
+ * The gate only decides *which* of three surfaces owns the window; the states
+ * themselves are computed in `steps.ts` and drawn in `SetupFlow`.
  */
 export function SetupGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation("onboarding");
   const status = useEnvStatus();
+  const onboarding = useOnboardingState();
+  const complete = useCompleteOnboarding();
 
-  if (status.isPending) return <SplashScreen />;
+  const steps = buildSetupSteps({
+    env: status.data ?? null,
+    acoustidConfigured: onboarding.data?.acoustidConfigured ?? false,
+  });
+
+  const gate = gateState({
+    steps,
+    envKnown: status.isSuccess && !onboarding.isPending,
+    // Fail open: a walkthrough flag we cannot read must not lock anyone out of
+    // their own library. A genuinely broken environment still holds the window,
+    // because that verdict comes from the steps, not from this flag.
+    onboardingCompleted: onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true),
+  });
 
   if (status.isError) {
     return (
-      <Centered>
+      <div className="flex h-full items-center justify-center">
         <Alert status="danger" className="max-w-lg">
           <Alert.Content>
             <Alert.Title>{t("statusError")}</Alert.Title>
             <Alert.Description>{String(status.error)}</Alert.Description>
           </Alert.Content>
         </Alert>
-      </Centered>
+      </div>
     );
   }
 
-  if (!status.data.python) {
-    return <PythonMissing onRetry={() => status.refetch()} checking={status.isFetching} />;
-  }
+  if (gate === "checking") return <SplashScreen />;
 
-  if (!status.data.venvOk || !status.data.depsOk) {
-    return <SetupNeeded />;
+  if (gate === "onboarding") {
+    return (
+      <SetupWalkthrough
+        env={status.data ?? null}
+        acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
+        onRecheckPython={() => status.refetch()}
+        isCheckingPython={status.isFetching}
+        onFinish={() => complete.mutate()}
+        isFinishing={complete.isPending}
+      />
+    );
   }
 
   return <>{children}</>;

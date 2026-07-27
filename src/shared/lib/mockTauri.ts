@@ -258,6 +258,19 @@ const preferenceFields: Record<string, keyof typeof preferences> = {
   download: "downloadDelaySeconds",
 };
 
+/** The fixture track the engine cannot decode — one Opus file in a library of
+ * AAC, which is exactly what importing someone's existing collection produces.
+ * A format the player refuses is a state the UI has to draw, so it needs to be
+ * reachable by clicking a row rather than only in a real install. */
+const UNPLAYABLE_TITLE = "Wait";
+
+/** Whether the mock engine would open this file. Mirrors the decoder's own
+ * list (`src-tauri/src/audio_formats.rs`), short of the formats no fixture
+ * uses. */
+function isPlayablePath(path: string): boolean {
+  return /\.(mp3|flac|m4a|m4b|mp4|aac|ogg|oga|wav|wave|aiff|aif|aifc)$/i.test(path);
+}
+
 // One track matching the "Monster" job's item_id; the other done job's item is
 // deliberately absent so the "removed from library" state is visible too.
 const libraryTracks = [
@@ -347,8 +360,8 @@ const libraryTracks = [
     track_total: 12,
     length,
     bitrate: 256000,
-    format: "AAC",
-    path: `/Users/dev/Music/Sonarche/${artist}/${title}.m4a`,
+    format: title === UNPLAYABLE_TITLE ? "Opus" : "AAC",
+    path: `/Users/dev/Music/Sonarche/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
     mb_trackid: null,
@@ -459,13 +472,58 @@ function inflate<
 
 const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
+/**
+ * Which rung of the walkthrough to open on: `?setup=python` (nothing found),
+ * `?setup=engine` (an interpreter but no venv), anything else a healthy
+ * install. Pair with `?onboarding=1`, which makes the gate ignore the
+ * completion flag. Without this the first two steps are always satisfied and
+ * their panels — the ones with the copy, the install and the log — could not be
+ * looked at at all.
+ */
+const requestedSetup = new URLSearchParams(window.location.search).get("setup");
+
+const env = {
+  python: requestedSetup === "python" ? null : { path: "/opt/homebrew/bin/python3", version: "3.13.1" },
+  venvOk: requestedSetup !== "python" && requestedSetup !== "engine",
+  depsOk: requestedSetup !== "python" && requestedSetup !== "engine",
+  // `?bundled` previews the app once it carries its own interpreter: the
+  // Python step disappears and the remaining two renumber themselves.
+  pythonBundled: new URLSearchParams(window.location.search).has("bundled"),
+  libraryDir: "/Users/dev/Music/Sonarche",
+};
+
+const onboarding = { completed: requestedSetup == null, acoustidConfigured: false };
+
+/** The lines `python_env.rs` emits, plus pip's, at a watchable pace. */
+const SETUP_SCRIPT = [
+  "Python: /opt/homebrew/bin/python3 (3.13.1)",
+  "Creating virtual environment...",
+  "Installing dependencies (this can take a few minutes)...",
+  "Collecting beets==2.12.0 (from -r requirements.txt (line 1))",
+  "Downloading beets-2.12.0-py3-none-any.whl (1.9 MB)",
+  "Collecting yt-dlp==2026.7.4 (from -r requirements.txt (line 2))",
+  "Collecting mutagen==1.47.0 (from -r requirements.txt (line 3))",
+  "Installing collected packages: mutagen, yt-dlp, beets",
+  "Environment ready.",
+];
+
+function runMockSetup(): Promise<unknown> {
+  return new Promise((resolve) => {
+    let index = 0;
+    const timer = window.setInterval(() => {
+      emitMockEvent("setup:log", SETUP_SCRIPT[index]);
+      index += 1;
+      if (index >= SETUP_SCRIPT.length) {
+        window.clearInterval(timer);
+        env.venvOk = true;
+        env.depsOk = true;
+        resolve(env);
+      }
+    }, 900);
+  });
+}
+
 const responses: Record<string, unknown> = {
-  get_env_status: {
-    python: { path: "/usr/bin/python3", version: "3.12.0" },
-    venvOk: true,
-    depsOk: true,
-    libraryDir: "/Users/dev/Music/Sonarche",
-  },
   list_jobs: jobs,
   list_library: { tracks: inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
@@ -474,17 +532,98 @@ const responses: Record<string, unknown> = {
 
 let callbackId = 0;
 
+/**
+ * Event listeners, by event name.
+ *
+ * Tauri's `listen()` hands its handler to `transformCallback` and passes the
+ * resulting id to `plugin:event|listen`; the backend then calls that callback
+ * by id. The stub used to number the callbacks and drop them, so nothing the
+ * backend pushes ever arrived — fine while every mocked screen was
+ * request/response, but the player is driven entirely by pushed status, and
+ * would sit frozen here.
+ */
+const listeners = new Map<string, Set<(payload: unknown) => void>>();
+const callbacks = new Map<number, (message: unknown) => void>();
+
+/** Deliver an event to whatever subscribed to it, as the backend would. */
+export function emitMockEvent(event: string, payload: unknown) {
+  for (const handler of listeners.get(event) ?? []) handler(payload);
+}
+
+/**
+ * A fake yt-dlp reporting bytes.
+ *
+ * The activity feed's rail is driven by these events, so without them the one
+ * thing this preview exists to show — a download visibly advancing — is a bar
+ * frozen at zero. Same reasoning as the fake playhead below: the state the UI
+ * spends its life in is the one a static fixture cannot reach.
+ */
+function tickDownloadProgress() {
+  let percent = 0;
+  window.setInterval(() => {
+    percent = (percent + 7) % 104;
+    emitMockEvent("sidecar:event", { event: "download_progress", data: { percent: Math.min(percent, 100) } });
+  }, 700);
+}
+
 export function installMockTauri() {
+  tickDownloadProgress();
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
-    transformCallback: () => ++callbackId,
+    transformCallback: (callback: (message: unknown) => void) => {
+      const id = ++callbackId;
+      callbacks.set(id, callback);
+      return id;
+    },
     convertFileSrc: (path: string) => path,
     invoke: async (cmd: string, payload?: Record<string, unknown>) => {
+      if (cmd === "plugin:event|listen") {
+        const event = String(payload?.event);
+        const callback = callbacks.get(Number(payload?.handler));
+        if (callback) {
+          const deliver = (value: unknown) => callback({ event, id: callbackId, payload: value });
+          const set = listeners.get(event) ?? new Set();
+          set.add(deliver);
+          listeners.set(event, set);
+        }
+        return callbackId;
+      }
       if (cmd.startsWith("plugin:event|")) return ++callbackId;
+      // No browser to hand off to; the walkthrough's link rows still exercise
+      // their own path.
+      if (cmd.startsWith("plugin:opener|")) return null;
       if (cmd === "set_api_key") {
         const key = apiKeys.find((k) => k.name === payload?.name);
         if (key) key.configured = String(payload?.value ?? "").trim() !== "";
+        if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
         return key;
+      }
+      // The OS folder picker, standing in for a choice that cannot be made in a
+      // browser. Always the same folder, so the summary below is about it.
+      if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // Opt-in: an update prompt on every preview would sit over whatever is
+      // being looked at. `?update` is how you go and look at it on purpose.
+      if (cmd === "plugin:updater|check") {
+        return new URLSearchParams(window.location.search).has("update")
+          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: null, rawJson: {} }
+          : null;
+      }
+      if (cmd === "plugin:updater|download_and_install") return null;
+      if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
+      if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
+      if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
+      if (cmd === "get_env_status") return { ...env };
+      if (cmd === "setup_env") return runMockSetup();
+      if (cmd === "get_onboarding_state") return { ...onboarding };
+      if (cmd === "set_onboarding_completed") {
+        onboarding.completed = Boolean(payload?.completed);
+        return { ...onboarding };
+      }
+      // Anything but `bad` passes, so both verdicts can be seen without a real
+      // key — and the rejection is the one worth looking at.
+      if (cmd === "check_acoustid_key") {
+        const valid = String(payload?.key ?? "").trim() !== "bad";
+        return { valid, reason: valid ? null : "invalidKey" };
       }
       if (cmd === "set_rate_limit_delay") {
         const field = preferenceFields[String(payload?.key)];
@@ -525,7 +664,155 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // The Rust engine owns playback, so a browser preview has none. A fake
+      // playhead is what keeps the player bar, the seek bar and the queue panel
+      // explorable here: without it nothing ever advances and "playing" is a
+      // state the UI can never be seen in.
+      if (cmd.startsWith("player_") || cmd === "now_playing_set") return mockPlayback(cmd, payload);
       return responses[cmd] ?? {};
     },
   };
+}
+
+/** Stand-in for the Rust engine: enough state to drive the UI, no audio. */
+const playback = { position: 0, duration: 0, isPlaying: false, loaded: false, queued: 0, timer: 0 };
+
+function emitPlaybackStatus() {
+  const { position, duration, isPlaying, loaded, queued } = playback;
+  emitMockEvent("player:status", { position, duration, isPlaying, loaded, queued });
+}
+
+function tickPlayback() {
+  window.clearInterval(playback.timer);
+  playback.timer = window.setInterval(() => {
+    if (!playback.isPlaying) return;
+    playback.position += 0.25;
+    if (playback.duration > 0 && playback.position >= playback.duration) {
+      playback.position = 0;
+      playback.isPlaying = false;
+      playback.loaded = false;
+      emitMockEvent("player:ended", null);
+    }
+    emitPlaybackStatus();
+  }, 250);
+}
+
+/** The folder the mock picker always returns. Long enough to exercise the
+ * middle-truncation the real paths get. */
+const MOCK_IMPORT_FOLDER = "/Volumes/Backup/archive/2011/music/rips/FLAC";
+
+/**
+ * A library worth confirming: a few thousand tracks, tens of gigabytes, and a
+ * handful of files in formats the engine cannot decode — the caveat the summary
+ * exists to show. `?emptyImport` gives the other verdict, a folder with no music
+ * in it, which is the mistake people actually make.
+ */
+function mockScan(path: string): unknown {
+  if (new URLSearchParams(window.location.search).has("emptyImport")) {
+    return {
+      playable: 0,
+      unplayable: 0,
+      unplayableByExtension: {},
+      unplayableExamples: [],
+      bytes: 0,
+      truncated: false,
+    };
+  }
+
+  return {
+    playable: 4287,
+    unplayable: 25,
+    unplayableByExtension: { wma: 19, opus: 6 },
+    unplayableExamples: [`${path}/Old Rips/track01.wma`, `${path}/Podcasts/ep-114.opus`],
+    albumFolders: MOCK_IMPORT_FOLDERS.length,
+    bytes: 31_400_000_000,
+    truncated: false,
+  };
+}
+
+/** The albums the mock import walks through. Named, because the point of the
+ * progress line is that it says which record is being copied. */
+const MOCK_IMPORT_FOLDERS = [
+  "Aphex Twin/Selected Ambient Works 85-92",
+  "Boards of Canada/Music Has the Right to Children",
+  "Burial/Untrue",
+  "Fever Ray/Fever Ray",
+  "Portishead/Dummy",
+  "The Avalanches/Since I Left You",
+];
+
+/**
+ * An import that takes visible time.
+ *
+ * Instant would hide the one state worth previewing. `?failImport` stops it
+ * partway instead — the failure has to be drawable too, and it is the state
+ * nobody thinks to look at.
+ */
+async function mockLibraryImport(folder: string): Promise<unknown> {
+  const failAt = new URLSearchParams(window.location.search).has("failImport") ? 3 : Infinity;
+
+  for (const [index, album] of MOCK_IMPORT_FOLDERS.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+    if (index + 1 === failAt) {
+      throw `beet import failed (exit 1): could not read ${folder}/${album}`;
+    }
+    emitMockEvent("sidecar:event", {
+      event: "library_import_progress",
+      data: { folders: index + 1, folder: `${folder}/${album}` },
+    });
+  }
+
+  // The cover pass that follows the copy: a second count of different things,
+  // which the bar has to restart for rather than crawl the last inch.
+  for (let done = 1; done <= MOCK_IMPORT_FOLDERS.length; done += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    emitMockEvent("sidecar:event", {
+      event: "library_covers_progress",
+      data: { done, total: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(done / 2) },
+    });
+  }
+
+  return { folders: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2) };
+}
+
+function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
+  switch (cmd) {
+    case "player_load":
+      // The one failure the player has to speak out loud. Refused here the way
+      // the real engine refuses it — same wording, because the front reads that
+      // prefix to name the format (see shared/player/playbackError.ts).
+      if (!isPlayablePath(String(payload?.path ?? ""))) {
+        throw `unsupported audio format: ${String(payload?.path ?? "")}`;
+      }
+      // A plausible length, since there is no file to decode.
+      playback.position = 0;
+      playback.duration = 214;
+      playback.isPlaying = true;
+      playback.loaded = true;
+      tickPlayback();
+      return playback.duration;
+    case "player_toggle":
+      playback.isPlaying = !playback.isPlaying;
+      return playback.isPlaying;
+    case "player_pause":
+      playback.isPlaying = false;
+      return null;
+    case "player_seek":
+      playback.position = Number(payload?.seconds ?? 0);
+      emitPlaybackStatus();
+      return null;
+    case "player_stop":
+      playback.isPlaying = false;
+      playback.loaded = false;
+      return null;
+    case "player_status":
+      return { ...playback };
+    case "now_playing_set":
+      // No OS session in a browser; the call is acknowledged so the front's
+      // path is exercised, and `emitMockEvent("player:remote", …)` from the
+      // console stands in for a media key.
+      return null;
+    default:
+      return null;
+  }
 }

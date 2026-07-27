@@ -19,7 +19,7 @@ import {
 import type { PlayableTrack } from "@/shared/player/types";
 
 function tracksOf(count: number): PlayableTrack[] {
-  return Array.from({ length: count }, (_, i) => ({ id: i, src: `file-${i}`, title: `Track ${i}` }));
+  return Array.from({ length: count }, (_, i) => ({ id: i, path: `/music/file-${i}.m4a`, title: `Track ${i}` }));
 }
 
 /** Deterministic stand-in for Math.random. */
