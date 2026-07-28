@@ -9,6 +9,7 @@ mod jobs;
 mod jobs_store;
 mod library_import;
 mod library_scan;
+mod logs;
 mod now_playing;
 mod onboarding;
 mod player;
@@ -36,6 +37,8 @@ fn main() {
         .manage(library_import::LibraryImportState::default())
         .manage(player::PlayerState::default())
         .setup(|app| {
+            // First, so anything that fails after this point leaves a trace.
+            logs::init(app.handle());
             let state = jobs::init(app.handle())?;
             app.manage(state);
             // Pushes the playhead and end-of-track to the front; idle until

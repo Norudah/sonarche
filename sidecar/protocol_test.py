@@ -52,6 +52,19 @@ class WireEncodingTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn(HOSTILE, proc.stderr)
 
+    def test_a_lone_surrogate_costs_a_character_not_the_job(self):
+        """UTF-8 encodes almost everything, but not a lone surrogate — and
+        Windows produces those whenever a filename is not valid UTF-16, which
+        `surrogateescape` carries straight into a track title. One bad character
+        must not be a failed download."""
+        proc = self._run(
+            "import protocol\n"
+            "protocol.send_event('req-1', 'e', {'title': 'bad \\udce9 name'})\n"
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["data"]["title"], "bad ? name")
+
     def test_a_request_carrying_one_can_still_be_read(self):
         """The mirror bug: stdin decodes with the same locale encoding, so a
         request with an accent in it would have died on the way in."""

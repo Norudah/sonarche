@@ -145,7 +145,9 @@ fn spawn_stderr_reader(stderr: tokio::process::ChildStderr) {
     tauri::async_runtime::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            eprintln!("[sidecar] {line}");
+            // To the log file, not just stderr: this stream carries the
+            // sidecar's tracebacks, and on Windows stderr goes nowhere.
+            crate::logs::write(&format!("[sidecar] {line}"));
         }
     });
 }
