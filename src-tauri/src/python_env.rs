@@ -406,10 +406,25 @@ async fn write_config_file(paths: &AppPaths, target: &Path, embed_art: bool) -> 
     Ok(())
 }
 
+/// A path as a YAML scalar.
+///
+/// Single-quoted, and that is the whole point. Inside double quotes YAML treats
+/// `\` as an escape introducer, so `C:\Users\…` opens with `\U` — the start of
+/// an eight-digit unicode escape — and beets refused to load its own config
+/// before it ever saw a track. Every import on Windows failed on this, from the
+/// first build.
+///
+/// A single-quoted scalar has exactly one escape, a doubled `'`, which is why
+/// this is a function and not a pair of quote characters at the call site: a
+/// Windows user named O'Brien has an apostrophe in every path they own.
+fn yaml_scalar(path: &Path) -> String {
+    format!("'{}'", path.display().to_string().replace('\'', "''"))
+}
+
 fn beets_config_yaml(paths: &AppPaths, embed_art: bool) -> String {
     format!(
-        r#"directory: "{library}"
-library: "{db}"
+        r#"directory: {library}
+library: {db}
 import:
   move: yes
   write: yes
@@ -438,18 +453,18 @@ lastgenre:
   auto: no
   source: track
   count: 3
-  canonical: "{tree}"
-  whitelist: "{whitelist}"
+  canonical: {tree}
+  whitelist: {whitelist}
   prefer_specific: yes
   cleanup_existing: yes
   fallback: null
 ui:
   color: no
 "#,
-        library = paths.library_dir.display(),
-        db = paths.beets_db.display(),
-        tree = paths.genres_tree.display(),
-        whitelist = paths.genres_whitelist.display(),
+        library = yaml_scalar(&paths.library_dir),
+        db = yaml_scalar(&paths.beets_db),
+        tree = yaml_scalar(&paths.genres_tree),
+        whitelist = yaml_scalar(&paths.genres_whitelist),
         embed_art = if embed_art { "yes" } else { "no" },
     )
 }
@@ -537,6 +552,50 @@ mod tests {
         }
     }
 
+    /// The bug that made every import on Windows fail, from the first build to
+    /// the fourth: `directory: "C:\Users\…"`. YAML reads `\` as an escape
+    /// introducer inside double quotes, so the path opened with `\U` — the
+    /// start of an eight-digit unicode escape — and beets refused to load its
+    /// own config. Column 12 of line 1, every single time.
+    #[test]
+    fn a_windows_path_is_not_read_as_a_yaml_escape() {
+        let mut paths = paths();
+        paths.library_dir = PathBuf::from(r"C:\Users\pieru\Music\Sonarche");
+        paths.beets_db = PathBuf::from(r"C:\Users\pieru\AppData\Roaming\beets\library.db");
+
+        let config = beets_config_yaml(&paths, true);
+
+        assert!(
+            config.contains(r"directory: 'C:\Users\pieru\Music\Sonarche'"),
+            "{config}"
+        );
+        // The rule, stated once for the whole file rather than per key: a
+        // backslash is a directive between double quotes and a plain character
+        // between single ones, so no line may ever hold both. `clutter` keeps
+        // its double quotes — there is no path in it.
+        for line in config.lines() {
+            assert!(
+                !(line.contains('\\') && line.contains('"')),
+                "a backslash inside double quotes: {line}"
+            );
+        }
+    }
+
+    /// Single quotes have exactly one escape, and a doubled `'` is it. Not a
+    /// hypothetical: `C:\Users\O'Brien\Music` is an ordinary Windows path.
+    #[test]
+    fn an_apostrophe_in_a_path_is_doubled_not_left_to_close_the_scalar() {
+        let mut paths = paths();
+        paths.library_dir = PathBuf::from(r"C:\Users\O'Brien\Music");
+
+        let config = beets_config_yaml(&paths, true);
+
+        assert!(
+            config.contains(r"directory: 'C:\Users\O''Brien\Music'"),
+            "{config}"
+        );
+    }
+
     /// The one line the two configs may differ on, and the reason the second
     /// file exists at all. A library import bakes the album's own cover into
     /// every track when this is `yes` — measured at 314 MB of duplicated images
@@ -562,8 +621,8 @@ mod tests {
     fn both_configs_target_the_one_library() {
         for embed_art in [true, false] {
             let config = beets_config_yaml(&paths(), embed_art);
-            assert!(config.contains(r#"directory: "/music/Sonarche""#));
-            assert!(config.contains(r#"library: "/data/beets/library.db""#));
+            assert!(config.contains("directory: '/music/Sonarche'"));
+            assert!(config.contains("library: '/data/beets/library.db'"));
         }
     }
 }
