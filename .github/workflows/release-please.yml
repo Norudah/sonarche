@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  # Rebuild a release whose bundle failed, without cutting a new version.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and upload to (e.g. sonarche-v0.9.0)
+        required: true
 
 permissions:
   contents: write
@@ -65,7 +71,7 @@ jobs:
   # no release to upload to, and failed. Here the answer is a job output.
   bundle:
     needs: release-please
-    if: ${{ needs.release-please.outputs.released == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.release-please.outputs.released == 'true' }}
     # Two runners rather than one universal binary: the app ships its own Python
     # and its own wheels, both architecture-specific, so a universal build would
     # carry two interpreters — 200 MB to spare the user picking a file.
@@ -75,7 +81,11 @@ jobs:
         include:
           - runner: macos-14
             arch: aarch64
-          - runner: macos-13
+          # `macos-15-intel`, not `macos-13`: GitHub retired the 13 image, and a
+          # job asking for a label that no longer exists does not fail — it
+          # queues for a runner that will never come. The 0.9.0 build sat there
+          # until it was cancelled by hand.
+          - runner: macos-15-intel
             arch: x86_64
 
     runs-on: ${{ matrix.runner }}
@@ -88,13 +98,17 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           # `databaseId` is not a field `release list` knows — asking for it is
           # what failed the first time. The tag comes from the list, the id from
           # the release itself.
-          tag=$(gh release list --limit 1 --json tagName,isDraft \
-                --jq '[.[] | select(.isDraft == false)][0].tagName')
+          tag="${TAG:-}"
+          if [ -z "$tag" ]; then
+            tag=$(gh release list --limit 1 --json tagName,isDraft \
+                  --jq '[.[] | select(.isDraft == false)][0].tagName')
+          fi
           echo "id=$(gh release view "$tag" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
