@@ -70,13 +70,16 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
         </div>
 
-        {/* Lifted by its shadow, never outlined. A hairline ring around a white
-         * card sitting on the accent wash draws the box before it draws the
-         * field, and focus is answered with a soft accent halo for the same
-         * reason — a 1px accent line on a rounded card reads as a validation
-         * error, not as "you are typing here". */}
+        {/* Lifted by its shadow, never outlined at rest: a hairline ring around
+         * a white card sitting on the accent wash draws the box before it draws
+         * the field.
+         *
+         * Focus was answered with a 4px `accent-soft` halo, which at this size
+         * read as a second, blurrier shadow bleeding out of the card rather than
+         * as "you are typing here". It is now the card itself that reacts — it
+         * lifts one step, under a hairline accent ring. Same signal, no glow. */}
         <form
-          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-md transition-shadow focus-within:ring-4 focus-within:ring-accent-soft"
+          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
             event.preventDefault();
             if (canSubmit) onSubmit({ url: url.trim(), kind, category });
