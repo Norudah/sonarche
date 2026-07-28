@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/Norudah/sonarche/compare/sonarche-v0.9.0...sonarche-v0.9.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **build:** seal the macOS bundle and sign the updater artifacts ([4335574](https://github.com/Norudah/sonarche/commit/4335574676445975ef71170ca42258e5c9d9b9a5))
+* **build:** seal the macOS bundle and sign the updater artifacts ([e4968c1](https://github.com/Norudah/sonarche/commit/e4968c19c2851ad1bf2ac12544862a91060d01cc))
+
 ## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-07-28)
 
 
