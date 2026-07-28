@@ -135,10 +135,11 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Our own signature, not Apple's: the app is deliberately not
-          # code-signed (no paid Developer ID — the landing page explains the
-          # Gatekeeper screen), but every update bundle is signed with this key
-          # and the app refuses one signed with anything else.
+          # Our own signature, not Apple's: there is no paid Developer ID, so
+          # the bundle is only ad-hoc signed (`signingIdentity: "-"` in
+          # tauri.conf.json) and the landing page explains the Gatekeeper
+          # screen. Every update bundle is signed with this key and the app
+          # refuses one signed with anything else.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           releaseId: ${{ steps.release.outputs.id }}
@@ -146,3 +147,15 @@ jobs:
           # The manifest installed apps poll. Both runners write it; the second
           # merges its platform into the file the first uploaded.
           includeUpdaterJson: true
+
+      # Gatekeeper reads the bundle signature, not the linker-signed binary the
+      # toolchain leaves behind: a .app with no sealed resources is not
+      # "unidentified developer", it is "damaged and can't be opened", with
+      # Trash as the only button. And no `.sig` means no `latest.json`, so
+      # installed apps never see the release. Both were true of 0.9.0.
+      - name: Check the bundle is sealed and the updater artifacts are signed
+        run: |
+          set -euo pipefail
+          out="src-tauri/target/${{ matrix.arch }}-apple-darwin/release/bundle"
+          codesign --verify --deep --strict --verbose=2 "$out/macos/Sonarche.app"
+          test -f "$out/macos/Sonarche.app.tar.gz.sig"
