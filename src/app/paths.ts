@@ -33,6 +33,7 @@ export const paths = {
   settings: "/settings",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",
+  settingsUpdates: "/settings/updates",
   settingsDeveloper: "/settings/developer",
 } as const;
 

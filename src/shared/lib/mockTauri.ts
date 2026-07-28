@@ -601,6 +601,11 @@ export function installMockTauri() {
       // The OS folder picker, standing in for a choice that cannot be made in a
       // browser. Always the same folder, so the summary below is about it.
       if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // What the Settings pane shows as the installed version. A browser has no
+      // bundle to read one from. Kept equal to the `currentVersion` the check
+      // below reports, so `?update` previews a coherent 0.8.0 → 0.9.0 and not a
+      // downgrade.
+      if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
       if (cmd === "plugin:updater|check") {

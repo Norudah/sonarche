@@ -1,8 +1,10 @@
 import { toast } from "@heroui/react";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+
+import type { Update } from "@/features/update/install";
+import { installUpdate } from "@/features/update/install";
 
 /**
  * Offer the new version, once, shortly after launch.
@@ -44,14 +46,10 @@ export function useUpdatePrompt() {
   }, [t]);
 }
 
-type Update = NonNullable<Awaited<ReturnType<typeof check>>>;
-
 async function install(update: Update, t: (key: string) => string) {
   const progress = toast(t("installing"), { timeout: 0, isLoading: true });
   try {
-    await update.downloadAndInstall();
-    // The new bundle is on disk, but the process still running is the old one.
-    await relaunch();
+    await installUpdate(update);
   } catch {
     toast.close(progress);
     toast.danger(t("failed"), { description: t("failedHint") });

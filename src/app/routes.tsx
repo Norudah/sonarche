@@ -20,6 +20,7 @@ import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
+import { UpdateSection } from "@/features/update/UpdateSection";
 
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
@@ -56,6 +57,7 @@ export const router = createMemoryRouter(
             { index: true, element: <Navigate to={paths.settingsApiKeys} replace /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
+            { path: paths.settingsUpdates, element: <UpdateSection /> },
             // Dev builds only; the backend command refuses to run in release anyway.
             ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
           ],

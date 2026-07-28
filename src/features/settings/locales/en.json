@@ -46,6 +46,9 @@
       }
     }
   },
+  "updates": {
+    "category": "Updates"
+  },
   "developer": {
     "category": "Developer",
     "title": "Developer tools",
