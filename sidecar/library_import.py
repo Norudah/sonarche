@@ -18,13 +18,9 @@ Two flags carry the whole doctrine:
 
 import os
 import subprocess
-import sys
 
 import protocol
-
-
-def _beet_bin() -> str:
-    return os.path.join(os.path.dirname(sys.executable), "beet")
+from importer import beet_bin
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -33,7 +29,7 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.isdir(folder):
         raise RuntimeError(f"folder not found: {folder}")
 
-    cmd = [_beet_bin(), "--config", config_path, "import",
+    cmd = [beet_bin(), "--config", config_path, "import",
            "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c", folder]
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
@@ -101,7 +97,7 @@ def _shrink_covers(request_id: str, params: dict) -> int:
 
     Over every album, not only the ones just imported: beets records nothing
     about which those were, the check is a header read, and an album already
-    holding a rendition costs one `sips -g` to skip. Re-running is a no-op,
+    holding a rendition costs one image header to skip. Re-running is a no-op,
     which is what makes it safe to do after each import.
     """
     from beets.library import Library

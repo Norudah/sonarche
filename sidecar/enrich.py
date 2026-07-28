@@ -49,7 +49,16 @@ _NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subproces
 
 def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
     proc = subprocess.run(
-        [fpcalc, "-json", path], capture_output=True, text=True, timeout=60, **_NO_WINDOW
+        [fpcalc, "-json", path],
+        capture_output=True,
+        text=True,
+        # fpcalc echoes the file path in its JSON, so its output carries
+        # whatever the track is called. Left to the locale this decodes as
+        # cp1252 on Windows and one accent ends the fingerprint.
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        **_NO_WINDOW,
     )
     if proc.returncode != 0:
         raise RuntimeError(

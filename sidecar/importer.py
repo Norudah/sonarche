@@ -22,13 +22,16 @@ from report import build_report
 _MARKER_FIELD = "sonarche_import_id"
 
 
-def _beet_bin() -> str:
+def beet_bin() -> str:
     """The venv's own `beet`, beside the interpreter running us.
 
     Named outright on Windows, where the console script is `beet.exe`. Without
     the suffix this only worked because `CreateProcess` appends `.exe` when the
     name has no extension — finding our own binary should not rest on a Win32
     fallback.
+
+    Public, and imported by `library_import`, because there were two copies of
+    this and only one of them got fixed.
     """
     name = "beet.exe" if os.name == "nt" else "beet"
     return os.path.join(os.path.dirname(sys.executable), name)
@@ -58,7 +61,7 @@ def handle(request_id: str, params: dict) -> dict:
         raise RuntimeError(f"file not found: {path}")
 
     marker = uuid.uuid4().hex
-    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A",
+    cmd = [beet_bin(), "--config", config_path, "import", "--quiet", "-A",
            f"--set={_MARKER_FIELD}={marker}", path]
     if params.get("singleton"):
         # Album tracks are imported file by file; -s avoids one junk 1-item

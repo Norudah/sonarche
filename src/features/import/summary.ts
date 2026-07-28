@@ -63,10 +63,17 @@ export function hasAudio(report: ScanReport): boolean {
  * the front (the usual ellipsis) throws away the half that says *where*.
  */
 export function shortenPath(path: string, maxSegments = 4): string {
-  const segments = path.split("/").filter(Boolean);
+  // Both separators. The folder picker hands back the path exactly as the OS
+  // spells it, so on Windows this is `C:\Users\…` — split on "/" alone it was
+  // one segment, always under the ceiling, and nothing was ever shortened.
+  const separator = path.includes("\\") ? "\\" : "/";
+  const segments = path.split(/[/\\]/).filter(Boolean);
   if (segments.length <= maxSegments) return path;
 
   const head = segments.slice(0, 1);
   const tail = segments.slice(-(maxSegments - 1));
-  return `/${head.join("/")}/…/${tail.join("/")}`;
+  // The leading separator belongs to a POSIX path only: `C:\…` is already
+  // absolute, and a backslash in front of it names something else entirely.
+  const root = path.startsWith("/") ? "/" : "";
+  return `${root}${head.join(separator)}${separator}…${separator}${tail.join(separator)}`;
 }
