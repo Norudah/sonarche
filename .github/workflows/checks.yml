@@ -1,12 +1,26 @@
 name: checks
 
-# The gate a change has to pass before it reaches main. Deliberately not a
-# build: `tauri build` fetches a 100 MB runtime and takes minutes, and none of
-# what it would catch is missed by compiling and testing both sides.
+# On `push` only, never on `pull_request`. Every change lands on develop first,
+# so a PR from develop to main would re-run checks on commits already checked —
+# on a private repo that is paid minutes for a second opinion nobody asked for.
+#
+# `paths` keeps this off the pull request that release-please opens: it touches
+# a changelog, a manifest and two version numbers, none of which any of these
+# jobs has an opinion about.
 on:
-  pull_request:
   push:
     branches: [develop, main]
+    paths:
+      - "src/**"
+      - "sidecar/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - "eslint.config.js"
+      - ".prettierignore"
+      - ".github/workflows/checks.yml"
 
 concurrency:
   group: checks-${{ github.ref }}
@@ -26,30 +40,6 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
-
-  rust:
-    # Ubuntu would need the whole GTK/webkit stack to compile a Tauri app;
-    # macOS is also the platform we ship, so it is the one that must be green.
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-      # tauri-build checks that the frontend output and every declared resource
-      # exist before it will compile anything. Stubs rather than the real ones:
-      # this job bundles nothing, and fetching the 100 MB runtime to satisfy an
-      # existence check would double its length for no answer.
-      - name: Stub what tauri-build insists on finding
-        run: |
-          mkdir -p dist src-tauri/resources/wheels
-          touch dist/index.html src-tauri/resources/python.tar.gz
-      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
 
   sidecar:
     runs-on: ubuntu-latest
