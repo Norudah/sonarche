@@ -16,6 +16,7 @@ on:
     paths:
       - "src/**"
       - "sidecar/**"
+      - "scripts/check-python-lock.py"
       - "index.html"
       - "package.json"
       - "package-lock.json"
@@ -52,9 +53,13 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -r sidecar/requirements.txt
+      # The same two flags the app installs with, so a lock that would fail on
+      # a user's machine fails here first.
+      # Quoted: `=:all: ` reads as a mapping key to YAML otherwise.
+      - run: "pip install --no-deps --only-binary=:all: -r sidecar/requirements.txt"
       # Everything here runs everywhere now. The cover tests used to skip
       # themselves off macOS because the resize shelled out to `sips`; Pillow
       # took its place, so this Linux job is what proves the sidecar has no
       # platform left in it — at the Linux rate, on every push.
       - run: python -m unittest discover -s sidecar -p "*_test.py"
+      - run: python scripts/check-python-lock.py

@@ -17,9 +17,11 @@
  *   preserve, and pip wants a directory to point `--find-links` at.
  *
  * The wheels are optional: without them the app installs from PyPI as before.
- * They are what makes the first run offline-capable and quick — beets pulls in
- * numpy, scipy, numba and llvmlite, which is 67 MB of the 73 MB and several
- * minutes of network on a first launch.
+ * They are what makes the first run offline-capable and quick.
+ *
+ * Resolved on the target's own runner, never cross-built: `--platform` does not
+ * move the environment markers, and beets asks for colorama on Windows only.
+ * A set prefetched from macOS for Windows would be one wheel short.
  */
 
 import { spawnSync } from "node:child_process";
@@ -40,9 +42,10 @@ const PYTHON = { release: "20260718", version: "3.13.14" };
 /**
  * Host → python-build-standalone triple. Linux lands here when its port does.
  *
- * No `win32-arm64`: llvmlite publishes no `win_arm64` wheel, and numba is a
- * hard dependency of beets — the same wall the Intel macOS build hit. Windows
- * on ARM runs the x64 build under emulation instead.
+ * `win32-arm64` is now buildable — dropping llvmlite left nothing in the tree
+ * without an ARM wheel — but no runner is wired for it: Windows on ARM runs the
+ * x64 build under emulation, and a fourth bundle is a fourth set of release
+ * minutes for an audience of nearly nobody. Add the line when that changes.
  */
 const TRIPLES = {
   "darwin-arm64": "aarch64-apple-darwin",
@@ -146,6 +149,11 @@ async function fetchWheels(triple) {
     "download",
     "--disable-pip-version-check",
     "-q",
+    // Same two flags as the install this set feeds (see python_env.rs): the
+    // lock is the whole tree, and a package with no wheel has to fail on the
+    // build machine rather than turn into a compile on the user's.
+    "--no-deps",
+    "--only-binary=:all:",
     "-r",
     requirements,
     "-d",

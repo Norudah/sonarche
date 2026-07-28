@@ -1,6 +1,39 @@
+# Generated from requirements.in — see that file for what is dropped and why.
+# Installed with `--no-deps`: this list is the whole tree, so nothing here may
+# be resolved on the fly. Adding a direct dependency means regenerating.
+
 beets==2.12.0
 yt-dlp==2026.7.4
 mutagen==1.47.0
 pillow==12.3.0
 requests==2.32.4
 pylast==7.1.0
+
+# beets' own runtime dependencies, minus numba/llvmlite/scipy.
+confuse==2.2.1
+jellyfish==1.2.1
+lap==0.5.13
+mediafile==0.17.0
+numpy==2.4.6
+packaging==26.2
+platformdirs==4.11.0
+PyYAML==6.0.3
+requests-ratelimiter==0.10.0
+typing_extensions==4.16.0
+Unidecode==1.4.0
+# The one platform-conditional line in the tree: beets asks for colorama on
+# Windows only, and `--no-deps` means nobody else will bring it.
+colorama==0.4.6 ; sys_platform == "win32"
+
+# Transitive.
+anyio==4.14.2
+certifi==2026.7.22
+charset-normalizer==3.4.9
+filetype==1.2.0
+h11==0.16.0
+httpcore2==2.9.1
+httpx2==2.9.1
+idna==3.18
+pyrate-limiter==4.4.0
+truststore==0.10.4
+urllib3==2.7.0

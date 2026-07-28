@@ -493,10 +493,9 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg(&paths.venv_dir);
     run_streamed(app, venv_cmd, "venv creation").await?;
 
-    // Shipped wheels when we have them: beets pulls numpy, scipy, numba and
-    // llvmlite, which is most of a 76 MB download and the whole reason the
-    // install used to be measured in minutes. `--no-index` also makes this the
-    // one step that no longer needs the network.
+    // Shipped wheels when we have them: numpy alone is most of the download,
+    // and the install used to be measured in minutes. `--no-index` also makes
+    // this the one step that no longer needs the network.
     let vendored = tokio::fs::try_exists(&paths.wheels_dir)
         .await
         .unwrap_or(false);
@@ -513,7 +512,16 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg("-m")
         .arg("pip")
         .arg("install")
-        .arg("--disable-pip-version-check");
+        .arg("--disable-pip-version-check")
+        // requirements.txt is the whole resolved tree, not a wish list — see
+        // its header. Resolving instead of obeying it would pull back the two
+        // packages we drop on purpose, and on Intel macOS one of them has no
+        // wheel left to pull.
+        .arg("--no-deps")
+        // A missing wheel must fail here, loudly. Without this pip falls back
+        // to the source archive and starts a compile the user watches for
+        // twenty minutes before it dies on a missing toolchain.
+        .arg("--only-binary=:all:");
     if vendored {
         pip_cmd
             .arg("--no-index")

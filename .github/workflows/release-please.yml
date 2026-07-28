@@ -94,10 +94,10 @@ jobs:
           # until it was cancelled by hand.
           - runner: macos-15-intel
             target: x86_64-apple-darwin
-          # x86_64 only, no `aarch64-pc-windows-msvc`: llvmlite publishes no
-          # win_arm64 wheel and numba is a hard dependency of beets, which is
-          # the wall the Intel macOS bundle already hit. Windows on ARM runs
-          # this build under emulation.
+          # x86_64 only, no `aarch64-pc-windows-msvc`. Nothing technical stops
+          # it since llvmlite left the tree — it is a fourth bundle and a
+          # fourth set of release minutes, and Windows on ARM runs this build
+          # under emulation well enough that nobody has asked.
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
 
