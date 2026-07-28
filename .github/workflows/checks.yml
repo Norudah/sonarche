@@ -53,6 +53,8 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r sidecar/requirements.txt
-      # The cover tests that need `sips` skip themselves off macOS; everything
-      # else here is plain Python over beets' API.
+      # Everything here runs everywhere now. The cover tests used to skip
+      # themselves off macOS because the resize shelled out to `sips`; Pillow
+      # took its place, so this Linux job is what proves the sidecar has no
+      # platform left in it — at the Linux rate, on every push.
       - run: python -m unittest discover -s sidecar -p "*_test.py"

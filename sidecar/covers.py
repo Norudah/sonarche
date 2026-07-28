@@ -15,7 +15,8 @@ screen ever pays that.
 
 import os
 import shutil
-import subprocess
+
+from PIL import Image
 
 import protocol
 
@@ -26,9 +27,10 @@ HQ_PREFIX = "cover-hq."
 # downloaded one cost the same to draw.
 DISPLAY_MAX_PX = 500
 
-# macOS ships this; it is called by absolute path, never through PATH. A port
-# to another OS replaces this one constant and the two calls below.
-_SIPS = "/usr/bin/sips"
+# Pillow, not `sips`: the resize used to shell out to a macOS-only binary, which
+# was the sidecar's last tie to one OS. Reading the size is also a header read
+# now instead of a process spawn, which matters — the import sweep asks the
+# question once per album and answers "already small enough" almost every time.
 
 
 def hq_name_for(art_name: str) -> str:
@@ -45,35 +47,46 @@ def hq_name_for(art_name: str) -> str:
 def needs_rendition(width: int, height: int) -> bool:
     """Whether this cover is too big to be drawn as-is.
 
-    Judged on the longest side, which is what `sips -Z` scales. Equal is fine:
-    a cover already at the ceiling is the rendition.
+    Judged on the longest side, which is what the rendition scales. Equal is
+    fine: a cover already at the ceiling is the rendition.
     """
     return max(width, height) > DISPLAY_MAX_PX
 
 
 def read_dimensions(path: str) -> tuple[int, int] | None:
-    """Pixel size of an image, or None when it cannot be read."""
+    """Pixel size of an image, or None when it cannot be read.
+
+    `Image.open` is lazy — it parses the header and stops — so this never
+    decodes the pixels it exists to avoid decoding.
+    """
     try:
-        out = subprocess.run(
-            [_SIPS, "-g", "pixelWidth", "-g", "pixelHeight", path],
-            capture_output=True, text=True, timeout=30,
-        ).stdout
-    except (OSError, subprocess.SubprocessError) as exc:
+        with Image.open(path) as image:
+            return image.size
+    except (OSError, ValueError) as exc:
         protocol.log(f"covers: cannot measure {path}: {exc}")
         return None
 
-    dims = {}
-    for line in out.splitlines():
-        key, _, value = line.partition(":")
-        key = key.strip()
-        if key in ("pixelWidth", "pixelHeight"):
-            try:
-                dims[key] = int(value.strip())
-            except ValueError:
-                return None
-    if len(dims) != 2:
-        return None
-    return dims["pixelWidth"], dims["pixelHeight"]
+
+def _write_rendition(source: str, dest: str) -> None:
+    """Scale `source` down to fit DISPLAY_MAX_PX and write it to `dest`.
+
+    The format is carried over from the source rather than inferred from the
+    destination's extension: `dest` is beets' own `artpath`, and a PNG rewritten
+    as JPEG under a `.png` name is a file every later reader gets wrong.
+
+    `thumbnail` fits the image inside the box and keeps the aspect ratio, which
+    is what `sips -Z` did. Its in-place resize is also why the source is opened
+    and the result written in one breath — the object it mutates is the decoded
+    image, and the point is to hold it for as short a time as possible.
+    """
+    with Image.open(source) as image:
+        fmt = image.format
+        image.thumbnail((DISPLAY_MAX_PX, DISPLAY_MAX_PX))
+        # JPEG holds neither alpha nor a palette, and Pillow raises rather than
+        # guessing. Everything else round-trips as-is.
+        if fmt == "JPEG" and image.mode not in ("RGB", "L", "CMYK"):
+            image = image.convert("RGB")
+        image.save(dest, format=fmt)
 
 
 def ensure_display_rendition(art_path: str) -> bool:
@@ -100,11 +113,8 @@ def ensure_display_rendition(art_path: str) -> bool:
     # *is* the original either way.
     try:
         shutil.copyfile(art_path, hq_path)
-        subprocess.run(
-            [_SIPS, "-Z", str(DISPLAY_MAX_PX), hq_path, "--out", art_path],
-            capture_output=True, text=True, timeout=120, check=True,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
+        _write_rendition(hq_path, art_path)
+    except (OSError, ValueError) as exc:
         protocol.log(f"covers: rendition failed for {art_path}: {exc}")
         # Put the original back if the resize died after the copy: a half-made
         # rendition is worse than no rendition.
