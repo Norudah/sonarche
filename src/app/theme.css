@@ -10,14 +10,24 @@
  * Rules:
  * - Never hardcode a hex/oklch color in a component. Use the semantic utility.
  * - Theme switching works by overriding the RAW vars (--accent, ...) per theme
- *   selector; HeroUI's @theme maps --color-accent: var(--accent) statically.
- * - Light is the default (:root). A future settings toggle will set
- *   data-theme="dark" on <html> — the dark block below is already wired.
+ *   selector; @theme below maps them to utilities as `var(--raw)`, statically.
+ *   A colour literal written straight into @theme cannot be swapped by any
+ *   selector and is therefore a bug — theme.test.ts fails on one.
+ * - Every raw var declared in the light block MUST be declared in the dark one.
+ *   theme.test.ts enforces that too; the two lists cannot drift apart.
+ *
+ * The light selector excludes the dark theme on purpose. `:root` matches the
+ * html element whatever its data-theme is, so a bare `:root` block would keep
+ * winning over `[data-theme="dark"]` at equal specificity for every var the
+ * dark block did not happen to redeclare — which is how the app ended up with
+ * a white --background under a white --foreground. Now a var missing from the
+ * dark block falls back to HeroUI's own dark value rather than to our light
+ * one: still wrong, but visibly wrong, and the test catches it first.
  */
 
 /* --- Brand colors (raw vars, swapped per theme) --------------------------- */
 
-:root,
+:root:not([data-theme="dark"]),
 [data-theme="light"] {
   /* Sonarche identity: indigo accent */
   --accent: oklch(0.58 0.21 277);
@@ -90,12 +100,74 @@
   --category-anime: oklch(0.62 0.12 355);
   --category-cartoon: oklch(0.62 0.13 40);
   --category-musical: oklch(0.53 0.1 315);
+
+  /* Panel wash — the backdrop of the metadata surfaces' secondary areas: the
+     album modal's identity column, both panels' action bars, the tracklist's
+     column header. HeroUI's `surface-secondary` (oklch 0.9524) is a real grey
+     at this size: spread over a whole column it reads as dull, and it swallows
+     anything tinted the same way sitting on it — the category chips vanished
+     into it, leaving bare text. This is the barely-there tint the design uses,
+     one notch off the surface it sits in, so chips and inputs still stand out
+     on top of it. */
+  --panel: oklch(0.985 0.0015 286);
+
+  /* List tray — the recessed block a list of rows is filed onto (the download
+     feed, the history, every empty state). It has to do two jobs at once that
+     no existing step does both of: read as a distinct area against the
+     near-white background (`panel`, one notch off white, disappears at this
+     size), and stay light enough that a white card laid on it still reads as
+     lifted rather than as one more grey box (`surface-secondary` at 0.9524 is
+     too close to a real grey for that). This sits between them. */
+  --tray: oklch(0.972 0.0015 286);
+
+  /* Source brand colors — not semantic app colors: they identify a third
+     party, so they live outside the accent/success/warning scales and are
+     only ever used on that source's badge. Theme-swapped all the same: the
+     hue is YouTube's, the lightness is ours to keep legible. */
+  --youtube: oklch(0.52 0.21 27);
+  --youtube-soft: oklch(0.95 0.03 27);
+
+  /* Metadata drawer header — a decorative gradient, same hue as the app's
+     indigo accent but starting darker so it resolves into --accent rather
+     than sitting flat on it. */
+  --metadata-header-from: oklch(0.3 0.16 277);
+  --metadata-header-to: var(--accent);
 }
 
+/**
+ * Dark theme.
+ *
+ * Not HeroUI's dark theme with our accent dropped in: its base is a neutral
+ * near-black (chroma 0.005 on a grey hue), and the whole reason the light
+ * theme sets its own --background is that a zero-chroma grey reads as dull and
+ * dirty next to the app's surfaces. The same rule applies in the dark, which
+ * is why the background here carries a trace of the accent's hue instead of
+ * being a neutral black. Same app, lit or unlit.
+ *
+ * Every var the light block declares is declared here — theme.test.ts fails
+ * otherwise. The family/category tones below are a first mechanical pass
+ * (hue kept exactly, lightness raised into the 0.70–0.77 band, chroma eased
+ * back so twenty hues don't turn neon on a dark ground); they are consumed
+ * only as 4–22% washes and as the arrow glyph's colour, never as a filled
+ * ground under white text, so raising lightness costs no contrast anywhere.
+ */
 [data-theme="dark"] {
   /* Slightly lighter accent for contrast on dark surfaces */
   --accent: oklch(0.66 0.2 277);
   --accent-foreground: var(--snow);
+  --focus: var(--accent);
+
+  /* The app ground. Above HeroUI's 0.12 so the surfaces stacked on it still
+     have room to read as lifted, and on the accent's hue at a chroma just
+     high enough to not be a grey. */
+  --background: oklch(0.155 0.012 277);
+
+  /* Amber and green both have to climb: at their light-theme lightness they
+     are near-invisible on this ground. White still rides on the green, which
+     keeps the filled-success grammar identical across the two themes. */
+  --warning: oklch(0.8 0.14 65);
+  --success: oklch(0.6 0.16 157);
+  --success-foreground: var(--snow);
 
   --danger: oklch(0.65 0.17 25);
   --danger-foreground: var(--snow);
@@ -103,6 +175,42 @@
   --artist-avatar-bg: oklch(0.3 0.03 277);
   --artist-avatar-ink: oklch(0.82 0.09 277);
   --artist-avatar-accent: oklch(0.68 0.015 277);
+
+  --family-pop: oklch(0.75 0.11 340);
+  --family-rock: oklch(0.74 0.1 25);
+  --family-metal: oklch(0.7 0.03 277);
+  --family-electronic: oklch(0.75 0.1 220);
+  --family-hip-hop: oklch(0.72 0.1 300);
+  --family-jazz: oklch(0.75 0.09 50);
+  --family-blues: oklch(0.72 0.1 250);
+  --family-soul-funk: oklch(0.76 0.1 40);
+  --family-folk: oklch(0.74 0.08 130);
+  --family-country: oklch(0.76 0.08 95);
+  --family-reggae: oklch(0.74 0.1 150);
+  --family-latin: oklch(0.75 0.11 15);
+  --family-classical: oklch(0.73 0.05 277);
+
+  --category-music: oklch(0.74 0.09 225);
+  --category-video-games: oklch(0.75 0.1 190);
+  --category-film: oklch(0.75 0.09 70);
+  --category-series: oklch(0.73 0.1 260);
+  --category-anime: oklch(0.76 0.11 355);
+  --category-cartoon: oklch(0.77 0.11 40);
+  --category-musical: oklch(0.73 0.1 315);
+
+  /* Panel and tray keep the relation they have in the light theme rather than
+     their absolute values: panel is one notch off the surface it sits inside
+     (HeroUI's dark --surface is 0.2103), and the tray stays the recessed step,
+     below the app ground. What sits *on* the tray is handled in the elevation
+     pass — this block only restates the two grounds. */
+  --panel: oklch(0.185 0.006 286);
+  --tray: oklch(0.13 0.008 277);
+
+  --youtube: oklch(0.58 0.21 27);
+  --youtube-soft: oklch(0.25 0.05 27);
+
+  --metadata-header-from: oklch(0.26 0.12 277);
+  --metadata-header-to: var(--accent);
 }
 
 /* --- Artist genre avatar -------------------------------------------------- */
@@ -228,36 +336,16 @@
   --spacing-sidebar: 15rem;
   --spacing-player: 5.5rem;
 
-  /* Source brand colors — not semantic app colors: they identify a third
-     party, so they live outside the accent/success/warning scales and are
-     only ever used on that source's badge. */
-  --color-youtube: oklch(0.52 0.21 27);
-  --color-youtube-soft: oklch(0.95 0.03 27);
-
-  /* Panel wash — the backdrop of the metadata surfaces' secondary areas: the
-     album modal's identity column, both panels' action bars, the tracklist's
-     column header. HeroUI's `surface-secondary` (oklch 0.9524) is a real grey
-     at this size: spread over a whole column it reads as dull, and it swallows
-     anything tinted the same way sitting on it — the category chips vanished
-     into it, leaving bare text. This is the barely-there tint the design uses,
-     one notch off white, so chips and inputs still stand out on top of it. */
-  --color-panel: oklch(0.985 0.0015 286);
-
-  /* List tray — the recessed block a list of rows is filed onto (the download
-     feed, the history). It has to do two jobs at once that no existing step
-     does both of: read as a distinct area against the near-white background
-     (`panel`, one notch off white, disappears at this size), and stay light
-     enough that a white card laid on it still reads as lifted rather than as
-     one more grey box (`surface-secondary` at 0.9524 is too close to a real
-     grey for that). This sits between them. */
-  --color-tray: oklch(0.972 0.0015 286);
-
-  /* Metadata drawer header — a decorative gradient, same hue as the app's
-     indigo accent but starting darker so it resolves into --accent rather
-     than sitting flat on it. Not semantic (single consumer), so it lives
-     here rather than in the theme-swapped accent/success/warning block. */
-  --color-metadata-header-from: oklch(0.3 0.16 277);
-  --color-metadata-header-to: var(--accent);
+  /* Utility mappings for the app's own colours, in HeroUI's own shape: the
+     value is the raw var, never a literal, so `bg-panel` and friends follow
+     the theme selector like `bg-accent` already does. The raw vars, and the
+     reasoning behind each value, live in the two theme blocks at the top. */
+  --color-youtube: var(--youtube);
+  --color-youtube-soft: var(--youtube-soft);
+  --color-panel: var(--panel);
+  --color-tray: var(--tray);
+  --color-metadata-header-from: var(--metadata-header-from);
+  --color-metadata-header-to: var(--metadata-header-to);
 
   /* Hover and press feedback is plain CSS, not Motion, so Tailwind's defaults —
      not our tokens — were deciding how the app felt. Tailwind ships 150ms on
