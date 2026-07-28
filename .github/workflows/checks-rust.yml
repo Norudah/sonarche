@@ -3,14 +3,15 @@ name: checks (rust)
 # Its own workflow, and its own `paths`, because of what it costs. A private
 # repository is billed per minute and macOS is billed at **ten times** the Linux
 # rate, so this one job spends more than every other job here put together. It
-# must not run because a translation string changed.
+# must not run because a translation string changed, and it must not run twice
+# for the same commit — hence develop only, not the merge into main.
 #
 # macOS and not Linux: the crate has an entire macOS-only half — the objc2 media
 # session, the keychain's apple-native backend — that no other platform can even
 # compile. Running it elsewhere would prove something about code we do not ship.
 on:
   push:
-    branches: [develop, main]
+    branches: [develop]
     paths:
       - "src-tauri/**"
       - "!src-tauri/gen/**"

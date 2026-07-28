@@ -4,12 +4,15 @@ name: checks
 # so a PR from develop to main would re-run checks on commits already checked —
 # on a private repo that is paid minutes for a second opinion nobody asked for.
 #
-# `paths` keeps this off the pull request that release-please opens: it touches
-# a changelog, a manifest and two version numbers, none of which any of these
-# jobs has an opinion about.
+# develop only, not main. Everything that reaches main was already checked on
+# develop, and release-please's own commits touch a changelog, a manifest and
+# two version numbers — nothing any of these jobs has an opinion about. Running
+# them again on the merge was a full cycle, macOS job included, per release.
+#
+# `paths` keeps this off changes it has nothing to say about.
 on:
   push:
-    branches: [develop, main]
+    branches: [develop]
     paths:
       - "src/**"
       - "sidecar/**"
