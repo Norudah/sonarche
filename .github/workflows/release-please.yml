@@ -72,21 +72,34 @@ jobs:
   bundle:
     needs: release-please
     if: ${{ github.event_name == 'workflow_dispatch' || needs.release-please.outputs.released == 'true' }}
-    # Two runners rather than one universal binary: the app ships its own Python
-    # and its own wheels, both architecture-specific, so a universal build would
-    # carry two interpreters — 200 MB to spare the user picking a file.
+    # One runner per artifact rather than one universal binary: the app ships
+    # its own Python and its own wheels, both architecture-specific, so a
+    # universal build would carry two interpreters — 200 MB to spare the user
+    # picking a file.
     strategy:
       fail-fast: false
+      # One at a time. `latest.json` is read, merged and re-uploaded by every
+      # runner, so two finishing at once can each write a manifest missing the
+      # other's platform — and a manifest missing a platform is exactly the
+      # silence 0.9.0 shipped. Billing is per job-minute, so serialising costs
+      # nothing but wall clock on a release cut a few times a month.
+      max-parallel: 1
       matrix:
         include:
           - runner: macos-14
-            arch: aarch64
+            target: aarch64-apple-darwin
           # `macos-15-intel`, not `macos-13`: GitHub retired the 13 image, and a
           # job asking for a label that no longer exists does not fail — it
           # queues for a runner that will never come. The 0.9.0 build sat there
           # until it was cancelled by hand.
           - runner: macos-15-intel
-            arch: x86_64
+            target: x86_64-apple-darwin
+          # x86_64 only, no `aarch64-pc-windows-msvc`: llvmlite publishes no
+          # win_arm64 wheel and numba is a hard dependency of beets, which is
+          # the wall the Intel macOS bundle already hit. Windows on ARM runs
+          # this build under emulation.
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.runner }}
     steps:
@@ -94,8 +107,11 @@ jobs:
         with:
           ref: main
 
+      # `shell: bash` on every scripted step: the Windows runner defaults to
+      # pwsh, where none of this parses.
       - name: Find the release just cut
         id: release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
@@ -128,34 +144,52 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src-tauri/resources
-          key: runtime-${{ matrix.arch }}-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
+          key: runtime-${{ matrix.target }}-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
 
       - run: npm ci
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Our own signature, not Apple's: there is no paid Developer ID, so
-          # the bundle is only ad-hoc signed (`signingIdentity: "-"` in
-          # tauri.conf.json) and the landing page explains the Gatekeeper
-          # screen. Every update bundle is signed with this key and the app
-          # refuses one signed with anything else.
+          # Our own signature, not the platform's: there is no paid Developer ID
+          # and no Authenticode certificate, so macOS is only ad-hoc signed
+          # (`signingIdentity: "-"`) and Windows is unsigned — the landing page
+          # explains the Gatekeeper and SmartScreen screens. Every update bundle
+          # is signed with this key and the app refuses one signed with anything
+          # else, which is the protection that actually matters here.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           releaseId: ${{ steps.release.outputs.id }}
-          args: --target ${{ matrix.arch }}-apple-darwin
-          # The manifest installed apps poll. Both runners write it; the second
-          # merges its platform into the file the first uploaded.
+          args: --target ${{ matrix.target }}
+          # The manifest installed apps poll. Every runner writes it; each one
+          # merges its platform into the file the previous ones uploaded.
           includeUpdaterJson: true
 
       # Gatekeeper reads the bundle signature, not the linker-signed binary the
       # toolchain leaves behind: a .app with no sealed resources is not
       # "unidentified developer", it is "damaged and can't be opened", with
-      # Trash as the only button. And no `.sig` means no `latest.json`, so
-      # installed apps never see the release. Both were true of 0.9.0.
-      - name: Check the bundle is sealed and the updater artifacts are signed
+      # Trash as the only button. That was true of 0.9.0, so the job fails here
+      # rather than publishing a release nobody can open.
+      - name: Check the macOS bundle is sealed
+        if: runner.os == 'macOS'
+        shell: bash
         run: |
           set -euo pipefail
-          out="src-tauri/target/${{ matrix.arch }}-apple-darwin/release/bundle"
+          out="src-tauri/target/${{ matrix.target }}/release/bundle"
           codesign --verify --deep --strict --verbose=2 "$out/macos/Sonarche.app"
-          test -f "$out/macos/Sonarche.app.tar.gz.sig"
+
+      # No `.sig` means no `latest.json`, so installed apps never see the
+      # release — the second half of what 0.9.0 got wrong, and the half that
+      # applies to every platform.
+      - name: Check the updater artifact is signed
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="src-tauri/target/${{ matrix.target }}/release/bundle"
+          ls "$out"/*/*.sig
+          # NSIS only, per tauri.windows.conf.json: an MSI would drag a UAC
+          # prompt in behind every update, which is the whole reason it is off.
+          if [ "${{ runner.os }}" = "Windows" ] && [ -d "$out/msi" ]; then
+            echo "an MSI was built — check bundle.targets in tauri.windows.conf.json" >&2
+            exit 1
+          fi

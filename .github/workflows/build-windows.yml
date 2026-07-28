@@ -1,0 +1,93 @@
+name: build (windows)
+
+# Manual only, and it publishes nothing.
+#
+# `checks-rust.yml` compiles on macOS and only macOS, deliberately — the crate
+# has an objc2 half no other platform can build. The consequence is that the
+# Windows half (the `windows-native` keyring backend, `proc.rs`, everything
+# under `cfg(windows)`) is compiled by nothing at all until a release job
+# reaches it. That is the worst place to find out it does not build: a failure
+# there leaves a release published with assets missing, which is precisely how
+# 0.9.0 went out.
+#
+# So: the same bundle the release job makes, on demand, dropped as an artifact
+# to download and actually run on a real machine. Windows is billed at twice
+# the Linux rate — next to the release job's two ×10 macOS runners, noise.
+#
+# The runtime cache key is deliberately the one the release job uses, so a dry
+# run here warms the interpreter and wheels for the release that follows.
+
+# Two triggers, because `workflow_dispatch` alone would not work yet: GitHub
+# only shows the "Run workflow" button for a file that exists on the default
+# branch, and nothing reaches `main` here except a release merge. So until this
+# file rides one over, the way in is a throwaway branch — push `windows/xxx`,
+# read the run, delete the branch. No recurring cost on develop, and the button
+# starts working on its own after the next release.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["windows/**"]
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Cache the bundled runtime
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/resources
+          key: runtime-x86_64-pc-windows-msvc-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
+
+      - run: npm ci
+
+      # No `releaseId`: tauri-action builds and stops. Nothing is uploaded to a
+      # release, nothing touches `latest.json`.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          # Still needed: `createUpdaterArtifacts` is on, and asking for a
+          # signed artifact with no key to sign it with is a build failure.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Check what was built
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
+          ls -la "$out"/*
+          # NSIS only, per tauri.windows.conf.json: an MSI would drag a UAC
+          # prompt in behind every update, which is the whole reason it is off.
+          if [ -d "$out/msi" ]; then
+            echo "an MSI was built — check bundle.targets in tauri.windows.conf.json" >&2
+            exit 1
+          fi
+
+      # `if-no-files-found: error` so a build that produces no installer fails
+      # here rather than handing back a green job and an empty download.
+      #
+      # A week, not the default 90 days: the installer carries the interpreter
+      # and the wheels, so it is a ~200 MB artifact and a private repo only gets
+      # 500 MB of artifact storage. Download it, test it, let it expire.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonarche-windows-x64
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 7
