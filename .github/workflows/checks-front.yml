@@ -1,0 +1,45 @@
+name: checks (front)
+
+# Split out of a single `checks` workflow that carried both this and the sidecar
+# suite. GitHub filters `paths` per **workflow**, never per job, so one file
+# meant a TSX change also woke setup-python, a pip install and 163 Python tests
+# — a billed minute, on a private repo, to say nothing about the change.
+#
+# On `push` only, never on `pull_request`. Every change lands on develop first,
+# so a PR from develop to main would re-run checks on commits already checked.
+#
+# develop only, not main. Everything that reaches main was already checked here,
+# and release-please's own commits touch a changelog, a manifest and two version
+# numbers — nothing this workflow has an opinion about.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - "eslint.config.js"
+      - ".prettierignore"
+      - ".github/workflows/checks-front.yml"
+
+concurrency:
+  group: checks-front-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  front:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test

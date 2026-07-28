@@ -1,0 +1,36 @@
+name: checks (sidecar)
+
+# The other half of the old `checks` workflow — see checks-front.yml for why
+# they are two files. This one only wakes for Python, which is most pushes'
+# worth of minutes saved.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "sidecar/**"
+      - "scripts/check-python-lock.py"
+      - ".github/workflows/checks-sidecar.yml"
+
+concurrency:
+  group: checks-sidecar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      # The same two flags the app installs with, so a lock that would fail on
+      # a user's machine fails here first. Quoted: `=:all: ` reads as a mapping
+      # key to YAML otherwise.
+      - run: "pip install --no-deps --only-binary=:all: -r sidecar/requirements.txt"
+      # Everything here runs everywhere now. The cover tests used to skip
+      # themselves off macOS because the resize shelled out to `sips`; Pillow
+      # took its place, so this Linux job is what proves the sidecar has no
+      # platform left in it — at the Linux rate, on every push.
+      - run: python -m unittest discover -s sidecar -p "*_test.py"
+      - run: python scripts/check-python-lock.py
