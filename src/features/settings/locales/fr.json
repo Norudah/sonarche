@@ -7,6 +7,20 @@
   "save": "Enregistrer",
   "saving": "Enregistrement…",
   "saved": "Paramètres enregistrés",
+  "appearance": {
+    "category": "Apparence",
+    "title": "Apparence",
+    "description": "Comment l'app s'habille. Le choix est retenu et s'applique tout de suite, sans redémarrage.",
+    "theme": {
+      "name": "Thème",
+      "why": "Le thème clair est celui d'origine. Le sombre existe pour les écrans trop lumineux et les sessions de nuit : c'est la même app, éclairée autrement.",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système",
+      "followingLight": "Ton système est en clair, l'app suit.",
+      "followingDark": "Ton système est en sombre, l'app suit."
+    }
+  },
   "apiKeys": {
     "category": "Clefs API",
     "title": "Clefs API",

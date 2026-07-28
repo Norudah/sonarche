@@ -89,4 +89,6 @@ export const layoutIds = {
    * because the two switches can be on screen in the same app but never in the
    * same place — sharing one would tween a pill across half the window. */
   viewMode: "sonarche-view-mode",
+  /** The light/dark/system pill in the appearance setting. */
+  themeChoice: "sonarche-theme-choice",
 } as const;

@@ -1,4 +1,4 @@
-import { Gauge, KeyRound, RefreshCw, Wrench } from "lucide-react";
+import { Gauge, KeyRound, Palette, RefreshCw, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { paths } from "@/app/paths";
@@ -17,6 +17,7 @@ export interface SettingsCategory {
 /** The one list the sidebar and the router agree on. The developer category is
  * compiled out of release builds, mirroring its route guard in `routes.tsx`. */
 export const settingsCategories: SettingsCategory[] = [
+  { path: paths.settingsAppearance, labelKey: "appearance.category", icon: Palette },
   { path: paths.settingsApiKeys, labelKey: "apiKeys.category", icon: KeyRound },
   { path: paths.settingsRateLimits, labelKey: "rateLimits.category", icon: Gauge },
   { path: paths.settingsUpdates, labelKey: "updates.category", icon: RefreshCw },

@@ -7,6 +7,20 @@
   "save": "Save",
   "saving": "Saving…",
   "saved": "Settings saved",
+  "appearance": {
+    "category": "Appearance",
+    "title": "Appearance",
+    "description": "How the app is dressed. Your choice is remembered and applies right away, with no restart.",
+    "theme": {
+      "name": "Theme",
+      "why": "Light is the original. Dark is here for bright screens and late sessions: the same app, lit differently.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "followingLight": "Your system is set to light, and the app follows.",
+      "followingDark": "Your system is set to dark, and the app follows."
+    }
+  },
   "apiKeys": {
     "category": "API keys",
     "title": "API keys",

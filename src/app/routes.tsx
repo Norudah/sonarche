@@ -17,6 +17,7 @@ import { GenresView } from "@/features/library/views/GenresView";
 import { MetadataPage } from "@/features/library/triage/MetadataPage";
 import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
+import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
@@ -54,7 +55,8 @@ export const router = createMemoryRouter(
           path: paths.settings,
           element: <SettingsLayout />,
           children: [
-            { index: true, element: <Navigate to={paths.settingsApiKeys} replace /> },
+            { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
+            { path: paths.settingsAppearance, element: <AppearanceSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
             { path: paths.settingsUpdates, element: <UpdateSection /> },

@@ -31,6 +31,7 @@ export const paths = {
   libraryCategories: "/library/categories",
   libraryCategory: "/library/categories/:category",
   settings: "/settings",
+  settingsAppearance: "/settings/appearance",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",
   settingsUpdates: "/settings/updates",
