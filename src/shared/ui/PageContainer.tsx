@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
+
 interface PageContainerProps {
   children: ReactNode;
   /**
@@ -29,7 +31,10 @@ export function PageContainer({ children, sticky }: PageContainerProps) {
   return (
     <>
       {sticky && <div className="sticky top-0 z-20 h-0">{sticky}</div>}
-      <div className="flex flex-col gap-6 p-8">{children}</div>
+      <div className="relative flex flex-col gap-6 p-8">
+        <WindowDragStrip />
+        {children}
+      </div>
     </>
   );
 }

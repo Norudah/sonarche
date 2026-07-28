@@ -21,17 +21,9 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { paths } from "@/app/routes";
 import { settingsCategories } from "@/features/settings/categories";
+import { isMacOS } from "@/shared/lib/platform";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { SonarcheMark } from "@/shared/ui/SonarcheMark";
-
-/** Read once, from the webview's own user agent, because the answer cannot
- * change while the app is running. `@tauri-apps/plugin-os` gives the same
- * string over IPC and asynchronously — a whole round trip, and a first paint
- * with the wrong padding, to learn what the UA already says.
- *
- * Kept here rather than in `shared`: the one thing that turns on it is the
- * title-bar clearance below. It moves out the day something else needs it. */
-const isMacOS = navigator.userAgent.includes("Mac OS X");
 
 function NavItem({
   to,

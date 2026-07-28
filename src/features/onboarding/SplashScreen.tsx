@@ -1,6 +1,8 @@
 import { AudioLines } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
+
 /**
  * Shown while the app checks its Python environment, before anything is safe to
  * interact with.
@@ -16,7 +18,9 @@ export function SplashScreen() {
   const { t: tCommon } = useTranslation("common");
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-5 bg-background">
+    <div className="relative flex h-full flex-col items-center justify-center gap-5 bg-background">
+      <WindowDragStrip />
+
       <div className="flex items-center gap-3">
         <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg shadow-accent/25">
           <AudioLines className="size-6" />
