@@ -13,6 +13,7 @@ mod now_playing;
 mod onboarding;
 mod player;
 mod preferences;
+mod proc;
 mod python_env;
 mod reenrich;
 mod settings;

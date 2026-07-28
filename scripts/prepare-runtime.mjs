@@ -37,12 +37,26 @@ import { fileURLToPath } from "node:url";
  */
 const PYTHON = { release: "20260718", version: "3.13.14" };
 
-/** Host → python-build-standalone triple. Windows and Linux land here when
- * their ports do; the table is the only thing that has to grow. */
+/**
+ * Host → python-build-standalone triple. Linux lands here when its port does.
+ *
+ * No `win32-arm64`: llvmlite publishes no `win_arm64` wheel, and numba is a
+ * hard dependency of beets — the same wall the Intel macOS build hit. Windows
+ * on ARM runs the x64 build under emulation instead.
+ */
 const TRIPLES = {
   "darwin-arm64": "aarch64-apple-darwin",
   "darwin-x64": "x86_64-apple-darwin",
+  "win32-x64": "x86_64-pc-windows-msvc",
 };
+
+/** System tar, by absolute path. Windows has shipped bsdtar in System32 since
+ * 10 1803, and it reads the same gzipped tarball. */
+const TAR = process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar";
+
+/** Where the interpreter sits inside the unpacked tree. The Windows
+ * distribution has no `bin/`: the executable is at the root. */
+const PYTHON_EXE = process.platform === "win32" ? ["python", "python.exe"] : ["python", "bin", "python3"];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resources = path.join(root, "src-tauri", "resources");
@@ -102,7 +116,16 @@ async function fetchInterpreter(triple) {
  * set the app cannot use.
  */
 async function fetchWheels(triple) {
-  const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}-wheels`;
+  // The requirements go into the stamp, not just the interpreter: a dependency
+  // added to requirements.txt has to refetch the set, and keying on the pin
+  // alone left the old wheels sitting there looking current. CI already hashes
+  // the file into its cache key, so this is what closes the gap locally.
+  const requirements = path.join(root, "sidecar", "requirements.txt");
+  const digest = createHash("sha256")
+    .update(await fs.readFile(requirements))
+    .digest("hex")
+    .slice(0, 12);
+  const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}-wheels-${digest}`;
   const wheels = path.join(resources, "wheels");
   if (await isCurrent(wheels, stamp)) {
     console.log("[runtime] wheels already current");
@@ -112,19 +135,19 @@ async function fetchWheels(triple) {
   const scratch = path.join(root, "node_modules", ".cache", "sonarche-runtime");
   await fs.rm(scratch, { recursive: true, force: true });
   await fs.mkdir(scratch, { recursive: true });
-  run("/usr/bin/tar", ["-xzf", path.join(resources, "python.tar.gz"), "-C", scratch]);
+  run(TAR, ["-xzf", path.join(resources, "python.tar.gz"), "-C", scratch]);
 
   await fs.rm(wheels, { recursive: true, force: true });
   await fs.mkdir(wheels, { recursive: true });
   console.log("[runtime] resolving wheels");
-  run(path.join(scratch, "python", "bin", "python3"), [
+  run(path.join(scratch, ...PYTHON_EXE), [
     "-m",
     "pip",
     "download",
     "--disable-pip-version-check",
     "-q",
     "-r",
-    path.join(root, "sidecar", "requirements.txt"),
+    requirements,
     "-d",
     wheels,
   ]);

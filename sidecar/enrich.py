@@ -40,9 +40,16 @@ def _decode_path(item) -> str:
     return _decode(item.path)
 
 
+# The sidecar is spawned by a GUI process, so on Windows it has no console of
+# its own — and a console child started from there gets one allocated, which
+# means a black window flashing once per track through an album enrichment.
+# The flag is Windows-only and the attribute does not exist elsewhere.
+_NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
+
+
 def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
     proc = subprocess.run(
-        [fpcalc, "-json", path], capture_output=True, text=True, timeout=60
+        [fpcalc, "-json", path], capture_output=True, text=True, timeout=60, **_NO_WINDOW
     )
     if proc.returncode != 0:
         raise RuntimeError(

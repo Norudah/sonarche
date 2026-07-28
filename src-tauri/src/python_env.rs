@@ -7,10 +7,18 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::error::{AppError, AppResult};
+use crate::proc::{command, SYSTEM_CURL, SYSTEM_TAR};
 
 const MIN_PYTHON: (u64, u64) = (3, 10);
 
 /// Fixed candidate locations, most specific first. Never rely on PATH.
+///
+/// The fallback for a build made without `npm run prepare:runtime`, and for
+/// macOS installs that predate bundling. Empty on Windows: there is no
+/// conventional location to guess at (a system Python lands under a versioned
+/// `%LOCALAPPDATA%` path, or in the Store's own sandbox), and no Windows build
+/// ever shipped without the interpreter — so a guess could only ever be wrong.
+#[cfg(target_os = "macos")]
 const PYTHON_CANDIDATES: &[&str] = &[
     "/opt/homebrew/bin/python3.14",
     "/opt/homebrew/bin/python3.13",
@@ -23,6 +31,8 @@ const PYTHON_CANDIDATES: &[&str] = &[
     "/usr/local/bin/python3",
     "/usr/bin/python3",
 ];
+#[cfg(not(target_os = "macos"))]
+const PYTHON_CANDIDATES: &[&str] = &[];
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PythonInfo {
@@ -62,7 +72,7 @@ pub struct AppPaths {
     /// than laid out as loose resources: the tree is full of symlinks and
     /// executable bits, and `tar` is the thing that reliably restores both.
     pub python_archive: PathBuf,
-    /// Where that archive lands. `runtime/python/bin/python3` afterwards.
+    /// Where that archive lands. See `runtime_python` for what sits inside.
     pub runtime_dir: PathBuf,
     /// Wheels shipped alongside, so the install needs no network.
     pub wheels_dir: PathBuf,
@@ -102,25 +112,58 @@ impl AppPaths {
         })
     }
 
+    /// `venv/bin/python3` on Unix, `venv\Scripts\python.exe` on Windows — the
+    /// layout is `venv`'s own, not ours, and there is no common spelling.
     pub fn venv_python(&self) -> PathBuf {
-        self.venv_dir.join("bin").join("python3")
+        if cfg!(windows) {
+            self.venv_dir.join("Scripts").join("python.exe")
+        } else {
+            self.venv_dir.join("bin").join("python3")
+        }
     }
 
     /// The shipped interpreter once unpacked. Not necessarily present: it only
     /// exists after setup has run, and not at all in a build made without
     /// `npm run prepare:runtime`.
+    ///
+    /// The Windows distribution keeps the executable at the root of the tree
+    /// rather than under `bin/`.
     pub fn runtime_python(&self) -> PathBuf {
-        self.runtime_dir.join("python").join("bin").join("python3")
+        let root = self.runtime_dir.join("python");
+        if cfg!(windows) {
+            root.join("python.exe")
+        } else {
+            root.join("bin").join("python3")
+        }
     }
 
     pub fn fpcalc(&self) -> PathBuf {
-        self.tools_dir.join("fpcalc")
+        self.tools_dir.join(if cfg!(windows) {
+            "fpcalc.exe"
+        } else {
+            "fpcalc"
+        })
     }
 }
 
 /// Pinned Chromaprint release; fpcalc ships statically linked (no ffmpeg needed).
+///
+/// The Windows asset is a zip rather than a tarball, which changes nothing at
+/// the call site: bsdtar reads both, and `-xf` lets it work out which.
+#[cfg(target_os = "macos")]
 const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz";
+#[cfg(target_os = "macos")]
 const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-macos-universal/fpcalc";
+
+#[cfg(target_os = "windows")]
+const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-windows-x86_64.zip";
+#[cfg(target_os = "windows")]
+const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-windows-x86_64/fpcalc.exe";
+
+// Rather than an unresolved-name error a hundred lines further down: the two
+// constants above are the whole of what a new platform has to add here.
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+compile_error!("no fpcalc asset pinned for this platform — add one beside FPCALC_URL");
 
 /// Download fpcalc into the app-owned tools dir on first use. Self-healing,
 /// like the venv: a failure only degrades enrichment, never the app.
@@ -130,10 +173,12 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
         return Ok(());
     }
     tokio::fs::create_dir_all(&paths.tools_dir).await?;
-    let archive = paths.tools_dir.join("fpcalc.tar.gz");
+    // Extension-free on purpose: the asset is a tarball on macOS and a zip on
+    // Windows, and bsdtar sniffs the format rather than trusting the name.
+    let archive = paths.tools_dir.join("fpcalc-archive");
 
     eprintln!("[tools] downloading fpcalc from {FPCALC_URL}");
-    let status = Command::new("/usr/bin/curl")
+    let status = command(SYSTEM_CURL)
         .args(["-fsSL", "-o"])
         .arg(&archive)
         .arg(FPCALC_URL)
@@ -144,8 +189,8 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
         return Err(AppError::Setup("fpcalc download failed".into()));
     }
 
-    let status = Command::new("/usr/bin/tar")
-        .arg("-xzf")
+    let status = command(SYSTEM_TAR)
+        .arg("-xf")
         .arg(&archive)
         .arg("-C")
         .arg(&paths.tools_dir)
@@ -168,7 +213,7 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
 }
 
 async fn probe(path: &str) -> Option<PythonInfo> {
-    let output = Command::new(path)
+    let output = command(path)
         .args(["-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"])
         .stdin(Stdio::null())
         .output()
@@ -229,7 +274,7 @@ async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
     let _ = tokio::fs::remove_dir_all(&paths.runtime_dir).await;
     tokio::fs::create_dir_all(&paths.runtime_dir).await?;
 
-    let mut cmd = Command::new("/usr/bin/tar");
+    let mut cmd = command(SYSTEM_TAR);
     cmd.arg("-xzf")
         .arg(&paths.python_archive)
         .arg("-C")
@@ -279,7 +324,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         write_beets_config(&paths).await?;
     }
     let deps_ok = if venv_ok {
-        Command::new(&venv_python)
+        command(&venv_python)
             .args(["-c", "import yt_dlp, beets, mutagen"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -425,7 +470,7 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         &format!("Python: {} ({})", python.path, python.version),
     );
     emit_log(app, "Creating virtual environment...");
-    let mut venv_cmd = Command::new(&python.path);
+    let mut venv_cmd = command(&python.path);
     venv_cmd
         .arg("-m")
         .arg("venv")
@@ -448,7 +493,7 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
             "Installing dependencies (this can take a few minutes)..."
         },
     );
-    let mut pip_cmd = Command::new(paths.venv_python());
+    let mut pip_cmd = command(paths.venv_python());
     pip_cmd
         .arg("-m")
         .arg("pip")

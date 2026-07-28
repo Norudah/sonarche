@@ -24,6 +24,15 @@ import { settingsCategories } from "@/features/settings/categories";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { SonarcheMark } from "@/shared/ui/SonarcheMark";
 
+/** Read once, from the webview's own user agent, because the answer cannot
+ * change while the app is running. `@tauri-apps/plugin-os` gives the same
+ * string over IPC and asynchronously — a whole round trip, and a first paint
+ * with the wrong padding, to learn what the UA already says.
+ *
+ * Kept here rather than in `shared`: the one thing that turns on it is the
+ * title-bar clearance below. It moves out the day something else needs it. */
+const isMacOS = navigator.userAgent.includes("Mac OS X");
+
 function NavItem({
   to,
   label,
@@ -152,18 +161,23 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
-      {/* The window has no native title bar any more, so this strip is what the
-          user grabs to move it — and, being top-left, it is also where macOS
-          paints the traffic lights over our webview. Their own distance from
+      {/* On macOS the window has no native title bar, so this strip is what the
+          user grabs to move it — and, being top-left, it is also where the
+          traffic lights are painted over our webview. Their own distance from
           the window corner is `trafficLightPosition` in tauri.conf.json, not
           this padding — that was the wrong lever the first time round. `pt-14`
           is just their vertical clearance, so the logo sits comfortably below
           them rather than crowding the same row.
 
+          Everywhere else there is nothing to clear: `titleBarStyle` is a macOS
+          key, so Windows keeps its own title bar above us and the clearance
+          would be dead space under it. The drag region stays either way — a
+          second place to grab the window costs nothing.
+
           `pointer-events-none` on the contents because a drag region only
           reacts to presses that land on the element carrying the attribute,
           and a press on the logo or the wordmark would otherwise do nothing. */}
-      <div data-tauri-drag-region className="flex items-center gap-3 px-6 pt-14 pb-7">
+      <div data-tauri-drag-region className={cn("flex items-center gap-3 px-6 pb-7", isMacOS ? "pt-14" : "pt-7")}>
         {/* No tile behind it: the mark is a coloured illustration, not a glyph,
             so an accent plate would fight its own indigo instead of carrying it. */}
         <SonarcheMark className="pointer-events-none size-9 shrink-0" />

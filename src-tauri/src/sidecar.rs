@@ -8,7 +8,7 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, Command};
+use tokio::process::{Child, ChildStdin};
 use tokio::sync::{oneshot, Mutex};
 use uuid::Uuid;
 
@@ -164,7 +164,7 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         .parent()
         .ok_or_else(|| AppError::EnvNotReady("beets config dir not found".into()))?;
 
-    let mut child = Command::new(&venv_python)
+    let mut child = crate::proc::command(&venv_python)
         .arg("-u")
         .arg(&paths.sidecar_main)
         .env("PYTHONUNBUFFERED", "1")
