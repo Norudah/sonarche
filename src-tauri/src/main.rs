@@ -19,6 +19,7 @@ mod python_env;
 mod reenrich;
 mod settings;
 mod sidecar;
+mod window_chrome;
 
 use tauri::Manager;
 
@@ -44,6 +45,8 @@ fn main() {
             // Pushes the playhead and end-of-track to the front; idle until
             // something actually plays.
             player::spawn_status_loop(app.handle().clone());
+            // After the window exists, before it is shown to anyone.
+            window_chrome::quieten(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

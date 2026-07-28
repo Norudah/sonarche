@@ -103,5 +103,11 @@ block2 = "0.6"
 [target.'cfg(target_os = "windows")'.dependencies]
 # The Windows Credential Manager. Same reasoning as the Keychain line above.
 keyring = { version = "3", features = ["windows-native"] }
+# DWM, for two calls: painting the caption bar the app's own near-white instead
+# of the system grey. There is no Tauri config key for it and no cross-platform
+# equivalent, so it is this or a seam at the top of every Windows screen. The
+# raw bindings rather than the `windows` crate — two functions do not need COM,
+# and this version is already in the tree via tao.
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
 # No media-session counterpart yet: `now_playing` no-ops off macOS, and a media
 # key that does nothing is not a reason to fail a play.
