@@ -13,7 +13,7 @@ function AccentPill({ onPress, children }: { onPress: () => void; children: Reac
       whileTap={{ scale: 0.96 }}
       whileHover={{ scale: 1.03 }}
       transition={springs.snappy}
-      className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-accent pr-5 pl-4 text-sm font-medium text-accent-foreground shadow-lg shadow-accent/25 outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-accent pr-5 pl-4 text-sm font-medium text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       {children}
     </motion.button>

@@ -38,7 +38,7 @@ export function PrimaryPill({
       transition={springs.snappy}
       // Pending stays legible (it is working, and says so); disabled recedes
       // further, because nothing is happening and nothing will.
-      className={`flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-accent px-5 text-sm font-medium text-accent-foreground shadow-lg shadow-accent/25 outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default ${
+      className={`flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-accent px-5 text-sm font-medium text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default ${
         isDisabled && !isPending ? "disabled:opacity-45 disabled:shadow-none" : "disabled:opacity-70"
       }`}
     >

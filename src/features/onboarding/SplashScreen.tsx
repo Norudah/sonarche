@@ -22,7 +22,7 @@ export function SplashScreen() {
       <WindowDragStrip />
 
       <div className="flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg shadow-accent/25">
+        <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground glow-accent">
           <AudioLines className="size-6" />
         </div>
         <span className="text-xl font-semibold tracking-tight">{tCommon("appName")}</span>

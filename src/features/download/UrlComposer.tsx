@@ -62,7 +62,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
        * Ending on the opaque background (not `transparent`) keeps the ramp in
        * one colour family and dissolves it with no seam; see the library's
        * `HeroWash` for the full reasoning. */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background" />
+      <div className="pointer-events-none absolute inset-0 hero-wash" />
 
       <div className="relative flex flex-col gap-5">
         <div>

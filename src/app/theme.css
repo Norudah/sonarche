@@ -132,6 +132,59 @@
      than sitting flat on it. */
   --metadata-header-from: oklch(0.3 0.16 277);
   --metadata-header-to: var(--accent);
+
+  /* The hairline around a piece of artwork. Its job is to stop a cover whose
+     edges are near the page's own value from bleeding into it, so it is the
+     one border that has to invert outright rather than shift: a dark hairline
+     on a light page, a light one on a dark page. Was `ring-black/5`, which
+     simply vanished on the dark theme. */
+  --artwork-edge: rgb(0 0 0 / 0.05);
+
+  /* Elevation — what tells a card apart from the ground it is on.
+     In the light theme that job is done by a drop shadow, so these are
+     Tailwind's own values, unchanged: the app was built on them and there is
+     nothing to fix here. What matters is that they are now *vars*, which is
+     what lets the dark theme answer the same question differently. */
+  --elevation-edge: transparent;
+  --elevation-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --elevation-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elevation-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --elevation-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elevation-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* The accent glow — the halo under an indigo control or a hero's artwork.
+     Not the same thing as elevation and now not spelled like it either: these
+     used to be `shadow-lg shadow-accent/25`, which Tailwind can only tint by
+     parsing the scale's literal value, so routing that scale through a var
+     (above) silently dropped the colour. Its own token, which it deserved
+     anyway — one says "this is off the page", the other says "this is lit". */
+  --glow-accent:
+    0 10px 15px -3px color-mix(in oklab, var(--accent) 28%, transparent),
+    0 4px 6px -4px color-mix(in oklab, var(--accent) 28%, transparent);
+  --glow-accent-deep:
+    0 20px 25px -5px color-mix(in oklab, var(--accent) 20%, transparent),
+    0 8px 10px -6px color-mix(in oklab, var(--accent) 20%, transparent);
+
+  /* The accent band under a page's title — a tint the page carries at the top
+     and lets go of. Percentages are what `from-accent-soft/80 via-accent-soft/25`
+     already resolved to, so the light theme is unchanged; they are written out
+     because the value now has to be stated per theme, and a chain of Tailwind
+     opacity modifiers cannot be. */
+  --hero-wash: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--accent) 12%, transparent),
+    color-mix(in oklab, var(--accent) 3.75%, transparent) 50%,
+    var(--background)
+  );
+
+  /* The same band inside a surface — a drawer header, a modal's top bar — so it
+     resolves into whatever it sits on rather than into the app ground. */
+  --panel-wash: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--accent) 10.5%, transparent),
+    color-mix(in oklab, var(--accent) 3%, transparent) 50%,
+    transparent
+  );
 }
 
 /**
@@ -211,6 +264,58 @@
 
   --metadata-header-from: oklch(0.26 0.12 277);
   --metadata-header-to: var(--accent);
+
+  --artwork-edge: oklch(1 0 0 / 0.1);
+
+  /* Elevation, turned inside out.
+     A drop shadow is a card blocking light from above. There is no light from
+     above here, so a black shadow on a dark ground is just an absence nobody
+     sees — the surfaces went flat the moment the theme flipped, however
+     correct their values were. What reads as raised in the dark is the top of
+     the object catching the light, so the separation moves to a 1px edge and
+     the shadow is demoted to depth behind it.
+     The edge is indigo rather than grey, at a chroma low enough that nobody
+     can name the colour: at the scale of a whole app it tints everything
+     faintly toward the accent, which is the one thing a generic dark theme
+     never does. */
+  --elevation-edge: oklch(0.32 0.02 277);
+  --elevation-xs: 0 0 0 1px var(--elevation-edge);
+  --elevation-sm: 0 0 0 1px var(--elevation-edge), 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --elevation-md: 0 0 0 1px var(--elevation-edge), 0 4px 8px -2px rgb(0 0 0 / 0.55);
+  --elevation-lg: 0 0 0 1px var(--elevation-edge), 0 10px 20px -5px rgb(0 0 0 / 0.6);
+  --elevation-xl: 0 0 0 1px var(--elevation-edge), 0 20px 32px -8px rgb(0 0 0 / 0.65);
+
+  /* Wider and stronger than in the light theme, where the glow is a tint under
+     an object the page already lights. Here it is the light: the accent is the
+     brightest thing on the screen, and what it spills is the only thing that
+     says the control sits above the page. */
+  --glow-accent:
+    0 8px 24px -4px color-mix(in oklab, var(--accent) 45%, transparent),
+    0 2px 8px -2px color-mix(in oklab, var(--accent) 35%, transparent);
+  --glow-accent-deep:
+    0 20px 40px -8px color-mix(in oklab, var(--accent) 40%, transparent),
+    0 6px 16px -6px color-mix(in oklab, var(--accent) 28%, transparent);
+
+  /* The band, transposed rather than translated.
+     Carrying the light theme's percentages over gives nothing: 12% of indigo
+     laid on a near-black ground is a smudge, where on white it was a colour.
+     The relationship it has to express is the same, so the values change to
+     keep it: roughly double the accent, and the falloff pulled higher up, which
+     turns the tint into a light source above the title rather than a wash
+     behind it. Which is what a band of colour *is*, on a dark page. */
+  --hero-wash: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--accent) 24%, transparent),
+    color-mix(in oklab, var(--accent) 9%, transparent) 45%,
+    var(--background)
+  );
+
+  --panel-wash: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--accent) 20%, transparent),
+    color-mix(in oklab, var(--accent) 7%, transparent) 45%,
+    transparent
+  );
 }
 
 /* --- Artist genre avatar -------------------------------------------------- */
@@ -346,6 +451,19 @@
   --color-tray: var(--tray);
   --color-metadata-header-from: var(--metadata-header-from);
   --color-metadata-header-to: var(--metadata-header-to);
+  --color-artwork-edge: var(--artwork-edge);
+
+  /* Tailwind's own shadow scale, rerouted through the theme blocks. Overriding
+     the scale rather than introducing an `elevation-*` utility on purpose:
+     roughly thirty call sites already say `shadow-sm` or `shadow-lg`, they all
+     mean "lift this off its ground", and that is exactly the sentence whose
+     answer differs per theme. Renaming them would have changed thirty files to
+     say the same thing. */
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+  --shadow-xl: var(--elevation-xl);
 
   /* Hover and press feedback is plain CSS, not Motion, so Tailwind's defaults —
      not our tokens — were deciding how the app felt. Tailwind ships 150ms on
@@ -442,6 +560,36 @@
       transform: scaleY(1);
     }
   }
+}
+
+/* --- Accent glow ---------------------------------------------------------- */
+
+/** The halo under an indigo control — a play button, the metadata pill, the
+    splash mark. Replaces `shadow-lg shadow-accent/25` at every call site. */
+@utility glow-accent {
+  box-shadow: var(--glow-accent);
+}
+
+/** The same idea under a hero's artwork, where the object is large enough that
+    the light around it has to spread further to read as spill rather than as
+    an outline. */
+@utility glow-accent-deep {
+  box-shadow: var(--glow-accent-deep);
+}
+
+/* --- Accent bands --------------------------------------------------------- */
+
+/** The band under a page title, resolving into the app ground. Four surfaces
+    spelled this out as the same three Tailwind classes — the download composer,
+    the import page, the walkthrough and the library heroes — and they are in
+    four different features, so no component could be shared between them. */
+@utility hero-wash {
+  background-image: var(--hero-wash);
+}
+
+/** The same band inside a surface, resolving into transparency. */
+@utility panel-wash {
+  background-image: var(--panel-wash);
 }
 
 /* --- Queue row entrances -------------------------------------------------- */

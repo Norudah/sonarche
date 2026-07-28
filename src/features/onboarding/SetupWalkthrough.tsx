@@ -88,7 +88,7 @@ export function SetupWalkthrough({
 
         {/* The same accent wash the download composer and every library hero sit
             on, so the first screen already belongs to the app it opens. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-80 hero-wash" />
 
         <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-9 px-8 pt-20 pb-16">
           <header>

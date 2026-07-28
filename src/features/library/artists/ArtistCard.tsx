@@ -63,7 +63,7 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="pointer-events-auto flex size-11 scale-90 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 shadow-lg shadow-accent/30 outline-none transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="pointer-events-auto flex size-11 scale-90 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 glow-accent outline-none transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <Play className="size-5 fill-current" />
         </motion.button>

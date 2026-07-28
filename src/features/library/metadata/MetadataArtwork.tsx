@@ -16,9 +16,9 @@ export function MetadataArtwork({ artUrl }: { artUrl: string | null }) {
       className="relative shrink-0"
     >
       {artUrl ? (
-        <img src={artUrl} alt="" className="size-24 rounded-2xl object-cover shadow-lg ring-1 ring-black/5" />
+        <img src={artUrl} alt="" className="size-24 rounded-2xl object-cover shadow-lg ring-1 ring-artwork-edge" />
       ) : (
-        <ArtworkPlaceholder className="size-24 rounded-2xl shadow-lg ring-1 ring-black/5" />
+        <ArtworkPlaceholder className="size-24 rounded-2xl shadow-lg ring-1 ring-artwork-edge" />
       )}
     </motion.div>
   );

@@ -62,7 +62,7 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
           {/* Matches the album hero's 192px cover box, as a circle: the two
            * heroes share one baseline, the shape is the only tell of which one
            * you are on. */}
-          <ArtistAvatar family={artist.family} className="size-48 shrink-0 shadow-xl shadow-accent/20" />
+          <ArtistAvatar family={artist.family} className="size-48 shrink-0 glow-accent-deep" />
 
           {/* Capped rather than stretched: the album's text column is bounded on
            * its right by the completeness ring, so it never looks empty. This

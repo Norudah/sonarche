@@ -72,7 +72,7 @@ export function AlbumCard({ album, style, onPlay, onInspect }: AlbumCardProps) {
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg shadow-accent/30 outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <Play className="size-4 fill-current" />
         </motion.button>
