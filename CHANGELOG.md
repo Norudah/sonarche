@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-07-28)
+
+
+### Features
+
+* **build:** let the app update itself ([9c503c1](https://github.com/Norudah/sonarche/commit/9c503c1bbe9fd9fdc58144dcec683027b3214e92))
+* **build:** ship our own Python instead of asking for one ([7ada434](https://github.com/Norudah/sonarche/commit/7ada434f19ce4cd80437f2c5d9fa5e18cb7404d1))
+* **download:** let a job carry a category and stamp it after enrich ([082f5f0](https://github.com/Norudah/sonarche/commit/082f5f0092cacfd01c95ff765244197c746bf8aa))
+* **download:** show a download as a card rather than a table row ([314a32c](https://github.com/Norudah/sonarche/commit/314a32c1381ba5d79287efb344326c69c339da32))
+* **library:** copy a chosen folder into the ark ([d51580d](https://github.com/Norudah/sonarche/commit/d51580dbf0ecefb7ae3ea2920f148f7ba448d99d))
+* **library:** edit an album's metadata in one modal ([1ea7fb8](https://github.com/Norudah/sonarche/commit/1ea7fb85629085812388d3f1788a4a97bc9494e4))
+* **library:** give an oversized imported cover a version to be drawn from ([db65c49](https://github.com/Norudah/sonarche/commit/db65c495253bd302a1cc7729a1fde4d89b1d4490))
+* **library:** look at a folder before importing it ([9a6b546](https://github.com/Norudah/sonarche/commit/9a6b54639c39f826725aef776f370ad0da26b5d5))
+* **player:** decode the formats an imported library is made of ([b91b67f](https://github.com/Norudah/sonarche/commit/b91b67fc35a8a376945fb823b79863abe4a74edb))
+* **player:** native audio engine in Rust ([11cbb05](https://github.com/Norudah/sonarche/commit/11cbb0578f3b2fb59dc9d41e511d34d6d91c9c5b))
+* **player:** play through the Rust engine instead of the webview ([80e9b0b](https://github.com/Norudah/sonarche/commit/80e9b0bdc78c844e56f48aa0e457d5fd0cfdaabe))
+* **player:** restore media keys through the OS media session ([c9f3dcd](https://github.com/Norudah/sonarche/commit/c9f3dcdb3c973e6c12f90ddd7384480b6d687429))
+* **player:** seek that lands, and a gapless hand-over ([b06ef4d](https://github.com/Norudah/sonarche/commit/b06ef4dc8de2c0143e9dc9b2dd679fa3062668a3))
+* **shell:** let a cleared step be opened and read again ([30e0699](https://github.com/Norudah/sonarche/commit/30e06992b658d3470258fa644ea72862076fe302))
+* **shell:** offer the update instead of only being able to install it ([a8d9a21](https://github.com/Norudah/sonarche/commit/a8d9a214a580632a7484d244af307aae9ceadbdc))
+* **shell:** remember the first-run walkthrough and let it be replayed ([ab38fea](https://github.com/Norudah/sonarche/commit/ab38feabce6d93a9dbd4c3bbc875130cf1e53ddc))
+* **shell:** walk the first launch through its three steps ([6176646](https://github.com/Norudah/sonarche/commit/61766468d37356fdcdea882aa9515f63bba127e5))
+* **ui:** draw the Sonarche ark and make it the app mark ([77eb68f](https://github.com/Norudah/sonarche/commit/77eb68f5c2ff79aa31adb43af388850e204c7eea))
+* **ui:** show the playhead and widen the seek bar's grab area ([5f85dc5](https://github.com/Norudah/sonarche/commit/5f85dc58fee3fc4f3ce2f6a2b20facfd55438229))
+* **ui:** state an album's completion as a count, not a share ([c2ceffe](https://github.com/Norudah/sonarche/commit/c2ceffebc2d87fe9145454368f6e3cad0da8d63d))
+* **ui:** tell the user when a track cannot be played ([b60c197](https://github.com/Norudah/sonarche/commit/b60c19736040a5655060c12679549d983fe4923d))
+
+
+### Bug Fixes
+
+* **build:** check out the release branch before syncing Cargo.lock ([d22ee48](https://github.com/Norudah/sonarche/commit/d22ee48f353fc0a5e6850de3c17eb6003aec5630))
+* **library:** refile a track when its album or artist is renamed ([426d9a2](https://github.com/Norudah/sonarche/commit/426d9a25afa3a51b0c423fdac4a8c52485180757))
+* **library:** stop baking the album cover into every imported track ([f9213d0](https://github.com/Norudah/sonarche/commit/f9213d0190021b8ccfe06f3ca61c3c2205638551))
+* **shell:** make the setup reset actually replay the setup ([58bf92c](https://github.com/Norudah/sonarche/commit/58bf92ce1715adcc5e4aa0786067eddf3d7d8a60))
+
+
+### Performance Improvements
+
+* **library:** cache the album grouping on the track array's identity ([893877a](https://github.com/Norudah/sonarche/commit/893877a4bb00fd616d8bea6929ab6e845d4b8e96))
+* **library:** serve display-sized covers instead of archived originals ([b60c29d](https://github.com/Norudah/sonarche/commit/b60c29d9a1c9b3194116bc7daff18a44f7491d9d))
+* **library:** stop refetching the whole library on every navigation ([9fe72eb](https://github.com/Norudah/sonarche/commit/9fe72eb86edc5a900d4b81a27172fd28b1100191))
+* **sidecar:** find an imported single by its marker, not by scanning ([329b0e1](https://github.com/Norudah/sonarche/commit/329b0e1470400f26a0680b9b75c320455367d14d))
+* **sidecar:** give the library listing its own channel ([54b3cc8](https://github.com/Norudah/sonarche/commit/54b3cc83e09f680c3de7c4febaa971bba2d48b53))
+* **sidecar:** pass the library listing through as raw bytes ([776339f](https://github.com/Norudah/sonarche/commit/776339fad46b77f7e6815546bcc4d28f2c10dd0e))
+* stop redoing library-sized work on every keystroke and render ([c4cdcb6](https://github.com/Norudah/sonarche/commit/c4cdcb670c0ae1627dd1e7308992892f2f14a520))
+
 ## [0.8.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.7.0...sonarche-v0.8.0) (2026-07-26)
 
 
