@@ -54,7 +54,11 @@
   "history": {
     "title": "Historique",
     "lede": "Tous les téléchargements, du plus récent au plus ancien.",
-    "empty": "Aucun téléchargement pour l'instant."
+    "empty": {
+      "title": "Aucun téléchargement",
+      "body": "L'historique garde chaque lien récupéré, du plus récent au plus ancien."
+    },
+    "emptyAction": "Récupérer un premier lien"
   },
   "queue": {
     "colPipeline": "Pipeline",

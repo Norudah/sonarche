@@ -1,4 +1,5 @@
 import { Alert, Spinner } from "@heroui/react";
+import { Disc } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams, useSearchParams } from "react-router";
@@ -21,6 +22,7 @@ import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTra
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { parseViewMode } from "@/features/library/viewMode";
 import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
+import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /** The category is the page and the genre chips own `?genre=`, so what is left
@@ -123,7 +125,7 @@ export function CategoryDetailView() {
           <TrackResults state={explorer} />
         </>
       ) : albums.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted">{t("categories.noAlbums")}</p>
+        <NoResults icon={Disc} message={t("categories.noAlbums")} />
       ) : (
         <>
           <section className="flex flex-col gap-3">

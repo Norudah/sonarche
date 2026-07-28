@@ -5,8 +5,7 @@
     "albums": "Albums",
     "artists": "Artistes",
     "genres": "Genres",
-    "categories": "Catégories",
-    "comingSoon": "Bientôt disponible."
+    "categories": "Catégories"
   },
   "categories": {
     "back": "Catégories",
@@ -14,7 +13,10 @@
     "categoryCount_other": "{{count}} catégories",
     "categorizedCount_one": "{{count}} titre catégorisé",
     "categorizedCount_other": "{{count}} titres catégorisés",
-    "empty": "La catégorie note le contexte d'un morceau — jeux vidéo, film… — indépendamment de son genre. Attribue-la depuis l'inspection des métadonnées d'un album ou d'un morceau, et les étagères se construiront ici.",
+    "empty": {
+      "title": "Aucune catégorie attribuée",
+      "body": "La catégorie note le contexte d'un morceau — jeux vidéo, film… — indépendamment de son genre. Attribue-la depuis l'inspection des métadonnées d'un album ou d'un morceau, et les étagères se construiront ici."
+    },
     "emptyAction": "Parcourir les albums",
     "noAlbums": "Aucun album ne porte cette catégorie pour l'instant.",
     "values": {
@@ -57,13 +59,20 @@
     "recomputing": "Recalcul en cours…",
     "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
     "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant.",
-    "overviewMode": "Albums & artistes"
+    "overviewMode": "Albums & artistes",
+    "empty": {
+      "title": "Aucun genre pour l'instant",
+      "body": "Les genres écrits dans les fichiers sont regroupés en familles au fur et à mesure que la bibliothèque se remplit."
+    }
   },
   "albums": {
     "eyebrow": "Album",
     "back": "Albums",
     "inspect": "Inspecter les métadonnées de l'album",
-    "empty": "Aucun album dans ta bibliothèque pour l'instant.",
+    "empty": {
+      "title": "Aucun album pour l'instant",
+      "body": "Les albums arrivent avec leur pochette et leurs tags dès qu'un téléchargement ou un import se termine."
+    },
     "noResults": "Aucun album ne correspond à « {{query}} ».",
     "completeness": "{{percent}} %",
     "completenessHint": "Métadonnées incomplètes sur cet album",
@@ -88,7 +97,10 @@
   "artists": {
     "eyebrow": "Artiste",
     "back": "Artistes",
-    "empty": "Aucun artiste dans ta bibliothèque pour l'instant.",
+    "empty": {
+      "title": "Aucun artiste pour l'instant",
+      "body": "Chaque artiste apparaît ici dès qu'un de ses morceaux entre dans l'arche."
+    },
     "noResults": "Aucun artiste ne correspond à « {{query}} ».",
     "discography": "Discographie",
     "appearances": "Apparitions",
@@ -152,8 +164,11 @@
     "duplicateRecording": "Morceaux en double"
   },
   "loadFailed": "Impossible de charger la bibliothèque",
-  "empty": "Ta bibliothèque est vide pour l'instant.",
-  "goToDownload": "Télécharger un premier titre →",
+  "empty": {
+    "title": "Ta bibliothèque est vide",
+    "body": "Colle un lien depuis Téléchargement, ou importe un dossier que tu as déjà : tout ce qui entre dans l'arche se range ici."
+  },
+  "goToDownload": "Télécharger un titre",
   "unknownTitle": "Titre inconnu",
   "unknownArtist": "Artiste inconnu",
   "metadata": {
@@ -320,5 +335,6 @@
     "byColumn": "Trier par {{column}}"
   },
   "breadcrumb": "Fil d'ariane",
-  "back": "Retour"
+  "back": "Retour",
+  "goToImport": "Importer un dossier"
 }

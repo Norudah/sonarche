@@ -1,10 +1,8 @@
 import { Alert, Spinner } from "@heroui/react";
-import { motion } from "motion/react";
+import { Mic2, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
-import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
 import {
   ARTIST_SORTS,
@@ -15,11 +13,12 @@ import {
 } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
+import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { SortSelect } from "@/features/library/SortSelect";
 import { useLibrary } from "@/features/library/hooks";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
-import { fade } from "@/shared/motion/tokens";
+import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function ArtistsView() {
@@ -66,24 +65,11 @@ export function ArtistsView() {
       )}
 
       {library.data && artists.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">♪</p>
-          <p className="text-muted">{t("artists.empty")}</p>
-          <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-            {t("goToDownload")}
-          </Link>
-        </div>
+        <EmptyLibrary icon={Mic2} title={t("artists.empty.title")} body={t("artists.empty.body")} />
       )}
 
       {artists.length > 0 && visible.length === 0 && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={fade}
-          className="py-16 text-center text-sm text-muted"
-        >
-          {t("artists.noResults", { query })}
-        </motion.p>
+        <NoResults icon={SearchX} message={t("artists.noResults", { query })} />
       )}
 
       {visible.length > 0 && (

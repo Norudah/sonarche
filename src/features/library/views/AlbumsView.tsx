@@ -1,10 +1,9 @@
 import { Alert, Spinner } from "@heroui/react";
-import { motion } from "motion/react";
+import { Disc, ListFilter, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 
-import { paths } from "@/app/routes";
 import {
   ALBUM_SORTS,
   filterAlbums,
@@ -22,8 +21,9 @@ import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/tr
 import { useLibrary } from "@/features/library/hooks";
 import { SortSelect } from "@/features/library/SortSelect";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
+import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
-import { fade } from "@/shared/motion/tokens";
+import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 export function AlbumsView() {
@@ -99,24 +99,14 @@ export function AlbumsView() {
       )}
 
       {library.data && albums.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">♪</p>
-          <p className="text-muted">{t("albums.empty")}</p>
-          <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-            {t("goToDownload")}
-          </Link>
-        </div>
+        <EmptyLibrary icon={Disc} title={t("albums.empty.title")} body={t("albums.empty.body")} />
       )}
 
       {albums.length > 0 && visible.length === 0 && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={fade}
-          className="py-16 text-center text-sm text-muted"
-        >
-          {query ? t("albums.noResults", { query }) : t("triage.noResults")}
-        </motion.p>
+        <NoResults
+          icon={query ? SearchX : ListFilter}
+          message={query ? t("albums.noResults", { query }) : t("triage.noResults")}
+        />
       )}
 
       {visible.length > 0 && (

@@ -54,7 +54,11 @@
   "history": {
     "title": "History",
     "lede": "Every download, newest first.",
-    "empty": "No downloads yet."
+    "empty": {
+      "title": "No downloads yet",
+      "body": "The history keeps every link you fetched, newest first."
+    },
+    "emptyAction": "Fetch a first link"
   },
   "queue": {
     "colPipeline": "Pipeline",

@@ -2,7 +2,6 @@ import { Alert } from "@heroui/react";
 import { ArrowRight, Inbox } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import type { DownloadJob } from "@/features/download/api";
@@ -10,6 +9,8 @@ import { JobDeck, type JobSection } from "@/features/download/activity/JobDeck";
 import { useActiveDownloadProgress, useEnqueueDownload, useEnrichProgress, useJobs } from "@/features/download/hooks";
 import { RECENT_JOBS } from "@/features/download/queue/page";
 import { UrlComposer } from "@/features/download/UrlComposer";
+import { ActionLink } from "@/shared/ui/ActionLink";
+import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 const isTerminal = (job: DownloadJob) => job.status === "done" || job.status === "failed";
@@ -52,21 +53,13 @@ export function DownloadPage() {
         // the link would be a dead end.
         action:
           finished.length > RECENT_JOBS ? (
-            <Link
-              to={paths.history}
-              className="group/all flex items-center gap-1.5 text-[0.8125rem] font-medium text-accent underline-offset-4 outline-none transition-colors hover:text-accent/80 focus-visible:underline"
-            >
+            <ActionLink to={paths.history} trailingIcon={ArrowRight}>
               {t("queue.seeAll")}
-              <ArrowRight className="size-3.5 transition-transform duration-200 ease-out group-hover/all:translate-x-0.5 motion-reduce:transition-none" />
-            </Link>
+            </ActionLink>
           ) : undefined,
         empty:
           inFlight.length > 0 ? null : (
-            <div className="flex flex-col items-center gap-2 rounded-2xl bg-tray py-14 text-center">
-              <Inbox className="size-6 text-muted/50" />
-              <p className="text-sm font-medium">{t("activity.empty.title")}</p>
-              <p className="max-w-xs text-[0.8125rem] text-muted">{t("activity.empty.body")}</p>
-            </div>
+            <EmptyState icon={Inbox} title={t("activity.empty.title")} body={t("activity.empty.body")} />
           ),
       },
     ];

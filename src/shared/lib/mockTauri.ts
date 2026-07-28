@@ -473,6 +473,15 @@ function inflate<
 const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
 /**
+ * `?empty` answers every listing with nothing.
+ *
+ * The mock's whole job is to make states reachable, and the emptiest one — a
+ * library and a history with nothing in them, which is what the very first
+ * launch looks like — was the one state the seed data made unreachable.
+ */
+const isEmpty = new URLSearchParams(window.location.search).has("empty");
+
+/**
  * Which rung of the walkthrough to open on: `?setup=python` (nothing found),
  * `?setup=engine` (an interpreter but no venv), anything else a healthy
  * install. Pair with `?onboarding=1`, which makes the gate ignore the
@@ -524,8 +533,8 @@ function runMockSetup(): Promise<unknown> {
 }
 
 const responses: Record<string, unknown> = {
-  list_jobs: jobs,
-  list_library: { tracks: inflate(libraryTracks, requestedTracks) },
+  list_jobs: isEmpty ? [] : jobs,
+  list_library: { tracks: isEmpty ? [] : inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };

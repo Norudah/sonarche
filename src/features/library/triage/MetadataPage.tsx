@@ -1,12 +1,11 @@
 import { Alert, Spinner } from "@heroui/react";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Music } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
-import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { groupArtists } from "@/features/library/artists/artists";
+import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { groupFamilies } from "@/features/library/genres/genres";
 import { useLibrary } from "@/features/library/hooks";
 import { GenreDistribution } from "@/features/library/triage/GenreDistribution";
@@ -72,13 +71,7 @@ export function MetadataPage() {
       )}
 
       {library.data && tracks.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">♪</p>
-          <p className="text-muted">{t("library:empty")}</p>
-          <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-            {t("library:goToDownload")}
-          </Link>
-        </div>
+        <EmptyLibrary icon={Music} title={t("library:empty.title")} body={t("library:empty.body")} />
       )}
 
       {tracks.length > 0 && (

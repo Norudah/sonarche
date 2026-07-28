@@ -1,12 +1,15 @@
-import { Inbox, Trash2 } from "lucide-react";
+import { ArrowRight, History, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { paths } from "@/app/routes";
 import { JobDeck, type JobSection } from "@/features/download/activity/JobDeck";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { useActiveDownloadProgress, useEnrichProgress, useJobs } from "@/features/download/hooks";
 import { Pagination } from "@/features/download/queue/Pagination";
 import { pageOfJobs } from "@/features/download/queue/page";
+import { ActionButton, ActionLink } from "@/shared/ui/ActionLink";
+import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /**
@@ -46,10 +49,16 @@ export function HistoryPage() {
         jobs: visible,
         onTray: true,
         empty: (
-          <div className="flex flex-col items-center gap-2 rounded-2xl bg-tray py-16 text-center">
-            <Inbox className="size-6 text-muted/50" />
-            <p className="text-sm font-medium">{t("history.empty")}</p>
-          </div>
+          <EmptyState
+            icon={History}
+            title={t("history.empty.title")}
+            body={t("history.empty.body")}
+            action={
+              <ActionLink to={paths.download} trailingIcon={ArrowRight}>
+                {t("history.emptyAction")}
+              </ActionLink>
+            }
+          />
         ),
       },
     ],
@@ -63,15 +72,9 @@ export function HistoryPage() {
           <h1 className="text-3xl font-semibold tracking-tight">{t("history.title")}</h1>
           <p className="mt-1 text-sm text-muted">{t("history.lede")}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setClearingHistory(true)}
-          disabled={!hasHistory}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Trash2 className="size-3.5" />
+        <ActionButton icon={Trash2} tone="muted" isDisabled={!hasHistory} onPress={() => setClearingHistory(true)}>
           {t("queue.clearHistory")}
-        </button>
+        </ActionButton>
       </header>
 
       <JobDeck sections={sections} downloadPercent={downloadPercent} enrichStages={enrichStages} />
