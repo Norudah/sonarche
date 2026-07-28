@@ -1,17 +1,17 @@
 name: checks (rust)
 
-# Its own workflow, and its own `paths`, because of what it costs. A private
-# repository is billed per minute and macOS is billed at **ten times** the Linux
-# rate, so this one job spends more than every other job here put together. It
-# must not run because a translation string changed, and it must not run twice
-# for the same commit — hence develop only, not the merge into main.
+# On the PR into `main` — see checks-front.yml for why the checks moved off
+# per-push. This job is the reason that measurement was worth taking: a private
+# repository is billed per minute and **macOS counts for ten**, so this one job
+# was ~85% of everything the checks spent, to repeat on the same OS what the
+# laptop had just said.
 #
 # macOS and not Linux: the crate has an entire macOS-only half — the objc2 media
 # session, the keychain's apple-native backend — that no other platform can even
 # compile. Running it elsewhere would prove something about code we do not ship.
 on:
-  push:
-    branches: [develop]
+  pull_request:
+    branches: [main]
     paths:
       - "src-tauri/**"
       - "!src-tauri/gen/**"
@@ -23,6 +23,10 @@ concurrency:
 
 jobs:
   rust:
+    # Not release-please's own PR. It rewrites the version in Cargo.toml and
+    # tauri.conf.json, both under `src-tauri/**` — without this, every release
+    # would wake the priciest runner in the repository for a version bump.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4

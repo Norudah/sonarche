@@ -1,19 +1,23 @@
 name: checks (front)
 
-# Split out of a single `checks` workflow that carried both this and the sidecar
-# suite. GitHub filters `paths` per **workflow**, never per job, so one file
-# meant a TSX change also woke setup-python, a pip install and 163 Python tests
-# — a billed minute, on a private repo, to say nothing about the change.
+# On the pull request into `main`, not on every push to `develop`.
 #
-# On `push` only, never on `pull_request`. Every change lands on develop first,
-# so a PR from develop to main would re-run checks on commits already checked.
+# The reasoning changed on 2026-07-28, after measuring: over 30 develop pushes,
+# the Rust job alone had burned ~70 billed minutes telling a solo developer, on
+# the same OS as their laptop, what `cargo clippy` had answered thirty seconds
+# earlier. These jobs run the exact commands that run locally before every
+# commit — per push, they bought insurance against forgetting, not information.
 #
-# develop only, not main. Everything that reaches main was already checked here,
-# and release-please's own commits touch a changelog, a manifest and two version
-# numbers — nothing this workflow has an opinion about.
+# Once per release, on the PR that opens a release, is where a check has teeth:
+# it is the last gate before a bundle goes out to people. (The old rule here was
+# "never `pull_request`, it double-runs with push" — true only while push also
+# ran. It no longer does.)
+#
+# Revisit when the repository goes public: Actions stop being metered, and
+# per-push runs become affordable again.
 on:
-  push:
-    branches: [develop]
+  pull_request:
+    branches: [main]
     paths:
       - "src/**"
       - "index.html"
@@ -31,6 +35,10 @@ concurrency:
 
 jobs:
   front:
+    # Not release-please's own PR. It bumps a changelog and three version files
+    # — one of which is package.json, which is in the paths above — and there is
+    # nothing in a version number for tsc to have an opinion about.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

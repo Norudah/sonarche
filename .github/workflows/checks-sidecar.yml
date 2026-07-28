@@ -1,11 +1,15 @@
 name: checks (sidecar)
 
-# The other half of the old `checks` workflow — see checks-front.yml for why
-# they are two files. This one only wakes for Python, which is most pushes'
-# worth of minutes saved.
+# On the PR into `main` — see checks-front.yml for why the checks moved off
+# per-push.
+#
+# This is the one job whose value was never only insurance: it runs on **Linux**,
+# a platform nobody here owns. It is what proved the sidecar had no macOS left
+# in it once `sips` became Pillow, and it is what would catch the next thing
+# that quietly only works on a Mac.
 on:
-  push:
-    branches: [develop]
+  pull_request:
+    branches: [main]
     paths:
       - "sidecar/**"
       - "scripts/check-python-lock.py"
@@ -17,6 +21,7 @@ concurrency:
 
 jobs:
   sidecar:
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,9 +33,7 @@ jobs:
       # a user's machine fails here first. Quoted: `=:all: ` reads as a mapping
       # key to YAML otherwise.
       - run: "pip install --no-deps --only-binary=:all: -r sidecar/requirements.txt"
-      # Everything here runs everywhere now. The cover tests used to skip
-      # themselves off macOS because the resize shelled out to `sips`; Pillow
-      # took its place, so this Linux job is what proves the sidecar has no
-      # platform left in it — at the Linux rate, on every push.
       - run: python -m unittest discover -s sidecar -p "*_test.py"
+      # Drift this cannot catch locally: the lock is re-resolved against PyPI,
+      # so a new release of a transitive dependency shows up here.
       - run: python scripts/check-python-lock.py
