@@ -9,8 +9,7 @@ import { JobArtwork } from "@/features/download/activity/JobArtwork";
 import { JobDetail } from "@/features/download/activity/JobDetail";
 import { jobOutcome, OUTCOME_TONE } from "@/features/download/activity/outcome";
 import { JobVerdict } from "@/features/download/activity/JobVerdict";
-import { PipelineRail, type RailTone } from "@/features/download/activity/PipelineRail";
-import { jobProgress } from "@/features/download/activity/progress";
+import { jobProgress, STAGE_WEIGHTS } from "@/features/download/activity/progress";
 import { useProgressLabel } from "@/features/download/activity/useProgressLabel";
 import type { EnrichStage } from "@/features/download/hooks";
 import { jobDestination } from "@/features/download/queue/library";
@@ -20,6 +19,7 @@ import type { LibraryTrack } from "@/features/library/api";
 import { formatDuration } from "@/shared/lib/format";
 import { springs } from "@/shared/motion/tokens";
 import { Swap } from "@/shared/motion/Swap";
+import { PipelineRail, type RailTone } from "@/shared/ui/PipelineRail";
 
 /** The library lookups the card needs, bundled so the feed can hand one stable
  * object down instead of three separate callbacks it would have to memoise. */
@@ -199,7 +199,14 @@ function JobCardImpl({
 
           {isActive && (
             <div className="mt-1.5 flex flex-col gap-1.5">
-              <PipelineRail progress={progress} tone={tone} label={labelOf(progress)} />
+              <PipelineRail
+                fills={progress.fills}
+                weights={STAGE_WEIGHTS}
+                activeIndex={progress.activeIndex}
+                failedIndex={progress.failedIndex}
+                tone={tone}
+                label={labelOf(progress)}
+              />
               <p className="text-[0.6875rem] tabular-nums text-accent">{labelOf(progress)}</p>
             </div>
           )}

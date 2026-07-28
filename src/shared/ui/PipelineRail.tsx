@@ -1,17 +1,16 @@
 import { motion } from "motion/react";
 
-import type { JobProgress } from "@/features/download/activity/progress";
 import { springs } from "@/shared/motion/tokens";
 
 /**
- * The three stages as one bar rather than three markers.
+ * A multi-stage job as one bar in weighted segments.
  *
- * Segments are weighted, not equal: fetching a playlist is minutes of network,
- * filing it is seconds, identifying it is somewhere between. Equal thirds would
- * have the bar sit at 33 % for almost the whole run and then jump — the widths
- * are there so the fill advances at roughly the rate the work does.
+ * Shared rather than owned by the download feed: the two ways music enters the
+ * ark are a download and a folder import, both are a fixed chain of stages, and
+ * the app must not have two readings of "how far along is this". What the caller
+ * brings is the shape of its own pipeline — how many stages, how long each one
+ * really takes, where it currently is.
  */
-const WEIGHTS = [3, 1, 2];
 
 export type RailTone = "accent" | "success" | "warning" | "danger";
 
@@ -42,21 +41,31 @@ function Playhead({ tone }: { tone: RailTone }) {
 }
 
 interface PipelineRailProps {
-  progress: JobProgress;
+  /** Fill of each segment, 0…1, in stage order. Its length is the stage count. */
+  fills: readonly number[];
+  /**
+   * Relative segment widths. Stages never take the same time — fetching a
+   * playlist is minutes of network, filing it is seconds — and equal thirds
+   * would park the bar at 33 % for most of the run and then jump.
+   */
+  weights: readonly number[];
+  /** The segment working right now, or null. It may sit at fill 0 and still be
+   * working, which is what the sweeping playhead is for. */
+  activeIndex: number | null;
+  /** The segment the job died on, so the rail can stop there in red. */
+  failedIndex: number | null;
   tone: RailTone;
   /** Read out to assistive tech in place of the bar — the phase line's text. */
   label: string;
 }
 
-export function PipelineRail({ progress, tone, label }: PipelineRailProps) {
-  const { fills, activeIndex, failedIndex } = progress;
-
+export function PipelineRail({ fills, weights, activeIndex, failedIndex, tone, label }: PipelineRailProps) {
   return (
     <div
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
-      aria-valuemax={3}
+      aria-valuemax={fills.length}
       aria-valuenow={fills.reduce((sum, fill) => sum + fill, 0)}
       aria-valuetext={label}
       className="flex h-1.5 items-stretch gap-1"
@@ -68,7 +77,7 @@ export function PipelineRail({ progress, tone, label }: PipelineRailProps) {
         return (
           <div
             key={index}
-            style={{ flexGrow: WEIGHTS[index] }}
+            style={{ flexGrow: weights[index] }}
             className={
               "relative basis-0 overflow-visible rounded-full " +
               // The stage that broke keeps a tinted trough, so the bar shows
