@@ -26,5 +26,11 @@ src-tauri/Cargo.lock
 CHANGELOG.md
 .release-please-manifest.json
 
+# release-please rewrites the version in here with its own serializer, and
+# prettier then rejects the result — which failed `format:check` on every
+# release PR, over a file no human had touched. Formatting it back by hand once
+# only bought one release's peace.
+src-tauri/tauri.conf.json
+
 # Editor / OS
 .DS_Store

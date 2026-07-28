@@ -12,6 +12,10 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      # Whether this run actually cut a release, as opposed to only opening or
+      # updating the release PR — which is what it does most of the time.
+      released: ${{ steps.release.outputs.releases_created }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -54,3 +58,77 @@ jobs:
             git commit -m "chore(deps): sync Cargo.lock version" src-tauri/Cargo.lock
             git push origin "$BRANCH"
           fi
+
+  # The bundles, built here rather than in a workflow of their own. A separate
+  # workflow can only be triggered by `workflow_run`, which fires whatever
+  # release-please did — so it woke two macOS runners on every release PR, found
+  # no release to upload to, and failed. Here the answer is a job output.
+  bundle:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.released == 'true' }}
+    # Two runners rather than one universal binary: the app ships its own Python
+    # and its own wheels, both architecture-specific, so a universal build would
+    # carry two interpreters — 200 MB to spare the user picking a file.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: aarch64
+          - runner: macos-13
+            arch: x86_64
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Find the release just cut
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `databaseId` is not a field `release list` knows — asking for it is
+          # what failed the first time. The tag comes from the list, the id from
+          # the release itself.
+          tag=$(gh release list --limit 1 --json tagName,isDraft \
+                --jq '[.[] | select(.isDraft == false)][0].tagName')
+          echo "id=$(gh release view "$tag" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # The interpreter and the wheels are ~100 MB fetched from GitHub and PyPI.
+      # `prepare-runtime.mjs` stamps a `.pin` beside them and no-ops when it
+      # matches, so the cache key is what produces them: bump the pin, refetch.
+      - name: Cache the bundled runtime
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/resources
+          key: runtime-${{ matrix.arch }}-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Our own signature, not Apple's: the app is deliberately not
+          # code-signed (no paid Developer ID — the landing page explains the
+          # Gatekeeper screen), but every update bundle is signed with this key
+          # and the app refuses one signed with anything else.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          releaseId: ${{ steps.release.outputs.id }}
+          args: --target ${{ matrix.arch }}-apple-darwin
+          # The manifest installed apps poll. Both runners write it; the second
+          # merges its platform into the file the first uploaded.
+          includeUpdaterJson: true
