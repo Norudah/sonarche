@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { pickFolder, type ScanReport, scanImportFolder } from "@/features/import/api";
-import { FolderCard } from "@/features/import/FolderCard";
+import { FolderPicker } from "@/features/import/FolderPicker";
 import { useImportProgress, useLibraryImport } from "@/features/import/hooks";
+import { ImportCard } from "@/features/import/ImportCard";
 import { importPhase } from "@/features/import/phase";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -50,17 +51,27 @@ export function ImportPage() {
           <div>
             <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
+            <p className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("lead")}</p>
           </div>
 
-          <FolderCard
+          <FolderPicker
             folder={folder}
             phase={phase}
-            progress={progress}
             onChoose={() => void choose()}
             onStart={() => folder != null && run.mutate(folder)}
           />
         </div>
       </div>
+
+      {/* The same shelf the download feed files its jobs onto. One card, because
+          one import runs at a time — but it is the same object, on the same
+          tray, under the same kind of heading. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("activity")}</h2>
+        <div className="rounded-2xl bg-tray p-1.5">
+          <ImportCard folder={folder} phase={phase} progress={progress} />
+        </div>
+      </section>
     </PageContainer>
   );
 }
