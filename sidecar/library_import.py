@@ -51,6 +51,13 @@ def handle(request_id: str, params: dict) -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        # Spelled out rather than left to the locale, which on Windows is
+        # cp1252: beets names each folder it reaches, and one accent in a path
+        # would end a 4 000-track import on a decode error. `replace` because
+        # this is another program's output — a byte we cannot read should cost
+        # a garbled character in a log line, never the import.
+        encoding="utf-8",
+        errors="replace",
         bufsize=1,
     )
 

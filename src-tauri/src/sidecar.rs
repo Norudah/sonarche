@@ -168,6 +168,13 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         .arg("-u")
         .arg(&paths.sidecar_main)
         .env("PYTHONUNBUFFERED", "1")
+        // Python's UTF-8 Mode. `protocol` pins the channel's own encoding, but
+        // that only covers the three streams it owns; this covers the rest —
+        // `open()`'s default, the filesystem encoding, and the locale encoding
+        // that `subprocess` text mode reads. Without it, on Windows, all of
+        // those are cp1252 and any accent is a crash waiting for the right
+        // filename.
+        .env("PYTHONUTF8", "1")
         // The in-process beets must read the same config.yaml the beet CLI
         // gets via --config; otherwise it would pick up the user's own beets
         // config (or none), drifting from write_beets_config().
