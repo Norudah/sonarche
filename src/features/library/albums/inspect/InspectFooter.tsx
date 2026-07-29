@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ChangeSummary } from "@/features/library/albums/albumFields";
 import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
-import { PrimaryPill } from "@/features/library/metadata/PrimaryPill";
+import { PrimaryButton } from "@/features/library/metadata/PrimaryButton";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
 
@@ -154,9 +154,9 @@ export function InspectFooter({
             )}
           </AnimatePresence>
 
-          <PrimaryPill onPress={onSave} isPending={isSaving} isDisabled={!isDirty}>
+          <PrimaryButton onPress={onSave} isPending={isSaving} isDisabled={!isDirty}>
             {isSaving ? t("metadata.saving") : t("metadata.save")}
-          </PrimaryPill>
+          </PrimaryButton>
         </div>
       </div>
     </footer>
