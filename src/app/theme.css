@@ -29,181 +29,184 @@
 
 :root:not([data-theme="dark"]),
 [data-theme="light"] {
-  /* Sonarche identity: indigo accent */
-  --accent: oklch(0.58 0.21 277);
+  /* Sonarche identity: indigo accent, pressed into the paper rather than laid
+     on it. At 0.58/0.21 white on the filled button — the most clicked control
+     in the app — sat at 4.6:1, and the indigo was the most saturated object on
+     screen with a wide halo on top of it: the default SaaS violet. Same hue, so
+     the mark is untouched; lower and slightly less chromatic, which takes white
+     to 6.2:1 and the same indigo read as text from 4.6 to 6.2. */
+  --accent: oklch(0.505 0.185 277);
   --accent-foreground: var(--snow);
   --focus: var(--accent);
 
-  /* Near-white app background — HeroUI's default is a flat, cold 0-chroma
-     gray (oklch 0.9702 0 0) that reads as dull/dirty next to white surfaces
-     (sidebar, player, cards). Barely-there warmth, not enough to read as
-     yellow or gray. --background-secondary/-tertiary derive from this via
-     color-mix, so they follow automatically. */
-  --background: oklch(0.995 0.0012 75);
+  /* Paper, not white — and one hue axis with the night, 279.
+     The old arrangement had the ground at 0.995 under cards at 1.0: five
+     thousandths, so nothing was told apart by value and everything rested on a
+     black shadow. Worse, the temperature contradicted itself — a warm ground
+     (hue 75) under cold structural greys (286), which is what the eye reads as
+     "dirty grey", not their lightness.
+     Now four steps of 0.013, and the veil thickens as a surface sinks away
+     from the light (0.004 → 0.006 → 0.007 → 0.008). Same sentence as the night
+     block, read the other way: there we climb out of the black toward the
+     object, here we press the paper down under it. */
+  --surface: oklch(0.995 0.004 279);
+  --background: oklch(0.982 0.006 279);
+  --panel: oklch(0.968 0.007 279);
+  --tray: oklch(0.955 0.008 279);
+  --surface-secondary: oklch(0.952 0.008 279);
+  --surface-tertiary: oklch(0.937 0.009 279);
 
-  /* The five greys the app never owned.
-     `surface` is the sidebar, the player, every card and every modal;
-     `separator` and `border` are every hairline; `default` is every neutral
-     chip; `muted` is half the words on screen. They were HeroUI's, at chroma
-     0.005 on its own hue — so "never a zero-chroma grey", the rule the whole
-     identity rests on, was being broken on most of the pixels while we tuned
-     the background nobody looks at.
-     Restated here at HeroUI's own light values, unchanged: taking ownership of
-     the names is what lets the night theme answer for them, and the light
-     theme's own re-accord is a separate pass. */
-  --surface: oklch(1 0 0);
-  --surface-secondary: oklch(0.9524 0.0013 286.37);
-  --surface-tertiary: oklch(0.9373 0.0013 286.37);
-  --separator: oklch(0.92 0.004 286.32);
-  --border: oklch(0.9 0.004 286.32);
-  --default: oklch(0.94 0.001 286.375);
-  --muted: oklch(0.5517 0.0138 285.94);
-  --backdrop: rgb(0 0 0 / 0.5);
+  /* The ink. HeroUI hands out a chroma-0 near-black, which on tinted paper is
+     the most common "unfinished" tell a light theme has — and it is the single
+     largest coloured area in the app. 15.5:1, so nothing is lost. */
+  --foreground: oklch(0.255 0.02 279);
 
-  /* Tertiary hue — amber. Indigo + white alone reads duo-tone; this is the
-     only third color, reserved for "incomplete metadata" states and small
-     secondary accents. It rides HeroUI's `warning` scale so soft/foreground
-     variants and every warning-colored component follow for free. */
-  --warning: oklch(0.72 0.15 65);
+  /* Half the words on screen. The value deliberately does not move (4.7:1 is
+     just past AA and lowering it would be a regression); only the hue does. */
+  --muted: oklch(0.555 0.02 279);
 
-  /* Success — HeroUI ships a very light, very saturated green (0.7329 0.1935)
-     whose foreground is therefore DARK: filled success shapes come out with a
-     black glyph, and soft chips read acid. Dropping the lightness lets white
-     ride on top and turns the soft pair into the calm pale-green/deep-green
-     we want. Lightness dialed down again from 0.62: the tag-status dot in
-     the download queue read as too pale next to its warning/danger siblings. */
-  --success: oklch(0.52 0.15 157);
+  /* Hairlines. `separator` rules every table, the sidebar edge and the genre
+     card outline, so it has to hold on a 0.995 card and on a 0.982 ground
+     alike; `border` outlines fields and secondary buttons — the one hairline
+     that must be seen without being looked for, hence lower. */
+  --separator: oklch(0.905 0.01 279);
+  --border: oklch(0.875 0.013 279);
+  --default: oklch(0.935 0.009 279);
+
+  /* Darkening within the hue. 50% of pure black over pale paper is mud, and a
+     modal does not need to switch the page off, only to push it back. */
+  --backdrop: oklch(0.3 0.035 279 / 0.42);
+
+  /* Tertiary hue — amber, the only third colour, reserved for "incomplete
+     metadata". It was the app's one real accessibility bug: at 0.72 on
+     near-white it read 2.6:1, so every warning label, hairline and tag counter
+     was ghost text. At 0.545 it is 5.0:1.
+     Its foreground has to be stated, and it is the one token whose *polarity*
+     flips between themes: on this amber a dark glyph is 3.5:1 and white is
+     4.9:1, while on the night's paler amber it is exactly the other way round
+     (8.0 vs 2.2). HeroUI's default is the dark glyph, which is right for one
+     theme only. */
+  --warning: oklch(0.545 0.13 70);
+  --warning-foreground: var(--snow);
+
+  /* Success — value kept (5.1:1 with white, which is correct); only the chroma
+     comes down, so it stays under the accent. A ring that says "nothing to
+     report" should not be the most colourful object on the screen. */
+  --success: oklch(0.52 0.115 158);
   --success-foreground: var(--snow);
 
-  /* Danger — HeroUI's default (chroma 0.2328) is the most saturated color in
-     the whole palette and reads as alarm-red next to the calmer accent/
-     success/warning scale. Dialed down to match their chroma. */
-  --danger: oklch(0.6 0.17 25);
+  /* Danger — brought down to the level of the other statuses rather than
+     sitting a full step above them as the loudest colour in the palette. */
+  --danger: oklch(0.545 0.145 25);
   --danger-foreground: var(--snow);
 
-  /* Artist genre avatar — swap `accent` alone to re-tint every motif's
-     picked-out detail without touching a path. Currently graphite. */
-  --artist-avatar-bg: oklch(0.962 0.014 277);
+  /* Artist genre avatar — the plate sinks with the paper, or it would end up
+     lighter than the surface carrying it; the picked-out detail leaves
+     graphite for the axis. */
+  --artist-avatar-bg: oklch(0.948 0.02 279);
   --artist-avatar-ink: var(--accent);
-  --artist-avatar-accent: oklch(0.44 0.012 277);
+  --artist-avatar-accent: oklch(0.44 0.025 279);
 
   /* Genre family identity tones — one fixed colour per browse family (the 13
      roots of the sidecar's genre tree; a closed, curated set, which is what
-     makes a pre-decided identity legitimate). Muted on purpose: chroma stays
-     well under the accent's 0.21 so thirteen hues read as one family of
-     colours, not a rainbow competing with the indigo. Consumed only through
-     tone.ts — components never reference these directly. Dark-theme variants
-     land with the theme toggle pass. */
-  --family-pop: oklch(0.62 0.12 344);
-  --family-rock: oklch(0.55 0.11 32);
-  --family-metal: oklch(0.45 0.03 262);
-  --family-electronic: oklch(0.58 0.11 208);
-  --family-hip-hop: oklch(0.5 0.1 322);
-  --family-jazz: oklch(0.52 0.09 76);
-  --family-blues: oklch(0.5 0.1 240);
-  --family-soul-funk: oklch(0.6 0.11 54);
-  --family-folk: oklch(0.55 0.08 126);
-  --family-country: oklch(0.56 0.08 100);
-  --family-reggae: oklch(0.55 0.11 152);
-  --family-latin: oklch(0.6 0.13 12);
-  --family-classical: oklch(0.55 0.05 300);
+     makes a pre-decided identity legitimate).
+     One value and one chroma for all twenty, the hue alone carrying identity —
+     the same normalisation the night block already got, and for the same
+     reason: spread across 0.45–0.62 and 0.03–0.13, Metal was a dark grey-blue
+     dot while Cartoon was a bright orange on the same shelf, and a family's
+     colour changed *relationship* depending on the hour. Consumed only through
+     tone.ts — components never reference these directly. */
+  --family-pop: oklch(0.55 0.1 344);
+  --family-rock: oklch(0.55 0.1 32);
+  --family-metal: oklch(0.55 0.1 262);
+  --family-electronic: oklch(0.55 0.1 208);
+  --family-hip-hop: oklch(0.55 0.1 322);
+  --family-jazz: oklch(0.55 0.1 76);
+  --family-blues: oklch(0.55 0.1 240);
+  --family-soul-funk: oklch(0.55 0.1 54);
+  --family-folk: oklch(0.55 0.1 126);
+  --family-country: oklch(0.55 0.1 100);
+  --family-reggae: oklch(0.55 0.1 152);
+  --family-latin: oklch(0.55 0.1 12);
+  --family-classical: oklch(0.55 0.1 300);
 
   /* Category identity tones — same doctrine and volume as the family tones,
      for the taxonomy's known values (free values fall back to grey in
-     categories/tone.ts). Hues picked between the family ones so the two card
-     shelves never look like the same page recolored. */
-  --category-music: oklch(0.56 0.09 232);
-  --category-video-games: oklch(0.58 0.11 190);
-  --category-film: oklch(0.55 0.09 76);
-  --category-series: oklch(0.54 0.1 258);
-  --category-anime: oklch(0.62 0.12 350);
-  --category-cartoon: oklch(0.62 0.13 40);
-  --category-musical: oklch(0.53 0.1 316);
-
-  /* Panel wash — the backdrop of the metadata surfaces' secondary areas: the
-     album modal's identity column, both panels' action bars, the tracklist's
-     column header. HeroUI's `surface-secondary` (oklch 0.9524) is a real grey
-     at this size: spread over a whole column it reads as dull, and it swallows
-     anything tinted the same way sitting on it — the category chips vanished
-     into it, leaving bare text. This is the barely-there tint the design uses,
-     one notch off the surface it sits in, so chips and inputs still stand out
-     on top of it. */
-  --panel: oklch(0.985 0.0015 286);
-
-  /* List tray — the recessed block a list of rows is filed onto (the download
-     feed, the history, every empty state). It has to do two jobs at once that
-     no existing step does both of: read as a distinct area against the
-     near-white background (`panel`, one notch off white, disappears at this
-     size), and stay light enough that a white card laid on it still reads as
-     lifted rather than as one more grey box (`surface-secondary` at 0.9524 is
-     too close to a real grey for that). This sits between them. */
-  --tray: oklch(0.972 0.0015 286);
+     categories/tone.ts). They may share hues with families: the two shelves
+     are never on screen together. */
+  --category-music: oklch(0.55 0.1 232);
+  --category-video-games: oklch(0.55 0.1 190);
+  --category-film: oklch(0.55 0.1 76);
+  --category-series: oklch(0.55 0.1 258);
+  --category-anime: oklch(0.55 0.1 350);
+  --category-cartoon: oklch(0.55 0.1 40);
+  --category-musical: oklch(0.55 0.1 316);
 
   /* Source brand colors — not semantic app colors: they identify a third
      party, so they live outside the accent/success/warning scales and are
-     only ever used on that source's badge. Theme-swapped all the same: the
-     hue is YouTube's, the lightness is ours to keep legible. */
+     only ever used on that source's badge. Deliberately left off the 279 axis:
+     it is not our colour, so it has no reason to follow our accord. */
   --youtube: oklch(0.52 0.21 27);
   --youtube-soft: oklch(0.95 0.03 27);
 
-  /* Metadata drawer header — a decorative gradient, same hue as the app's
-     indigo accent but starting darker so it resolves into --accent rather
-     than sitting flat on it. */
-  --metadata-header-from: oklch(0.3 0.16 277);
+  /* Metadata drawer header — a decorative gradient, same hue as the accent but
+     starting darker so it resolves into it rather than sitting flat on it.
+     Raised with the accent: against 0.505 a start at 0.30 is a 0.20 ramp, and
+     the gradient starts reading *as* a gradient, which is the one thing it is
+     not supposed to do. */
+  --metadata-header-from: oklch(0.375 0.145 277);
   --metadata-header-to: var(--accent);
 
-  /* The hairline around a piece of artwork. Its job is to stop a cover whose
-     edges are near the page's own value from bleeding into it, so it is the
-     one border that has to invert outright rather than shift: a dark hairline
-     on a light page, a light one on a dark page. Was `ring-black/5`, which
-     simply vanished on the dark theme. */
-  --artwork-edge: rgb(0 0 0 / 0.05);
+  /* The hairline around a piece of artwork — the one border that inverts
+     outright between themes rather than shifting. 5% of pure black did not
+     hold a pale cover, which is the single case it exists for. */
+  --artwork-edge: oklch(0.3 0.03 279 / 0.09);
 
-  /* Elevation — what tells a card apart from the ground it is on.
-     In the light theme that job is done by a drop shadow, so these are
-     Tailwind's own values, unchanged: the app was built on them and there is
-     nothing to fix here. What matters is that they are now *vars*, which is
-     what lets the dark theme answer the same question differently. */
-  --elevation-edge: transparent;
-  --elevation-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --elevation-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --elevation-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --elevation-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --elevation-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Elevation. At night the edge replaces the shadow; by day it accompanies
+     it — a crisp arris plus a short shadow, rather than a blur on its own.
+     That is the difference in finish between a card that is drawn and a card
+     that is merely floating. The shadows move into the hue too: pure black on
+     tinted paper makes a dead grey, and it was the only area of the screen
+     off the axis. */
+  --elevation-edge: oklch(0.905 0.012 279);
+  --elevation-xs: 0 0 0 1px var(--elevation-edge), 0 1px 2px 0 oklch(0.38 0.05 279 / 0.06);
+  --elevation-sm:
+    0 0 0 1px var(--elevation-edge), 0 1px 2px 0 oklch(0.38 0.05 279 / 0.07), 0 1px 3px -1px oklch(0.38 0.05 279 / 0.08);
+  --elevation-md:
+    0 0 0 1px var(--elevation-edge), 0 2px 4px -1px oklch(0.38 0.05 279 / 0.08),
+    0 4px 8px -3px oklch(0.38 0.05 279 / 0.09);
+  --elevation-lg:
+    0 0 0 1px var(--elevation-edge), 0 4px 8px -2px oklch(0.38 0.05 279 / 0.1),
+    0 10px 18px -6px oklch(0.38 0.05 279 / 0.11);
+  --elevation-xl:
+    0 0 0 1px var(--elevation-edge), 0 8px 14px -4px oklch(0.38 0.05 279 / 0.1),
+    0 18px 28px -10px oklch(0.38 0.05 279 / 0.12);
 
-  /* The accent glow — the halo under an indigo control or a hero's artwork.
-     Not the same thing as elevation and now not spelled like it either: these
-     used to be `shadow-lg shadow-accent/25`, which Tailwind can only tint by
-     parsing the scale's literal value, so routing that scale through a var
-     (above) silently dropped the colour. Its own token, which it deserved
-     anyway — one says "this is off the page", the other says "this is lit". */
+  /* The accent glow under an indigo control. Shorter and closer than before:
+     on white, a wide coloured halo does not read as light, it reads as a
+     printing blur. The button sits *above* the paper, it does not radiate
+     into it. */
   --glow-accent:
-    0 10px 15px -3px color-mix(in oklab, var(--accent) 28%, transparent),
-    0 4px 6px -4px color-mix(in oklab, var(--accent) 28%, transparent);
-  --glow-accent-deep:
-    0 20px 25px -5px color-mix(in oklab, var(--accent) 20%, transparent),
-    0 8px 10px -6px color-mix(in oklab, var(--accent) 20%, transparent);
+    0 6px 14px -4px color-mix(in oklab, var(--accent) 22%, transparent),
+    0 2px 5px -2px color-mix(in oklab, var(--accent) 16%, transparent);
 
-  /* The accent band under a page's title — a tint the page carries at the top
-     and lets go of. Percentages are what `from-accent-soft/80 via-accent-soft/25`
-     already resolved to, so the light theme is unchanged; they are written out
-     because the value now has to be stated per theme, and a chain of Tailwind
-     opacity modifiers cannot be. */
-  --hero-wash: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--accent) 12%, transparent),
-    color-mix(in oklab, var(--accent) 3.75%, transparent) 50%,
-    var(--background)
-  );
+  /* Same call as the night: a record sleeve does not emit indigo light. It
+     keeps its arris and a neutral drop shadow. */
+  --glow-accent-deep: var(--elevation-xl);
 
-  /* The same band inside a surface — a drawer header, a modal's top bar — so it
-     resolves into whatever it sits on rather than into the app ground. */
-  --panel-wash: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--accent) 10.5%, transparent),
-    color-mix(in oklab, var(--accent) 3%, transparent) 50%,
-    transparent
-  );
+  /* The band under a page's title. 12% of indigo on near-white was not light,
+     it was a lilac fill, and it occupied the top third of the album page, the
+     URL composer and the modal. A fall of veil *value* instead, with no accent
+     in it — light comes from above, so the page brightens downward. The same
+     decision as the night block taken from the other end, which is what
+     finally makes the band read as one gesture across both themes. */
+  --hero-wash: linear-gradient(to bottom, oklch(0.955 0.014 279), oklch(0.97 0.01 279) 45%, var(--background));
+
+  /* The same band inside a surface — a drawer header, a modal's top bar. A
+     shading rather than a tint, so it works on whatever carries it without
+     being recomputed, and so it stops competing with the category chips laid
+     on top of it. */
+  --panel-wash: linear-gradient(to bottom, oklch(0.4 0.03 279 / 0.07), oklch(0.4 0.03 279 / 0.025) 45%, transparent);
 }
 
 /**
@@ -258,6 +261,11 @@
   --default: oklch(0.3 0.02 279);
   --muted: oklch(0.7 0.022 279);
 
+  /* The ink, off pure `--snow` and onto the axis for the same reason the day's
+     is off pure black: the largest coloured area in the app should belong to
+     the palette. 14.5:1 on a card, so nothing is given up. */
+  --foreground: oklch(0.965 0.008 279);
+
   /* Darken *within* the hue. Pure black over an already-dark page erases the
      veil and reopens the hole the theme is built to avoid. */
   --backdrop: oklch(0.1 0.024 279 / 0.72);
@@ -267,6 +275,11 @@
      the app should ever be more chromatic than the accent, and a green ring
      saying "nothing to report" was the most saturated object on screen. */
   --warning: oklch(0.76 0.115 65);
+  /* The one token whose polarity flips between the themes: on this pale amber
+     a dark glyph is 8.0:1 and white is 2.2:1, the exact opposite of the day's
+     deeper amber. Stating it on both sides is what keeps a filled warning
+     legible at either hour. */
+  --warning-foreground: var(--eclipse);
   --success: oklch(0.62 0.105 158);
   --success-foreground: var(--snow);
   --danger: oklch(0.6 0.135 25);
