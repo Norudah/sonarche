@@ -81,6 +81,7 @@ fn main() {
             commands::player_stop,
             commands::player_status,
             commands::now_playing_set,
+            commands::set_window_theme,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

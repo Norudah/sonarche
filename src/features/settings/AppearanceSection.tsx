@@ -2,54 +2,13 @@ import { Radio, RadioGroup } from "@heroui/react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
-import {
-  applyTheme,
-  readStoredPreference,
-  resolveTheme,
-  storePreference,
-  systemPrefersDark,
-  type ThemePreference,
-  watchSystemTheme,
-} from "@/features/settings/theme";
+import { useTheme } from "@/features/settings/ThemeContext";
+import type { ThemePreference } from "@/features/settings/theme";
 import { layoutIds, springs } from "@/shared/motion/tokens";
-
-/**
- * The live theme, and the choice behind it.
- *
- * Two pieces of state rather than one: what the user asked for is what the
- * control shows and what gets stored, while what the OS reports only matters
- * when the answer is "system". Keeping them apart means flipping the desktop to
- * dark repaints the app without silently rewriting the user's choice to `dark`.
- */
-function useThemePreference() {
-  const [preference, setPreference] = useState(readStoredPreference);
-  const [prefersDark, setPrefersDark] = useState(systemPrefersDark);
-
-  // The OS is an external system and this is the subscription to it — the one
-  // shape an effect is actually for. `watchSystemTheme` returns its own
-  // unsubscribe, so the cleanup is the return value.
-  useEffect(() => watchSystemTheme(setPrefersDark), []);
-
-  const resolved = resolveTheme(preference, prefersDark);
-
-  // The attribute lives on <html>, outside React's tree, so it is written in an
-  // effect rather than during render. Keyed on the resolved theme so both paths
-  // in — the user picking, and the OS changing under a `system` choice — land
-  // here without the caller having to remember either.
-  useEffect(() => applyTheme(resolved), [resolved]);
-
-  function choose(next: ThemePreference) {
-    setPreference(next);
-    storePreference(next);
-  }
-
-  return { preference, resolved, choose };
-}
 
 /* Same segmented grammar as the composer's album/track switch and the explorer's
  * view switch: one pill that slides between the options, so the choice reads as
@@ -97,7 +56,7 @@ function Segment({
  */
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  const { preference, resolved, choose } = useThemePreference();
+  const { preference, resolved, choose } = useTheme();
 
   return (
     <>

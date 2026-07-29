@@ -22,8 +22,7 @@
         "trafficLightPosition": {
           "x": 20,
           "y": 20
-        },
-        "theme": "Light"
+        }
       }
     ],
     "security": {

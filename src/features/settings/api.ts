@@ -58,3 +58,20 @@ export async function resetSetupDev(targets: SetupResetTargets): Promise<void> {
 export async function resetLibraryDev(): Promise<void> {
   await invoke("reset_library_dev");
 }
+
+/**
+ * Hands the Appearance choice to the native window frame — the traffic lights
+ * and system scrollbars on macOS, the caption bar's colour on Windows.
+ *
+ * Fire-and-forget, and it swallows: there is no browser behind a preview and no
+ * window worth taking the app down for. A frame one theme behind is a seam; an
+ * unhandled rejection on boot is a bug.
+ */
+export function setWindowTheme(choice: "light" | "dark" | "system"): void {
+  try {
+    void invoke("set_window_theme", { choice }).catch(() => {});
+  } catch {
+    // `invoke` throws on the spot when there is no Tauri behind the webview at
+    // all — a browser preview, a jsdom test — rather than rejecting.
+  }
+}

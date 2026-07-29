@@ -3,6 +3,18 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
+import { ThemeProvider } from "@/features/settings/ThemeContext";
+
+/** The state moved to the root provider so the OS subscription outlives this
+ * screen; the section is still where it is driven from, so the tests stay
+ * here and mount the pair. */
+function renderSection() {
+  return render(
+    <ThemeProvider>
+      <AppearanceSection />
+    </ThemeProvider>,
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -50,7 +62,7 @@ describe("AppearanceSection", () => {
   });
 
   it("applies the theme on the click and remembers it", async () => {
-    render(<AppearanceSection />);
+    renderSection();
 
     pick(screen.getByRole("radio", { name: /appearance.theme.dark/ }));
 
@@ -62,7 +74,7 @@ describe("AppearanceSection", () => {
     window.localStorage.setItem("sonarche.theme", "dark");
     stubMatchMedia(false);
 
-    render(<AppearanceSection />);
+    renderSection();
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
@@ -70,7 +82,7 @@ describe("AppearanceSection", () => {
   it("follows the OS when nothing has been chosen", () => {
     stubMatchMedia(true);
 
-    render(<AppearanceSection />);
+    renderSection();
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
@@ -86,7 +98,7 @@ describe("AppearanceSection", () => {
     // is `system` anyway.
     window.localStorage.setItem("sonarche.theme", "dark");
     const media = stubMatchMedia(false);
-    render(<AppearanceSection />);
+    renderSection();
 
     pick(screen.getByRole("radio", { name: /appearance.theme.system/ }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
@@ -99,7 +111,7 @@ describe("AppearanceSection", () => {
 
   it("keeps an explicit choice when the OS flips", async () => {
     const media = stubMatchMedia(false);
-    render(<AppearanceSection />);
+    renderSection();
 
     pick(screen.getByRole("radio", { name: /appearance.theme.light/ }));
     media.flipTo(true);

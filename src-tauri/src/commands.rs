@@ -21,6 +21,7 @@ use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
+use crate::window_chrome;
 
 const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -373,4 +374,11 @@ pub async fn delete_track(
             QUERY_TIMEOUT,
         )
         .await
+}
+
+/// The Appearance setting, pushed to the native frame. Thin on purpose: the
+/// window is the state, so there is nothing to keep here.
+#[tauri::command]
+pub fn set_window_theme(window: tauri::WebviewWindow, choice: window_chrome::ThemeChoice) {
+    window_chrome::follow(&window, choice);
 }
