@@ -52,6 +52,8 @@
      the names is what lets the night theme answer for them, and the light
      theme's own re-accord is a separate pass. */
   --surface: oklch(1 0 0);
+  --surface-secondary: oklch(0.9524 0.0013 286.37);
+  --surface-tertiary: oklch(0.9373 0.0013 286.37);
   --separator: oklch(0.92 0.004 286.32);
   --border: oklch(0.9 0.004 286.32);
   --default: oklch(0.94 0.001 286.375);
@@ -229,15 +231,24 @@
   --accent-foreground: var(--snow);
   --focus: var(--accent);
 
-  /* The four grounds — tray < background < panel < surface, four steps of
-     0.030, and the veil thins in *relative* terms as a surface rises toward
-     the light. Atmospheric perspective, taken from below.
-     0.13 approached absolute black, which is the floor of space; the floor of
-     night sits higher and is tinted twice as much. */
-  --tray: oklch(0.145 0.014 279);
+  /* The grounds, and the one place the light theme's arrangement cannot be
+     carried over as-is.
+     A tray is a recess: below the page in the light theme, where 0.972 under
+     0.995 is a shallow dip in something still almost white, and a bare row
+     filed on it reads perfectly. Mirrored into the night that becomes 0.145
+     under 0.175 — the same 0.030 step, but taken from near the floor, so a
+     page whose content sits *only* on the tray (the history, where nothing is
+     lifted above it) turns into a black hole with hairlines in it. Depth does
+     not survive the mirror; distance from the floor does.
+     So the tray rises above the ground here and stays below a card. It is
+     still the surface a list is filed onto and still not a card — it is simply
+     no longer a pit. */
   --background: oklch(0.175 0.016 279);
+  --tray: oklch(0.2 0.017 279);
   --panel: oklch(0.205 0.017 279);
   --surface: oklch(0.235 0.018 279);
+  --surface-secondary: oklch(0.265 0.019 279);
+  --surface-tertiary: oklch(0.29 0.02 279);
 
   /* Hairlines and neutrals, on the same axis. `separator` at HeroUI's 0.25 was
      invisible on a card at 0.235, which turned the album tracklist — the

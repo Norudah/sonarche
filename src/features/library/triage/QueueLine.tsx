@@ -4,7 +4,12 @@ import { Link } from "react-router";
 
 import type { TriageLine } from "@/features/library/triage/queue";
 
-const ROW = "flex items-center justify-between gap-4 rounded-xl border border-separator/60 px-4 py-3";
+/* `bg-surface` and not just a border: a row of the queue is a card, the same
+ * one `SettingCard` draws. It went without a background until now because on
+ * the light theme the app ground (0.995) and a card (1.0) are the same white —
+ * the omission was invisible. On the night theme it is 0.175 against 0.235, and
+ * the whole page read as a hole with hairlines drawn on it. */
+const ROW = "flex items-center justify-between gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
 
 /** "Neon Slumber, Half Light +19" — what the count is made of, in plain
  * muted text (not individually clickable in v1; the door opens the list). */
