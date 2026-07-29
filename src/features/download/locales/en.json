@@ -53,7 +53,8 @@
   },
   "history": {
     "title": "History",
-    "lede": "Every download, newest first.",
+    "lede": "Everything that entered the ark, newest first.",
+    "heading": "Downloads",
     "empty": {
       "title": "No downloads yet",
       "body": "The history keeps every link you fetched, newest first."

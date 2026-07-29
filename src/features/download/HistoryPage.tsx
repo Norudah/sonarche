@@ -1,5 +1,5 @@
 import { ArrowRight, History, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { paths } from "@/app/routes";
@@ -11,6 +11,18 @@ import { pageOfJobs } from "@/features/download/queue/page";
 import { ActionButton, ActionLink } from "@/shared/ui/ActionLink";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
+
+interface HistoryPageProps {
+  /**
+   * The other ways music arrived, filed above the downloads.
+   *
+   * A slot, because this page is the archive of *everything* that entered the
+   * ark while this component only knows about downloads — a library import is
+   * another feature's business, and features do not import each other. The shell
+   * composes the two (see `app/routes.tsx`).
+   */
+  arrivals?: ReactNode;
+}
 
 /**
  * The whole download history, paged.
@@ -25,7 +37,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
  * with the columns: it moved into each row's own panel, where it is read on
  * demand rather than spread across every row at once.
  */
-export function HistoryPage() {
+export function HistoryPage({ arrivals }: HistoryPageProps) {
   const { t } = useTranslation("download");
   const [clearingHistory, setClearingHistory] = useState(false);
   const [requestedPage, setRequestedPage] = useState(1);
@@ -41,11 +53,14 @@ export function HistoryPage() {
   const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
   const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
 
-  // One list, no sections: this page is the archive in one order, newest first.
+  // Named now that it is not the only thing on the page: a library import files
+  // its own section above, and two unlabelled stacks of rows would read as one
+  // list that changes shape half way down.
   const sections: JobSection[] = useMemo(
     () => [
       {
         key: "history",
+        heading: t("history.heading"),
         jobs: visible,
         onTray: true,
         empty: (
@@ -76,6 +91,8 @@ export function HistoryPage() {
           {t("queue.clearHistory")}
         </ActionButton>
       </header>
+
+      {arrivals}
 
       <JobDeck sections={sections} downloadPercent={downloadPercent} enrichStages={enrichStages} />
 

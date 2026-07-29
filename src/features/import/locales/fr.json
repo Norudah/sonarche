@@ -51,5 +51,26 @@
   "coversProgress": "Pochette {{done, number}} sur {{total, number}}",
   "shrinkingWhy": "Les pochettes trop grandes reçoivent une version d'affichage. L'originale est conservée à côté.",
   "doneRenditions_one": "{{count, number}} pochette a reçu une version d'affichage.",
-  "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage."
+  "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage.",
+  "history": {
+    "heading": "Imports"
+  },
+  "recap": {
+    "albums_one": "{{count, number}} album",
+    "albums_other": "{{count, number}} albums",
+    "folders_one": "{{count, number}} dossier",
+    "folders_other": "{{count, number}} dossiers",
+    "unplayable_one": "{{count, number}} fichier illisible ({{formats}}) — importé quand même",
+    "unplayable_other": "{{count, number}} fichiers illisibles ({{formats}}) — importés quand même",
+    "tagState": "État des tags à l'arrivée",
+    "clean": "Tout est renseigné : année, genre, pochette, tracklist.",
+    "withoutYear": "Année manquante",
+    "withoutGenre": "Genre manquant",
+    "offTree": "Genre hors arbre",
+    "albumsWithoutArt": "Albums sans pochette",
+    "albumsWithGaps": "Tracklists à trous",
+    "openMetadata": "Ouvrir Métadonnées",
+    "expand": "Voir le détail de l'import",
+    "collapse": "Replier le détail de l'import"
+  }
 }

@@ -24,6 +24,29 @@ export function scanImportFolder(path: string): Promise<ScanReport> {
   return invoke<ScanReport>("scan_import_folder", { path });
 }
 
+/**
+ * The state of the tags an import brought in, as the sidecar counted them
+ * (`sidecar/import_recap.py`) over the items it had just stamped.
+ *
+ * This is the part worth reading. A library import is deliberately as-is — no
+ * MusicBrainz, no AcoustID, no genre lookup — so what lands is exactly what the
+ * files already carried, and the interesting question is not "did the copy
+ * work" but "is any of this tagged".
+ *
+ * Null on a record whose run the sidecar could not account for, which is a
+ * different fact from a run that brought in nothing.
+ */
+export interface ImportRecap {
+  tracks: number;
+  albums: number;
+  withoutYear: number;
+  withoutGenre: number;
+  /** A genre the files carry that is not on Sonarche's tree. */
+  offTree: number;
+  albumsWithoutArt: number;
+  albumsWithGaps: number;
+}
+
 /** What the import did, once it is over. */
 export interface ImportOutcome {
   /** Album folders beets took on — comparable to the scan's `albumFolders`. */
@@ -31,6 +54,41 @@ export interface ImportOutcome {
   /** Covers too big to draw that were given a small rendition, the original
    * kept beside them as `cover-hq.*`. */
   renditions: number;
+  recap: ImportRecap | null;
+}
+
+/** The scan's counts as the archive keeps them — the report itself is not
+ * stored, only the figures a finished import can still be asked about. */
+export interface ImportScanCounts {
+  playable: number;
+  unplayable: number;
+  unplayableByExtension: Record<string, number>;
+  bytes: number;
+  albumFolders: number;
+}
+
+/**
+ * One finished import, out of the app's own database.
+ *
+ * Written once, at the end, which is why there is no `running` status: the page
+ * driving an import shows it live, and the archive only ever holds runs that
+ * ended.
+ */
+export interface ImportRecord {
+  id: string;
+  folder: string;
+  status: "done" | "failed";
+  error: string | null;
+  scan: ImportScanCounts;
+  folders: number;
+  renditions: number;
+  recap: ImportRecap | null;
+  /** Epoch milliseconds. */
+  finishedAt: number;
+}
+
+export function listImports(): Promise<ImportRecord[]> {
+  return invoke<ImportRecord[]>("list_imports");
 }
 
 /** Copy a folder's music into the library. Resolves when beets is done, which

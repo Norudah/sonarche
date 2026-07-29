@@ -11,7 +11,7 @@ use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
-use crate::library_import::{ImportOutcome, LibraryImportState};
+use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_scan::{self, ScanReport};
 use crate::now_playing::{self, NowPlayingTrack};
 use crate::onboarding::{self, OnboardingState};
@@ -92,13 +92,23 @@ pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job
 /// Read-only, and off the runtime: a music library is a deep tree and
 /// `read_dir` is blocking.
 #[tauri::command]
-pub async fn scan_import_folder(app: AppHandle, path: String) -> AppResult<ScanReport> {
+pub async fn scan_import_folder(
+    app: AppHandle,
+    state: State<'_, LibraryImportState>,
+    path: String,
+) -> AppResult<ScanReport> {
     let root = PathBuf::from(&path);
     library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_dir)?;
 
-    tokio::task::spawn_blocking(move || library_scan::scan(&root))
+    let scanned = root.clone();
+    let report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
         .await
-        .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))?
+        .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))??;
+
+    // Kept so the import that follows can be archived with the counts this
+    // process measured, rather than with counts handed back by the page.
+    state.remember_scan(&root, &report).await;
+    Ok(report)
 }
 
 /// Copy a folder's music into the library. Takes as long as it takes; progress
@@ -107,10 +117,18 @@ pub async fn scan_import_folder(app: AppHandle, path: String) -> AppResult<ScanR
 pub async fn start_library_import(
     app: AppHandle,
     sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
     state: State<'_, LibraryImportState>,
     folder: String,
 ) -> AppResult<ImportOutcome> {
-    state.run(&app, &sidecar, &folder).await
+    state.run(&app, &sidecar, &jobs, &folder).await
+}
+
+/// Every finished library import, newest first. The archive of the other way
+/// music enters the ark.
+#[tauri::command]
+pub async fn list_imports(jobs: State<'_, JobsState>) -> AppResult<Vec<ImportRecord>> {
+    Ok(jobs.list_imports().await)
 }
 
 #[tauri::command]

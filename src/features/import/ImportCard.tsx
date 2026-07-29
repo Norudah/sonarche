@@ -78,9 +78,16 @@ export function ImportCard({ folder, phase, progress }: ImportCardProps) {
             {name ?? t("choosePlaceholder")}
           </p>
 
-          <Swap swapKey={label} className="block min-w-0 truncate text-xs text-muted">
-            {label}
-          </Swap>
+          {/* The stage cross-fades, the counter does not — see `useImportLabel`
+              for why that split is what stopped the card jumping. `cross` and
+              not `wait`: the two versions share one grid cell, so the line's
+              box never collapses between them. */}
+          <p className="flex min-w-0 items-baseline gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted">
+            <Swap swapKey={label.phase} mode="cross">
+              {label.phase}
+            </Swap>
+            {label.counter != null && <span className="tabular-nums">· {label.counter}</span>}
+          </p>
 
           <div className="mt-1.5 flex flex-col gap-1.5">
             <PipelineRail
@@ -89,7 +96,7 @@ export function ImportCard({ folder, phase, progress }: ImportCardProps) {
               activeIndex={rail.activeIndex}
               failedIndex={rail.failedIndex}
               tone={rail.tone}
-              label={label}
+              label={label.text}
             />
             <StageLabels rail={rail} />
           </div>

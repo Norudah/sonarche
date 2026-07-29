@@ -19,6 +19,7 @@ Two flags carry the whole doctrine:
 import os
 import subprocess
 
+import import_recap
 import protocol
 from importer import beet_bin
 
@@ -26,11 +27,17 @@ from importer import beet_bin
 def handle(request_id: str, params: dict) -> dict:
     folder = params["folder"]
     config_path = params["beets_config"]
+    # The app's id for this run. Stamped on every item beets takes on, which is
+    # the only way to ask afterwards what *this* import brought in — beets keeps
+    # no record of a run, and `added` timestamps cannot separate two imports
+    # started a minute apart.
+    batch = params["import_id"]
     if not os.path.isdir(folder):
         raise RuntimeError(f"folder not found: {folder}")
 
     cmd = [beet_bin(), "--config", config_path, "import",
-           "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c", folder]
+           "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
+           f"--set={import_recap.BATCH_FIELD}={batch}", folder]
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
 
@@ -83,7 +90,17 @@ def handle(request_id: str, params: dict) -> dict:
     if code != 0:
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
 
-    return {"folders": folders, "renditions": _shrink_covers(request_id, params)}
+    # The recap is read before the cover pass, not after: the pass touches every
+    # album in the library, and holding a write-capable Library open while a
+    # read-only connection counts the same rows is a lock we do not need. The
+    # counts it reports are about tags, which the cover pass cannot change.
+    recap = import_recap.build(params["beets_db"], batch)
+
+    return {
+        "folders": folders,
+        "renditions": _shrink_covers(request_id, params),
+        "recap": recap,
+    }
 
 
 def _shrink_covers(request_id: str, params: dict) -> int:

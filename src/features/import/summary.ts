@@ -42,8 +42,12 @@ export function formatBytes(bytes: number, locale: string, units: readonly strin
 }
 
 /** Extensions of what cannot be decoded, most common first, dotted for reading.
- * Ties broken alphabetically so the same folder always reads the same. */
-export function unplayableFormats(report: ScanReport): string[] {
+ * Ties broken alphabetically so the same folder always reads the same.
+ *
+ * Takes the one field it reads rather than a whole `ScanReport`, so an import
+ * recalled from the archive — which keeps the counts and not the report — names
+ * its formats through this same function instead of a second copy of the rule. */
+export function unplayableFormats(report: { unplayableByExtension: Record<string, number> }): string[] {
   return Object.entries(report.unplayableByExtension)
     .sort(([aExt, aCount], [bExt, bCount]) => bCount - aCount || aExt.localeCompare(bExt))
     .map(([extension]) => `.${extension}`);

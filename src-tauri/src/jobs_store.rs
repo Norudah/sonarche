@@ -22,6 +22,7 @@ use serde_json::Value;
 
 use crate::error::{AppError, AppResult};
 use crate::jobs::{AlbumTrack, Job};
+use crate::library_import::{ImportRecord, ScanCounts};
 
 /// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
 /// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
@@ -69,9 +70,34 @@ CREATE TABLE IF NOT EXISTS job_tracks (
     PRIMARY KEY (job_id, idx)
 );
 
+-- One row per *finished* library import. Nothing is written while one runs: the
+-- page running it shows a live card, and a row left at \"running\" because the app
+-- was closed mid-copy is a claim the archive could never retract.
+--
+-- The scan's counts are kept alongside the outcome so a row can say what was
+-- asked of the import and not only what came back — and `recap` holds the state
+-- of the tags that arrived, as JSON, because its shape belongs to the sidecar
+-- (see sidecar/import_recap.py) and Rust has no reason to know it.
+CREATE TABLE IF NOT EXISTS imports (
+    id            TEXT PRIMARY KEY,
+    folder        TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    error         TEXT,
+    playable      INTEGER NOT NULL DEFAULT 0,
+    unplayable    INTEGER NOT NULL DEFAULT 0,
+    unplayable_by_extension TEXT,
+    bytes         INTEGER NOT NULL DEFAULT 0,
+    album_folders INTEGER NOT NULL DEFAULT 0,
+    folders       INTEGER NOT NULL DEFAULT 0,
+    renditions    INTEGER NOT NULL DEFAULT 0,
+    recap         TEXT,
+    finished_at   INTEGER NOT NULL
+);
+
 -- Read path ordering + the queryable columns future features (retry-all,
 -- URL/video dedup at enqueue, per-item lookup) will index against.
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_imports_finished ON imports(finished_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status  ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_url     ON jobs(url);
 CREATE INDEX IF NOT EXISTS idx_tracks_item  ON job_tracks(item_id);
@@ -328,6 +354,65 @@ pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
     Ok(jobs)
 }
 
+pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO imports (
+            id, folder, status, error, playable, unplayable,
+            unplayable_by_extension, bytes, album_folders, folders, renditions,
+            recap, finished_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+        params![
+            record.id,
+            record.folder,
+            enum_to_text(&record.status)?,
+            record.error,
+            record.scan.playable as i64,
+            record.scan.unplayable as i64,
+            serde_json::to_string(&record.scan.unplayable_by_extension)?,
+            record.scan.bytes as i64,
+            record.scan.album_folders as i64,
+            record.folders as i64,
+            record.renditions as i64,
+            report_to_text(&record.recap)?,
+            record.finished_at as i64,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn list_imports(conn: &Connection) -> AppResult<Vec<ImportRecord>> {
+    let mut stmt = conn.prepare("SELECT * FROM imports ORDER BY finished_at DESC")?;
+    let rows = stmt.query_map([], |row| Ok(row_to_import(row)))?;
+    let mut records = Vec::new();
+    for row in rows {
+        records.push(row??);
+    }
+    Ok(records)
+}
+
+fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
+    Ok(ImportRecord {
+        id: row.get("id")?,
+        folder: row.get("folder")?,
+        status: enum_from_text(&row.get::<_, String>("status")?)?,
+        error: row.get("error")?,
+        scan: ScanCounts {
+            playable: row.get::<_, i64>("playable")? as u64,
+            unplayable: row.get::<_, i64>("unplayable")? as u64,
+            unplayable_by_extension: row
+                .get::<_, Option<String>>("unplayable_by_extension")?
+                .and_then(|raw| serde_json::from_str(&raw).ok())
+                .unwrap_or_default(),
+            bytes: row.get::<_, i64>("bytes")? as u64,
+            album_folders: row.get::<_, i64>("album_folders")? as u64,
+        },
+        folders: row.get::<_, i64>("folders")? as u64,
+        renditions: row.get::<_, i64>("renditions")? as u64,
+        recap: report_from_text(row.get("recap")?)?,
+        finished_at: row.get::<_, i64>("finished_at")? as u64,
+    })
+}
+
 /// Drop terminal (done/failed) jobs; their tracks go with them via cascade.
 pub fn delete_terminal(conn: &Connection) -> AppResult<()> {
     conn.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
@@ -367,6 +452,7 @@ pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
 mod tests {
     use super::*;
     use crate::jobs::{JobKind, JobStatus, JobStep, TrackStatus};
+    use crate::library_import::ImportStatus;
     use serde_json::json;
 
     fn mem() -> Connection {
@@ -620,5 +706,74 @@ mod tests {
             .map(|j| j.id)
             .collect();
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+
+    fn import(id: &str, finished_at: u64) -> ImportRecord {
+        ImportRecord {
+            id: id.to_string(),
+            folder: "/Volumes/Backup/Music".to_string(),
+            status: ImportStatus::Done,
+            error: None,
+            scan: ScanCounts {
+                playable: 4287,
+                unplayable: 25,
+                unplayable_by_extension: [("wma".to_string(), 19u64), ("opus".to_string(), 6)]
+                    .into(),
+                bytes: 31_400_000_000,
+                album_folders: 312,
+            },
+            folders: 312,
+            renditions: 40,
+            recap: Some(json!({ "tracks": 4312, "withoutGenre": 96 })),
+            finished_at,
+        }
+    }
+
+    /// The recap and the extension map are the two fields that go through JSON
+    /// on the way in, which is where an archive silently loses its detail.
+    #[test]
+    fn an_import_survives_the_round_trip_whole() {
+        let conn = mem();
+        insert_import(&conn, &import("i", 100)).unwrap();
+
+        let stored = list_imports(&conn).unwrap();
+
+        assert_eq!(stored.len(), 1);
+        let record = &stored[0];
+        assert_eq!(record.scan.unplayable_by_extension.get("wma"), Some(&19));
+        assert_eq!(record.scan.bytes, 31_400_000_000);
+        assert_eq!(
+            record.recap.as_ref().and_then(|r| r.get("withoutGenre")),
+            Some(&json!(96))
+        );
+        assert!(matches!(record.status, ImportStatus::Done));
+    }
+
+    #[test]
+    fn list_imports_is_newest_first() {
+        let conn = mem();
+        insert_import(&conn, &import("old", 100)).unwrap();
+        insert_import(&conn, &import("new", 200)).unwrap();
+
+        let ids: Vec<String> = list_imports(&conn)
+            .unwrap()
+            .into_iter()
+            .map(|record| record.id)
+            .collect();
+        assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+
+    /// Clearing the download history must not take the imports with it: they are
+    /// two archives in one file, and the button says "downloads".
+    #[test]
+    fn clearing_the_download_history_leaves_the_imports_alone() {
+        let conn = mem();
+        upsert_job(&conn, &single("j", JobStatus::Done)).unwrap();
+        insert_import(&conn, &import("i", 100)).unwrap();
+
+        delete_terminal(&conn).unwrap();
+
+        assert!(list_jobs(&conn).unwrap().is_empty());
+        assert_eq!(list_imports(&conn).unwrap().len(), 1);
     }
 }

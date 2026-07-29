@@ -53,7 +53,8 @@
   },
   "history": {
     "title": "Historique",
-    "lede": "Tous les téléchargements, du plus récent au plus ancien.",
+    "lede": "Tout ce qui est entré dans l'arche, du plus récent au plus ancien.",
+    "heading": "Téléchargements",
     "empty": {
       "title": "Aucun téléchargement",
       "body": "L'historique garde chaque lien récupéré, du plus récent au plus ancien."

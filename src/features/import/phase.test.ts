@@ -55,11 +55,12 @@ describe("importPhase", () => {
   });
 
   /** The scan result is still in the cache when the import finishes; the
-   * finished import is what the screen is about. */
-  it("prefers the outcome over the scan it came from", () => {
-    const outcome = { folders: 2, renditions: 1 };
+   * finished import is what the screen is about — but it carries the report
+   * along, because the recap is about the two together. */
+  it("prefers the outcome over the scan it came from, and keeps that scan", () => {
+    const outcome = { folders: 2, renditions: 1, recap: null };
 
-    expect(importPhase(input({ report, outcome }))).toEqual({ kind: "imported", outcome });
+    expect(importPhase(input({ report, outcome }))).toEqual({ kind: "imported", outcome, report });
   });
 
   it("keeps the report when the import fails, so a retry needs no rescan", () => {

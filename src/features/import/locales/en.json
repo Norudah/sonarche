@@ -51,5 +51,26 @@
   "coversProgress": "Cover {{done, number}} of {{total, number}}",
   "shrinkingWhy": "Oversized covers get a display version. The original is kept beside it.",
   "doneRenditions_one": "{{count, number}} cover got a display version.",
-  "doneRenditions_other": "{{count, number}} covers got a display version."
+  "doneRenditions_other": "{{count, number}} covers got a display version.",
+  "history": {
+    "heading": "Imports"
+  },
+  "recap": {
+    "albums_one": "{{count, number}} album",
+    "albums_other": "{{count, number}} albums",
+    "folders_one": "{{count, number}} folder",
+    "folders_other": "{{count, number}} folders",
+    "unplayable_one": "{{count, number}} unreadable file ({{formats}}) — imported anyway",
+    "unplayable_other": "{{count, number}} unreadable files ({{formats}}) — imported anyway",
+    "tagState": "Tag state on arrival",
+    "clean": "Everything is filled in: year, genre, artwork, tracklist.",
+    "withoutYear": "Missing year",
+    "withoutGenre": "Missing genre",
+    "offTree": "Off-tree genre",
+    "albumsWithoutArt": "Albums with no artwork",
+    "albumsWithGaps": "Gapped tracklists",
+    "openMetadata": "Open Metadata",
+    "expand": "Show the import's detail",
+    "collapse": "Hide the import's detail"
+  }
 }

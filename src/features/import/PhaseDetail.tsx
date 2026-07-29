@@ -4,9 +4,10 @@ import { useTranslation } from "react-i18next";
 
 import type { ImportProgress } from "@/features/import/hooks";
 import type { ImportPhase } from "@/features/import/phase";
+import { ImportRecapPanel } from "@/features/import/ImportRecapPanel";
 import { ScanSummary } from "@/features/import/ScanSummary";
 import { hasAudio } from "@/features/import/summary";
-import { Swap } from "@/shared/motion/Swap";
+import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 
 /**
@@ -76,21 +77,40 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
       );
 
     case "imported":
-      return (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[0.8125rem]">{t("doneDetail", { count: phase.outcome.folders })}</p>
-          {phase.outcome.renditions > 0 && (
-            <p className="text-[0.8125rem] text-muted">{t("doneRenditions", { count: phase.outcome.renditions })}</p>
-          )}
-        </div>
-      );
+      // The same panel the archive shows, not a shorter version of it: what an
+      // import brought in is one set of facts, and the page that just ran it is
+      // exactly where they matter most.
+      return <Landed phase={phase} />;
   }
+}
+
+/**
+ * The import, over. The count of what came in leads, then the panel — its own
+ * component because the headline is a hook, and the switch above is a plain
+ * function that cannot call one.
+ */
+function Landed({ phase }: { phase: Extract<ImportPhase, { kind: "imported" }> }) {
+  const headline = useImportHeadline(phase.outcome.folders, phase.report, phase.outcome.recap);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-[0.8125rem]">{headline}</p>
+      <ImportRecapPanel renditions={phase.outcome.renditions} scan={phase.report} recap={phase.outcome.recap} />
+    </div>
+  );
 }
 
 /**
  * The one line that moves while beets works: which album is being copied, or —
  * on the cover pass, which counts something else entirely — why the app is
  * still busy after the copy looked finished.
+ *
+ * Not animated, and always rendered. A name that is replaced a dozen times in
+ * as many seconds is a readout going past, not a state landing: it used to
+ * cross-fade, which took the line out of the DOM and put it back on every album
+ * and made the whole card breathe. The fixed height is the other half of that —
+ * before the first tick there is nothing to say, and an empty line has to hold
+ * its place rather than let the card grow into it a beat later.
  */
 function CopyingLine({ progress }: { progress: ImportProgress | null }) {
   const { t } = useTranslation("import");
@@ -102,13 +122,7 @@ function CopyingLine({ progress }: { progress: ImportProgress | null }) {
         ? t("shrinkingWhy")
         : (progress.folder?.split(/[/\\]/).filter(Boolean).at(-1) ?? null);
 
-  if (text == null) return null;
-
-  return (
-    <Swap swapKey={text} className="block truncate text-[0.8125rem] text-muted">
-      {text}
-    </Swap>
-  );
+  return <p className="h-5 truncate text-[0.8125rem] leading-5 text-muted">{text}</p>;
 }
 
 function Failure({ title, message }: { title: string; message: string }) {

@@ -626,6 +626,7 @@ export function installMockTauri() {
       if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
+      if (cmd === "list_imports") return [...mockImports];
       if (cmd === "get_env_status") return { ...env };
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
@@ -755,6 +756,63 @@ const MOCK_IMPORT_FOLDERS = [
   "The Avalanches/Since I Left You",
 ];
 
+/** The scan's counts as the archive keeps them — the subset a finished import
+ * can still be asked about. */
+function mockScanCounts() {
+  const report = mockScan(MOCK_IMPORT_FOLDER) as Record<string, unknown>;
+  return {
+    playable: report.playable,
+    unplayable: report.unplayable,
+    unplayableByExtension: report.unplayableByExtension,
+    bytes: report.bytes,
+    albumFolders: MOCK_IMPORT_FOLDERS.length,
+  };
+}
+
+/**
+ * Two runs already in the archive, so the History page has both verdicts on it
+ * before anything is imported in the preview. The older one failed: the row that
+ * says an import stopped is the one nobody thinks to look at.
+ */
+const mockImports: unknown[] = [
+  {
+    id: "import-seed-2",
+    folder: "/Volumes/Backup/archive/2019/Soundtracks",
+    status: "done",
+    error: null,
+    scan: { playable: 312, unplayable: 0, unplayableByExtension: {}, bytes: 2_100_000_000, albumFolders: 14 },
+    folders: 14,
+    renditions: 9,
+    recap: {
+      tracks: 312,
+      albums: 14,
+      withoutYear: 0,
+      withoutGenre: 0,
+      offTree: 0,
+      albumsWithoutArt: 0,
+      albumsWithGaps: 0,
+    },
+    finishedAt: Date.now() - 86_400_000 * 3,
+  },
+  {
+    id: "import-seed-1",
+    folder: "/Volumes/Elements/Musique (sauvegarde)",
+    status: "failed",
+    error: "beet import failed (exit 1): [Errno 13] Permission denied: '/Volumes/Elements/Musique (sauvegarde)'",
+    scan: {
+      playable: 1904,
+      unplayable: 61,
+      unplayableByExtension: { wma: 61 },
+      bytes: 12_800_000_000,
+      albumFolders: 97,
+    },
+    folders: 0,
+    renditions: 0,
+    recap: null,
+    finishedAt: Date.now() - 86_400_000 * 11,
+  },
+];
+
 /**
  * An import that takes visible time.
  *
@@ -786,7 +844,30 @@ async function mockLibraryImport(folder: string): Promise<unknown> {
     });
   }
 
-  return { folders: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2) };
+  const record = {
+    id: `import-${Date.now()}`,
+    folder,
+    status: "done" as const,
+    error: null,
+    scan: mockScanCounts(),
+    folders: MOCK_IMPORT_FOLDERS.length,
+    renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2),
+    recap: {
+      tracks: 118,
+      albums: MOCK_IMPORT_FOLDERS.length,
+      withoutYear: 12,
+      withoutGenre: 41,
+      offTree: 3,
+      albumsWithoutArt: 2,
+      albumsWithGaps: 1,
+    },
+    finishedAt: Date.now(),
+  };
+  // The archive gains a row the moment an import ends, exactly as the backend
+  // does it — so the History page has something to show after a preview import.
+  mockImports.unshift(record);
+
+  return { folders: record.folders, renditions: record.renditions, recap: record.recap };
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

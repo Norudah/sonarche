@@ -66,7 +66,8 @@ describe("importRail", () => {
   });
 
   it("fills every stage in the success tone once the import lands", () => {
-    expect(importRail({ kind: "imported", outcome: { folders: 10, renditions: 0 } }, null)).toMatchObject({
+    const outcome = { folders: 10, renditions: 0, recap: null };
+    expect(importRail({ kind: "imported", outcome, report }, null)).toMatchObject({
       fills: [1, 1, 1],
       tone: "success",
       activeIndex: null,

@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
 use crate::jobs_store;
+use crate::library_import;
 use crate::preferences;
 use crate::python_env::{self, AppPaths};
 use crate::settings;
@@ -1102,6 +1103,33 @@ impl JobsState {
             Ok(jobs) => jobs,
             Err(err) => {
                 eprintln!("[jobs] list failed: {err}");
+                Vec::new()
+            }
+        }
+    }
+
+    /// File a finished library import in the same store the download history
+    /// lives in — it is the app's own database, not the download feature's, and
+    /// an import is the other way music enters the ark.
+    ///
+    /// Swallows: the import itself has already happened and its result is on its
+    /// way back to the page. Losing the archive row is worth a log line, never
+    /// turning a successful import into a reported failure.
+    pub async fn record_import(&self, record: library_import::ImportRecord) {
+        if let Err(err) = with_conn(&self.0, move |conn| {
+            jobs_store::insert_import(conn, &record)
+        })
+        .await
+        {
+            eprintln!("[imports] recording failed: {err}");
+        }
+    }
+
+    pub async fn list_imports(&self) -> Vec<library_import::ImportRecord> {
+        match with_conn(&self.0, jobs_store::list_imports).await {
+            Ok(records) => records,
+            Err(err) => {
+                eprintln!("[imports] list failed: {err}");
                 Vec::new()
             }
         }

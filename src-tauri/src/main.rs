@@ -68,6 +68,7 @@ fn main() {
             commands::update_tracks,
             commands::scan_import_folder,
             commands::start_library_import,
+            commands::list_imports,
             commands::list_api_keys,
             commands::set_api_key,
             commands::reset_setup_dev,
