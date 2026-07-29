@@ -89,6 +89,23 @@ def _write_rendition(source: str, dest: str) -> None:
         image.save(dest, format=fmt)
 
 
+def existing_hq(art_dir: str) -> str | None:
+    """The archive already sitting beside an album's art, whatever its
+    extension. Matched on the prefix rather than rebuilt from the current
+    art's extension: a `cover.png` arriving next to a `cover-hq.jpg` left by an
+    earlier original must find it, or the folder ends up with two archives and
+    no way to say which is the real one.
+    """
+    try:
+        names = sorted(os.listdir(art_dir))
+    except OSError:
+        return None
+    for name in names:
+        if name.startswith(HQ_PREFIX):
+            return os.path.join(art_dir, name)
+    return None
+
+
 def ensure_display_rendition(art_path: str) -> bool:
     """Make sure the file the interface reads is small enough to draw.
 
@@ -98,6 +115,17 @@ def ensure_display_rendition(art_path: str) -> bool:
 
     Never destructive: the original survives under the archive name, which is
     the whole point of keeping two files rather than shrinking one.
+
+    An archive that is *already* there is never overwritten, and that is a
+    correctness rule rather than an optimisation. Reaching this line at all
+    means the file at `artpath` is oversized — which our own rendition never is
+    — so something replaced it since we last passed. beets is the likeliest
+    culprit: `cover-hq` contains "cover", so it matches beets' own
+    `cover_names`, and fetchart can adopt the archive itself as an album's art
+    when a Sonarche folder is imported back in. Copying that over the archive
+    would destroy the one file we undertook to keep. The rendition is still
+    made: an oversized `artpath` costs width x height x 4 bytes on every
+    thumbnail either way.
     """
     if not art_path or not os.path.exists(art_path):
         return False
@@ -107,25 +135,47 @@ def ensure_display_rendition(art_path: str) -> bool:
         return False
 
     art_dir = os.path.dirname(art_path)
-    hq_path = os.path.join(art_dir, hq_name_for(os.path.basename(art_path)))
-    # An archive already there means this album has been through here before —
-    # a re-import, say. Overwriting it with what is on disk is right: that file
-    # *is* the original either way.
+    archive = existing_hq(art_dir)
+    # The original is copied aside first either way, so a resize that dies
+    # half-way has something to put back — and so the decision about the
+    # archive is taken after the risky part, not before it.
+    scratch = f"{art_path}.sonarche-original"
     try:
-        shutil.copyfile(art_path, hq_path)
-        _write_rendition(hq_path, art_path)
+        shutil.copyfile(art_path, scratch)
+        _write_rendition(scratch, art_path)
     except (OSError, ValueError) as exc:
         protocol.log(f"covers: rendition failed for {art_path}: {exc}")
-        # Put the original back if the resize died after the copy: a half-made
-        # rendition is worse than no rendition.
-        if os.path.exists(hq_path) and not os.path.exists(art_path):
+        # A half-made rendition is worse than no rendition.
+        if os.path.exists(scratch) and not os.path.exists(art_path):
             try:
-                shutil.move(hq_path, art_path)
+                shutil.move(scratch, art_path)
             except OSError:
                 pass
+        _discard(scratch)
         return False
 
+    if archive is not None:
+        protocol.log(f"covers: {archive} kept; the oversized {art_path} was not archived over it")
+        _discard(scratch)
+    else:
+        hq_path = os.path.join(art_dir, hq_name_for(os.path.basename(art_path)))
+        try:
+            os.replace(scratch, hq_path)
+        except OSError as exc:
+            protocol.log(f"covers: could not archive {art_path}: {exc}")
+            _discard(scratch)
+
     return True
+
+
+def _discard(path: str) -> None:
+    """Remove a working copy, quietly. A leftover here is clutter in someone's
+    album folder, never a reason to fail an import sweep."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
 
 
 def follow_hq_cover(lib, album, old_dir: str | None, decode) -> None:

@@ -102,6 +102,43 @@ class RenditionTest(unittest.TestCase):
         self.assertIsNone(covers.read_dimensions(broken))
         self.assertFalse(covers.ensure_display_rendition(broken))
 
+    def test_never_archives_over_an_archive_that_is_already_there(self):
+        """The regression that cost a real cover. An oversized file at artpath
+        means something replaced our rendition since the last pass — beets'
+        fetchart adopting `cover-hq.jpg` as an album's art on a re-import is one
+        way — and copying it over the archive destroys the original we
+        undertook to keep. The rendition is still made; the archive is not
+        touched."""
+        art = self._make("cover.jpg", 1400)
+        hq = self._make("cover-hq.jpg", 3000)
+        with open(hq, "rb") as f:
+            original = f.read()
+
+        self.assertTrue(covers.ensure_display_rendition(art))
+
+        with open(hq, "rb") as f:
+            self.assertEqual(f.read(), original, "the archive must survive")
+        self.assertEqual(max(covers.read_dimensions(art)), covers.DISPLAY_MAX_PX)
+
+    def test_finds_an_archive_whatever_its_extension(self):
+        """`hq_name_for` derives the archive name from the *current* art, so a
+        png arriving next to a jpg archive would miss it and the folder would
+        end up holding two."""
+        art = self._make("cover.png", 1400)
+        self._make("cover-hq.jpg", 3000)
+
+        self.assertTrue(covers.ensure_display_rendition(art))
+
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "cover-hq.png")))
+
+    def test_leaves_no_working_copy_behind(self):
+        art = self._make("cover.jpg", 1400)
+
+        covers.ensure_display_rendition(art)
+
+        leftovers = [n for n in os.listdir(self.dir) if n.endswith(".sonarche-original")]
+        self.assertEqual(leftovers, [])
+
 
 if __name__ == "__main__":
     unittest.main()

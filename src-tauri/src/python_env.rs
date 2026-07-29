@@ -58,8 +58,9 @@ pub struct AppPaths {
     pub venv_dir: PathBuf,
     pub staging_dir: PathBuf,
     pub beets_config: PathBuf,
-    /// The same config with cover embedding off, used only by the library
-    /// import. See `write_beets_config` for why the two cannot be one.
+    /// The variant used only by the library import — cover embedding off, and
+    /// no remote art sources. See `write_beets_config` for why the two cannot
+    /// be one file.
     pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
     pub library_dir: PathBuf,
@@ -382,27 +383,51 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
     Ok(())
 }
 
+/// Which of the two ways music enters the library a config is for.
+///
+/// A flavour rather than a pair of booleans: the two lines that differ both
+/// follow from *this* question, and a caller passing `(true, false)` would have
+/// to remember which flag meant what.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Flavour {
+    /// A staged download: one untagged file alone in an empty folder.
+    App,
+    /// Someone's own collection, covers already sitting beside the tracks.
+    Import,
+}
+
 /// Single config site for beets: the CLI importer reads it via `--config` and
 /// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
 ///
-/// Written twice, differing in one line. `embedart: auto` bakes the album's
-/// cover into every track, which costs nothing on a download — the staged file
-/// is alone in an empty folder when the import stage runs, so there is no art
-/// to bake — and is ruinous on a library import, where the cover is already
-/// sitting beside the tracks. Measured on a real import: 314 MB of duplicated
-/// images across 1.17 GB, one full-size copy per track, 88 MB for a single
-/// 18-track album. The interface reads the folder's file and never the tag, so
-/// the embedding only ever served other players.
+/// Written twice, differing in two lines, and both differences are about art.
+///
+/// `embedart: auto` bakes the album's cover into every track. That costs
+/// nothing on a download — the staged file is alone in an empty folder when the
+/// import stage runs, so there is no art to bake — and is ruinous on a library
+/// import, where the cover is already beside the tracks. Measured on a real
+/// import: 314 MB of duplicated images across 1.17 GB, one full-size copy per
+/// track, 88 MB for a single 18-track album. The interface reads the folder's
+/// file and never the tag, so the embedding only ever served other players.
+///
+/// `fetchart.sources` is pinned to the filesystem for an import, because an
+/// import is meant to touch no network at all. `-A` takes MusicBrainz and
+/// AcoustID out of the picture, but fetchart runs on its own hook and its
+/// default sources include iTunes and Amazon — so a folder whose files already
+/// carry an album and artist (a Sonarche library being re-imported, say) had
+/// beets quietly searching store artwork mid-copy, and adopting whatever came
+/// back as the album's cover. The local file is the only source an import
+/// should trust; it is also the only one that can be right about a collection
+/// nobody has identified yet.
 ///
 /// Two files rather than a flag on one, because beets takes a single
 /// `--config` and offers no way to override a key from the command line.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
-    write_config_file(paths, &paths.beets_config, true).await?;
-    write_config_file(paths, &paths.beets_import_config, false).await
+    write_config_file(paths, &paths.beets_config, Flavour::App).await?;
+    write_config_file(paths, &paths.beets_import_config, Flavour::Import).await
 }
 
-async fn write_config_file(paths: &AppPaths, target: &Path, embed_art: bool) -> AppResult<()> {
-    tokio::fs::write(target, beets_config_yaml(paths, embed_art)).await?;
+async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) -> AppResult<()> {
+    tokio::fs::write(target, beets_config_yaml(paths, flavour)).await?;
     Ok(())
 }
 
@@ -421,7 +446,7 @@ fn yaml_scalar(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', "''"))
 }
 
-fn beets_config_yaml(paths: &AppPaths, embed_art: bool) -> String {
+fn beets_config_yaml(paths: &AppPaths, flavour: Flavour) -> String {
     format!(
         r#"directory: {library}
 library: {db}
@@ -443,7 +468,7 @@ musicbrainz:
   genres: yes
 fetchart:
   auto: yes
-embedart:
+{art_sources}embedart:
   auto: {embed_art}
 # auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
 # itself. Canonical tree + whitelist are ours (bundled sidecar resources):
@@ -465,7 +490,12 @@ ui:
         db = yaml_scalar(&paths.beets_db),
         tree = yaml_scalar(&paths.genres_tree),
         whitelist = yaml_scalar(&paths.genres_whitelist),
-        embed_art = if embed_art { "yes" } else { "no" },
+        embed_art = if flavour == Flavour::App { "yes" } else { "no" },
+        art_sources = if flavour == Flavour::Import {
+            "  sources: filesystem\n"
+        } else {
+            ""
+        },
     )
 }
 
@@ -571,7 +601,7 @@ mod tests {
         paths.library_dir = PathBuf::from(r"C:\Users\pieru\Music\Sonarche");
         paths.beets_db = PathBuf::from(r"C:\Users\pieru\AppData\Roaming\beets\library.db");
 
-        let config = beets_config_yaml(&paths, true);
+        let config = beets_config_yaml(&paths, Flavour::App);
 
         assert!(
             config.contains(r"directory: 'C:\Users\pieru\Music\Sonarche'"),
@@ -596,7 +626,7 @@ mod tests {
         let mut paths = paths();
         paths.library_dir = PathBuf::from(r"C:\Users\O'Brien\Music");
 
-        let config = beets_config_yaml(&paths, true);
+        let config = beets_config_yaml(&paths, Flavour::App);
 
         assert!(
             config.contains(r"directory: 'C:\Users\O''Brien\Music'"),
@@ -604,31 +634,62 @@ mod tests {
         );
     }
 
-    /// The one line the two configs may differ on, and the reason the second
-    /// file exists at all. A library import bakes the album's own cover into
-    /// every track when this is `yes` — measured at 314 MB of duplicated images
-    /// in a 1.17 GB library, 88 MB of it in a single 18-track album.
+    /// The reason the second file exists at all. A library import bakes the
+    /// album's own cover into every track when this is `yes` — measured at
+    /// 314 MB of duplicated images in a 1.17 GB library, 88 MB of it in a
+    /// single 18-track album.
     #[test]
-    fn the_import_config_is_the_app_config_with_cover_embedding_off() {
-        let app = beets_config_yaml(&paths(), true);
-        let import = beets_config_yaml(&paths(), false);
-
-        assert!(app.contains("embedart:\n  auto: yes"), "{app}");
-        assert!(import.contains("embedart:\n  auto: no"), "{import}");
-        // Nothing else may drift: the import writes into the same library, with
-        // the same paths, the same genre tree and the same clutter rules.
-        assert_eq!(
-            app.replace("auto: yes", "auto: no"),
-            import.replace("auto: yes", "auto: no")
+    fn the_import_config_turns_cover_embedding_off() {
+        assert!(
+            beets_config_yaml(&paths(), Flavour::App).contains("embedart:\n  auto: yes"),
+            "the app config embeds"
         );
+        assert!(
+            beets_config_yaml(&paths(), Flavour::Import).contains("embedart:\n  auto: no"),
+            "the import config does not"
+        );
+    }
+
+    /// An import must reach no network. `-A` takes MusicBrainz and AcoustID out
+    /// of it, but fetchart runs on its own hook, and its default sources
+    /// include iTunes and Amazon — enough for beets to search store artwork
+    /// mid-copy on files that already carry an album and artist.
+    #[test]
+    fn only_the_import_config_pins_art_to_the_filesystem() {
+        assert!(
+            beets_config_yaml(&paths(), Flavour::Import)
+                .contains("fetchart:\n  auto: yes\n  sources: filesystem\n"),
+            "the import config must not reach a remote art source"
+        );
+        assert!(
+            !beets_config_yaml(&paths(), Flavour::App).contains("sources:"),
+            "the app config leaves fetchart's own defaults alone"
+        );
+    }
+
+    /// Everything except those two art lines has to stay identical: the import
+    /// writes into the same library, with the same paths, the same genre tree
+    /// and the same clutter rules.
+    #[test]
+    fn the_two_configs_differ_on_nothing_but_art() {
+        let app = beets_config_yaml(&paths(), Flavour::App);
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+
+        let strip = |config: &str| {
+            config
+                .replace("  sources: filesystem\n", "")
+                .replace("embedart:\n  auto: yes", "embedart:\n  auto: no")
+        };
+
+        assert_eq!(strip(&app), strip(&import));
     }
 
     /// Both point at the same library and the same database — the import is a
     /// different way in, not a different shelf.
     #[test]
     fn both_configs_target_the_one_library() {
-        for embed_art in [true, false] {
-            let config = beets_config_yaml(&paths(), embed_art);
+        for flavour in [Flavour::App, Flavour::Import] {
+            let config = beets_config_yaml(&paths(), flavour);
             assert!(config.contains("directory: '/music/Sonarche'"));
             assert!(config.contains("library: '/data/beets/library.db'"));
         }
