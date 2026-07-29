@@ -13,12 +13,12 @@
     "description": "Comment l'app s'habille. Le choix est retenu et s'applique tout de suite, sans redémarrage.",
     "theme": {
       "name": "Thème",
-      "why": "Le thème clair est celui d'origine. Le sombre existe pour les écrans trop lumineux et les sessions de nuit : c'est la même app, éclairée autrement.",
+      "why": "Le thème clair est celui d'origine. Nuit n'est pas son négatif : le noir n'y est jamais pur, un voile bleuté traverse chaque surface et l'accent y descend au lieu de monter. Pour les écrans trop lumineux et les sessions tardives.",
       "light": "Clair",
-      "dark": "Sombre",
+      "dark": "Nuit",
       "system": "Système",
       "followingLight": "Ton système est en clair, l'app suit.",
-      "followingDark": "Ton système est en sombre, l'app suit."
+      "followingDark": "Ton système est en sombre, l'app passe en Nuit."
     }
   },
   "apiKeys": {
