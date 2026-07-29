@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
-import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
+import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { useReenrichTrack } from "@/features/library/hooks";
 import { PrimaryButton } from "@/features/library/metadata/PrimaryButton";
 import { ActionHelp } from "@/shared/ui/FieldHelp";
@@ -115,7 +115,7 @@ export function MetadataFooter({
             type="button"
             disabled={isDirty || rematch.isPending}
             onClick={() => rematch.mutate(track.id)}
-            className={`${HERO_PILL_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
+            className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
           >
             {rematch.isPending ? (
               <Loader2 className="size-4 animate-spin text-accent" />
@@ -138,7 +138,7 @@ export function MetadataFooter({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.6, opacity: 0 }}
                 transition={springs.bouncy}
-                className={`${HERO_PILL_SECONDARY} shrink-0 cursor-pointer`}
+                className={`${HERO_BUTTON_SECONDARY} shrink-0 cursor-pointer`}
               >
                 {t("metadata.cancel")}
               </motion.button>

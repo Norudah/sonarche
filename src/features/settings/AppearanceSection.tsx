@@ -51,11 +51,14 @@ function useThemePreference() {
   return { preference, resolved, choose };
 }
 
-/* Same segmented grammar as the composer's album/track switch: one pill that
- * slides between the options, so the choice reads as a switch being thrown
- * rather than three buttons lighting up in turn. Wider segments than that one,
- * because these carry a word each rather than living inline in a toolbar. */
-const SEGMENT = "relative mt-0 flex-1 rounded-lg";
+/* Same segmented grammar as the composer's album/track switch and the explorer's
+ * view switch: one pill that slides between the options, so the choice reads as
+ * a switch being thrown rather than three buttons lighting up in turn. Wider
+ * segments than those, because these carry a word each rather than living
+ * inline in a toolbar — but the same round shape, which is what makes the three
+ * read as one control type. Segmented selectors are their own family: they pick
+ * rather than act, so the pill/rectangle rule does not apply to them. */
+const SEGMENT = "relative mt-0 flex-1 rounded-full";
 const SEGMENT_CONTENT =
   "relative w-full justify-center gap-2 px-3 py-2 text-[0.8125rem] font-medium whitespace-nowrap " +
   "transition-colors text-muted hover:text-foreground data-[selected]:text-accent";
@@ -77,7 +80,7 @@ function Segment({
         <motion.span
           layoutId={layoutIds.themeChoice}
           transition={springs.snappy}
-          className="absolute inset-0 rounded-lg bg-surface shadow-xs"
+          className="absolute inset-0 rounded-full bg-surface shadow-xs"
         />
       )}
       <Radio.Content className={SEGMENT_CONTENT}>
@@ -111,7 +114,7 @@ export function AppearanceSection() {
             value={preference}
             onChange={(next) => choose(next as ThemePreference)}
             aria-label={t("appearance.theme.name")}
-            className="flex w-full flex-row gap-1 rounded-xl bg-default/60 p-1"
+            className="flex w-full flex-row gap-1 rounded-full bg-default/60 p-1"
           >
             <Segment value="light" selected={preference} icon={Sun} label={t("appearance.theme.light")} />
             <Segment value="dark" selected={preference} icon={Moon} label={t("appearance.theme.dark")} />

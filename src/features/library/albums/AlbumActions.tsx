@@ -3,12 +3,12 @@ import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
-import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
+import { HERO_BUTTON_ICON, HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { springs } from "@/shared/motion/tokens";
 
-const SECONDARY = HERO_PILL_SECONDARY;
-const ICON_PILL = HERO_PILL_ICON;
+const SECONDARY = HERO_BUTTON_SECONDARY;
+const ICON_PILL = HERO_BUTTON_ICON;
 
 /**
  * Everything destructive, one level down.

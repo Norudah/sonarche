@@ -54,7 +54,7 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
   return (
     <div className={dense ? ACTIONS_ROW : ACTIONS_COLUMN}>
       {onRetry && (
-        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
@@ -136,7 +136,7 @@ export function AlbumRowActions({ trackIds, sourceUrl, onDelete, onRetry, isRetr
   return (
     <div className={dense ? ACTIONS_ROW : ACTIONS_COLUMN}>
       {onRetry && (
-        <Button variant="secondary" size="sm" className="rounded-full" isDisabled={isRetrying} onPress={onRetry}>
+        <Button variant="secondary" size="sm" isDisabled={isRetrying} onPress={onRetry}>
           <RotateCcw className="size-4" />
           {t("queue.retry")}
         </Button>
