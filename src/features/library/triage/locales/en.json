@@ -1,5 +1,6 @@
 {
   "title": "Metadata",
+  "eyebrow": "Upkeep",
   "toFix_one": "{{count}} thing to fix",
   "toFix_other": "{{count}} things to fix",
   "allClear": "Nothing to fix",
@@ -17,8 +18,5 @@
     "genreOffTree_other": "{{count}} off-tree",
     "more_one": "+{{count}} more",
     "more_other": "+{{count}} more"
-  },
-  "distribution": {
-    "title": "Genre distribution"
   }
 }

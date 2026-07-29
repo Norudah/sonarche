@@ -50,7 +50,11 @@ choix de layout s'évapore — il reste une colonne.
   réintroduire quand une règle fiable existera.
 - **Tuiles KPI 1 248 / 118 / 74** : nav dupliquée de la sidebar, pas des
   portes utiles. Remplacées par une sous-ligne texte dans le header. Seule
-  la pilule « N à corriger » compte.
+  la pilule « N à corriger » compte. **Mise à jour 2026-07-29** : ce
+  chiffre n'est plus une pilule reléguée à droite du titre, c'est le titre
+  — « 26 choses à corriger » en h1 sous un bandeau, comme les autres pages
+  (`TriageHero`). Sa fonction d'ancre vers la file disparaît avec elle :
+  la file commence directement sous le bandeau.
 
 ### Gardé
 
@@ -59,8 +63,11 @@ choix de layout s'évapore — il reste une colonne.
   éditeur), pochette absente (albums), tracklist à trous (albums).
 - **Exemples inline** sous chaque ligne (« Neon Slumber », « Half
   Light »…) : en texte simple, non cliquables individuellement en v1.
-- **Répartition des genres** en tableau repliable sous la file (décision
-  antérieure, inchangée).
+- ~~**Répartition des genres** en tableau repliable sous la file~~
+  **Coupée le 2026-07-29.** C'était le seul module de la page qu'on ne
+  pouvait que regarder — un pourcentage par famille, sur une page dont
+  toute la doctrine est que chaque chiffre est une porte. Les familles ont
+  déjà leur propre page, qui est l'endroit de ce parcours.
 - **État zéro façon mock 1d** : carte verte « Rien à corriger », file
   repliée en carte d'état calme non cliquable. Le meilleur écran des
   quatre.

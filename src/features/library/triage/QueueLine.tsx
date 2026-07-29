@@ -1,4 +1,6 @@
-import { ChevronRight } from "lucide-react";
+import { CalendarOff, ChevronRight, Copy, ImageOff, Layers, ListX, ScanSearch } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
@@ -9,7 +11,26 @@ import type { TriageLine } from "@/features/library/triage/queue";
  * the light theme the app ground (0.995) and a card (1.0) are the same white —
  * the omission was invisible. On the night theme it is 0.175 against 0.235, and
  * the whole page read as a hole with hairlines drawn on it. */
-const ROW = "flex items-center justify-between gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
+const ROW = "flex items-center gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
+
+/**
+ * One glyph per kind of defect.
+ *
+ * The five rows used to be typographically identical, so "10 tracklists with
+ * holes" and "1 missing cover" arrived as the same object and the eye had to
+ * read every line to find its way. A glyph is what makes a row recognisable
+ * before it is read — and it is also where the page finally says out loud that
+ * these are all the same tone of problem: amber, the colour this app already
+ * uses for metadata that is merely incomplete rather than broken.
+ */
+const ICONS: Record<TriageLine["key"], LucideIcon> = {
+  suspect: ScanSearch,
+  duplicates: Copy,
+  year: CalendarOff,
+  genre: Layers,
+  artwork: ImageOff,
+  tracklist: ListX,
+};
 
 /** "Neon Slumber, Half Light +19" — what the count is made of, in plain
  * muted text (not individually clickable in v1; the door opens the list). */
@@ -27,12 +48,22 @@ function Examples({ line }: { line: TriageLine }) {
   );
 }
 
+function Glyph({ line }: { line: TriageLine }) {
+  const Icon = ICONS[line.key];
+
+  return (
+    <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-soft">
+      <Icon className="size-[1.125rem] text-warning" />
+    </span>
+  );
+}
+
 /**
  * One row of the correction queue. With a single door the whole row is the
  * link; the fused genre row instead carries one pill per door, because
  * "missing" and "off-tree" open two different filtered lists.
  */
-export function QueueLine({ line }: { line: TriageLine }) {
+export function QueueLine({ line, style }: { line: TriageLine; style?: CSSProperties }) {
   const { t } = useTranslation("metadata");
 
   const label = (
@@ -46,8 +77,10 @@ export function QueueLine({ line }: { line: TriageLine }) {
     return (
       <Link
         to={line.doors[0].to}
-        className={`${ROW} group/line outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-accent/40`}
+        style={style}
+        className={`${ROW} group/line cascade-item outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-accent/40`}
       >
+        <Glyph line={line} />
         {label}
         <span className="flex shrink-0 items-center gap-2">
           <span className="text-lg font-semibold tabular-nums">{line.count}</span>
@@ -58,7 +91,8 @@ export function QueueLine({ line }: { line: TriageLine }) {
   }
 
   return (
-    <div className={ROW}>
+    <div style={style} className={`${ROW} cascade-item`}>
+      <Glyph line={line} />
       {label}
       <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         {line.doors.map((door) => (

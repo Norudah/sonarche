@@ -1,5 +1,6 @@
 {
   "title": "Métadonnées",
+  "eyebrow": "Entretien",
   "toFix_one": "{{count}} chose à corriger",
   "toFix_other": "{{count}} choses à corriger",
   "allClear": "Rien à corriger",
@@ -17,8 +18,5 @@
     "genreOffTree_other": "{{count}} hors arbre",
     "more_one": "+{{count}} autre",
     "more_other": "+{{count}} autres"
-  },
-  "distribution": {
-    "title": "Répartition des genres"
   }
 }
