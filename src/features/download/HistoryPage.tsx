@@ -22,6 +22,12 @@ interface HistoryPageProps {
    * composes the two (see `app/routes.tsx`).
    */
   arrivals?: ReactNode;
+  /** How many arrivals that slot holds: the clear button sweeps them too, so it
+   * must light up for them and the confirmation must count them. */
+  arrivalsCount?: number;
+  /** Called once the sweep succeeded, so the shell can drop the arrivals'
+   * cache — this component only knows its own. */
+  onHistoryCleared?: () => void;
 }
 
 /**
@@ -37,7 +43,7 @@ interface HistoryPageProps {
  * with the columns: it moved into each row's own panel, where it is read on
  * demand rather than spread across every row at once.
  */
-export function HistoryPage({ arrivals }: HistoryPageProps) {
+export function HistoryPage({ arrivals, arrivalsCount = 0, onHistoryCleared }: HistoryPageProps) {
   const { t } = useTranslation("download");
   const [clearingHistory, setClearingHistory] = useState(false);
   const [requestedPage, setRequestedPage] = useState(1);
@@ -48,7 +54,8 @@ export function HistoryPage({ arrivals }: HistoryPageProps) {
   // the last page that still exists instead of an empty list.
   const { jobs: visible, page, pageCount } = pageOfJobs(all, requestedPage);
 
-  const hasHistory = all.some((job) => job.status === "done" || job.status === "failed");
+  const terminalCount = all.filter((job) => job.status === "done" || job.status === "failed").length;
+  const hasHistory = terminalCount > 0 || arrivalsCount > 0;
 
   const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
   const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
@@ -98,7 +105,13 @@ export function HistoryPage({ arrivals }: HistoryPageProps) {
 
       <Pagination page={page} pageCount={pageCount} onChange={setRequestedPage} />
 
-      <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />
+      <ClearHistoryDialog
+        isOpen={clearingHistory}
+        onClose={() => setClearingHistory(false)}
+        downloads={terminalCount}
+        imports={arrivalsCount}
+        onCleared={onHistoryCleared}
+      />
     </PageContainer>
   );
 }

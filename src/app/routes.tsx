@@ -3,8 +3,7 @@ import { createMemoryRouter, Navigate } from "react-router";
 import { paths } from "@/app/paths";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
-import { HistoryPage } from "@/features/download/HistoryPage";
-import { ImportHistorySection } from "@/features/import/ImportHistorySection";
+import { HistoryRoute } from "@/app/HistoryRoute";
 import { ImportPage } from "@/features/import/ImportPage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
@@ -47,9 +46,9 @@ export const router = createMemoryRouter(
       children: [
         { path: paths.download, element: <DownloadPage /> },
         { path: paths.import, element: <ImportPage /> },
-        // The shell is where the two ways music enters the ark meet: the history
-        // is the archive of both, and neither feature may import the other.
-        { path: paths.history, element: <HistoryPage arrivals={<ImportHistorySection />} /> },
+        // Composed in its own shell component: the history is the archive of
+        // both ways music enters the ark, and neither feature may import the other.
+        { path: paths.history, element: <HistoryRoute /> },
         { path: paths.metadata, element: <MetadataPage /> },
         // Settings lives inside the shell like any other destination: same sidebar
         // (which switches to a category menu here), same player bar. Each category

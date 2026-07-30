@@ -1135,9 +1135,10 @@ impl JobsState {
         }
     }
 
-    /// Drop terminal (done/failed) jobs from the history; in-flight jobs are untouched.
+    /// Drop terminal (done/failed) jobs and the whole import archive; in-flight
+    /// jobs are untouched. One sweep, because the history page shows both.
     pub async fn clear_history(&self) -> Vec<Job> {
-        if let Err(err) = with_conn(&self.0, jobs_store::delete_terminal).await {
+        if let Err(err) = with_conn(&self.0, jobs_store::clear_history).await {
             eprintln!("[jobs] clear history failed: {err}");
         }
         self.list().await

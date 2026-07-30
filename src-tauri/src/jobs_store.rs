@@ -413,9 +413,15 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
     })
 }
 
-/// Drop terminal (done/failed) jobs; their tracks go with them via cascade.
-pub fn delete_terminal(conn: &Connection) -> AppResult<()> {
-    conn.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
+/// The history page's one sweep: terminal (done/failed) jobs — their tracks go
+/// with them via cascade — and the whole import archive. In-flight jobs stay.
+/// One transaction, because the page shows both archives under one button and a
+/// crash between the two deletes would leave it half-cleared.
+pub fn clear_history(conn: &Connection) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
+    tx.execute("DELETE FROM imports", [])?;
+    tx.commit()?;
     Ok(())
 }
 
@@ -667,7 +673,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_terminal_keeps_in_flight_and_cascades_tracks() {
+    fn clear_history_keeps_in_flight_and_cascades_tracks() {
         let conn = mem();
         let mut album = single("g", JobStatus::Done);
         album.kind = JobKind::Album;
@@ -676,7 +682,7 @@ mod tests {
         upsert_job(&conn, &single("h", JobStatus::Failed)).unwrap();
         upsert_job(&conn, &single("i", JobStatus::Downloading)).unwrap();
 
-        delete_terminal(&conn).unwrap();
+        clear_history(&conn).unwrap();
 
         let remaining: Vec<String> = list_jobs(&conn)
             .unwrap()
@@ -763,17 +769,17 @@ mod tests {
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
     }
 
-    /// Clearing the download history must not take the imports with it: they are
-    /// two archives in one file, and the button says "downloads".
+    /// The page archives both ways music arrives, and its one button says
+    /// "clear the history": the sweep takes the imports with it.
     #[test]
-    fn clearing_the_download_history_leaves_the_imports_alone() {
+    fn clear_history_empties_both_archives() {
         let conn = mem();
         upsert_job(&conn, &single("j", JobStatus::Done)).unwrap();
         insert_import(&conn, &import("i", 100)).unwrap();
 
-        delete_terminal(&conn).unwrap();
+        clear_history(&conn).unwrap();
 
         assert!(list_jobs(&conn).unwrap().is_empty());
-        assert_eq!(list_imports(&conn).unwrap().len(), 1);
+        assert!(list_imports(&conn).unwrap().is_empty());
     }
 }

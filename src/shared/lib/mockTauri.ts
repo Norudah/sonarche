@@ -657,6 +657,16 @@ export function installMockTauri() {
         jobs.unshift(queued);
         return queued;
       }
+      // One sweep for both archives, as the Rust command does: terminal jobs
+      // out, the imports emptied wholesale, in-flight rows untouched.
+      if (cmd === "clear_job_history") {
+        for (let i = jobs.length - 1; i >= 0; i--) {
+          const status = (jobs[i] as { status?: string }).status;
+          if (status === "done" || status === "failed") jobs.splice(i, 1);
+        }
+        mockImports.length = 0;
+        return [...jobs];
+      }
       if (cmd === "retry_job") {
         const target = jobs.find((j) => j.id === payload?.id);
         if (!target) return {};
