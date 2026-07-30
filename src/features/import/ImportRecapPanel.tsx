@@ -97,8 +97,10 @@ function TagState({ recap }: { recap: ImportRecap }) {
         </dl>
       )}
 
-      {/* The one door, and it claims no count: the Metadata page answers for the
-          whole library, which is where a correction is actually made. */}
+      {/* An as-is import never carries a MusicBrainz identity, so the remedy is
+          named here — but the door stays single and claims no count: the align
+          card on the Metadata page answers for the whole library. */}
+      <p className="text-xs text-muted">{t("recap.alignHint")}</p>
       <ActionLink to={paths.metadata} trailingIcon={ArrowRight}>
         {t("recap.openMetadata")}
       </ActionLink>

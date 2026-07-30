@@ -69,6 +69,7 @@
     "offTree": "Genre hors arbre",
     "albumsWithoutArt": "Albums sans pochette",
     "albumsWithGaps": "Tracklists à trous",
+    "alignHint": "Ces albums arrivent sans identité MusicBrainz. Dans Métadonnées, l'alignement peut les identifier et combler les trous — année et pochettes comprises.",
     "openMetadata": "Ouvrir Métadonnées",
     "expand": "Voir le détail de l'import",
     "collapse": "Replier le détail de l'import"

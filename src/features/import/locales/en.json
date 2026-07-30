@@ -69,6 +69,7 @@
     "offTree": "Off-tree genre",
     "albumsWithoutArt": "Albums with no artwork",
     "albumsWithGaps": "Gapped tracklists",
+    "alignHint": "These albums arrive without a MusicBrainz identity. In Metadata, the alignment can identify them and fill the gaps — year and covers included.",
     "openMetadata": "Open Metadata",
     "expand": "Show the import's detail",
     "collapse": "Hide the import's detail"
