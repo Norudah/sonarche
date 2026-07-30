@@ -109,4 +109,19 @@ describe("theme.css", () => {
       .map(([name]) => name);
     expect(literals).toEqual([]);
   });
+
+  /**
+   * `index.html` paints the window `--background` inline, before this
+   * stylesheet exists — that is the whole point, and it means the value has to
+   * be written out a second time. The copy is invisible when it drifts: the
+   * launch simply flashes the old colour for a frame, on one theme, which is
+   * exactly the bug the inline block was added to remove.
+   */
+  it("keeps the pre-paint background in index.html on the same value", () => {
+    const html = readFileSync(fileURLToPath(new URL("../../index.html", import.meta.url)), "utf8");
+    const painted = /style\.background = dark \? "([^"]+)" : "([^"]+)"/.exec(html);
+
+    expect(painted?.[1]).toBe(dark.get("--background"));
+    expect(painted?.[2]).toBe(light.get("--background"));
+  });
 });

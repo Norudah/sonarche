@@ -13,7 +13,19 @@
 //! chrome is near-white is the one seam a user sees before anything else.
 
 use serde::Deserialize;
+use tauri::window::Color;
 use tauri::{AppHandle, Manager, Theme, WebviewWindow};
+
+/// `--background` from app/theme.css, one per theme, as the window's own
+/// colour.
+///
+/// The webview has nothing to draw until the document loads, and what shows
+/// through until then is this — white by default, which on Night is a
+/// full-window flash at every launch. `index.html` paints the same two values
+/// inline for the frame after that, and the stylesheet takes over from there:
+/// three layers, one colour, no seam.
+const PAPER: Color = Color(248, 249, 253, 255);
+const NIGHT: Color = Color(15, 16, 24, 255);
 
 /// The Appearance choice, as the window hears it.
 ///
@@ -69,6 +81,20 @@ fn resolved(window: &WebviewWindow) -> Theme {
     window.theme().unwrap_or(Theme::Light)
 }
 
+/// Everything the frame wears in this theme: the surface behind the webview
+/// everywhere, and the caption bar on Windows.
+fn paint(window: &WebviewWindow, theme: Theme) {
+    let colour = match theme {
+        Theme::Dark => NIGHT,
+        _ => PAPER,
+    };
+    // Dropped like `set_theme` above: a window that will not take a background
+    // colour is still a usable window, and the cost of the refusal is the white
+    // frame we had before.
+    let _ = window.set_background_color(Some(colour));
+    paint_caption(window, theme);
+}
+
 #[cfg(target_os = "windows")]
 fn strip_title(window: &WebviewWindow) {
     // An empty title is the only way to take the app's name off a native caption
@@ -81,22 +107,21 @@ fn strip_title(window: &WebviewWindow) {
 fn strip_title(_window: &WebviewWindow) {}
 
 #[cfg(target_os = "windows")]
-fn paint(window: &WebviewWindow, theme: Theme) {
+fn paint_caption(window: &WebviewWindow, theme: Theme) {
     use std::ffi::c_void;
     use windows_sys::Win32::Graphics::Dwm::{
         DwmSetWindowAttribute, DWMWA_BORDER_COLOR, DWMWA_CAPTION_COLOR,
     };
 
-    /// `--background` on the paper theme, oklch(0.982 0.006 279) = rgb 248 249
-    /// 253, as a COLORREF — which is `0x00BBGGRR` and not RGB.
-    const LIGHT: u32 = 0x00FD_F9_F8;
-    /// `--background` on Night, oklch(0.175 0.016 279) = rgb 15 16 24.
-    const DARK: u32 = 0x0018_10_0F;
-
-    let colour = match theme {
-        Theme::Dark => DARK,
-        _ => LIGHT,
+    // Derived from the same two constants the webview background uses, rather
+    // than written out again: DWM wants a COLORREF, which is `0x00BBGGRR` and
+    // not RGB, and a hand-swapped hex literal is a byte-order bug waiting for
+    // the next palette change.
+    let Color(r, g, b, _) = match theme {
+        Theme::Dark => NIGHT,
+        _ => PAPER,
     };
+    let colour = (b as u32) << 16 | (g as u32) << 8 | r as u32;
 
     let Ok(handle) = window.hwnd() else { return };
     // `HWND` is a newtype over the raw pointer; going through it keeps this
@@ -121,4 +146,4 @@ fn paint(window: &WebviewWindow, theme: Theme) {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn paint(_window: &WebviewWindow, _theme: Theme) {}
+fn paint_caption(_window: &WebviewWindow, _theme: Theme) {}

@@ -629,7 +629,16 @@ export function installMockTauri() {
       if (cmd === "list_imports") return [...mockImports];
       if (cmd === "library_align_scan") return mockAlignScan();
       if (cmd === "library_align_apply") return mockAlignApply(payload);
-      if (cmd === "get_env_status") return { ...env };
+      if (cmd === "get_env_status") {
+        // The real check spawns Python and imports beets: a second or two, and
+        // the whole reason there is a splash at all. The mock answers in the
+        // same tick, so the splash and its hand-over flash past unseen —
+        // `?splash` (optionally `?splash=3000`) holds the answer back long
+        // enough to look at them.
+        const held = new URLSearchParams(window.location.search).get("splash");
+        if (held !== null) await new Promise((resolve) => window.setTimeout(resolve, Number(held) || 2000));
+        return { ...env };
+      }
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
       if (cmd === "set_onboarding_completed") {

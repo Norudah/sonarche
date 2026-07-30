@@ -39,6 +39,11 @@ export const durations = {
   fast: 0.18,
   /** Content swapping under a stable frame (now-playing track change). */
   medium: 0.28,
+  /** The launch splash handing the window to the app. Longer than every other
+   * cross-fade and deliberately so: this one is not a transition *within* the
+   * app but the app arriving, it happens once per session, and at `medium` the
+   * splash reads as having been snatched away rather than set down. */
+  handover: 0.45,
   /** A value drawing itself in on arrival — the album completeness ring filling
    * from empty, and the figure counting up with it. The one token allowed to
    * run long: it is not a transition between two states but the reading of a

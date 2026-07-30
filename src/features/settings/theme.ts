@@ -77,6 +77,11 @@ export function watchSystemTheme(onChange: (prefersDark: boolean) => void): () =
  */
 export function applyTheme(theme: ResolvedTheme): void {
   document.documentElement.setAttribute("data-theme", theme);
+  // index.html paints `--background` straight onto <html> before the stylesheet
+  // exists, to kill the launch flash. By the time anything calls this the
+  // stylesheet is in and owns the colour, and an inline background left behind
+  // would be a frozen copy of whichever theme the app happened to open in.
+  document.documentElement.style.removeProperty("background");
 }
 
 /** Boot path: read, resolve, apply, before anything renders. */

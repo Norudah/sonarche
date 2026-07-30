@@ -642,6 +642,24 @@
     }
   }
 
+  /* The light under the splash mark, breathing. Slow and shallow on purpose:
+     it has to read as the object being lit rather than as an animation, and a
+     halo that pulses at a rate the eye can count turns the launch into a
+     loading spinner with extra steps. */
+  --animate-splash-halo: sonarche-splash-halo 3.2s ease-in-out infinite;
+
+  @keyframes sonarche-splash-halo {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+
   /* The download rail's playhead on a stage that reports no progress of its own
      (a lone file's import): it sweeps the segment instead of sitting at zero.
      `alternate` rather than a loop — a handle that jumps back to the start
@@ -773,6 +791,15 @@
      working, so removing it would leave a frozen screen with no explanation. */
   .animate-splash-bar {
     animation-duration: 2.4s;
+  }
+
+  /* The halo is pure decoration next to the bar above it, and it is the only
+     thing on the splash that changes size — exactly what the setting asks us to
+     stop. Parked at its resting value rather than removed, so the mark keeps
+     the light it was drawn with. */
+  .animate-splash-halo {
+    animation: none;
+    opacity: 0.7;
   }
 
   /* The sweeping playhead is decoration on top of a stage the phase line already

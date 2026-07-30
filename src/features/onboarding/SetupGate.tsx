@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { onboardingForcedByDev } from "@/features/onboarding/devOverride";
 import { useCompleteOnboarding, useEnvStatus, useOnboardingState } from "@/features/onboarding/hooks";
 import { SetupWalkthrough } from "@/features/onboarding/SetupWalkthrough";
-import { SplashScreen } from "@/features/onboarding/SplashScreen";
+import { SplashHandover } from "@/features/onboarding/SplashHandover";
 import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
 /**
@@ -49,20 +49,24 @@ export function SetupGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (gate === "checking") return <SplashScreen />;
-
-  if (gate === "onboarding") {
-    return (
-      <SetupWalkthrough
-        env={status.data ?? null}
-        acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
-        onRecheckPython={() => status.refetch()}
-        isCheckingPython={status.isFetching}
-        onFinish={() => complete.mutate()}
-        isFinishing={complete.isPending}
-      />
-    );
-  }
-
-  return <>{children}</>;
+  // Whichever surface comes next arrives through the same cross-fade, the
+  // walkthrough included: the splash is not waiting for the app specifically,
+  // it is waiting for an answer, and the hand-over should not look different
+  // depending on which answer came back.
+  return (
+    <SplashHandover waiting={gate === "checking"}>
+      {gate === "onboarding" ? (
+        <SetupWalkthrough
+          env={status.data ?? null}
+          acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
+          onRecheckPython={() => status.refetch()}
+          isCheckingPython={status.isFetching}
+          onFinish={() => complete.mutate()}
+          isFinishing={complete.isPending}
+        />
+      ) : (
+        children
+      )}
+    </SplashHandover>
+  );
 }
