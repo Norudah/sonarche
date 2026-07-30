@@ -1,9 +1,9 @@
-import { AlertDialog, Button } from "@heroui/react";
 import { Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteTracks } from "@/features/library/hooks";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 export interface AlbumDeletion {
   title: string;
@@ -26,41 +26,24 @@ export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | n
   };
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       isOpen={album != null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onClose={onClose}
+      status="danger"
+      icon={Trash2}
+      title={t("deleteAlbum.title")}
+      cancelLabel={t("delete.cancel")}
+      confirmLabel={t("delete.confirm")}
+      onConfirm={confirm}
+      isPending={remove.isPending}
     >
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog>
-            <AlertDialog.Icon status="danger">
-              <Trash2 className="size-5" />
-            </AlertDialog.Icon>
-            <AlertDialog.Header>
-              <AlertDialog.Heading>{t("deleteAlbum.title")}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
-              <p>
-                {t("deleteAlbum.body", {
-                  title: shown?.title || t("unknownTitle"),
-                  count: shown?.trackIds.length ?? 0,
-                })}
-              </p>
-              {remove.isError && <p className="mt-2 text-sm text-danger">{t("delete.failed")}</p>}
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button variant="secondary" onPress={onClose} isDisabled={remove.isPending}>
-                {t("delete.cancel")}
-              </Button>
-              <Button variant="danger" onPress={confirm} isDisabled={remove.isPending}>
-                {t("delete.confirm")}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      <p>
+        {t("deleteAlbum.body", {
+          title: shown?.title || t("unknownTitle"),
+          count: shown?.trackIds.length ?? 0,
+        })}
+      </p>
+      {remove.isError && <p className="mt-2 text-danger">{t("delete.failed")}</p>}
+    </ConfirmDialog>
   );
 }

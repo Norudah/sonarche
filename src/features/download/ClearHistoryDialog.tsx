@@ -1,8 +1,8 @@
-import { AlertDialog, Button } from "@heroui/react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useClearJobHistory } from "@/features/download/hooks";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 interface ClearHistoryDialogProps {
   isOpen: boolean;
@@ -41,36 +41,19 @@ export function ClearHistoryDialog({ isOpen, onClose, downloads, imports, onClea
         : downloadsFragment;
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onClose={onClose}
+      status="danger"
+      icon={Trash2}
+      title={t("queue.clearHistoryTitle")}
+      cancelLabel={t("queue.clearHistoryCancel")}
+      confirmLabel={t("queue.clearHistoryConfirm")}
+      onConfirm={confirm}
+      isPending={clear.isPending}
     >
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog>
-            <AlertDialog.Icon status="danger">
-              <Trash2 className="size-5" />
-            </AlertDialog.Icon>
-            <AlertDialog.Header>
-              <AlertDialog.Heading>{t("queue.clearHistoryTitle")}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
-              <p>{t("queue.clearHistoryBody", { scope, count: downloads + imports })}</p>
-              {clear.isError && <p className="mt-2 text-sm text-danger">{t("queue.clearHistoryFailed")}</p>}
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button variant="secondary" onPress={onClose} isDisabled={clear.isPending}>
-                {t("queue.clearHistoryCancel")}
-              </Button>
-              <Button variant="danger" onPress={confirm} isDisabled={clear.isPending}>
-                {t("queue.clearHistoryConfirm")}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      <p>{t("queue.clearHistoryBody", { scope, count: downloads + imports })}</p>
+      {clear.isError && <p className="mt-2 text-danger">{t("queue.clearHistoryFailed")}</p>}
+    </ConfirmDialog>
   );
 }

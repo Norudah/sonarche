@@ -1,7 +1,8 @@
-import { AlertDialog, Button } from "@heroui/react";
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 /**
  * The confirmation that stands between a pending draft and the ✕.
@@ -9,7 +10,8 @@ import { useTranslation } from "react-i18next";
  * Closing used to throw the draft away without a word — backdrop, ✕ and Escape
  * all did it, and five minutes of typing were easier to lose than to keep.
  * Three ways out, because the honest answer to "you are about to lose this" is
- * usually "then save it", not just yes or no.
+ * usually "then save it", not just yes or no — so saving is what the loud
+ * button does, and discarding sits in the quiet slot beside it.
  */
 export function ExitGuardDialog({
   pendingFields,
@@ -33,38 +35,19 @@ export function ExitGuardDialog({
   if (pendingFields > 0 && pendingFields !== lastCount) setLastCount(pendingFields);
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       isOpen={pendingFields > 0}
-      onOpenChange={(open) => {
-        if (!open) onKeepEditing();
-      }}
+      onClose={onKeepEditing}
+      status="warning"
+      icon={TriangleAlert}
+      title={t("albumMetadata.guard.title")}
+      cancelLabel={t("albumMetadata.guard.keepEditing")}
+      alternative={{ label: t("albumMetadata.guard.discard"), onPress: onDiscard, isDanger: true }}
+      confirmLabel={t("metadata.save")}
+      onConfirm={onSave}
+      isPending={isSaving}
     >
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog>
-            <AlertDialog.Icon status="warning">
-              <TriangleAlert className="size-5" />
-            </AlertDialog.Icon>
-            <AlertDialog.Header>
-              <AlertDialog.Heading>{t("albumMetadata.guard.title")}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
-              <p>{t("albumMetadata.guard.body", { count: lastCount })}</p>
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button variant="secondary" onPress={onKeepEditing} isDisabled={isSaving}>
-                {t("albumMetadata.guard.keepEditing")}
-              </Button>
-              <Button variant="tertiary" className="text-danger" onPress={onDiscard} isDisabled={isSaving}>
-                {t("albumMetadata.guard.discard")}
-              </Button>
-              <Button variant="primary" onPress={onSave} isDisabled={isSaving}>
-                {t("metadata.save")}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      <p>{t("albumMetadata.guard.body", { count: lastCount })}</p>
+    </ConfirmDialog>
   );
 }
