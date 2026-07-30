@@ -186,9 +186,20 @@ pub fn init(app: &AppHandle) -> AppResult<JobsState> {
 
     // The DB shipped briefly as jobs.db before it became the app-wide store;
     // adopt any such file in place rather than starting empty.
+    //
+    // All three files, not just the main one. The store runs in WAL mode, so a
+    // `-wal` holding committed-but-uncheckpointed pages is part of the database
+    // and not a cache: renaming `jobs.db` alone hands SQLite a file whose most
+    // recent writes are sitting in a `-wal` it will never look at again, and
+    // leaves the orphans behind for good measure.
     let legacy_db = data_dir.join("jobs.db");
     if legacy_db.exists() && !db_path.exists() {
-        let _ = std::fs::rename(&legacy_db, &db_path);
+        for suffix in ["", "-wal", "-shm"] {
+            let from = data_dir.join(format!("jobs.db{suffix}"));
+            if from.exists() {
+                let _ = std::fs::rename(&from, data_dir.join(format!("sonarche.db{suffix}")));
+            }
+        }
     }
 
     let conn = jobs_store::open(&db_path)?;
