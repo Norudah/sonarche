@@ -192,16 +192,42 @@ impl AppPaths {
 const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz";
 #[cfg(target_os = "macos")]
 const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-macos-universal/fpcalc";
+#[cfg(target_os = "macos")]
+const FPCALC_SHA256: &str = "d4d8faff4b5f7c558d9be053da47804f9501eaa6c2f87906a9f040f38d61c860";
 
 #[cfg(target_os = "windows")]
 const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-windows-x86_64.zip";
 #[cfg(target_os = "windows")]
 const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-windows-x86_64/fpcalc.exe";
+#[cfg(target_os = "windows")]
+const FPCALC_SHA256: &str = "36b478e16aa69f757f376645db0d436073a42c0097b6bb2677109e7835b59bbc";
 
 // Rather than an unresolved-name error a hundred lines further down: the two
 // constants above are the whole of what a new platform has to add here.
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 compile_error!("no fpcalc asset pinned for this platform — add one beside FPCALC_URL");
+
+/// A file's SHA-256, lowercase hex.
+///
+/// Streamed rather than read whole: the archive is a couple of megabytes today,
+/// but a hasher that has to hold its input in memory is a size limit written
+/// into the wrong place.
+async fn sha256_of(path: &Path) -> AppResult<String> {
+    use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt;
+
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer).await?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
 
 /// Download fpcalc into the app-owned tools dir on first use. Self-healing,
 /// like the venv: a failure only degrades enrichment, never the app.
@@ -225,6 +251,18 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
         .await?;
     if !status.success() {
         return Err(AppError::Setup("fpcalc download failed".into()));
+    }
+
+    // Before anything unpacks it, and long before anything runs it. This is the
+    // one binary the app fetches at runtime instead of shipping, so it is the
+    // one place where "what we asked for" and "what we got" can differ without
+    // a build ever noticing.
+    let digest = sha256_of(&archive).await?;
+    if digest != FPCALC_SHA256 {
+        let _ = tokio::fs::remove_file(&archive).await;
+        return Err(AppError::Setup(format!(
+            "fpcalc archive does not match its pinned checksum (got {digest})"
+        )));
     }
 
     let status = command(SYSTEM_TAR)
@@ -745,6 +783,31 @@ mod tests {
         };
 
         assert_eq!(strip(&app), strip(&import));
+    }
+
+    /// The digest guarding the one binary the app fetches at runtime. Checked
+    /// against a value nobody here computed — the empty string's SHA-256 is a
+    /// published constant — so a hasher wired up wrong (a buffer read past its
+    /// length, a chunk hashed twice) cannot agree with itself and pass.
+    #[tokio::test]
+    async fn hashes_a_file_the_way_sha256_says_it_should() {
+        let dir = std::env::temp_dir().join(format!("sonarche-sha-{}", std::process::id()));
+        tokio::fs::create_dir_all(&dir).await.expect("temp dir");
+        let empty = dir.join("empty");
+        let hello = dir.join("hello");
+        tokio::fs::write(&empty, b"").await.expect("write");
+        tokio::fs::write(&hello, b"hello").await.expect("write");
+
+        assert_eq!(
+            sha256_of(&empty).await.expect("hash"),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(
+            sha256_of(&hello).await.expect("hash"),
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
     /// Both point at the same library and the same database — the import is a

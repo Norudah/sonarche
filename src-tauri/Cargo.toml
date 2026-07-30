@@ -2,6 +2,7 @@
 name = "sonarche"
 version = "0.9.1"
 description = "Your music, from the stream into the ark."
+license = "MIT"
 edition = "2021"
 
 [build-dependencies]
@@ -20,6 +21,11 @@ uuid = { version = "1", features = ["v4"] }
 url = "2"
 # Jitter between album batch downloads; tiny and dependency-free (rand is overkill).
 fastrand = "2"
+# One job: checking the fpcalc archive against its pinned digest before the app
+# unpacks a binary and runs it. TLS proves we reached github.com; it says nothing
+# about the bytes that release still holds, and re-tagging a GitHub release
+# silently replaces its assets.
+sha2 = "0.10"
 # Download-history store (our own DB, distinct from the beets library). `bundled`
 # ships SQLite with the binary — no system lib, matching the app's self-contained ethos.
 rusqlite = { version = "0.32", features = ["bundled"] }

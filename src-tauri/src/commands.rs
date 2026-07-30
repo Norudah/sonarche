@@ -183,6 +183,7 @@ pub async fn reenrich_track(
 /// audio thread, and the runtime's threads are not the ones to wait on it.
 #[tauri::command]
 pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>> {
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
     player::off_runtime(app, move |player| player.load(&path)).await
 }
 
@@ -190,6 +191,7 @@ pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>>
 /// calls this once it knows what comes next.
 #[tauri::command]
 pub async fn player_enqueue(app: AppHandle, path: String) -> AppResult<()> {
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
     player::off_runtime(app, move |player| player.enqueue(&path)).await
 }
 

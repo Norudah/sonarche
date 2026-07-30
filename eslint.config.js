@@ -14,7 +14,11 @@ import tseslint from "typescript-eslint";
  * never attaching.
  */
 export default tseslint.config(
-  { ignores: ["dist", "src-tauri/target"] },
+  // `docs/designs` holds exported design mock-ups — third-party HTML/JS nobody
+  // edits and nothing ships. Linting it drowned the real output: 133 of the
+  // 133 errors `npm run lint` reported came from two vendored files, which made
+  // the command useless as a gate on our own code.
+  { ignores: ["dist", "docs", "src-tauri/target"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   // `.flat` and not the top-level entry: the latter is still the eslintrc shape
