@@ -16,6 +16,88 @@ export async function setApiKey(name: ApiKeyName, value: string): Promise<ApiKey
   return invoke<ApiKeyStatus>("set_api_key", { name, value });
 }
 
+/** The verdict on a key: valid, or invalid with a machine-readable reason. */
+export interface KeyCheck {
+  valid: boolean;
+  reason: string | null;
+}
+
+/** Omit `key` to test the one already stored — the frontend never holds it. */
+export async function checkApiKey(name: ApiKeyName, key?: string): Promise<KeyCheck> {
+  if (name !== "acoustid") throw new Error(`no check for ${name}`);
+  return invoke<KeyCheck>("check_acoustid_key", { key });
+}
+
+/** The outside services the app leans on, in the order the panel lists them. */
+export const SERVICE_NAMES = ["musicbrainz", "acoustid", "coverart", "lastfm", "lrclib", "lyricsovh"] as const;
+
+export type ServiceName = (typeof SERVICE_NAMES)[number];
+
+export type ServiceState = "up" | "down" | "unreachable";
+
+export interface ServiceStatus {
+  name: ServiceName;
+  state: ServiceState;
+  /** The HTTP status or the exception's class name — shown only on a failure,
+   * where "it did not answer" alone leaves nothing to act on. */
+  detail: string | null;
+}
+
+export async function checkServices(only?: ServiceName): Promise<ServiceStatus[]> {
+  const reply = await invoke<{ services: ServiceStatus[] }>("check_services", { only });
+  return reply.services;
+}
+
+export interface LibraryLocation {
+  path: string;
+  defaultPath: string;
+  isDefault: boolean;
+}
+
+/** Why a move cannot go ahead. Mirrors `library_move::Refusal`. */
+export type MoveRefusal = "sameLocation" | "intoItself" | "insideAppData" | "occupied" | "notWritable" | "busy";
+
+export interface MoveCheck {
+  target: string;
+  refusal: MoveRefusal | null;
+  fileCount: number;
+  sizeBytes: number;
+  /** A rename inside one volume is instant; across volumes every byte travels. */
+  sameVolume: boolean;
+}
+
+export interface MoveProgress {
+  copied: number;
+  total: number;
+}
+
+/** The event the backend pushes while a cross-volume copy runs. */
+export const MOVE_PROGRESS_EVENT = "library-move-progress";
+
+export async function getLibraryLocation(): Promise<LibraryLocation> {
+  return invoke<LibraryLocation>("get_library_location");
+}
+
+export async function checkLibraryMove(parent: string): Promise<MoveCheck> {
+  return invoke<MoveCheck>("check_library_move", { parent });
+}
+
+export async function moveLibrary(parent: string): Promise<LibraryLocation> {
+  return invoke<LibraryLocation>("move_library", { parent });
+}
+
+/** Destroys the music, the index, the history, the key and every preference.
+ * Keeps the Python engine, which the app can rebuild and the user cannot. */
+export async function eraseAllData(): Promise<void> {
+  await invoke("erase_all_data");
+}
+
+/** Throws away the Python engine and the downloaded tools. Touches no user
+ * data; the first-run walkthrough puts it back. */
+export async function reinstallEnvironment(): Promise<void> {
+  await invoke("reinstall_environment");
+}
+
 export type RateLimitKey = "lastfm" | "acoustid" | "download";
 
 export interface Preferences {

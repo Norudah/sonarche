@@ -7,12 +7,12 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
-use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
+use crate::library_move;
 use crate::library_scan::{self, ScanReport};
 use crate::lyrics;
 use crate::now_playing::{self, NowPlayingTrack};
@@ -21,6 +21,7 @@ use crate::player::{self, PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
+use crate::reset::{self, ResetTargets};
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
 use crate::window_chrome;
@@ -295,21 +296,49 @@ pub async fn library_align_apply(
     state.apply(&app, plan).await
 }
 
-/// Check an AcoustID key before it is stored, so a typo is caught while the
-/// user still has the key on screen rather than on the first failed download.
-/// Through the sidecar because that is where the HTTP client already lives —
-/// and by then the engine step is done, so the venv is guaranteed to be there.
+/// Check an AcoustID key, so a typo is caught while the user still has the key
+/// on screen rather than on the first failed download. Through the sidecar
+/// because that is where the HTTP client already lives — and by then the engine
+/// step is done, so the venv is guaranteed to be there.
+///
+/// `key` omitted means "the one already stored": the settings screen has a
+/// Test button next to a key it is not allowed to read back, so the keychain
+/// lookup has to happen on this side. The secret still never crosses the IPC
+/// boundary outward.
 #[tauri::command]
 pub async fn check_acoustid_key(
     app: AppHandle,
     state: State<'_, SidecarState>,
-    key: String,
+    key: Option<String>,
 ) -> AppResult<Box<RawValue>> {
+    let key = match key {
+        Some(typed) if !typed.trim().is_empty() => typed,
+        _ => settings::read("acoustid").await?.unwrap_or_default(),
+    };
     state
         .read(
             &app,
             "acoustid_key_check",
             json!({ "key": key }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
+/// Ask every outside service whether it is answering. Through the sidecar for
+/// the same reason as the key check: that is where the HTTP client lives, and
+/// the probes run in parallel there so six timeouts cannot add up.
+#[tauri::command]
+pub async fn check_services(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    only: Option<String>,
+) -> AppResult<Box<RawValue>> {
+    state
+        .read(
+            &app,
+            "services_check",
+            json!({ "only": only }),
             QUERY_TIMEOUT,
         )
         .await
@@ -328,6 +357,55 @@ pub async fn set_onboarding_completed(
     onboarding::set_completed(&app, completed).await
 }
 
+#[tauri::command]
+pub async fn get_library_location(app: AppHandle) -> AppResult<library_move::LibraryLocation> {
+    library_move::location(&app)
+}
+
+/// What a move to `parent` would involve, and whether it can go ahead at all.
+/// The confirmation dialog is built from this; the move itself re-checks.
+#[tauri::command]
+pub async fn check_library_move(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    parent: String,
+) -> AppResult<library_move::MoveCheck> {
+    library_move::check(&app, &jobs, PathBuf::from(parent)).await
+}
+
+/// Move the music to `parent`/Sonarche. Stops playback and takes the sidecar
+/// down first; refuses outright while a download or an import is running.
+#[tauri::command]
+pub async fn move_library(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+    parent: String,
+) -> AppResult<library_move::LibraryLocation> {
+    library_move::perform(&app, &jobs, &sidecar, PathBuf::from(parent)).await
+}
+
+/// The danger zone's destructive half: everything the user put in. Refuses
+/// while a download or an import is running.
+#[tauri::command]
+pub async fn erase_all_data(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+) -> AppResult<()> {
+    reset::erase_data(&app, &jobs, &sidecar).await
+}
+
+/// The danger zone's harmless half: the Python environment and the tools, both
+/// of which the walkthrough puts back.
+#[tauri::command]
+pub async fn reinstall_environment(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+) -> AppResult<()> {
+    reset::reinstall_environment(&app, &sidecar).await
+}
+
 /// Dev-only: put back what the app can rebuild by itself. Never the library.
 #[tauri::command]
 pub async fn reset_setup_dev(
@@ -336,14 +414,14 @@ pub async fn reset_setup_dev(
     sidecar: State<'_, SidecarState>,
     targets: ResetTargets,
 ) -> AppResult<()> {
-    dev_reset::reset_setup(&app, &state, &sidecar, targets).await
+    reset::reset_setup(&app, &state, &sidecar, targets).await
 }
 
 /// Dev-only: wipe the whole music library (audio files + beets DB) so bug-fix
 /// scenarios restart from a clean slate. Refused outright in release builds.
 #[tauri::command]
 pub async fn reset_library_dev(app: AppHandle) -> AppResult<()> {
-    dev_reset::reset_library(&app).await
+    reset::reset_library(&app).await
 }
 
 /// The only tags an edit may touch. Keys are beets' own item attribute names,

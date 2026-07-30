@@ -1,4 +1,4 @@
-import { Gauge, KeyRound, Palette, RefreshCw, Wrench } from "lucide-react";
+import { Gauge, HardDrive, KeyRound, Palette, RefreshCw, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { paths } from "@/app/paths";
@@ -20,6 +20,7 @@ export const settingsCategories: SettingsCategory[] = [
   { path: paths.settingsAppearance, labelKey: "appearance.category", icon: Palette },
   { path: paths.settingsApiKeys, labelKey: "apiKeys.category", icon: KeyRound },
   { path: paths.settingsRateLimits, labelKey: "rateLimits.category", icon: Gauge },
+  { path: paths.settingsLibrary, labelKey: "library.category", icon: HardDrive },
   { path: paths.settingsUpdates, labelKey: "updates.category", icon: RefreshCw },
   ...(import.meta.env.DEV
     ? [{ path: paths.settingsDeveloper, labelKey: "developer.category", icon: Wrench } satisfies SettingsCategory]

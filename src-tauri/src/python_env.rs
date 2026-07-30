@@ -79,6 +79,43 @@ pub struct AppPaths {
     pub wheels_dir: PathBuf,
 }
 
+/// Where the library lives, when the user has moved it off the default.
+///
+/// Managed state and not a read of `preferences.json`, because
+/// [`AppPaths::resolve`] is synchronous and runs on nearly every command: a
+/// file read in there would be blocking IO on the tokio runtime, dozens of
+/// times per screen. Seeded once at startup from the preferences file and
+/// rewritten only by a move, which is the only thing that changes it.
+#[derive(Default)]
+pub struct LibraryRoot(std::sync::RwLock<Option<PathBuf>>);
+
+impl LibraryRoot {
+    pub fn get(&self) -> Option<PathBuf> {
+        self.0.read().ok().and_then(|guard| guard.clone())
+    }
+
+    pub fn set(&self, dir: Option<PathBuf>) {
+        if let Ok(mut guard) = self.0.write() {
+            *guard = dir;
+        }
+    }
+}
+
+/// The folder the app picks when nobody has said otherwise: a `Sonarche` inside
+/// the platform's music folder, falling back to app data on a system that has
+/// no such folder.
+pub fn default_library_dir(app: &AppHandle) -> PathBuf {
+    app.path()
+        .audio_dir()
+        .map(|dir| dir.join("Sonarche"))
+        .unwrap_or_else(|_| {
+            app.path()
+                .app_data_dir()
+                .map(|dir| dir.join("Library"))
+                .unwrap_or_else(|_| PathBuf::from("Library"))
+        })
+}
+
 impl AppPaths {
     pub fn resolve(app: &AppHandle) -> AppResult<Self> {
         let data = app.path().app_data_dir()?;
@@ -90,11 +127,11 @@ impl AppPaths {
                 .resolve(name, tauri::path::BaseDirectory::Resource)
                 .unwrap_or_else(|_| data.join(name))
         };
+        // The user's choice wins; the default is only what nobody overrode.
         let library_dir = app
-            .path()
-            .audio_dir()
-            .map(|d| d.join("Sonarche"))
-            .unwrap_or_else(|_| data.join("Library"));
+            .try_state::<LibraryRoot>()
+            .and_then(|root| root.get())
+            .unwrap_or_else(|| default_library_dir(app));
         Ok(Self {
             venv_dir: data.join("venv"),
             staging_dir: data.join("staging"),
@@ -318,11 +355,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     // first setup — otherwise an existing install can keep importing into a stale path after
     // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
     if venv_ok {
-        tokio::fs::create_dir_all(&paths.library_dir).await?;
-        if let Some(parent) = paths.beets_config.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        write_beets_config(&paths).await?;
+        adopt_library_dir(app).await?;
     }
     let deps_ok = if venv_ok {
         command(&venv_python)
@@ -428,6 +461,36 @@ async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
 
 async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) -> AppResult<()> {
     tokio::fs::write(target, beets_config_yaml(paths, flavour)).await?;
+    Ok(())
+}
+
+/// Make the current library directory the one everything else believes in.
+///
+/// Two things have to be told, and both are easy to forget separately: beets,
+/// through `directory:` in its two configs, and the webview's asset scope,
+/// without which every cover in the app 404s behind a path the security layer
+/// has never heard of. `tauri.conf.json` can only name the default folder, so
+/// a moved library has to be granted at runtime.
+///
+/// Called after a move, and on every environment check — so a library that was
+/// moved while the app was closed, or one whose config was written by an older
+/// build, is repaired on the next launch rather than staying half-pointed.
+pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
+    let paths = AppPaths::resolve(app)?;
+    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    if let Some(parent) = paths.beets_config.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    write_beets_config(&paths).await?;
+    if let Err(err) = app
+        .asset_protocol_scope()
+        .allow_directory(&paths.library_dir, true)
+    {
+        // Not fatal: the default folder is already in the manifest's scope, so
+        // this only ever matters for a moved library — and a library the user
+        // can browse without covers beats an app that refuses to start.
+        eprintln!("[library] could not widen the asset scope: {err}");
+    }
     Ok(())
 }
 

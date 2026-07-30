@@ -642,6 +642,40 @@ export function installMockTauri() {
         const valid = String(payload?.key ?? "").trim() !== "bad";
         return { valid, reason: valid ? null : "invalidKey" };
       }
+      // One of each verdict, so the panel's three registers are all reachable
+      // without waiting for a real service to fall over.
+      if (cmd === "check_services") {
+        return {
+          services: [
+            { name: "musicbrainz", state: "up", detail: "200" },
+            { name: "acoustid", state: "up", detail: "400" },
+            { name: "coverart", state: "up", detail: "200" },
+            { name: "lastfm", state: "down", detail: "503" },
+            { name: "lrclib", state: "unreachable", detail: "ReadTimeout" },
+            { name: "lyricsovh", state: "up", detail: "200" },
+          ],
+        };
+      }
+      if (cmd === "get_library_location") {
+        return {
+          path: "/Users/preview/Music/Sonarche",
+          defaultPath: "/Users/preview/Music/Sonarche",
+          isDefault: true,
+        };
+      }
+      // A plausible move, across volumes so the confirmation's slower branch is
+      // the one on screen; picking a folder under /Users/preview shows a
+      // refusal instead.
+      if (cmd === "check_library_move") {
+        const parent = String(payload?.parent ?? "");
+        return {
+          target: `${parent}/Sonarche`,
+          refusal: parent.startsWith("/Users/preview/Music/Sonarche") ? "intoItself" : null,
+          fileCount: 12_412,
+          sizeBytes: 68_400_000_000,
+          sameVolume: false,
+        };
+      }
       if (cmd === "set_rate_limit_delay") {
         const field = preferenceFields[String(payload?.key)];
         if (field) preferences[field] = Number(payload?.seconds ?? preferences[field]);

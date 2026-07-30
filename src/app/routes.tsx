@@ -20,6 +20,7 @@ import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
+import { LibrarySection } from "@/features/settings/LibrarySection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
 import { UpdateSection } from "@/features/update/UpdateSection";
 
@@ -61,6 +62,7 @@ export const router = createMemoryRouter(
             { path: paths.settingsAppearance, element: <AppearanceSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
+            { path: paths.settingsLibrary, element: <LibrarySection /> },
             { path: paths.settingsUpdates, element: <UpdateSection /> },
             // Dev builds only; the backend command refuses to run in release anyway.
             ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
