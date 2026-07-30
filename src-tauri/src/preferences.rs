@@ -26,21 +26,31 @@ pub const LASTFM_DELAY: RateLimit = RateLimit {
 
 /// AcoustID documents 3 requests/second per key; an album batch fires one
 /// lookup per track back to back, so it is the easiest limit to trip.
+///
+/// Defaults to a second rather than to the documented floor of 0.34: one second
+/// is the politeness floor the settings screen asks users to stay above for
+/// every service, and a default that already sits under it would be the app
+/// disagreeing with its own advice. The extra half-second costs 7s on a
+/// fifteen-track album.
 pub const ACOUSTID_DELAY: RateLimit = RateLimit {
     min: 0.0,
     max: 2.0,
-    default: 0.5,
+    default: 1.0,
 };
 
 /// Base pause between two YouTube downloads of a batch (jittered up to 2x at
 /// use site). Sequential same-IP hammering is what gets clients flagged.
+///
+/// The one delay whose default sits well above the one-second floor, and it
+/// stays there: this is the only limit the app has actually been throttled on,
+/// and a 403 mid-playlist costs the user a retry rather than a slower run.
 pub const DOWNLOAD_DELAY: RateLimit = RateLimit {
     min: 0.0,
     max: 15.0,
     default: 3.0,
 };
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Preferences {
     #[serde(default = "default_lastfm")]
@@ -59,6 +69,14 @@ pub struct Preferences {
     /// which is the returning-user path we want to exercise anyway.
     #[serde(default)]
     pub onboarding_completed: bool,
+    /// Where the music lives, when the user has moved it off the default.
+    ///
+    /// `None` means "wherever the app would put it", which is not the same as
+    /// storing today's default path: a user who moves their music folder, or
+    /// switches machines through a synced profile, should follow the app rather
+    /// than a path frozen at first launch.
+    #[serde(default)]
+    pub library_dir: Option<String>,
 }
 
 fn default_lastfm() -> f64 {
@@ -78,6 +96,7 @@ impl Default for Preferences {
             acoustid_lookup_delay_seconds: ACOUSTID_DELAY.default,
             download_delay_seconds: DOWNLOAD_DELAY.default,
             onboarding_completed: false,
+            library_dir: None,
         }
     }
 }
@@ -107,6 +126,14 @@ async fn save(app: &AppHandle, prefs: &Preferences) -> AppResult<()> {
 pub async fn set_onboarding_completed(app: &AppHandle, completed: bool) -> AppResult<Preferences> {
     let mut prefs = load(app).await?;
     prefs.onboarding_completed = completed;
+    save(app, &prefs).await?;
+    Ok(prefs)
+}
+
+/// Records where the library now lives. `None` puts it back on the default.
+pub async fn set_library_dir(app: &AppHandle, dir: Option<PathBuf>) -> AppResult<Preferences> {
+    let mut prefs = load(app).await?;
+    prefs.library_dir = dir.map(|path| path.display().to_string());
     save(app, &prefs).await?;
     Ok(prefs)
 }
