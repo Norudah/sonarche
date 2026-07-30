@@ -33,6 +33,7 @@ def _handlers():
     import library_import
     import lyrics
     import probe
+    import services
 
     return {
         "ping": _handle_ping,
@@ -50,6 +51,7 @@ def _handlers():
         "genres_recompute": genres.recompute,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,
+        "services_check": services.check,
     }
 
 
