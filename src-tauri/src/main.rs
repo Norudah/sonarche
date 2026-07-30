@@ -4,6 +4,7 @@ mod audio_formats;
 mod commands;
 mod error;
 mod genres;
+mod identity;
 mod jobs;
 mod jobs_store;
 mod library_align;

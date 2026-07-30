@@ -9,6 +9,7 @@ use tauri::{AppHandle, State};
 
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
+use crate::identity;
 use crate::jobs::{Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
@@ -334,11 +335,12 @@ pub async fn check_services(
     state: State<'_, SidecarState>,
     only: Option<String>,
 ) -> AppResult<Box<RawValue>> {
+    let identity = identity::user_agent(&app);
     state
         .read(
             &app,
             "services_check",
-            json!({ "only": only }),
+            json!({ "only": only, "user_agent": identity }),
             QUERY_TIMEOUT,
         )
         .await

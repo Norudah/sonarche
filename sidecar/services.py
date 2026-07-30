@@ -25,7 +25,13 @@ _TIMEOUT = 8
 
 # MusicBrainz requires a real User-Agent and blocks the default one; the others
 # do not care, and sending the same string everywhere keeps us identifiable.
-_USER_AGENT = "Sonarche/1.0 ( https://github.com/Norudah/sonarche )"
+#
+# Handed in by the caller, which builds it from the bundle's own version — the
+# same string the lyrics lookup sends. It was written out here by hand once and
+# claimed "Sonarche/1.0" through every release up to 0.9.1, which is exactly the
+# kind of thing a hardcoded version does. The fallback is for a direct call with
+# no caller to ask; the app always passes one.
+_FALLBACK_USER_AGENT = "Sonarche (https://github.com/Norudah/sonarche)"
 
 # A known-good MusicBrainz release id (Nirvana — Nevermind), used only as a
 # cheap thing to ask for. Any stable id would do; the answer is discarded.
@@ -65,13 +71,11 @@ def classify(status: int | None, failure: str | None) -> dict:
     return {"state": "up", "detail": str(status)}
 
 
-def _probe(name: str, url: str) -> dict:
+def _probe(name: str, url: str, user_agent: str) -> dict:
     import requests
 
     try:
-        resp = requests.get(
-            url, timeout=_TIMEOUT, headers={"User-Agent": _USER_AGENT}
-        )
+        resp = requests.get(url, timeout=_TIMEOUT, headers={"User-Agent": user_agent})
         verdict = classify(resp.status_code, None)
     except Exception as exc:  # noqa: BLE001 — every failure is the same verdict
         verdict = classify(None, type(exc).__name__)
@@ -81,6 +85,7 @@ def _probe(name: str, url: str) -> dict:
 def check(request_id: str, params: dict) -> dict:
     """Probe every service, or the one named in `params`."""
     only = params.get("only")
+    user_agent = params.get("user_agent") or _FALLBACK_USER_AGENT
     probes = [p for p in PROBES if only is None or p[0] == only]
     if not probes:
         raise ValueError(f"unknown service: {only}")
@@ -89,5 +94,5 @@ def check(request_id: str, params: dict) -> dict:
     # In parallel, so six services with an 8s timeout cannot add up to 48s of
     # the user staring at spinners.
     with ThreadPoolExecutor(max_workers=len(probes)) as pool:
-        results = list(pool.map(lambda p: _probe(*p), probes))
+        results = list(pool.map(lambda p: _probe(*p, user_agent), probes))
     return {"services": results}

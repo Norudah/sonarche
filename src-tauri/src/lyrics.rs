@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 
 use crate::error::{AppError, AppResult};
+use crate::identity::user_agent;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
@@ -44,15 +45,4 @@ pub async fn fetch(
             TIMEOUT,
         )
         .await
-}
-
-/// LRCLIB asks callers to say who they are rather than hide behind a default
-/// HTTP client string. The version is what makes a misbehaving build traceable
-/// to them, and the bundle identifier is the only address this app has.
-fn user_agent(app: &AppHandle) -> String {
-    format!(
-        "Sonarche/{} ({})",
-        app.package_info().version,
-        app.config().identifier
-    )
 }
