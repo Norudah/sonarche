@@ -1,13 +1,16 @@
 import { Button, Popover, Spinner } from "@heroui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hand, Loader2, Magnet, MicVocal, RotateCcw } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { layoutIds, springs } from "@/shared/motion/tokens";
 import { BAR_TRIGGER } from "@/shared/player/barTrigger";
 import { activeLineIndex, fetchLyrics, type Lyrics, type LyricLine } from "@/shared/player/lyrics";
 import { usePlayer, usePlayerProgress } from "@/shared/player/PlayerContext";
 import type { PlayableTrack } from "@/shared/player/types";
+import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 import { TrackThumb } from "@/shared/ui/TrackThumb";
 
@@ -133,13 +136,58 @@ function LyricsOffer({
   );
 }
 
+/** Segment of the follow switch, in the app's segmented-control size, taken
+ * down to footer scale. */
+const SEGMENT =
+  "relative flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+
 /**
- * Where the words came from, and the way to ask again.
+ * Follow the music, or scroll it yourself.
+ *
+ * A sliding pill between two named segments rather than one icon that flips:
+ * this app already says "throw this switch" that way (see `ViewModeSwitch`),
+ * and an icon alone cannot say which of the two modes it is announcing — the
+ * current one, or the one it would take you to.
+ */
+function FollowSwitch({ on, toggle }: { on: boolean; toggle: () => void }) {
+  const { t } = useTranslation("player");
+
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-default/60 p-0.5">
+      {([true, false] as const).map((mode) => (
+        <button
+          key={String(mode)}
+          type="button"
+          onClick={() => mode !== on && toggle()}
+          aria-pressed={mode === on}
+          className={SEGMENT + (mode === on ? " text-accent" : " text-muted hover:text-foreground")}
+        >
+          {mode === on && (
+            <motion.span
+              layoutId={layoutIds.lyricsFollow}
+              transition={springs.snappy}
+              className="absolute inset-0 rounded-full bg-surface shadow-xs"
+            />
+          )}
+          {/* The pill is absolutely positioned and would paint over an in-flow
+           * label; positioning the content puts it back on top. */}
+          <span className="relative flex items-center gap-1">
+            {mode ? <Magnet className="size-3 shrink-0" /> : <Hand className="size-3 shrink-0" />}
+            {t(mode ? "lyrics.followAuto" : "lyrics.followManual")}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Where the words came from, how they scroll, and the way to ask again.
  *
  * The provenance is not a credit line: it is what tells the reader why nothing
  * is scrolling. lyrics.ovh has no timings to give, so a page that came from it
  * is a page to re-fetch once LRCLIB is answering again — which is exactly what
- * the button beside it does.
+ * the button on the far end does.
  */
 function LyricsFooter({
   lyrics,
@@ -165,31 +213,24 @@ function LyricsFooter({
       <p className="truncate text-[0.6875rem] text-muted">
         {source} · {t(lyrics.lines.length > 0 ? "lyrics.timed" : "lyrics.untimed")}
       </p>
-      <div className="-mr-2 flex shrink-0 items-center">
-        {follow && (
+      {/* The switch picks a mode, the button fires an action: two different
+       * kinds of control, so they are spaced apart rather than filed as a pair
+       * of neighbouring icons. */}
+      <div className="flex shrink-0 items-center gap-3">
+        {follow && <FollowSwitch on={follow.on} toggle={follow.toggle} />}
+        <ActionHelp text={t("lyrics.againHelp")}>
           <Button
             isIconOnly
             variant="tertiary"
             size="sm"
-            onPress={follow.toggle}
-            aria-pressed={follow.on}
-            aria-label={t(follow.on ? "lyrics.followOff" : "lyrics.followOn")}
-            className={`rounded-lg ${follow.on ? "text-accent" : "text-muted hover:text-foreground"}`}
+            onPress={onAgain}
+            isDisabled={isPending}
+            aria-label={t("lyrics.again")}
+            className="-mr-2 rounded-lg text-muted hover:text-foreground"
           >
-            {follow.on ? <Magnet className="size-3.5" /> : <Hand className="size-3.5" />}
+            {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
           </Button>
-        )}
-        <Button
-          isIconOnly
-          variant="tertiary"
-          size="sm"
-          onPress={onAgain}
-          isDisabled={isPending}
-          aria-label={t("lyrics.again")}
-          className="rounded-lg text-muted hover:text-foreground"
-        >
-          {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-        </Button>
+        </ActionHelp>
       </div>
     </div>
   );

@@ -91,4 +91,6 @@ export const layoutIds = {
   viewMode: "sonarche-view-mode",
   /** The light/dark/system pill in the appearance setting. */
   themeChoice: "sonarche-theme-choice",
+  /** The follow/manual pill in the lyrics panel's footer. */
+  lyricsFollow: "sonarche-lyrics-follow",
 } as const;
