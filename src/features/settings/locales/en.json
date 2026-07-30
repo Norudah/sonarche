@@ -42,7 +42,7 @@
     "delays": {
       "download": {
         "name": "Delay between two downloads",
-        "why": "On a playlist, the app downloads tracks one by one from YouTube. Back-to-back requests from the same IP are exactly what triggers throttling: a pause between tracks makes the batch look like normal listening. The real delay is randomised between this value and twice it.",
+        "why": "On a playlist, tracks are fetched one by one. This pause spaces the requests out so long batches stay within the source's rate limits instead of triggering 403 errors. The real delay is randomised between this value and twice it.",
         "estimate": "For a {{count}}-track playlist, the pauses add about {{duration}}.",
         "warning": "Below 3 seconds, the risk of being rate-limited (403 errors) rises sharply on long playlists."
       },

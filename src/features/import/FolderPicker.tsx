@@ -53,7 +53,7 @@ export function FolderPicker({ folder, phase, onChoose, onStart }: FolderPickerP
           {/* Recognising the folder is this panel's first act, reported where
               the folder is — the neutral open folder becomes the accent one the
               moment a path lands, exactly as the composer's chain link becomes
-              YouTube's mark. */}
+              the audio mark. */}
           <Swap swapKey={folder != null ? "chosen" : "idle"} mode="cross" className="flex">
             {folder != null ? (
               <FolderSearch className="size-[1.125rem] text-accent" />

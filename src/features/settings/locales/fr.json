@@ -42,7 +42,7 @@
     "delays": {
       "download": {
         "name": "Délai entre deux téléchargements",
-        "why": "Sur une playlist, l'app télécharge les pistes une par une depuis YouTube. Enchaîner les requêtes depuis la même IP est exactement ce qui déclenche les blocages : une pause entre chaque piste fait passer le lot pour une écoute normale. Le délai réel est tiré au hasard entre cette valeur et son double.",
+        "why": "Sur une playlist, les pistes sont récupérées une par une. Cette pause espace les requêtes pour que les longs lots restent dans les limites de débit de la source au lieu de déclencher des erreurs 403. Le délai réel est tiré au hasard entre cette valeur et son double.",
         "estimate": "Pour une playlist de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
         "warning": "En dessous de 3 secondes, le risque de se faire limiter (erreurs 403) augmente nettement sur les longues playlists."
       },

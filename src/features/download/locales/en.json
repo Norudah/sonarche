@@ -2,7 +2,7 @@
   "eyebrow": "Add to library",
   "title": "Paste a link, we'll take it from there.",
   "urlLabel": "Video link",
-  "urlPlaceholder": "Paste a YouTube video or playlist link",
+  "urlPlaceholder": "Paste a track or playlist link",
   "download": "Fetch",
   "enqueueFailed": "Could not add to the queue",
   "unknownArtist": "Unknown artist",

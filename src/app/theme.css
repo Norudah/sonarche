@@ -142,13 +142,6 @@
   --category-cartoon: oklch(0.55 0.1 40);
   --category-musical: oklch(0.55 0.1 316);
 
-  /* Source brand colors — not semantic app colors: they identify a third
-     party, so they live outside the accent/success/warning scales and are
-     only ever used on that source's badge. Deliberately left off the 279 axis:
-     it is not our colour, so it has no reason to follow our accord. */
-  --youtube: oklch(0.52 0.21 27);
-  --youtube-soft: oklch(0.95 0.03 27);
-
   /* Metadata drawer header — a decorative gradient, same hue as the accent but
      starting darker so it resolves into it rather than sitting flat on it.
      Raised with the accent: against 0.505 a start at 0.30 is a 0.20 ramp, and
@@ -319,9 +312,6 @@
   --category-anime: oklch(0.74 0.095 350);
   --category-cartoon: oklch(0.74 0.095 40);
   --category-musical: oklch(0.74 0.095 316);
-
-  --youtube: oklch(0.58 0.21 27);
-  --youtube-soft: oklch(0.25 0.05 27);
 
   --metadata-header-from: oklch(0.26 0.12 277);
   --metadata-header-to: var(--accent);
@@ -501,8 +491,6 @@
      value is the raw var, never a literal, so `bg-panel` and friends follow
      the theme selector like `bg-accent` already does. The raw vars, and the
      reasoning behind each value, live in the two theme blocks at the top. */
-  --color-youtube: var(--youtube);
-  --color-youtube-soft: var(--youtube-soft);
   --color-panel: var(--panel);
   --color-tray: var(--tray);
   --color-metadata-header-from: var(--metadata-header-from);
