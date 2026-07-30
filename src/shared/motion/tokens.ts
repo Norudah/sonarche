@@ -89,8 +89,12 @@ export const layoutIds = {
    * because the two switches can be on screen in the same app but never in the
    * same place — sharing one would tween a pill across half the window. */
   viewMode: "sonarche-view-mode",
-  /** The light/dark/system pill in the appearance setting. */
+  /** The ring travelling between the light/dark/system tiles in Appearance. */
   themeChoice: "sonarche-theme-choice",
+  /** The Français/English pill in the same section. Its own id: the two
+   * controls sit one under the other, and sharing one would fly the marker
+   * across the card every time either is touched. */
+  languageChoice: "sonarche-language-choice",
   /** The follow/manual pill in the lyrics panel's footer. */
   lyricsFollow: "sonarche-lyrics-follow",
 } as const;

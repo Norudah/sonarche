@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 
 import commonEn from "@/app/locales/en.json";
 import commonFr from "@/app/locales/fr.json";
+import { applyDocumentLanguage, initialLanguage } from "@/features/settings/language";
 import downloadEn from "@/features/download/locales/en.json";
 import downloadFr from "@/features/download/locales/fr.json";
 import importEn from "@/features/import/locales/en.json";
@@ -20,8 +21,10 @@ import settingsFr from "@/features/settings/locales/fr.json";
 import playerEn from "@/shared/player/locales/en.json";
 import playerFr from "@/shared/player/locales/fr.json";
 
+const startingLanguage = initialLanguage();
+
 i18n.use(initReactI18next).init({
-  lng: "fr",
+  lng: startingLanguage,
   fallbackLng: "en",
   interpolation: { escapeValue: false },
   resources: {
@@ -49,5 +52,7 @@ i18n.use(initReactI18next).init({
     },
   },
 });
+
+applyDocumentLanguage(startingLanguage);
 
 export default i18n;

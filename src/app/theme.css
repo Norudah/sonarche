@@ -405,6 +405,44 @@
   bottom: calc(var(--spacing-player) + 1rem);
 }
 
+/* --- Theme preview tiles -------------------------------------------------- */
+
+/* The one place in the app where a colour must NOT follow the theme.
+   The Appearance tiles show what each theme looks like, so the light tile has
+   to stay light while the app is dark — a token swapped by the theme selector
+   would make all three tiles identical and the control useless.
+   Hence a second, frozen copy of the two palettes, kept deliberately short:
+   only the surfaces a 96×64 drawing of the app can actually show. The values
+   are the same ones the theme blocks at the top declare; when those move,
+   these are the mirror to move with them. */
+
+.theme-tile[data-tone="light"] {
+  --tile-background: oklch(0.982 0.006 279);
+  --tile-panel: oklch(0.968 0.007 279);
+  --tile-surface: oklch(0.995 0.004 279);
+  --tile-separator: oklch(0.905 0.01 279);
+  --tile-muted: oklch(0.905 0.012 279);
+  --tile-ink: oklch(0.255 0.02 279);
+  --tile-accent: oklch(0.505 0.185 277);
+}
+
+.theme-tile[data-tone="dark"] {
+  --tile-background: oklch(0.175 0.016 279);
+  --tile-panel: oklch(0.205 0.017 279);
+  --tile-surface: oklch(0.235 0.018 279);
+  --tile-separator: oklch(0.285 0.02 279);
+  --tile-muted: oklch(0.35 0.02 279);
+  --tile-ink: oklch(0.965 0.008 279);
+  --tile-accent: oklch(0.63 0.16 277);
+}
+
+/* The `system` tile lays the night over the day and cuts it on the diagonal,
+   which is the only honest drawing of "whichever the desktop is wearing":
+   both answers, one tile, no third invented look. */
+.theme-tile__split {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
 /* --- Player seek/volume sliders — thinner than HeroUI default ------------ */
 
 /* Seekbar — accent color, thumb 1rem */
@@ -477,6 +515,37 @@
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
+}
+
+/* --- Settings sliders — a hairline rail and a round knob ------------------ */
+
+/* HeroUI's default is a 20 px rail under a 24×16 thumb: the thumb is an oval,
+   and at that weight the control is the loudest object on a settings card.
+   Here the rail is a 4 px hairline and the knob is a true circle — the value is
+   what should read, not the machinery. Same override shape as the player's two
+   sliders above; the transparent side borders are HeroUI's own mechanism for
+   keeping the knob inside the track at either end, so they are kept and merely
+   narrowed to match the smaller knob. */
+.settings-slider .slider__track {
+  @apply h-1;
+  border-inline-width: 0.4375rem;
+}
+
+.settings-slider .slider__thumb {
+  @apply bg-transparent;
+  width: calc(0.875rem + 0.25rem);
+}
+
+.settings-slider .slider__thumb::after {
+  @apply bg-surface;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  /* The hairline is what keeps a surface-coloured knob from dissolving into
+     the pale end of the rail; the drop shadow is what lifts it off the fill. */
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 3px rgb(0 0 0 / 0.18);
 }
 
 /* --- App-level design tokens (theme-agnostic) ----------------------------- */

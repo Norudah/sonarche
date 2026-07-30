@@ -10,7 +10,7 @@
   "appearance": {
     "category": "Apparence",
     "title": "Apparence",
-    "description": "Comment l'app s'habille. Le choix est retenu et s'applique tout de suite, sans redémarrage.",
+    "description": "Comment l'app s'habille et dans quelle langue elle te parle. Les deux choix sont retenus et s'appliquent tout de suite, sans redémarrage.",
     "theme": {
       "name": "Thème",
       "why": "Le thème clair est celui d'origine. Nuit n'est pas son négatif : le noir n'y est jamais pur, un voile bleuté traverse chaque surface et l'accent y descend au lieu de monter. Pour les écrans trop lumineux et les sessions tardives.",
@@ -19,46 +19,85 @@
       "system": "Système",
       "followingLight": "Ton système est en clair, l'app suit.",
       "followingDark": "Ton système est en sombre, l'app passe en Nuit."
+    },
+    "language": {
+      "name": "Langue",
+      "why": "La langue de l'interface. Les noms de tes morceaux, artistes et albums viennent de tes fichiers : ils ne changent pas. Sans choix explicite, l'app suit la langue de ton système."
     }
   },
   "apiKeys": {
     "category": "Clefs API",
     "title": "Clefs API",
-    "description": "Certaines fonctionnalités s'appuient sur des services externes qui demandent une clef personnelle. Les clefs sont stockées dans le trousseau du système, jamais dans un fichier.",
+    "description": "Certaines fonctionnalités s'appuient sur des services externes. L'un d'eux demande une clef personnelle ; les autres sont libres d'accès. Les clefs sont stockées dans le trousseau du système, jamais dans un fichier.",
     "configured": "Configurée",
     "notConfigured": "Non configurée",
     "fieldLabel": "Clef API",
     "placeholder": "Colle ta clef ici",
     "acoustid": {
       "name": "AcoustID",
-      "why": "Identifie un morceau par son empreinte acoustique (l'audio lui-même, pas son nom). C'est ce qui permet de retrouver la bonne version studio d'un titre et de remplir automatiquement album, année, numéro de piste et pochette. Clef gratuite sur acoustid.org."
+      "why": "Identifie un morceau par son empreinte acoustique (l'audio lui-même, pas son nom). C'est ce qui permet de retrouver la bonne version studio d'un titre et de remplir automatiquement album, année, numéro de piste et pochette. Clef gratuite sur acoustid.org.",
+      "savedDetail": "Les prochains imports pourront identifier tes morceaux par leur empreinte."
+    },
+    "test": "Tester",
+    "savedTitle": "Clef enregistrée",
+    "saveFailedTitle": "Impossible d'enregistrer la clef",
+    "testOkTitle": "La clef fonctionne",
+    "testOkDetail": "Le service l'a acceptée.",
+    "testFailedTitle": "La clef est refusée",
+    "testUnreachableTitle": "Impossible de tester la clef",
+    "testReason": {
+      "invalidKey": "Le service ne reconnaît pas cette clef. Vérifie que tu as bien copié la clef d'application, pas l'identifiant du compte.",
+      "empty": "Il n'y a aucune clef à tester.",
+      "unknown": "Le service l'a refusée sans dire pourquoi."
+    },
+    "health": {
+      "name": "État des services",
+      "why": "Aucune requête n'est envoyée avant que tu ne cliques. Quand un import ressort sans pochette ou sans genre, c'est souvent ici que se trouve la réponse.",
+      "action": "Vérifier",
+      "checking": "Vérification…",
+      "failed": "La vérification n'a pas pu être lancée. L'environnement Python n'est peut-être pas prêt."
+    },
+    "services": {
+      "musicbrainz": "MusicBrainz",
+      "acoustid": "AcoustID",
+      "coverart": "Cover Art Archive",
+      "lastfm": "Last.fm",
+      "lrclib": "LRCLIB",
+      "lyricsovh": "lyrics.ovh"
+    },
+    "serviceState": {
+      "up": "Répond",
+      "down": "En panne",
+      "unreachable": "Injoignable",
+      "unknown": "Non vérifié"
     }
   },
   "rateLimits": {
     "category": "Limitations appels API",
     "title": "Limitations appels API",
-    "description": "Contrôle la prudence avec laquelle l'app sollicite les services externes. Chaque service a ses propres règles : rester poli évite de se faire bloquer.",
+    "description": "Contrôle la prudence avec laquelle l'app sollicite les services externes. Chaque service a ses propres règles : rester poli évite de se faire bloquer. Une seconde est le plancher recommandé partout.",
     "instant": "Instantané",
     "delays": {
       "download": {
         "name": "Délai entre deux téléchargements",
         "why": "Sur une playlist, les pistes sont récupérées une par une. Cette pause espace les requêtes pour que les longs lots restent dans les limites de débit de la source au lieu de déclencher des erreurs 403. Le délai réel est tiré au hasard entre cette valeur et son double.",
         "estimate": "Pour une playlist de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
-        "warning": "En dessous de 3 secondes, le risque de se faire limiter (erreurs 403) augmente nettement sur les longues playlists."
+        "warning": "Sous une seconde, les requêtes s'enchaînent quasiment sans pause — c'est exactement le comportement qui fait repérer un client et renvoyer des erreurs 403 au milieu d'une longue playlist. Trois secondes reste le réglage sûr."
       },
       "acoustid": {
         "name": "Délai entre les requêtes AcoustID",
         "why": "Chaque piste importée est identifiée par son empreinte acoustique via AcoustID. Le service autorise 3 requêtes par seconde et par clef : sur un album, les recherches s'enchaînent, d'où cette pause.",
         "estimate": "Pour un album de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
-        "warning": "En dessous de 0,34 s, on dépasse la limite documentée de 3 requêtes/seconde et la clef peut être bridée."
+        "warning": "Sous une seconde, l'album entier part en rafale. AcoustID documente trois requêtes par seconde et par clef : au-delà, c'est ta clef qui est bridée, et le service n'a aucune raison de prévenir avant."
       },
       "lastfm": {
         "name": "Délai entre les requêtes Last.fm",
         "why": "Quand un morceau n'a aucun genre MusicBrainz, l'action « Recalculer les genres » interroge Last.fm pour le retrouver. Cette clef API est partagée par tous les utilisateurs de beets dans le monde : un délai entre chaque requête évite de la faire bloquer temporairement pour tout le monde.",
         "estimate": "Pour {{count}} titres sans genre à ce rythme : environ {{duration}}.",
-        "warning": "En dessous d'une seconde, ce n'est pas recommandé : il faut rester poli envers Last.fm et éviter de la solliciter avec un trop grand nombre de requêtes rapprochées."
+        "warning": "Sous une seconde, on sollicite Last.fm plus vite qu'elle ne le demande — avec une clef partagée par tous les utilisateurs de beets dans le monde. La faire bloquer la bloque pour eux aussi."
       }
-    }
+    },
+    "impoliteTitle": "Réglage déconseillé."
   },
   "updates": {
     "category": "Mises à jour"
@@ -104,6 +143,74 @@
       "warning": "Tous les fichiers de la bibliothèque et l'index beets seront définitivement supprimés.",
       "resetting": "Suppression…",
       "done": "Bibliothèque réinitialisée."
+    }
+  },
+  "library": {
+    "category": "Bibliothèque",
+    "title": "Bibliothèque",
+    "description": "Où l'app range ta musique sur ce disque, et comment tout effacer si tu veux repartir de zéro.",
+    "location": {
+      "name": "Emplacement",
+      "why": "Choisis le dossier parent : l'app y crée et gère son propre dossier « Sonarche ». Le contenu actuel est déplacé, rien n'est laissé derrière.",
+      "action": "Déplacer la bibliothèque…",
+      "isDefault": "Emplacement par défaut"
+    },
+    "move": {
+      "title": "Déplacer la bibliothèque ?",
+      "body": "Toute ta musique va être transférée vers ce dossier. L'index reste valide : rien n'est réimporté, rien n'est réidentifié.",
+      "factDestination": "Destination",
+      "factContents": "À déplacer",
+      "factHow": "Méthode",
+      "contents": "{{count}} fichiers · {{size}}",
+      "contents_one": "{{count}} fichier · {{size}}",
+      "sameVolume": "Même disque, quasi instantané",
+      "otherVolume": "Autre disque, copie complète",
+      "consequences": "La lecture en cours va s'arrêter et l'app va redémarrer une fois le transfert terminé.",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "confirm": "Déplacer et redémarrer",
+      "starting": "Préparation…",
+      "progress": "{{copied}} / {{total}} fichiers",
+      "failedTitle": "Le déplacement a échoué",
+      "refusedTitle": "Ce dossier ne convient pas",
+      "refusal": {
+        "sameLocation": "La bibliothèque est déjà à cet endroit.",
+        "intoItself": "Ce dossier est à l'intérieur de la bibliothèque : elle ne peut pas se déplacer dans elle-même. Choisis un dossier en dehors.",
+        "insideAppData": "Ce dossier appartient aux données internes de l'app, que « Tout effacer » a le droit de supprimer. Ta musique n'a rien à y faire.",
+        "occupied": "Un dossier « Sonarche » existe déjà là et n'est pas vide. Vide-le ou choisis un autre parent.",
+        "notWritable": "L'app ne peut pas écrire dans ce dossier.",
+        "busy": "Un téléchargement ou un import est en cours. Attends qu'il finisse : déplacer les fichiers pendant qu'on écrit dedans les casserait."
+      }
+    },
+    "danger": {
+      "title": "Zone de danger",
+      "description": "Deux actions irréversibles. Rien ici ne se défait.",
+      "reinstall": {
+        "name": "Réinstaller l'environnement",
+        "why": "Supprime l'environnement Python et les outils téléchargés, puis les reconstruit au redémarrage. Ne touche ni à ta musique, ni à ton index, ni à ton historique. À faire si l'app refuse d'importer ou de télécharger sans raison claire.",
+        "action": "Réinstaller",
+        "dialogTitle": "Réinstaller l'environnement ?",
+        "dialogBody": "L'app va supprimer son moteur Python et redémarrer sur le parcours de première ouverture pour le reconstruire. Ça prend quelques minutes et aucune de tes données n'est concernée.",
+        "cancel": "Annuler",
+        "confirm": "Réinstaller et redémarrer",
+        "failedTitle": "La réinstallation a échoué"
+      },
+      "erase": {
+        "name": "Tout effacer",
+        "why": "Remet l'app à l'état de sa première ouverture. Tes fichiers audio sont supprimés du disque. Il n'y a pas de corbeille, pas d'annulation, pas de sauvegarde.",
+        "action": "Tout effacer",
+        "dialogTitle": "Effacer toutes tes données ?",
+        "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
+        "itemFiles": "Tous les fichiers audio de la bibliothèque, supprimés du disque",
+        "itemIndex": "L'index beets : titres, albums, artistes, genres, pochettes",
+        "itemHistory": "L'historique des téléchargements et des imports",
+        "itemKeys": "Ta clef AcoustID et tous tes réglages",
+        "keepsEngine": "L'environnement Python est conservé : l'app sera de nouveau utilisable tout de suite.",
+        "prompt": "Tape {{phrase}} pour confirmer",
+        "cancel": "Annuler",
+        "confirm": "Effacer définitivement",
+        "failedTitle": "L'effacement a échoué"
+      }
     }
   }
 }
