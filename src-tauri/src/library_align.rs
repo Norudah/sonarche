@@ -12,14 +12,17 @@ use tauri::{AppHandle, Manager};
 use tokio::sync::Mutex;
 
 use crate::error::{AppError, AppResult};
+use crate::preferences;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
 /// A few hundred album searches at MusicBrainz pace lands in the tens of
 /// minutes; sized like the genre recompute, with the same generosity.
 const SCAN_TIMEOUT: Duration = Duration::from_secs(3600 * 2);
-/// Apply only hits the network for covers (two CAA requests per album).
-const APPLY_TIMEOUT: Duration = Duration::from_secs(3600);
+/// Apply hits the network for covers (two CAA requests per album) and for the
+/// Last.fm genre fallback on items MusicBrainz gave no genre, paced like the
+/// genre recompute — hence the same generosity.
+const APPLY_TIMEOUT: Duration = Duration::from_secs(3600 * 2);
 
 #[derive(Default)]
 pub struct LibraryAlignState {
@@ -38,10 +41,15 @@ impl LibraryAlignState {
         if !plan.get("albums").map(Value::is_array).unwrap_or(false) {
             return Err(AppError::InvalidInput("not an align plan".into()));
         }
+        // The user's Last.fm politeness delay, for the genre fallback.
+        let prefs = preferences::load(app).await?;
         self.run(
             app,
             "library_align_apply",
-            json!({ "plan": plan }),
+            json!({
+                "plan": plan,
+                "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
+            }),
             APPLY_TIMEOUT,
         )
         .await

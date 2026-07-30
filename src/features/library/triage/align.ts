@@ -18,7 +18,9 @@ export interface AlignPlanAlbum {
   release_artist: string;
   release_year: number | null;
   cover_missing: boolean;
-  items: { item_id: number; fills: Record<string, string | number> }[];
+  /** `genres` are MusicBrainz' community genres for the mapped track — seeded
+   * through the genre pipeline at apply time, never counted as a fill. */
+  items: { item_id: number; fills: Record<string, string | number>; genres?: string[] }[];
   album_fills: Record<string, string | number>;
 }
 
@@ -32,6 +34,7 @@ export interface AlignResult {
   albumsUpdated: number;
   itemsUpdated: number;
   coversFetched: number;
+  genresFilled: number;
 }
 
 export async function alignScan(): Promise<AlignPlan> {
@@ -39,14 +42,17 @@ export async function alignScan(): Promise<AlignPlan> {
 }
 
 export async function alignApply(plan: AlignPlan): Promise<AlignResult> {
-  const raw = await invoke<{ albums_updated: number; items_updated: number; covers_fetched: number }>(
-    "library_align_apply",
-    { plan },
-  );
+  const raw = await invoke<{
+    albums_updated: number;
+    items_updated: number;
+    covers_fetched: number;
+    genres_filled: number;
+  }>("library_align_apply", { plan });
   return {
     albumsUpdated: raw.albums_updated,
     itemsUpdated: raw.items_updated,
     coversFetched: raw.covers_fetched,
+    genresFilled: raw.genres_filled,
   };
 }
 

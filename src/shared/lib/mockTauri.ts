@@ -905,8 +905,8 @@ async function mockAlignScan(): Promise<unknown> {
       release_year: 2012,
       cover_missing: false,
       items: [
-        { item_id: 200, fills: { mb_trackid: "rec-hydrogen", mb_albumid: "mb-hlm" } },
-        { item_id: 201, fills: { mb_trackid: "rec-roller", mb_albumid: "mb-hlm", year: 2012 } },
+        { item_id: 200, fills: { mb_trackid: "rec-hydrogen", mb_albumid: "mb-hlm" }, genres: ["Synthwave"] },
+        { item_id: 201, fills: { mb_trackid: "rec-roller", mb_albumid: "mb-hlm", year: 2012 }, genres: [] },
       ],
       album_fills: { mb_albumid: "mb-hlm", mb_releasegroupid: "rg-hlm" },
     },
@@ -941,6 +941,7 @@ async function mockAlignApply(payload?: Record<string, unknown>): Promise<unknow
     albums_updated: albums.length,
     items_updated: albums.reduce((sum, album) => sum + album.items.length, 0),
     covers_fetched: albums.filter((album) => album.cover_missing).length,
+    genres_filled: albums.reduce((sum, album) => sum + album.items.length, 0),
   };
 }
 

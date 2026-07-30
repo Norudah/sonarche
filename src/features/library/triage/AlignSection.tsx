@@ -205,6 +205,7 @@ export function AlignSection({ albums }: { albums: Album[] }) {
                 {[
                   t("align.doneAlbums", { count: result.albumsUpdated }),
                   t("align.doneItems", { count: result.itemsUpdated }),
+                  result.genresFilled > 0 ? t("align.doneGenres", { count: result.genresFilled }) : null,
                   result.coversFetched > 0 ? t("align.doneCovers", { count: result.coversFetched }) : null,
                 ]
                   .filter(Boolean)

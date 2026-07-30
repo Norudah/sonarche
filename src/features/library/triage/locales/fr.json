@@ -30,6 +30,8 @@
     "doneItems_other": "{{count}} morceaux complétés",
     "doneCovers_one": "{{count}} pochette récupérée",
     "doneCovers_other": "{{count}} pochettes récupérées",
+    "doneGenres_one": "{{count}} genre trouvé",
+    "doneGenres_other": "{{count}} genres trouvés",
     "failed": "L'alignement a échoué. Rien n'a été perdu — réessaie."
   },
   "queue": {

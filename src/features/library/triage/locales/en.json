@@ -30,6 +30,8 @@
     "doneItems_other": "{{count}} tracks completed",
     "doneCovers_one": "{{count}} cover fetched",
     "doneCovers_other": "{{count}} covers fetched",
+    "doneGenres_one": "{{count}} genre found",
+    "doneGenres_other": "{{count}} genres found",
     "failed": "The alignment failed. Nothing was lost — try again."
   },
   "queue": {

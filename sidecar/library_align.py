@@ -32,6 +32,11 @@ _MAX_ALBUM_DISTANCE = 0.15
 # adds breathing room between albums for the UI and the log.
 _DEFAULT_SEARCH_PAUSE_SECONDS = 0.0
 
+# Between Last.fm genre fetches at apply time — the shared-key politeness the
+# genre pass observes everywhere (see genres.py). The Rust host passes the
+# user's configured delay; this is only a fallback for direct invocations.
+_DEFAULT_FETCH_PAUSE_SECONDS = 1.0
+
 # Every field the fill pass may write on an item. A plan entry crossing the
 # IPC boundary is filtered against this list, so a forged plan cannot reach
 # `path` or any other field the pass has no business touching.
@@ -123,8 +128,12 @@ def _album_plan(album, match) -> dict:
             candidate,
             _edited_fields(item),
         )
-        if fills:
-            item_entries.append({"item_id": item.id, "fills": fills})
+        # MusicBrainz' community genres ride along outside the fills: they are
+        # not written as-is but seeded through the genre pipeline at apply time,
+        # so the curated tree keeps its say (same policy as enrich).
+        genres = [str(g) for g in (candidate.get("genres") or []) if g]
+        if fills or genres:
+            item_entries.append({"item_id": item.id, "fills": fills, "genres": genres})
     album_fills = plan_fills(
         {field: album.get(field) for field in ALBUM_FILL_FIELDS},
         {
@@ -215,29 +224,57 @@ def _fetch_cover(album, items, release_id: str, release_group_id: str | None) ->
     return True
 
 
-def _apply_item(lib, entry: dict) -> bool:
+def _apply_item(lib, entry: dict, lastgenre) -> tuple[bool, bool, bool]:
     """Write one plan item, every guard re-checked at write time. Returns
-    whether anything was stored."""
+    (stored, genre_filled, paid_lastfm) — the last drives the caller's pacing.
+
+    Genre is filled through the pipeline, never from the plan as-is: the MB
+    community genres seed the item, `_get_genre` canonicalizes them against the
+    curated tree offline, and only a genre-less item with no MB genres costs a
+    Last.fm round-trip (same policy and same order as enrich)."""
     item = lib.get_item(int(entry.get("item_id") or 0))
     if item is None:
-        return False
+        return False, False, False
     raw = entry.get("fills") or {}
     fills = plan_fills(
         {field: item.get(field) for field in FILL_FIELDS},
         {field: raw.get(field) for field in FILL_FIELDS},
         _edited_fields(item),
     )
-    if not fills:
-        return False
-    item.update(fills)
-    if "mb_trackid" in fills:
-        provenance.mark_match(item, "text")
+
+    genre_filled = paid_lastfm = False
+    had_genre = bool(item.get("genres", with_album=False))
+    if not had_genre and not provenance.was_hand_edited(item, "genres"):
+        seeded = [g for g in (entry.get("genres") or []) if isinstance(g, str) and g]
+        if seeded:
+            item.genres = seeded
+        paid_lastfm = not seeded
+        try:
+            genres, label = lastgenre._get_genre(item)
+        except Exception as exc:  # a genre is a bonus, never a failure
+            protocol.log(f"library_align: genre lookup failed: {exc}")
+            genres, label = None, None
+        if genres:
+            item.genres = genres
+            genre_filled = True
+            protocol.log(f"library_align: genre {genres} ({label})")
+        elif seeded:
+            # Nothing resolved against the tree: keep the raw MB genres rather
+            # than erasing them — the off-tree triage line will say so.
+            genre_filled = True
+
+    if not fills and not genre_filled:
+        return False, False, paid_lastfm
+    if fills:
+        item.update(fills)
+        if "mb_trackid" in fills:
+            provenance.mark_match(item, "text")
     item.store()
     try:
         item.write()
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"library_align: tag write failed: {exc}")
-    return True
+    return True, genre_filled, paid_lastfm
 
 
 def apply(request_id: str, params: dict) -> dict:
@@ -246,10 +283,12 @@ def apply(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
     metadata.ensure_plugins()
+    lastgenre = metadata.lastgenre_plugin()
+    pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
     lib = Library(params["beets_db"], directory=params["library_dir"])
     entries = (params.get("plan") or {}).get("albums") or []
     total = len(entries)
-    albums_updated = items_updated = covers_fetched = 0
+    albums_updated = items_updated = covers_fetched = genres_filled = 0
     for done, entry in enumerate(entries, start=1):
         protocol.send_event(
             request_id,
@@ -266,9 +305,15 @@ def apply(request_id: str, params: dict) -> dict:
             continue
         touched = False
         for item_entry in entry.get("items") or []:
-            if _apply_item(lib, item_entry):
+            stored, genre_filled, paid_lastfm = _apply_item(lib, item_entry, lastgenre)
+            if stored:
                 items_updated += 1
                 touched = True
+            if genre_filled:
+                genres_filled += 1
+            # Only a real Last.fm round-trip paces the loop, as everywhere else.
+            if paid_lastfm and pause > 0:
+                time.sleep(pause)
         raw = entry.get("album_fills") or {}
         album_fills = plan_fills(
             {field: album.get(field) for field in ALBUM_FILL_FIELDS},
@@ -294,10 +339,11 @@ def apply(request_id: str, params: dict) -> dict:
                 covers_fetched += 1
     protocol.log(
         f"library_align: applied {albums_updated} album(s), {items_updated} item(s), "
-        f"{covers_fetched} cover(s)"
+        f"{covers_fetched} cover(s), {genres_filled} genre(s)"
     )
     return {
         "albums_updated": albums_updated,
         "items_updated": items_updated,
         "covers_fetched": covers_fetched,
+        "genres_filled": genres_filled,
     }
