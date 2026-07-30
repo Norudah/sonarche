@@ -627,6 +627,8 @@ export function installMockTauri() {
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
       if (cmd === "list_imports") return [...mockImports];
+      if (cmd === "library_align_scan") return mockAlignScan();
+      if (cmd === "library_align_apply") return mockAlignApply(payload);
       if (cmd === "get_env_status") return { ...env };
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
@@ -878,6 +880,68 @@ async function mockLibraryImport(folder: string): Promise<unknown> {
   mockImports.unshift(record);
 
   return { folders: record.folders, renditions: record.renditions, recap: record.recap };
+}
+
+/** The align pass, at preview pace: a few progress ticks, then a small plan
+ * naming real fixture albums so the verdict list has something to say. */
+async function mockAlignScan(): Promise<unknown> {
+  const scanned = ["Iberia", "Hotline Miami OST", "Discovery", "Random Access Memories"];
+  for (const [index, album] of scanned.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    emitMockEvent("sidecar:event", {
+      event: "library_align_progress",
+      data: { stage: "scan", done: index + 1, total: scanned.length, album },
+    });
+  }
+  const albums = [
+    {
+      album_id: 1,
+      album: "Hotline Miami OST",
+      albumartist: "Various Artists",
+      release_id: "mb-hlm",
+      release_group_id: "rg-hlm",
+      release_title: "Hotline Miami: Official Soundtrack",
+      release_artist: "Various Artists",
+      release_year: 2012,
+      cover_missing: false,
+      items: [
+        { item_id: 200, fills: { mb_trackid: "rec-hydrogen", mb_albumid: "mb-hlm" } },
+        { item_id: 201, fills: { mb_trackid: "rec-roller", mb_albumid: "mb-hlm", year: 2012 } },
+      ],
+      album_fills: { mb_albumid: "mb-hlm", mb_releasegroupid: "rg-hlm" },
+    },
+    {
+      album_id: 2,
+      album: "Discovery",
+      albumartist: "Daft Punk",
+      release_id: "mb-discovery",
+      release_group_id: "rg-discovery",
+      release_title: "Discovery",
+      release_artist: "Daft Punk",
+      release_year: 2001,
+      cover_missing: true,
+      items: [{ item_id: 100, fills: { mb_trackid: "rec-omt", mb_albumid: "mb-discovery", year: 2001 } }],
+      album_fills: { mb_albumid: "mb-discovery", year: 2001 },
+    },
+  ];
+  return { scanned: scanned.length, matched: albums.length, albums };
+}
+
+async function mockAlignApply(payload?: Record<string, unknown>): Promise<unknown> {
+  const plan = (payload?.plan ?? {}) as { albums?: { album: string; items: unknown[]; cover_missing: boolean }[] };
+  const albums = plan.albums ?? [];
+  for (const [index, album] of albums.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    emitMockEvent("sidecar:event", {
+      event: "library_align_progress",
+      data: { stage: "apply", done: index + 1, total: albums.length, album: album.album },
+    });
+  }
+  return {
+    albums_updated: albums.length,
+    items_updated: albums.reduce((sum, album) => sum + album.items.length, 0),
+    covers_fetched: albums.filter((album) => album.cover_missing).length,
+  };
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

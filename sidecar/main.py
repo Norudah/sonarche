@@ -29,6 +29,7 @@ def _handlers():
     import genres
     import importer
     import library
+    import library_align
     import library_import
     import probe
 
@@ -38,6 +39,8 @@ def _handlers():
         "download": download.handle,
         "import": importer.handle,
         "library_import": library_import.handle,
+        "library_align_scan": library_align.scan,
+        "library_align_apply": library_align.apply,
         "enrich": enrich.handle,
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,

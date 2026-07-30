@@ -7,6 +7,7 @@ mod error;
 mod genres;
 mod jobs;
 mod jobs_store;
+mod library_align;
 mod library_import;
 mod library_scan;
 mod logs;
@@ -35,6 +36,7 @@ fn main() {
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
+        .manage(library_align::LibraryAlignState::default())
         .manage(library_import::LibraryImportState::default())
         .manage(player::PlayerState::default())
         .setup(|app| {
@@ -62,6 +64,8 @@ fn main() {
             commands::list_library,
             commands::reenrich_track,
             commands::recompute_genres,
+            commands::library_align_scan,
+            commands::library_align_apply,
             commands::get_preferences,
             commands::set_rate_limit_delay,
             commands::delete_track,

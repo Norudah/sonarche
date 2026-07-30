@@ -7,6 +7,7 @@ import { groupAlbums } from "@/features/library/albums/albums";
 import { groupArtists } from "@/features/library/artists/artists";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { useLibrary } from "@/features/library/hooks";
+import { AlignSection } from "@/features/library/triage/AlignSection";
 import { buildTriageQueue, countToFix } from "@/features/library/triage/queue";
 import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
@@ -86,6 +87,8 @@ export function MetadataPage() {
           )}
         </section>
       )}
+
+      {tracks.length > 0 && <AlignSection albums={albums} />}
     </PageContainer>
   );
 }

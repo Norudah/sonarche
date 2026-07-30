@@ -11,6 +11,7 @@ use crate::dev_reset::{self, ResetTargets};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::jobs::{Job, JobKind, JobsState};
+use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_scan::{self, ScanReport};
 use crate::now_playing::{self, NowPlayingTrack};
@@ -256,6 +257,27 @@ pub async fn recompute_genres(
     state: State<'_, RecomputeGenresState>,
 ) -> AppResult<Value> {
     state.run(&app).await
+}
+
+/// Walk the albums without a MusicBrainz identity and return the fill plan.
+/// Writes nothing; the plan comes back through `library_align_apply`.
+#[tauri::command]
+pub async fn library_align_scan(
+    app: AppHandle,
+    state: State<'_, LibraryAlignState>,
+) -> AppResult<Value> {
+    state.scan(&app).await
+}
+
+/// Apply a plan produced by the scan. The sidecar re-checks every field
+/// against its whitelist and its blank/hand-edited guards at write time.
+#[tauri::command]
+pub async fn library_align_apply(
+    app: AppHandle,
+    state: State<'_, LibraryAlignState>,
+    plan: Value,
+) -> AppResult<Value> {
+    state.apply(&app, plan).await
 }
 
 /// Check an AcoustID key before it is stored, so a typo is caught while the
