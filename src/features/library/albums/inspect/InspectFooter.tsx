@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ChangeSummary } from "@/features/library/albums/albumFields";
 import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
-import { PrimaryButton } from "@/features/library/metadata/PrimaryButton";
+import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
 

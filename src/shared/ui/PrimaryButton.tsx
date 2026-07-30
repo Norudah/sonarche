@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 import { springs } from "@/shared/motion/tokens";
 
 /**
- * The metadata panels' primary action — Modifier / Enregistrer.
+ * The app's primary action — Enregistrer, Modifier, Chercher les paroles.
+ *
+ * Shared rather than filed under the metadata panels, which is where it grew
+ * up: three surfaces in two layers now press it, and the player's is one of
+ * them — `shared` cannot reach into a feature.
  *
  * It was a pill, copied from the album hero's "Play all" so the two would move
  * alike. Moving alike was right; looking alike was not. Shape carries a meaning

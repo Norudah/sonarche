@@ -11,6 +11,7 @@ mod library_align;
 mod library_import;
 mod library_scan;
 mod logs;
+mod lyrics;
 mod now_playing;
 mod onboarding;
 mod player;
@@ -64,6 +65,7 @@ fn main() {
             commands::list_library,
             commands::reenrich_track,
             commands::recompute_genres,
+            commands::fetch_lyrics,
             commands::library_align_scan,
             commands::library_align_apply,
             commands::get_preferences,

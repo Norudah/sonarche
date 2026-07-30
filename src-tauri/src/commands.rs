@@ -14,6 +14,7 @@ use crate::jobs::{Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_scan::{self, ScanReport};
+use crate::lyrics;
 use crate::now_playing::{self, NowPlayingTrack};
 use crate::onboarding::{self, OnboardingState};
 use crate::player::{self, PlaybackStatus, PlayerState};
@@ -257,6 +258,20 @@ pub async fn recompute_genres(
     state: State<'_, RecomputeGenresState>,
 ) -> AppResult<Value> {
     state.run(&app).await
+}
+
+/// One track's lyrics. With `allow_network` false it answers from the library
+/// alone — what the panel does on open — so the network is only ever reached by
+/// the user pressing "Chercher les paroles". `force` is the panel's "look
+/// again": it skips what is stored rather than erasing it.
+#[tauri::command]
+pub async fn fetch_lyrics(
+    app: AppHandle,
+    id: i64,
+    allow_network: bool,
+    force: bool,
+) -> AppResult<Value> {
+    lyrics::fetch(&app, id, allow_network, force).await
 }
 
 /// Walk the albums without a MusicBrainz identity and return the fill plan.

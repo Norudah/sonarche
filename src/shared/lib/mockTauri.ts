@@ -695,6 +695,7 @@ export function installMockTauri() {
       // playhead is what keeps the player bar, the seek bar and the queue panel
       // explorable here: without it nothing ever advances and "playing" is a
       // state the UI can never be seen in.
+      if (cmd === "fetch_lyrics") return mockLyrics(payload);
       if (cmd.startsWith("player_") || cmd === "now_playing_set") return mockPlayback(cmd, payload);
       return responses[cmd] ?? {};
     },
@@ -943,6 +944,66 @@ async function mockAlignApply(payload?: Record<string, unknown>): Promise<unknow
     covers_fetched: albums.filter((album) => album.cover_missing).length,
     genres_filled: albums.reduce((sum, album) => sum + album.items.length, 0),
   };
+}
+
+/**
+ * Lyrics for the player's panel.
+ *
+ * The words are invented placeholders, not any real song's: this file ships in
+ * the repo. What the fixture reproduces is the *shape* of each answer — timed,
+ * plain, instrumental, absent — because that is what the panel branches on.
+ *
+ * Ids map to the library fixture above: 100 already has its lyrics stored (the
+ * panel fills the moment it opens), 101 and 102 have none until the button is
+ * pressed, and 200 is the instrumental.
+ */
+const mockLyricLines = (offset: number) =>
+  [
+    ...["Placeholder verse, first line", "Placeholder verse, second line", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again", ""],
+    ...["Placeholder second verse, first line", "Placeholder second verse, second line", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again", ""],
+    ...["Placeholder bridge, quietly", "Placeholder bridge, quieter still", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again"],
+    "Placeholder verse, last line",
+    // Long enough to overflow the panel, which is the point: a song of seven
+    // lines would never exercise the scroll that follows the playhead.
+  ].map((text, index) => ({ time: offset + index * 4, text }));
+
+async function mockLyrics(payload?: Record<string, unknown>): Promise<unknown> {
+  const id = Number(payload?.id ?? 0);
+  const allowNetwork = Boolean(payload?.allowNetwork);
+  const force = Boolean(payload?.force);
+  const answer = (over: Record<string, unknown> = {}) => ({
+    source: null,
+    plain: null,
+    lines: [],
+    instrumental: false,
+    unreachable: false,
+    ...over,
+  });
+  const plainBody =
+    "Placeholder verse, first line\nPlaceholder verse, second line\n\nPlaceholder chorus, over and over";
+
+  if (id === 100 && !force)
+    return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(6) });
+  if (!allowNetwork) return answer();
+
+  // The wait is the point: it is what the button's disabled state is for.
+  await new Promise((resolve) => window.setTimeout(resolve, 900));
+  if (id === 100) return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(6) });
+  if (id === 101) return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(4) });
+  // 102 is the upgrade path: plain text from the fallback until "look again"
+  // reaches an LRCLIB that has come back, and the same page arrives timed.
+  if (id === 102)
+    return force
+      ? answer({ source: "lrclib", plain: plainBody, lines: mockLyricLines(5) })
+      : answer({ source: "lyrics.ovh", plain: plainBody });
+  // 103 is LRCLIB having a bad day — it accepts the connection and never
+  // answers, which is the failure this feature actually meets in the wild.
+  if (id === 103) return answer({ unreachable: true });
+  if (id === 200) return answer({ source: "lrclib", instrumental: true });
+  return answer();
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

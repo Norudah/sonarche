@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { LibraryTrack } from "@/features/library/api";
 import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { useReenrichTrack } from "@/features/library/hooks";
-import { PrimaryButton } from "@/features/library/metadata/PrimaryButton";
+import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
 

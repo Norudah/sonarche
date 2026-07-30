@@ -24,5 +24,28 @@
   "unsupportedFormatDetail": "“{{title}}” is a .{{extension}} file — Sonarche can't play that format.",
   "unsupportedFormatDetailUnknown": "“{{title}}” is in a format Sonarche can't play.",
   "unreadable": "Can't play this track",
-  "unreadableDetail": "“{{title}}” could not be opened."
+  "unreadableDetail": "“{{title}}” could not be opened.",
+  "lyrics": {
+    "title": "Lyrics",
+    "none": "No lyrics stored yet",
+    "search": "Find lyrics",
+    "searching": "Searching…",
+    "notFound": "Nothing found for this track",
+    "notFoundHint": "Neither database knows this track. A misspelt title or artist also keeps a track from matching.",
+    "unreachable": "The search could not finish",
+    "unreachableHint": "A lyrics service is not answering. Nothing to do with your connection — try again in a while.",
+    "retry": "Try again",
+    "failed": "The search failed",
+    "failedHint": "Check your connection, then try again.",
+    "instrumental": "Instrumental track",
+    "instrumentalHint": "The database knows this recording and lists no words for it.",
+    "again": "Look again",
+    "followOn": "Follow playback",
+    "followOff": "Scroll manually",
+    "fromStored": "Stored",
+    "timed": "timed",
+    "untimed": "text only",
+    "jumpTo": "Play from this line",
+    "nothingPlayingHint": "Play a track to see its lyrics."
+  }
 }

@@ -31,6 +31,7 @@ def _handlers():
     import library
     import library_align
     import library_import
+    import lyrics
     import probe
 
     return {
@@ -47,6 +48,7 @@ def _handlers():
         "library_remove": library.remove,
         "library_update": library.update,
         "genres_recompute": genres.recompute,
+        "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,
     }
 
