@@ -2,6 +2,7 @@
   "name": "sonarche",
   "private": true,
   "version": "0.9.1",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
