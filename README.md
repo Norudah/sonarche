@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/brand/sonarche-tile.svg" alt="" width="96" height="96">
+<img src="docs/brand/sonarche-tile-1024.png" alt="Sonarche" width="168" height="168">
 
 # Sonarche
 
@@ -12,6 +12,8 @@ as plain files you own, long after the app that made them is gone.
 [![Version](https://img.shields.io/badge/version-0.9.1-6163f2)](CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6163f2)](#install)
 [![License](https://img.shields.io/badge/license-MIT-6163f2)](LICENSE)
+
+**English** · [Français](README.fr.md)
 
 </div>
 
