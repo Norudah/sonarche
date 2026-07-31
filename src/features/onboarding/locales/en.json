@@ -1,7 +1,15 @@
 {
   "statusError": "Unable to check the environment",
   "splash": {
-    "checking": "Checking the environment…"
+    "checking": "Checking the environment…",
+    "welcome": {
+      "title": "Welcome aboard Sonarche",
+      "subtitle": "your ark"
+    },
+    "aboard": {
+      "title": "Your ark is ready",
+      "subtitle": "Bring your music aboard."
+    }
   },
   "walkthrough": {
     "eyebrow": "Welcome",

@@ -1,7 +1,15 @@
 {
   "statusError": "Impossible de vérifier l'environnement",
   "splash": {
-    "checking": "Vérification de l'environnement…"
+    "checking": "Vérification de l'environnement…",
+    "welcome": {
+      "title": "Bienvenue sur Sonarche",
+      "subtitle": "votre arche"
+    },
+    "aboard": {
+      "title": "Votre arche est prête",
+      "subtitle": "Embarquez votre musique."
+    }
   },
   "walkthrough": {
     "eyebrow": "Bienvenue",

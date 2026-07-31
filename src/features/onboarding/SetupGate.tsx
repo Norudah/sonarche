@@ -6,6 +6,7 @@ import { onboardingForcedByDev } from "@/features/onboarding/devOverride";
 import { useCompleteOnboarding, useEnvStatus, useOnboardingState } from "@/features/onboarding/hooks";
 import { SetupWalkthrough } from "@/features/onboarding/SetupWalkthrough";
 import { SplashHandover } from "@/features/onboarding/SplashHandover";
+import { useSplashPhase } from "@/features/onboarding/splashPhase";
 import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
 /**
@@ -36,6 +37,8 @@ export function SetupGate({ children }: { children: ReactNode }) {
     onboardingCompleted: onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true),
   });
 
+  const { phase, revealed } = useSplashPhase(gate);
+
   if (status.isError) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -49,13 +52,16 @@ export function SetupGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // Whichever surface comes next arrives through the same cross-fade, the
-  // walkthrough included: the splash is not waiting for the app specifically,
-  // it is waiting for an answer, and the hand-over should not look different
-  // depending on which answer came back.
+  // The walkthrough stays underneath while the "aboard" beat plays over it.
+  // Swapping to the shell the moment the gate opens would flash it for a frame,
+  // between the walkthrough leaving and the curtain arriving — and the whole
+  // point of that beat is that the setup ends on the ark, not on a glimpse of
+  // the app it was building.
+  const walkthroughHoldsTheGround = gate === "onboarding" || phase === "aboard";
+
   return (
-    <SplashHandover waiting={gate === "checking"}>
-      {gate === "onboarding" ? (
+    <SplashHandover phase={phase} revealed={revealed}>
+      {walkthroughHoldsTheGround ? (
         <SetupWalkthrough
           env={status.data ?? null}
           acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}

@@ -660,6 +660,27 @@
     }
   }
 
+  /* The same light, once, when the wait is over: it swells past where it was
+     breathing and settles wider than it started. `forwards`, because the beat
+     that follows is short and a halo snapping back to its resting size in the
+     middle of "your ark is ready" would undo the sentence. */
+  --animate-splash-bloom: sonarche-splash-bloom 1.1s var(--ease-out-fluid) forwards;
+
+  @keyframes sonarche-splash-bloom {
+    from {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+    55% {
+      opacity: 1;
+      transform: scale(1.22);
+    }
+    to {
+      opacity: 0.9;
+      transform: scale(1.12);
+    }
+  }
+
   /* The download rail's playhead on a stage that reports no progress of its own
      (a lone file's import): it sweeps the segment instead of sitting at zero.
      `alternate` rather than a loop — a handle that jumps back to the start
@@ -797,7 +818,8 @@
      thing on the splash that changes size — exactly what the setting asks us to
      stop. Parked at its resting value rather than removed, so the mark keeps
      the light it was drawn with. */
-  .animate-splash-halo {
+  .animate-splash-halo,
+  .animate-splash-bloom {
     animation: none;
     opacity: 0.7;
   }
