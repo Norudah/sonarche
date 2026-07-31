@@ -4,10 +4,10 @@
     "checking": "Checking the environment…",
     "welcome": {
       "title": "Welcome aboard Sonarche",
-      "subtitle": "your ark"
+      "subtitle": "Your Ark"
     },
     "aboard": {
-      "title": "Your ark is ready",
+      "title": "Your Ark is ready",
       "subtitle": "Bring your music aboard."
     }
   },
