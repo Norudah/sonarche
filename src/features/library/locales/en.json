@@ -88,11 +88,7 @@
     "edit": "Edit",
     "inspectAction": "Inspect",
     "moreActions": "More actions",
-    "tagScoreHint": "Metadata fields filled in on this track",
-    "stats": {
-      "taggedCount": "{{tagged}}/{{total}} tracks complete",
-      "tracksComplete": "tracks complete"
-    }
+    "tagScoreHint": "Metadata fields filled in on this track"
   },
   "artists": {
     "eyebrow": "Artist",

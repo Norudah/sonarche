@@ -1,5 +1,4 @@
 import { motion } from "motion/react";
-import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
 import { durations, easings } from "@/shared/motion/tokens";
@@ -22,16 +21,15 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  * box every frame. The `-rotate-90` starts the sweep at twelve o'clock, since
  * SVG angles begin at three.
  *
- * The count below is deliberately kept: a percentage hides whether the gap is
- * one field missing everywhere or one track left untouched.
+ * The count in the ring is deliberately a count, not a percentage: a percentage
+ * hides whether the gap is one field missing everywhere or one track left
+ * untouched.
  *
  * The same tag-status colours as the tracklist's dots: amber while any field is
  * still missing (the reserved "incomplete metadata" hue), green once the whole
  * record is tagged. The gauge and the per-track dots then speak one language.
  */
 export function AlbumCompleteness({ album }: { album: Album }) {
-  const { t } = useTranslation("library");
-
   // Floor, not round: 99.6% must not display as a complete 100%.
   const target = Math.floor(album.completeness * 100);
   const isComplete = target === 100;
@@ -63,10 +61,8 @@ export function AlbumCompleteness({ album }: { album: Album }) {
           />
         </svg>
 
-        {/* The ring carries the count itself, not a percentage of it: "18/20"
-            is the same fact the caption underneath used to repeat in other
-            words, and it is the one you can act on. The arc still does the
-            proportion, which is all the percentage was ever for. */}
+        {/* "18/20" is the fact you can act on; the arc does the proportion,
+            which is all a percentage was ever for. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={
@@ -80,8 +76,6 @@ export function AlbumCompleteness({ album }: { album: Album }) {
           </span>
         </div>
       </div>
-
-      <p className="text-[0.6875rem] text-muted">{t("albums.stats.tracksComplete")}</p>
     </div>
   );
 }

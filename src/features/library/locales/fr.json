@@ -88,11 +88,7 @@
     "edit": "Modifier",
     "inspectAction": "Inspecter",
     "moreActions": "Plus d'actions",
-    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
-    "stats": {
-      "taggedCount": "{{tagged}}/{{total}} pistes complètes",
-      "tracksComplete": "morceaux complets"
-    }
+    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste"
   },
   "artists": {
     "eyebrow": "Artiste",
