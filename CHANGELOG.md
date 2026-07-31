@@ -1,5 +1,61 @@
 # Changelog
 
+## [1.0.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.9.1...sonarche-v1.0.0) (2026-07-31)
+
+
+### Features
+
+* **build:** port the app to Windows ([6fe30bf](https://github.com/Norudah/sonarche/commit/6fe30bfb9a7b894d22e76481a153a64e16e41e12))
+* **import:** archive every import, and say what it brought in ([2d4d9e6](https://github.com/Norudah/sonarche/commit/2d4d9e66f16db3d10214a34859eb8588b16aaef8))
+* **import:** point the recap at the align remedy ([f292f9b](https://github.com/Norudah/sonarche/commit/f292f9be4d6195cf80726a79647417513d66b8c3))
+* **import:** rebuild the page on the download page's grammar ([84c3b38](https://github.com/Norudah/sonarche/commit/84c3b38c5f85f1ce45075d3f86afc3074458c9e8))
+* **library:** align unidentified albums with MusicBrainz, filling blanks only ([a0ba497](https://github.com/Norudah/sonarche/commit/a0ba497ee894671bb246309e6f2e2ef309d9e306))
+* **library:** fill genres in the align pass, through the genre pipeline ([856a757](https://github.com/Norudah/sonarche/commit/856a757913439656ef17bcb628bd636ab6f8f309))
+* **player:** fetch and show a track's lyrics on demand ([91a333d](https://github.com/Norudah/sonarche/commit/91a333d50d28cf80ba991433da7062511a8da47d))
+* **settings:** add a Library section with a movable folder and a danger zone ([ca37364](https://github.com/Norudah/sonarche/commit/ca37364b4b3631922b0cfbe5a336e351d0a66a41))
+* **settings:** let the theme be chosen ([20463c7](https://github.com/Norudah/sonarche/commit/20463c707059b079e67129874a6dad17e5f5a8df))
+* **settings:** put the politeness delays on a stepped scale ([5ceea67](https://github.com/Norudah/sonarche/commit/5ceea67a3a5f3e26c9b7110de49f4842388aed21))
+* **settings:** rebuild Appearance around theme tiles and a language switch ([3d61183](https://github.com/Norudah/sonarche/commit/3d611836f4377006d051c3d705b4ed0f57cfc714))
+* **settings:** test an API key and probe the services behind it ([2c9f89b](https://github.com/Norudah/sonarche/commit/2c9f89bf68acc9c528c208b80e5a77e1332e6801))
+* **shell:** close the gaps the pre-v1 security pass found ([625b522](https://github.com/Norudah/sonarche/commit/625b5224f8f8a2b1de6ed405aa9ed4ab836788e4))
+* **shell:** quiet the native title bar on Windows ([539cff4](https://github.com/Norudah/sonarche/commit/539cff48476244f793f723d3f7671c7e2e3e211b))
+* **ui:** give empty pages and link controls one shape ([dde691c](https://github.com/Norudah/sonarche/commit/dde691cc9577f833c40d56cb66a66ee27870c20c))
+* **ui:** let the appearance choice reach the window frame ([749b324](https://github.com/Norudah/sonarche/commit/749b324a896f7b7bd26c4cd78df7f26f393bd5bc))
+* **ui:** let the launch end on a welcome instead of a cut ([fd05601](https://github.com/Norudah/sonarche/commit/fd05601974d8bb65e9e58ee11492a1e9abe81a37))
+* **ui:** let the launch welcome be switched off ([a064d9d](https://github.com/Norudah/sonarche/commit/a064d9d8ea1690d64188c3798d4cd7d2ddeeb190))
+* **ui:** let the user ask for an update from the settings ([54953b0](https://github.com/Norudah/sonarche/commit/54953b021665fa69556f186e0f784212edcc9467))
+* **ui:** make button shape mean something ([2d851ea](https://github.com/Norudah/sonarche/commit/2d851eaae3a2d007b66fc17003daf1dc7512300b))
+* **ui:** make elevation, glow and the accent band answer to the theme ([0f6f821](https://github.com/Norudah/sonarche/commit/0f6f821ffa2d7a63efe759617fc5729ee938a156))
+* **ui:** make the metadata page state its verdict ([13eb11f](https://github.com/Norudah/sonarche/commit/13eb11f451b1f05087cdf59bc7858008559e0b9b))
+* **ui:** open on the Sonarche mark and hand the window over gently ([0407164](https://github.com/Norudah/sonarche/commit/04071647b53834bcdd213f19c21ba1527705a3d2))
+* **ui:** re-accord the light theme as paper ([4b04876](https://github.com/Norudah/sonarche/commit/4b048761d0f46bfc002275d7cc4ba645ed3598ee))
+* **ui:** turn the dark theme into Night ([ac45e37](https://github.com/Norudah/sonarche/commit/ac45e377137b6ef0a381d32724b6e362c00e2a43))
+
+
+### Bug Fixes
+
+* **build:** drop the three packages beets declares and never imports ([43469df](https://github.com/Norudah/sonarche/commit/43469dfe33f922293bb473b8faa7e6d635a11753))
+* **import:** stop beets replacing an album's real cover ([8223b34](https://github.com/Norudah/sonarche/commit/8223b342099819b393e88324a1bb6a5a54f101ee))
+* **library:** carry the WAL files when the jobs database is renamed ([dd2374b](https://github.com/Norudah/sonarche/commit/dd2374b4ff1c9905d493abce7fd283d58fb10eaf))
+* **player:** make the lyrics follow mode a switch, not a lone icon ([f1cc9d5](https://github.com/Norudah/sonarche/commit/f1cc9d53ae7af79f4d3c9c4fe68628b5f946ce95))
+* **shell:** keep the sidecar's tracebacks instead of writing them to nowhere ([2bd6d6c](https://github.com/Norudah/sonarche/commit/2bd6d6ce39bff271bf4b80d75fccb6f64edbaed4))
+* **shell:** let the window be dragged on macOS ([77aff68](https://github.com/Norudah/sonarche/commit/77aff6811a1e953b9f7e07c7d4eb8ad2298ffbeb))
+* **shell:** quote paths in the beets config so Windows can read it ([b873284](https://github.com/Norudah/sonarche/commit/b8732847e756e3aaf6b93cdbf630e4c8e2fe740c))
+* **sidecar:** finish the locale sweep the first pass left half done ([b279276](https://github.com/Norudah/sonarche/commit/b279276cb44f1fb736519745a4f35a7ca978f2fa))
+* **sidecar:** send the bundle's own version in the user agent ([3c53a2b](https://github.com/Norudah/sonarche/commit/3c53a2bea17b0ed9ed862644c6c766de9be66b36))
+* **sidecar:** speak UTF-8 over the channel instead of the Windows locale ([3f526c7](https://github.com/Norudah/sonarche/commit/3f526c7b74896ed68e9b1eb63b8f3f587300e70c))
+* **ui:** capitalise the Ark in the launch and setup greetings ([f1f497a](https://github.com/Norudah/sonarche/commit/f1f497a7f856a3ed376d70bb47c81520a9909c36))
+* **ui:** drop platform branding from user-facing copy ([2ace015](https://github.com/Norudah/sonarche/commit/2ace0155d2d12f870f29ca7265d812b49b82c035))
+* **ui:** give the history and metadata pages a surface to stand on ([0258e79](https://github.com/Norudah/sonarche/commit/0258e7941acd035b2771a672d60402b6889a1cff))
+* **ui:** make clear history sweep the import archive too ([f9cc07c](https://github.com/Norudah/sonarche/commit/f9cc07c9fe3278436de82c0b884f4d2ca4882ea1))
+* **ui:** stop the composer's focus reading as a second shadow ([4bc808a](https://github.com/Norudah/sonarche/commit/4bc808ab08faaea43d887f8b5b972bd19a58dfd4))
+* **ui:** stop the light theme from leaking into the dark one ([b6082dd](https://github.com/Norudah/sonarche/commit/b6082dd34ab2dfa491e826c12c7d28798c5b3407))
+
+
+### Miscellaneous Chores
+
+* cut the first stable release ([116b31a](https://github.com/Norudah/sonarche/commit/116b31ac103ee96bf8da6102e4c49a023f050e2c))
+
 ## [0.9.1](https://github.com/Norudah/sonarche/compare/sonarche-v0.9.0...sonarche-v0.9.1) (2026-07-28)
 
 
