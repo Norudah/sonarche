@@ -1,12 +1,12 @@
 /**
- * Fetches the Python runtime the app ships with, into `src-tauri/resources/`.
+ * Fetches the runtime the app ships with, into `src-tauri/resources/`.
  *
  * Run before any build (`npm run prepare:runtime`, and automatically from
  * tauri.conf.json's beforeBuildCommand). The fetched files are gitignored: they
- * are large, they are reproducible from the pin below, and a binary in git is a
+ * are large, they are reproducible from the pins below, and a binary in git is a
  * binary forever.
  *
- * Two resources, deliberately shaped differently:
+ * Three resources, deliberately shaped differently:
  *
  * - `python.tar.gz` stays an archive. The interpreter tree is full of symlinks
  *   (`bin/python3` → `python3.13`) and executable bits, and a bundler copying
@@ -15,6 +15,11 @@
  *   ships 24 MB instead of the 66 MB it becomes.
  * - `wheels/` is a plain directory. Wheels are inert files with nothing to
  *   preserve, and pip wants a directory to point `--find-links` at.
+ * - `tools/fpcalc` is unpacked here rather than fetched at first use. The app
+ *   used to download it itself, which is the one behaviour an unsigned binary
+ *   cannot afford: a program nobody signed pulling an executable off the
+ *   network and running it is what a dropper looks like, and Defender
+ *   quarantined the installer on that basis alone.
  *
  * The wheels are optional: without them the app installs from PyPI as before.
  * They are what makes the first run offline-capable and quick.
@@ -53,8 +58,35 @@ const TRIPLES = {
   "win32-x64": "x86_64-pc-windows-msvc",
 };
 
+/**
+ * Chromaprint's fpcalc, pinned by triple and by digest.
+ *
+ * One asset covers both Macs — upstream ships a universal binary — so the two
+ * darwin triples point at the same entry. `member` is the single file worth
+ * keeping out of an archive that also carries a licence and a readme.
+ *
+ * The digests are checked here, at build time, on a machine we control. That is
+ * a better place for the check than the user's: a mismatch stops a release
+ * instead of stopping an app that has already shipped.
+ */
+const FPCALC = { version: "1.5.1" };
+const FPCALC_ASSETS = {
+  "aarch64-apple-darwin": {
+    archive: `chromaprint-fpcalc-${FPCALC.version}-macos-universal.tar.gz`,
+    member: `chromaprint-fpcalc-${FPCALC.version}-macos-universal/fpcalc`,
+    sha256: "d4d8faff4b5f7c558d9be053da47804f9501eaa6c2f87906a9f040f38d61c860",
+  },
+  "x86_64-pc-windows-msvc": {
+    archive: `chromaprint-fpcalc-${FPCALC.version}-windows-x86_64.zip`,
+    member: `chromaprint-fpcalc-${FPCALC.version}-windows-x86_64/fpcalc.exe`,
+    sha256: "36b478e16aa69f757f376645db0d436073a42c0097b6bb2677109e7835b59bbc",
+  },
+};
+FPCALC_ASSETS["x86_64-apple-darwin"] = FPCALC_ASSETS["aarch64-apple-darwin"];
+
 /** System tar, by absolute path. Windows has shipped bsdtar in System32 since
- * 10 1803, and it reads the same gzipped tarball. */
+ * 10 1803, and it reads the same gzipped tarball — and the same zip, which is
+ * the shape the Windows fpcalc asset comes in. */
 const TAR = process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar";
 
 /** Where the interpreter sits inside the unpacked tree. The Windows
@@ -167,6 +199,51 @@ async function fetchWheels(triple) {
   await stampAs(wheels, stamp);
 }
 
+/**
+ * Unpacks fpcalc into `resources/tools/`, ready to be copied into place on
+ * first use. Statically linked upstream, so it needs no ffmpeg beside it.
+ */
+async function fetchFpcalc(triple) {
+  const asset = FPCALC_ASSETS[triple];
+  if (!asset) throw new Error(`no fpcalc asset pinned for ${triple} — see FPCALC_ASSETS in this file`);
+
+  const stamp = `${FPCALC.version}-${triple}`;
+  const tools = path.join(resources, "tools");
+  const binary = path.join(tools, path.basename(asset.member));
+  if ((await isCurrent(tools, stamp)) && (await exists(binary))) {
+    console.log(`[runtime] fpcalc already at ${stamp}`);
+    return;
+  }
+
+  const url = `https://github.com/acoustid/chromaprint/releases/download/v${FPCALC.version}/${asset.archive}`;
+  console.log(`[runtime] fetching ${asset.archive}`);
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`download failed: ${response.status} ${url}`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  if (digest !== asset.sha256) {
+    throw new Error(`fpcalc checksum mismatch\n  expected ${asset.sha256}\n  got      ${digest}`);
+  }
+
+  await fs.rm(tools, { recursive: true, force: true });
+  await fs.mkdir(tools, { recursive: true });
+  // Extension-free on purpose: the asset is a tarball on macOS and a zip on
+  // Windows, and bsdtar sniffs the format rather than trusting the name.
+  const archive = path.join(tools, "fpcalc-archive");
+  await fs.writeFile(archive, bytes);
+  // BSD tar treats everything after the first member name as more member names,
+  // so the options have to come before it.
+  run(TAR, ["-xf", archive, "-C", tools, "--strip-components=1", asset.member]);
+  await fs.rm(archive, { force: true });
+
+  if (!(await exists(binary))) throw new Error(`fpcalc missing after extraction (expected ${binary})`);
+  const { size } = await fs.stat(binary);
+  console.log(`[runtime] fpcalc ${FPCALC.version}, ${(size / 1e6).toFixed(1)} MB`);
+  await stampAs(tools, stamp);
+}
+
 const host = `${process.platform}-${process.arch}`;
 const triple = TRIPLES[host];
 if (!triple) {
@@ -176,4 +253,5 @@ if (!triple) {
 
 await fetchInterpreter(triple);
 await fetchWheels(triple);
+await fetchFpcalc(triple);
 console.log("[runtime] ready");

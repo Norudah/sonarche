@@ -7,9 +7,17 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::error::{AppError, AppResult};
-use crate::proc::{command, SYSTEM_CURL, SYSTEM_TAR};
+use crate::proc::{command, SYSTEM_TAR};
 
 const MIN_PYTHON: (u64, u64) = (3, 10);
+
+/// Chromaprint's fingerprinter, as the build lays it down. Pinned and checksummed
+/// in `scripts/prepare-runtime.mjs`, which is the only place that fetches it.
+const FPCALC_BIN: &str = if cfg!(windows) {
+    "fpcalc.exe"
+} else {
+    "fpcalc"
+};
 
 /// Fixed candidate locations, most specific first. Never rely on PATH.
 ///
@@ -77,6 +85,9 @@ pub struct AppPaths {
     pub runtime_dir: PathBuf,
     /// Wheels shipped alongside, so the install needs no network.
     pub wheels_dir: PathBuf,
+    /// The fpcalc the build shipped, before [`ensure_fpcalc`] copies it into
+    /// `tools_dir`. Read-only: on macOS it lives inside a signed `.app`.
+    pub bundled_fpcalc: PathBuf,
 }
 
 /// Where the library lives, when the user has moved it off the default.
@@ -147,6 +158,7 @@ impl AppPaths {
             python_archive: resource("python.tar.gz"),
             runtime_dir: data.join("runtime"),
             wheels_dir: resource("wheels"),
+            bundled_fpcalc: resource("tools").join(FPCALC_BIN),
         })
     }
 
@@ -176,114 +188,45 @@ impl AppPaths {
     }
 
     pub fn fpcalc(&self) -> PathBuf {
-        self.tools_dir.join(if cfg!(windows) {
-            "fpcalc.exe"
-        } else {
-            "fpcalc"
-        })
+        self.tools_dir.join(FPCALC_BIN)
     }
 }
 
-/// Pinned Chromaprint release; fpcalc ships statically linked (no ffmpeg needed).
+/// Copy the shipped fpcalc into the app-owned tools dir on first use.
+/// Self-healing, like the venv: a failure only degrades enrichment, never the
+/// app, and a reset that clears `tools_dir` gets it back on the next call.
 ///
-/// The Windows asset is a zip rather than a tarball, which changes nothing at
-/// the call site: bsdtar reads both, and `-xf` lets it work out which.
-#[cfg(target_os = "macos")]
-const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz";
-#[cfg(target_os = "macos")]
-const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-macos-universal/fpcalc";
-#[cfg(target_os = "macos")]
-const FPCALC_SHA256: &str = "d4d8faff4b5f7c558d9be053da47804f9501eaa6c2f87906a9f040f38d61c860";
-
-#[cfg(target_os = "windows")]
-const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-windows-x86_64.zip";
-#[cfg(target_os = "windows")]
-const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-windows-x86_64/fpcalc.exe";
-#[cfg(target_os = "windows")]
-const FPCALC_SHA256: &str = "36b478e16aa69f757f376645db0d436073a42c0097b6bb2677109e7835b59bbc";
-
-// Rather than an unresolved-name error a hundred lines further down: the two
-// constants above are the whole of what a new platform has to add here.
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-compile_error!("no fpcalc asset pinned for this platform — add one beside FPCALC_URL");
-
-/// A file's SHA-256, lowercase hex.
-///
-/// Streamed rather than read whole: the archive is a couple of megabytes today,
-/// but a hasher that has to hold its input in memory is a size limit written
-/// into the wrong place.
-async fn sha256_of(path: &Path) -> AppResult<String> {
-    use sha2::{Digest, Sha256};
-    use tokio::io::AsyncReadExt;
-
-    let mut file = tokio::fs::File::open(path).await?;
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0u8; 64 * 1024];
-    loop {
-        let read = file.read(&mut buffer).await?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..read]);
-    }
-    Ok(format!("{:x}", hasher.finalize()))
-}
-
-/// Download fpcalc into the app-owned tools dir on first use. Self-healing,
-/// like the venv: a failure only degrades enrichment, never the app.
+/// It used to be downloaded here instead, checksummed against a pin a few lines
+/// up. Both moved to build time — an unsigned binary that pulls an executable
+/// off the network and then runs it is indistinguishable from a dropper, and
+/// Defender quarantined the Windows installer on exactly that reading. The
+/// checksum is no worse off for it: verified on a machine we control, where a
+/// mismatch stops a release rather than an app already in someone's hands.
 pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
     let dest = paths.fpcalc();
     if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
         return Ok(());
     }
-    tokio::fs::create_dir_all(&paths.tools_dir).await?;
-    // Extension-free on purpose: the asset is a tarball on macOS and a zip on
-    // Windows, and bsdtar sniffs the format rather than trusting the name.
-    let archive = paths.tools_dir.join("fpcalc-archive");
-
-    eprintln!("[tools] downloading fpcalc from {FPCALC_URL}");
-    let status = command(SYSTEM_CURL)
-        .args(["-fsSL", "-o"])
-        .arg(&archive)
-        .arg(FPCALC_URL)
-        .stdin(Stdio::null())
-        .status()
-        .await?;
-    if !status.success() {
-        return Err(AppError::Setup("fpcalc download failed".into()));
-    }
-
-    // Before anything unpacks it, and long before anything runs it. This is the
-    // one binary the app fetches at runtime instead of shipping, so it is the
-    // one place where "what we asked for" and "what we got" can differ without
-    // a build ever noticing.
-    let digest = sha256_of(&archive).await?;
-    if digest != FPCALC_SHA256 {
-        let _ = tokio::fs::remove_file(&archive).await;
+    let source = &paths.bundled_fpcalc;
+    if !tokio::fs::try_exists(source).await.unwrap_or(false) {
         return Err(AppError::Setup(format!(
-            "fpcalc archive does not match its pinned checksum (got {digest})"
+            "fpcalc is missing from this build (expected {}) — run `npm run prepare:runtime`",
+            source.display()
         )));
     }
 
-    let status = command(SYSTEM_TAR)
-        .arg("-xf")
-        .arg(&archive)
-        .arg("-C")
-        .arg(&paths.tools_dir)
-        // BSD tar treats everything after the first member name as more member
-        // names, so options must come before FPCALC_ARCHIVE_BIN.
-        .arg("--strip-components=1")
-        .arg(FPCALC_ARCHIVE_BIN)
-        .stdin(Stdio::null())
-        .status()
-        .await?;
-    let _ = tokio::fs::remove_file(&archive).await;
-    if !status.success() {
-        return Err(AppError::Setup("fpcalc extraction failed".into()));
+    tokio::fs::create_dir_all(&paths.tools_dir).await?;
+    tokio::fs::copy(source, &dest).await?;
+
+    // `copy` carries the mode across, but only if the bundler kept it on the
+    // resource in the first place — and a bundler copying files one by one is
+    // not guaranteed to. Cheaper to set it than to depend on that chain.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        tokio::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755)).await?;
     }
-    if !tokio::fs::try_exists(&dest).await.unwrap_or(false) {
-        return Err(AppError::Setup("fpcalc missing after extraction".into()));
-    }
+
     eprintln!("[tools] fpcalc ready at {}", dest.display());
     Ok(())
 }
@@ -688,6 +631,7 @@ mod tests {
             python_archive: data.join("python.tar.gz"),
             runtime_dir: data.join("runtime"),
             wheels_dir: data.join("wheels"),
+            bundled_fpcalc: data.join("tools").join(FPCALC_BIN),
         }
     }
 
@@ -783,31 +727,6 @@ mod tests {
         };
 
         assert_eq!(strip(&app), strip(&import));
-    }
-
-    /// The digest guarding the one binary the app fetches at runtime. Checked
-    /// against a value nobody here computed — the empty string's SHA-256 is a
-    /// published constant — so a hasher wired up wrong (a buffer read past its
-    /// length, a chunk hashed twice) cannot agree with itself and pass.
-    #[tokio::test]
-    async fn hashes_a_file_the_way_sha256_says_it_should() {
-        let dir = std::env::temp_dir().join(format!("sonarche-sha-{}", std::process::id()));
-        tokio::fs::create_dir_all(&dir).await.expect("temp dir");
-        let empty = dir.join("empty");
-        let hello = dir.join("hello");
-        tokio::fs::write(&empty, b"").await.expect("write");
-        tokio::fs::write(&hello, b"hello").await.expect("write");
-
-        assert_eq!(
-            sha256_of(&empty).await.expect("hash"),
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        );
-        assert_eq!(
-            sha256_of(&hello).await.expect("hash"),
-            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
-        );
-
-        let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
     /// Both point at the same library and the same database — the import is a

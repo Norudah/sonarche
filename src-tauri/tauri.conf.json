@@ -54,7 +54,8 @@
     "resources": {
       "../sidecar": "sidecar",
       "resources/python.tar.gz": "python.tar.gz",
-      "resources/wheels": "wheels"
+      "resources/wheels": "wheels",
+      "resources/tools": "tools"
     }
   },
   "plugins": {

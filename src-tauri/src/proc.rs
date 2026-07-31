@@ -30,11 +30,6 @@ pub const SYSTEM_TAR: &str = r"C:\Windows\System32\tar.exe";
 #[cfg(not(windows))]
 pub const SYSTEM_TAR: &str = "/usr/bin/tar";
 
-#[cfg(windows)]
-pub const SYSTEM_CURL: &str = r"C:\Windows\System32\curl.exe";
-#[cfg(not(windows))]
-pub const SYSTEM_CURL: &str = "/usr/bin/curl";
-
 /// A `Command` that will not flash a console window on Windows. Use in place of
 /// `Command::new` everywhere.
 pub fn command(program: impl AsRef<OsStr>) -> Command {
