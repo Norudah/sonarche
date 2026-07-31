@@ -23,6 +23,10 @@
     "language": {
       "name": "Language",
       "why": "The language of the interface. Your track, artist and album names come from your files, so they stay as they are. With no explicit choice, the app follows your system's language."
+    },
+    "launchWelcome": {
+      "name": "Welcome at launch",
+      "why": "Once the environment check is done, Sonarche takes a second to say hello before opening the window. Turn it off and the app goes straight in — the fade between the two stays either way."
     }
   },
   "apiKeys": {

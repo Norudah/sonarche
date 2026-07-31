@@ -23,6 +23,10 @@
     "language": {
       "name": "Langue",
       "why": "La langue de l'interface. Les noms de tes morceaux, artistes et albums viennent de tes fichiers : ils ne changent pas. Sans choix explicite, l'app suit la langue de ton système."
+    },
+    "launchWelcome": {
+      "name": "Mot de bienvenue au lancement",
+      "why": "Une fois l'environnement vérifié, Sonarche prend une seconde pour se présenter avant d'ouvrir la fenêtre. Désactive-le et l'application entre directement — le fondu entre les deux, lui, reste."
     }
   },
   "apiKeys": {

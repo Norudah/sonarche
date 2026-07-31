@@ -36,7 +36,7 @@ const BEATS: Record<Exclude<SplashPhase, "checking">, number> = {
  * is a different screen the user sees exactly once per launch — the kind of
  * thing that is tedious to check by hand and trivial to check here.
  */
-export function phaseFor(from: GateState, to: GateState): SplashPhase | null {
+export function phaseFor(from: GateState, to: GateState, welcome: boolean): SplashPhase | null {
   // The curtain belongs to the launch and shows once. A gate that falls back to
   // "checking" later is a refetch, a remount or a re-check — the walkthrough
   // already reports those in place, with its own spinner, and throwing a
@@ -46,6 +46,11 @@ export function phaseFor(from: GateState, to: GateState): SplashPhase | null {
   // The walkthrough introduces itself at length and in its own words. A welcome
   // in front of it would be the app saying hello twice before saying anything.
   if (to === "onboarding") return null;
+  // Switched off in Appearance. Both beats go together: someone who does not
+  // want to be greeted at launch has not asked to be greeted after the setup
+  // either. The cross-fade out of the splash is untouched — that one fixed a
+  // hard cut, and a hard cut is not a preference.
+  if (!welcome) return null;
   return from === "onboarding" ? "aboard" : "welcome";
 }
 
@@ -60,7 +65,11 @@ interface Tracked {
   revealed: boolean;
 }
 
-export function useSplashPhase(gate: GateState): { phase: SplashPhase | null; revealed: boolean } {
+export function useSplashPhase(
+  gate: GateState,
+  /** The Appearance setting, read once at mount by whoever owns the shell. */
+  welcome: boolean,
+): { phase: SplashPhase | null; revealed: boolean } {
   const [tracked, setTracked] = useState<Tracked>(() => ({
     gate,
     phase: gate === "checking" ? "checking" : null,
@@ -74,7 +83,7 @@ export function useSplashPhase(gate: GateState): { phase: SplashPhase | null; re
   if (tracked.gate !== gate) {
     setTracked({
       gate,
-      phase: phaseFor(tracked.gate, gate),
+      phase: phaseFor(tracked.gate, gate, welcome),
       revealed: tracked.revealed || gate !== "checking",
     });
   }

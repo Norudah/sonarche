@@ -17,7 +17,7 @@ import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
  * The gate only decides *which* of three surfaces owns the window; the states
  * themselves are computed in `steps.ts` and drawn in `SetupFlow`.
  */
-export function SetupGate({ children }: { children: ReactNode }) {
+export function SetupGate({ children, welcome }: { children: ReactNode; welcome: boolean }) {
   const { t } = useTranslation("onboarding");
   const status = useEnvStatus();
   const onboarding = useOnboardingState();
@@ -37,7 +37,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
     onboardingCompleted: onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true),
   });
 
-  const { phase, revealed } = useSplashPhase(gate);
+  const { phase, revealed } = useSplashPhase(gate, welcome);
 
   if (status.isError) {
     return (

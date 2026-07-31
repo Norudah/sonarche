@@ -1,7 +1,9 @@
-import { RadioGroup } from "@heroui/react";
+import { RadioGroup, Switch } from "@heroui/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageChoice } from "@/features/settings/LanguageChoice";
+import { readLaunchWelcome, storeLaunchWelcome } from "@/features/settings/launchWelcome";
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
 import { ThemeTile } from "@/features/settings/ThemeTile";
@@ -29,6 +31,15 @@ function Setting({ name, why, children }: { name: string; why: string; children:
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
   const { preference, resolved, choose } = useTheme();
+  // Local state, no context: the shell read this once at mount and nothing else
+  // on screen answers to it. The switch is showing a stored value, not driving
+  // anything live.
+  const [welcome, setWelcome] = useState(readLaunchWelcome);
+
+  function chooseWelcome(on: boolean) {
+    setWelcome(on);
+    storeLaunchWelcome(on);
+  }
 
   return (
     <>
@@ -61,6 +72,28 @@ export function AppearanceSection() {
         <Setting name={t("appearance.language.name")} why={t("appearance.language.why")}>
           <LanguageChoice label={t("appearance.language.name")} />
         </Setting>
+      </SettingCard>
+
+      {/* The one setting here whose answer is yes or no, so the only one whose
+          name and control fit on the same line. `Setting` is not reused for
+          that reason — it stacks name, reason, control, and stacking a switch
+          under its own name puts the label twice on screen. The reason still
+          sits at full width underneath, like everywhere else on this page. */}
+      <SettingCard>
+        <div className="flex flex-col gap-1">
+          <Switch isSelected={welcome} onChange={chooseWelcome} className="w-full">
+            {/* `flex-row-reverse` on the clickable row, not on the root: the
+                control is authored first and belongs on the right, and the
+                whole row stays the hit target either way. */}
+            <Switch.Content className="w-full flex-row-reverse justify-between">
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+              <span className="text-[0.8125rem] font-semibold">{t("appearance.launchWelcome.name")}</span>
+            </Switch.Content>
+          </Switch>
+          <p className="text-[0.8125rem] leading-relaxed text-muted">{t("appearance.launchWelcome.why")}</p>
+        </div>
       </SettingCard>
     </>
   );
