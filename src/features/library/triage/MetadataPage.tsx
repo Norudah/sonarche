@@ -14,7 +14,7 @@ import { TriageHero } from "@/features/library/triage/TriageHero";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /**
- * The triage post (docs/metadata-page-plan.md): the count of things to fix as
+ * The triage post: the count of things to fix as
  * the page's headline, and under it a queue of correction lines that each
  * deep-link into the filtered explorers. No score, no module you can only look
  * at — zero open lines is the win state, shown calm.

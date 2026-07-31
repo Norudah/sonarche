@@ -247,7 +247,7 @@ src/                 application React
 src-tauri/src/       cœur Rust — un module par sujet
 sidecar/             sidecar Python ; *_test.py à côté de chaque module
 scripts/             outillage de build (Python embarqué, contrôle du lock)
-docs/                identité visuelle et notes de conception
+docs/                identité visuelle
 ```
 
 `shared` n'importe rien du niveau application, `features` peut importer

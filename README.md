@@ -238,7 +238,7 @@ src/                 React app
 src-tauri/src/       Rust core — one module per concern
 sidecar/             Python sidecar; *_test.py beside each module
 scripts/             build tooling (runtime fetch, lockfile check)
-docs/                brand assets and design notes
+docs/                brand assets
 ```
 
 `shared` imports nothing app-level, `features` may import `shared`, `app`
