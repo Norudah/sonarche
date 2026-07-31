@@ -10,16 +10,18 @@
 //! already forwarded to the webview as `sidecar:event`, so the page listens to
 //! `library_import_progress` directly rather than having it relayed twice.
 
-use std::path::Path;
-use std::time::Duration;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use crate::error::{AppError, AppResult};
-use crate::library_scan;
+use crate::jobs::JobsState;
+use crate::library_scan::{self, ScanReport};
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
@@ -38,18 +40,108 @@ pub struct ImportOutcome {
     /// Covers that were too big to draw and got a small rendition, the
     /// original kept beside it as `cover-hq.*`.
     pub renditions: u64,
+    /// The state of the tags that came in, straight from the sidecar. See
+    /// `ImportRecord::recap` for why it stays untyped here.
+    pub recap: Option<Value>,
+}
+
+/// What the scan promised, carried into the archive so a row can say what was
+/// asked of an import and not only what came back.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanCounts {
+    pub playable: u64,
+    pub unplayable: u64,
+    /// Counts by extension, as the scan reported them. Kept as the map rather
+    /// than a formatted list so the interface names the formats with the same
+    /// helper it uses on the live card.
+    pub unplayable_by_extension: BTreeMap<String, u64>,
+    pub bytes: u64,
+    pub album_folders: u64,
+}
+
+impl From<&ScanReport> for ScanCounts {
+    fn from(report: &ScanReport) -> Self {
+        Self {
+            playable: report.playable,
+            unplayable: report.unplayable,
+            unplayable_by_extension: report.unplayable_by_extension.clone(),
+            bytes: report.bytes,
+            album_folders: report.album_folders,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportStatus {
+    Done,
+    Failed,
+}
+
+/// One finished import, as the archive keeps it.
+///
+/// Only ever written once, at the end. There is deliberately no `running` row:
+/// the page driving an import shows it live, and a row stuck half-finished
+/// because the app was closed mid-copy would be a claim the archive could never
+/// retract.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportRecord {
+    pub id: String,
+    pub folder: String,
+    pub status: ImportStatus,
+    pub error: Option<String>,
+    pub scan: ScanCounts,
+    pub folders: u64,
+    pub renditions: u64,
+    /// The state of the tags that arrived, shaped by the sidecar
+    /// (`sidecar/import_recap.py`) and passed through untyped: Rust has no
+    /// reason to know its fields, and the interface reads it directly. None
+    /// when the sidecar could not account for the run.
+    pub recap: Option<Value>,
+    pub finished_at: u64,
 }
 
 #[derive(Default)]
 pub struct LibraryImportState {
     running: Mutex<bool>,
+    /// The last folder scanned, and what was found in it.
+    ///
+    /// Held here rather than sent back down from the page: the numbers are the
+    /// ones this process measured, so the archive records a measurement instead
+    /// of trusting a webview to hand its own counts back. The UI cannot start an
+    /// import without scanning first, so a miss means an import of a folder
+    /// nobody looked at — recorded with zeroes rather than refused.
+    last_scan: Mutex<Option<(PathBuf, ScanReport)>>,
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 impl LibraryImportState {
+    /// Remember what the scan found, for the import that is about to be asked
+    /// for. One slot: the page scans exactly one folder before importing it.
+    pub async fn remember_scan(&self, root: &Path, report: &ScanReport) {
+        *self.last_scan.lock().await = Some((root.to_path_buf(), report.clone()));
+    }
+
+    async fn scan_counts(&self, folder: &Path) -> ScanCounts {
+        match &*self.last_scan.lock().await {
+            Some((scanned, report)) if scanned == folder => ScanCounts::from(report),
+            _ => ScanCounts::default(),
+        }
+    }
+
     pub async fn run(
         &self,
         app: &AppHandle,
         sidecar: &SidecarState,
+        jobs: &JobsState,
         folder: &str,
     ) -> AppResult<ImportOutcome> {
         let paths = AppPaths::resolve(app)?;
@@ -68,11 +160,33 @@ impl LibraryImportState {
             *running = true;
         }
 
-        let result = request(app, sidecar, folder, &paths).await;
+        // Minted here rather than in the sidecar: it is the archive's key for
+        // this run *and* the mark stamped on every item beets takes on, so the
+        // two have to be the same string and this is the side that keeps records.
+        let id = uuid::Uuid::new_v4().to_string();
+        let result = request(app, sidecar, folder, &id, &paths).await;
 
         // Awaited rather than a Drop guard, so a failure cannot leave the flag
         // stuck and the page refusing every later attempt.
         *self.running.lock().await = false;
+
+        jobs.record_import(ImportRecord {
+            id,
+            folder: folder.to_string(),
+            status: if result.is_ok() {
+                ImportStatus::Done
+            } else {
+                ImportStatus::Failed
+            },
+            error: result.as_ref().err().map(|err| err.to_string()),
+            scan: self.scan_counts(Path::new(folder)).await,
+            folders: result.as_ref().map(|out| out.folders).unwrap_or(0),
+            renditions: result.as_ref().map(|out| out.renditions).unwrap_or(0),
+            recap: result.as_ref().ok().and_then(|out| out.recap.clone()),
+            finished_at: now_ms(),
+        })
+        .await;
+
         result
     }
 }
@@ -81,6 +195,7 @@ async fn request(
     app: &AppHandle,
     sidecar: &SidecarState,
     folder: &str,
+    id: &str,
     paths: &AppPaths,
 ) -> AppResult<ImportOutcome> {
     let reply = sidecar
@@ -89,6 +204,9 @@ async fn request(
             "library_import",
             json!({
                 "folder": folder,
+                // Stamped on every item beets takes on, so the recap can ask
+                // afterwards what *this* run brought in.
+                "import_id": id,
                 // The import config, not the app's: this is the one path where
                 // the album's cover is already on disk beside the tracks, and
                 // baking a copy of it into every one of them is how a 1.17 GB
@@ -106,5 +224,6 @@ async fn request(
     Ok(ImportOutcome {
         folders: reply.get("folders").and_then(Value::as_u64).unwrap_or(0),
         renditions: reply.get("renditions").and_then(Value::as_u64).unwrap_or(0),
+        recap: reply.get("recap").filter(|recap| !recap.is_null()).cloned(),
     })
 }

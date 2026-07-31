@@ -8,7 +8,7 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, Command};
+use tokio::process::{Child, ChildStdin};
 use tokio::sync::{oneshot, Mutex};
 use uuid::Uuid;
 
@@ -145,7 +145,9 @@ fn spawn_stderr_reader(stderr: tokio::process::ChildStderr) {
     tauri::async_runtime::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            eprintln!("[sidecar] {line}");
+            // To the log file, not just stderr: this stream carries the
+            // sidecar's tracebacks, and on Windows stderr goes nowhere.
+            crate::logs::write(&format!("[sidecar] {line}"));
         }
     });
 }
@@ -164,10 +166,17 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         .parent()
         .ok_or_else(|| AppError::EnvNotReady("beets config dir not found".into()))?;
 
-    let mut child = Command::new(&venv_python)
+    let mut child = crate::proc::command(&venv_python)
         .arg("-u")
         .arg(&paths.sidecar_main)
         .env("PYTHONUNBUFFERED", "1")
+        // Python's UTF-8 Mode. `protocol` pins the channel's own encoding, but
+        // that only covers the three streams it owns; this covers the rest —
+        // `open()`'s default, the filesystem encoding, and the locale encoding
+        // that `subprocess` text mode reads. Without it, on Windows, all of
+        // those are cp1252 and any accent is a crash waiting for the right
+        // filename.
+        .env("PYTHONUTF8", "1")
         // The in-process beets must read the same config.yaml the beet CLI
         // gets via --config; otherwise it would pick up the user's own beets
         // config (or none), drifting from write_beets_config().

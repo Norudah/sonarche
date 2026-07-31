@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
-import { type ImportOutcome, startLibraryImport } from "@/features/import/api";
+import { type ImportOutcome, type ImportRecord, listImports, startLibraryImport } from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
 
 /**
@@ -58,12 +58,25 @@ export function useImportProgress(active: boolean): ImportProgress | null {
   return progress;
 }
 
-/** Run the import. The library listing is stale the moment it succeeds. */
+export const importsKey = ["imports"] as const;
+
+/** The archive of finished imports. Never refetched on its own: the only thing
+ * that adds a row is an import ending, and that invalidates this key itself. */
+export function useImports() {
+  return useQuery<ImportRecord[]>({ queryKey: importsKey, queryFn: listImports });
+}
+
+/**
+ * Run the import. Two caches go stale the moment it ends, and one of them on a
+ * failure too: the library gained tracks, and the archive gained a row either
+ * way — a failed import is a thing that happened.
+ */
 export function useLibraryImport() {
   const queryClient = useQueryClient();
 
   return useMutation<ImportOutcome, unknown, string>({
     mutationFn: startLibraryImport,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),
   });
 }

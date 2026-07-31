@@ -2,8 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   type ApiKeyName,
+  checkApiKey,
+  checkLibraryMove,
+  checkServices,
+  eraseAllData,
+  getLibraryLocation,
   getPreferences,
   listApiKeys,
+  moveLibrary,
+  reinstallEnvironment,
+  type ServiceName,
   type RateLimitKey,
   resetLibraryDev,
   resetSetupDev,
@@ -27,6 +35,52 @@ export function useSetApiKey() {
       queryClient.invalidateQueries({ queryKey: apiKeysKey });
     },
   });
+}
+
+/** A mutation and not a query: a key check is an outbound request the user
+ * asked for, never something to run because a screen mounted. */
+export function useCheckApiKey() {
+  return useMutation({
+    mutationFn: ({ name, key }: { name: ApiKeyName; key?: string }) => checkApiKey(name, key),
+  });
+}
+
+/** Same reasoning, and more so: this one wakes six services at once. */
+export function useCheckServices() {
+  return useMutation({
+    mutationFn: (only?: ServiceName) => checkServices(only),
+  });
+}
+
+export const libraryLocationKey = ["settings", "libraryLocation"];
+
+export function useLibraryLocation() {
+  return useQuery({ queryKey: libraryLocationKey, queryFn: getLibraryLocation });
+}
+
+/** The preflight behind the move confirmation: what would travel, and whether
+ * anything stands in the way. */
+export function useCheckLibraryMove() {
+  return useMutation({ mutationFn: (parent: string) => checkLibraryMove(parent) });
+}
+
+export function useMoveLibrary() {
+  return useMutation({ mutationFn: (parent: string) => moveLibrary(parent) });
+}
+
+/**
+ * The two danger-zone resets.
+ *
+ * Neither invalidates anything on success, and that is deliberate: both end
+ * with the app relaunching, so refreshing a cache that is about to be thrown
+ * away would only give the dying window one last render of an empty library.
+ */
+export function useEraseAllData() {
+  return useMutation({ mutationFn: eraseAllData });
+}
+
+export function useReinstallEnvironment() {
+  return useMutation({ mutationFn: reinstallEnvironment });
 }
 
 export function usePreferences() {

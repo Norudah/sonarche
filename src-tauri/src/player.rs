@@ -101,6 +101,38 @@ pub fn amplitude_for(level: f32) -> f32 {
     clamped * clamped
 }
 
+/// The engine plays what the library holds, and nothing else.
+///
+/// Every real caller hands over a `path` that came out of the library listing
+/// in the first place, so this never fires in normal use — which is exactly why
+/// it is worth writing down. `player_load` is a command with a free-text path
+/// on it, and the app's own rule is that every input crossing the IPC boundary
+/// is checked. Without this, one injected string in the webview turns the audio
+/// engine into a way to find out whether an arbitrary file exists, and whether
+/// it decodes.
+///
+/// `..` is rejected outright rather than resolved: `starts_with` compares
+/// components, so `<library>/../../etc/passwd` passes the prefix test on its
+/// face, and canonicalising to find out would mean touching the filesystem on
+/// the strength of the very path being questioned.
+pub fn ensure_in_library(path: &str, library: &Path) -> AppResult<()> {
+    let path = Path::new(path);
+    if path
+        .components()
+        .any(|part| matches!(part, std::path::Component::ParentDir))
+    {
+        return Err(AppError::InvalidInput(
+            "a playable path may not walk up out of the library".into(),
+        ));
+    }
+    if !path.starts_with(library) {
+        return Err(AppError::InvalidInput(
+            "that file is not in the Sonarche library".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Open a file for playback.
 ///
 /// `Decoder::try_from` rather than `Decoder::new`, and the difference is the
@@ -455,6 +487,36 @@ pub fn spawn_status_loop(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn plays_a_file_the_library_actually_holds() {
+        let library = Path::new("/music/Sonarche");
+
+        assert!(ensure_in_library(
+            "/music/Sonarche/Air/Moon Safari/01 La femme d'argent.m4a",
+            library
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn refuses_a_file_outside_the_library() {
+        let library = Path::new("/music/Sonarche");
+
+        assert!(ensure_in_library("/etc/passwd", library).is_err());
+        assert!(ensure_in_library("relative.m4a", library).is_err());
+        // Same string prefix, different folder — the check is on components.
+        assert!(ensure_in_library("/music/Sonarche-old/track.m4a", library).is_err());
+    }
+
+    /// The one that a plain prefix test lets through: every component matches
+    /// the library until the `..` walks back out of it.
+    #[test]
+    fn refuses_a_path_that_climbs_out_of_the_library() {
+        let library = Path::new("/music/Sonarche");
+
+        assert!(ensure_in_library("/music/Sonarche/../../etc/passwd", library).is_err());
+    }
 
     #[test]
     fn volume_taper_keeps_the_ends_honest() {

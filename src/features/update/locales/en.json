@@ -1,4 +1,11 @@
 {
+  "category": "Updates",
+  "description": "Sonarche looks for a new version at launch and offers it once. Here you can ask whenever you want.",
+  "current": "Installed version",
+  "check": "Check",
+  "checking": "Looking for an update…",
+  "checkFailed": "The check failed. Have a look at your connection.",
+  "upToDate": "You're up to date.",
   "available": "Update available",
   "version": "Sonarche {{version}} is ready to install.",
   "install": "Install",

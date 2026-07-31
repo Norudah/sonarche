@@ -2,7 +2,7 @@
   "eyebrow": "Add to library",
   "title": "Paste a link, we'll take it from there.",
   "urlLabel": "Video link",
-  "urlPlaceholder": "Paste a YouTube video or playlist link",
+  "urlPlaceholder": "Paste a track or playlist link",
   "download": "Fetch",
   "enqueueFailed": "Could not add to the queue",
   "unknownArtist": "Unknown artist",
@@ -53,8 +53,13 @@
   },
   "history": {
     "title": "History",
-    "lede": "Every download, newest first.",
-    "empty": "No downloads yet."
+    "lede": "Everything that entered the ark, newest first.",
+    "heading": "Downloads",
+    "empty": {
+      "title": "No downloads yet",
+      "body": "The history keeps every link you fetched, newest first."
+    },
+    "emptyAction": "Fetch a first link"
   },
   "queue": {
     "colPipeline": "Pipeline",
@@ -107,8 +112,14 @@
     "pageOf": "{{page}} / {{pageCount}}",
     "seeAll": "Full history",
     "clearHistory": "Clear history",
-    "clearHistoryTitle": "Clear download history?",
-    "clearHistoryBody": "Completed and failed downloads will be removed from this list. Tracks already imported stay in your library.",
+    "clearHistoryTitle": "Clear the history?",
+    "clearHistoryBody_one": "{{scope}} will be removed from this page. Your library keeps every track.",
+    "clearHistoryBody_other": "{{scope}} will be removed from this page. Your library keeps every track.",
+    "clearHistoryScopeBoth": "{{downloads}} and {{imports}}",
+    "clearHistoryDownloads_one": "{{count}} download",
+    "clearHistoryDownloads_other": "{{count}} downloads",
+    "clearHistoryImports_one": "{{count}} import",
+    "clearHistoryImports_other": "{{count}} imports",
     "clearHistoryCancel": "Cancel",
     "clearHistoryConfirm": "Clear",
     "clearHistoryFailed": "Clearing the history failed."

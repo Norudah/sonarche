@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatDuration } from "@/shared/lib/format";
+import { BAR_TRIGGER, PANEL_SECTION } from "@/shared/player/barTrigger";
 import { Equalizer } from "@/shared/player/Equalizer";
 import { usePlayer, usePlayerQueue } from "@/shared/player/PlayerContext";
 import { playOrder } from "@/shared/player/queue";
@@ -14,14 +15,6 @@ import { TrackThumb } from "@/shared/ui/TrackThumb";
 /** Uniform slot height in px — a 48px row plus its 4px breathing room. The
  * virtualizer trusts it, so a wrong value makes the scrollbar lie. */
 const ROW_HEIGHT = 52;
-
-/** Same visual language as the bar's other icon triggers. A plain class rather
- * than a HeroUI Button because Popover.Trigger renders the pressable itself. */
-const TRIGGER =
-  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 aria-expanded:bg-default/70 aria-expanded:text-foreground";
-
-/** The panel's little section titles — "Now playing", "Up next". */
-const SECTION = "px-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
 
 interface QueueRowProps {
   track: PlayableTrack;
@@ -86,12 +79,12 @@ function QueueList() {
 
   return (
     <div className="flex flex-col gap-1.5 px-2.5 pt-3 pb-2.5">
-      <p className={SECTION}>{t("nowPlaying")}</p>
+      <p className={PANEL_SECTION}>{t("nowPlaying")}</p>
       <QueueRow track={ordered[queue.position]} isCurrent isPlaying={isPlaying} onJump={() => {}} />
 
       {upcoming.length > 0 && (
         <>
-          <p className={`${SECTION} pt-2.5`}>{t("upNext")}</p>
+          <p className={`${PANEL_SECTION} pt-2.5`}>{t("upNext")}</p>
           <div ref={scrollRef} className="max-h-80 overflow-y-auto">
             <div style={{ height: virtualizer.getTotalSize() }} className="relative">
               {virtualizer.getVirtualItems().map((slice) => {
@@ -126,7 +119,7 @@ export function QueuePanel() {
 
   return (
     <Popover.Root>
-      <Popover.Trigger aria-label={t("queue")} className={TRIGGER}>
+      <Popover.Trigger aria-label={t("queue")} className={BAR_TRIGGER}>
         <ListMusic className="size-4" />
       </Popover.Trigger>
       <Popover.Content placement="top end" className="w-96 p-0">

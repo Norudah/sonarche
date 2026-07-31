@@ -22,8 +22,19 @@ from report import build_report
 _MARKER_FIELD = "sonarche_import_id"
 
 
-def _beet_bin() -> str:
-    return os.path.join(os.path.dirname(sys.executable), "beet")
+def beet_bin() -> str:
+    """The venv's own `beet`, beside the interpreter running us.
+
+    Named outright on Windows, where the console script is `beet.exe`. Without
+    the suffix this only worked because `CreateProcess` appends `.exe` when the
+    name has no extension — finding our own binary should not rest on a Win32
+    fallback.
+
+    Public, and imported by `library_import`, because there were two copies of
+    this and only one of them got fixed.
+    """
+    name = "beet.exe" if os.name == "nt" else "beet"
+    return os.path.join(os.path.dirname(sys.executable), name)
 
 
 def _find_marked_item(db_path: str, library_dir: str, marker: str):
@@ -50,7 +61,7 @@ def handle(request_id: str, params: dict) -> dict:
         raise RuntimeError(f"file not found: {path}")
 
     marker = uuid.uuid4().hex
-    cmd = [_beet_bin(), "--config", config_path, "import", "--quiet", "-A",
+    cmd = [beet_bin(), "--config", config_path, "import", "--quiet", "-A",
            f"--set={_MARKER_FIELD}={marker}", path]
     if params.get("singleton"):
         # Album tracks are imported file by file; -s avoids one junk 1-item
@@ -59,7 +70,13 @@ def handle(request_id: str, params: dict) -> dict:
     protocol.send_event(request_id, "import_progress", {"stage": "matching"})
 
     # Separate process: beets' own stdout stays out of our protocol stream.
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    # Encoding spelled out, like in `library_import`: left to the locale it is
+    # cp1252 on Windows, and beets echoes the staged filename — which carries
+    # the YouTube title, emoji and all. `replace` because a byte we cannot read
+    # should cost a garbled log line, never the import.
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300
+    )
     for line in (proc.stdout + proc.stderr).splitlines():
         if line.strip():
             protocol.log(f"beet: {line}")

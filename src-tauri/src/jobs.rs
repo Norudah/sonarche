@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
 use crate::jobs_store;
+use crate::library_import;
 use crate::preferences;
 use crate::python_env::{self, AppPaths};
 use crate::settings;
@@ -185,9 +186,20 @@ pub fn init(app: &AppHandle) -> AppResult<JobsState> {
 
     // The DB shipped briefly as jobs.db before it became the app-wide store;
     // adopt any such file in place rather than starting empty.
+    //
+    // All three files, not just the main one. The store runs in WAL mode, so a
+    // `-wal` holding committed-but-uncheckpointed pages is part of the database
+    // and not a cache: renaming `jobs.db` alone hands SQLite a file whose most
+    // recent writes are sitting in a `-wal` it will never look at again, and
+    // leaves the orphans behind for good measure.
     let legacy_db = data_dir.join("jobs.db");
     if legacy_db.exists() && !db_path.exists() {
-        let _ = std::fs::rename(&legacy_db, &db_path);
+        for suffix in ["", "-wal", "-shm"] {
+            let from = data_dir.join(format!("jobs.db{suffix}"));
+            if from.exists() {
+                let _ = std::fs::rename(&from, data_dir.join(format!("sonarche.db{suffix}")));
+            }
+        }
     }
 
     let conn = jobs_store::open(&db_path)?;
@@ -1107,9 +1119,37 @@ impl JobsState {
         }
     }
 
-    /// Drop terminal (done/failed) jobs from the history; in-flight jobs are untouched.
+    /// File a finished library import in the same store the download history
+    /// lives in — it is the app's own database, not the download feature's, and
+    /// an import is the other way music enters the ark.
+    ///
+    /// Swallows: the import itself has already happened and its result is on its
+    /// way back to the page. Losing the archive row is worth a log line, never
+    /// turning a successful import into a reported failure.
+    pub async fn record_import(&self, record: library_import::ImportRecord) {
+        if let Err(err) = with_conn(&self.0, move |conn| {
+            jobs_store::insert_import(conn, &record)
+        })
+        .await
+        {
+            eprintln!("[imports] recording failed: {err}");
+        }
+    }
+
+    pub async fn list_imports(&self) -> Vec<library_import::ImportRecord> {
+        match with_conn(&self.0, jobs_store::list_imports).await {
+            Ok(records) => records,
+            Err(err) => {
+                eprintln!("[imports] list failed: {err}");
+                Vec::new()
+            }
+        }
+    }
+
+    /// Drop terminal (done/failed) jobs and the whole import archive; in-flight
+    /// jobs are untouched. One sweep, because the history page shows both.
     pub async fn clear_history(&self) -> Vec<Job> {
-        if let Err(err) = with_conn(&self.0, jobs_store::delete_terminal).await {
+        if let Err(err) = with_conn(&self.0, jobs_store::clear_history).await {
             eprintln!("[jobs] clear history failed: {err}");
         }
         self.list().await

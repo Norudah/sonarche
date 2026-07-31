@@ -234,11 +234,15 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
 
   return (
     <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
-      <header className="flex shrink-0 items-center gap-4 border-b border-separator bg-gradient-to-b from-accent-soft/60 to-transparent px-5 py-3.5">
+      <header className="flex shrink-0 items-center gap-4 border-b border-separator panel-wash px-5 py-3.5">
         {album.artUrl ? (
-          <img src={album.artUrl} alt="" className="size-11 shrink-0 rounded-lg object-cover ring-1 ring-black/5" />
+          <img
+            src={album.artUrl}
+            alt=""
+            className="size-11 shrink-0 rounded-lg object-cover ring-1 ring-artwork-edge"
+          />
         ) : (
-          <ArtworkPlaceholder className="size-11 shrink-0 rounded-lg ring-1 ring-black/5" />
+          <ArtworkPlaceholder className="size-11 shrink-0 rounded-lg ring-1 ring-artwork-edge" />
         )}
         <div className="min-w-0 flex-1">
           <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">

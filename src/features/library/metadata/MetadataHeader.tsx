@@ -32,7 +32,7 @@ export function MetadataHeader({
     // rather than floating it at centre — a centred row inside this band reads as
     // an accident, not a layout. A hairline closes the band so it never bleeds
     // into the fields.
-    <header className="relative flex shrink-0 items-end gap-5 border-b border-separator/60 bg-gradient-to-b from-accent-soft/70 via-accent-soft/20 to-transparent px-7 pt-14 pb-6">
+    <header className="relative flex shrink-0 items-end gap-5 border-b border-separator/60 panel-wash px-7 pt-14 pb-6">
       <MetadataArtwork artUrl={track.artUrl} />
       {/* pr-8 keeps the title clear of the absolutely-placed close button. */}
       <div className="min-w-0 flex-1 pr-8">

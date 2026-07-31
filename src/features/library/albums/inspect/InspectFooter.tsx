@@ -3,8 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { ChangeSummary } from "@/features/library/albums/albumFields";
-import { HERO_PILL_SECONDARY } from "@/features/library/heroPill";
-import { PrimaryPill } from "@/features/library/metadata/PrimaryPill";
+import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
+import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
 
@@ -102,7 +102,7 @@ export function InspectFooter({
           type="button"
           disabled={isDirty || isRematching}
           onClick={onRematch}
-          className={`${HERO_PILL_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
+          className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
         >
           {isRematching ? (
             <Loader2 className="size-4 animate-spin text-accent" />
@@ -147,16 +147,16 @@ export function InspectFooter({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.6, opacity: 0 }}
                 transition={springs.bouncy}
-                className={`${HERO_PILL_SECONDARY} shrink-0 cursor-pointer`}
+                className={`${HERO_BUTTON_SECONDARY} shrink-0 cursor-pointer`}
               >
                 {t("metadata.cancel")}
               </motion.button>
             )}
           </AnimatePresence>
 
-          <PrimaryPill onPress={onSave} isPending={isSaving} isDisabled={!isDirty}>
+          <PrimaryButton onPress={onSave} isPending={isSaving} isDisabled={!isDirty}>
             {isSaving ? t("metadata.saving") : t("metadata.save")}
-          </PrimaryPill>
+          </PrimaryButton>
         </div>
       </div>
     </footer>

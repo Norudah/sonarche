@@ -2,6 +2,7 @@
 name = "sonarche"
 version = "0.9.1"
 description = "Your music, from the stream into the ark."
+license = "MIT"
 edition = "2021"
 
 [build-dependencies]
@@ -18,10 +19,13 @@ tokio = { version = "1", features = ["macros", "process", "io-util", "sync", "ti
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
 url = "2"
-# OS keychain for API keys: secrets never land in a config file.
-keyring = { version = "3", features = ["apple-native"] }
 # Jitter between album batch downloads; tiny and dependency-free (rand is overkill).
 fastrand = "2"
+# One job: checking the fpcalc archive against its pinned digest before the app
+# unpacks a binary and runs it. TLS proves we reached github.com; it says nothing
+# about the bytes that release still holds, and re-tagging a GitHub release
+# silently replaces its assets.
+sha2 = "0.10"
 # Download-history store (our own DB, distinct from the beets library). `bundled`
 # ships SQLite with the binary — no system lib, matching the app's self-contained ethos.
 rusqlite = { version = "0.32", features = ["bundled"] }
@@ -60,6 +64,13 @@ tauri-plugin-updater = "2.10.1"
 # update gets postponed forever.
 tauri-plugin-process = "2.3.1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# OS keychain for API keys: secrets never land in a config file. The backend is
+# a compile-time feature and `keyring` has no cross-platform one — built with
+# none it compiles to a store that forgets everything on exit, so this is not
+# optional decoration. Hence one line per OS rather than one in [dependencies].
+keyring = { version = "3", features = ["apple-native"] }
+
 # OS media session: media keys, Control Center, the lock screen. Playback moved
 # out of the webview, and `navigator.mediaSession` only exposes a session for a
 # page playing a media element — so the OS side has to be spoken to directly.
@@ -73,7 +84,6 @@ tauri-plugin-process = "2.3.1"
 # error in a future rustc. That is a build that stops working on its own, so it
 # comes out before v1 rather than after. Only the classes we speak to are
 # enabled; the framework's default feature set is the whole of MediaPlayer.
-[target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = [
     "std",
@@ -95,3 +105,15 @@ objc2-media-player = { version = "0.3", default-features = false, features = [
     "MPRemoteCommandEvent",
 ] }
 block2 = "0.6"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# The Windows Credential Manager. Same reasoning as the Keychain line above.
+keyring = { version = "3", features = ["windows-native"] }
+# DWM, for two calls: painting the caption bar the app's own near-white instead
+# of the system grey. There is no Tauri config key for it and no cross-platform
+# equivalent, so it is this or a seam at the top of every Windows screen. The
+# raw bindings rather than the `windows` crate — two functions do not need COM,
+# and this version is already in the tree via tao.
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
+# No media-session counterpart yet: `now_playing` no-ops off macOS, and a media
+# key that does nothing is not a reason to fail a play.

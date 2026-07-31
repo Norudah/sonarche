@@ -22,7 +22,7 @@ export function SortSelect<T extends string>({ options, value, onChange, labelOf
 
   return (
     <Dropdown>
-      <Dropdown.Trigger className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-surface-secondary px-3.5 text-[0.8125rem] text-foreground outline-none transition-colors hover:bg-surface-tertiary data-[pressed]:bg-surface-tertiary focus-visible:ring-2 focus-visible:ring-accent/30">
+      <Dropdown.Trigger className="flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-surface-secondary px-3.5 text-[0.8125rem] text-foreground outline-none transition-colors hover:bg-surface-tertiary data-[pressed]:bg-surface-tertiary focus-visible:ring-2 focus-visible:ring-accent/30">
         <span className="text-muted">{t("sort.label")}</span>
         {labelOf(value)}
         <ChevronDown className="size-3.5 text-muted" />

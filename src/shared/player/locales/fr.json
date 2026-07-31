@@ -24,5 +24,29 @@
   "unsupportedFormatDetail": "« {{title}} » est un fichier .{{extension}} — Sonarche ne lit pas ce format.",
   "unsupportedFormatDetailUnknown": "« {{title}} » est dans un format que Sonarche ne lit pas.",
   "unreadable": "Lecture impossible",
-  "unreadableDetail": "« {{title}} » n'a pas pu être ouvert."
+  "unreadableDetail": "« {{title}} » n'a pas pu être ouvert.",
+  "lyrics": {
+    "title": "Paroles",
+    "none": "Pas de paroles enregistrées",
+    "search": "Chercher les paroles",
+    "searching": "Recherche…",
+    "notFound": "Rien trouvé pour ce titre",
+    "notFoundHint": "Aucune des deux bases ne connaît ce titre. Un titre ou un artiste mal orthographié empêche aussi la correspondance.",
+    "unreachable": "La recherche n'a pas pu aboutir",
+    "unreachableHint": "Un service de paroles ne répond pas. Ta connexion n'est pas en cause — réessaie dans un moment.",
+    "retry": "Réessayer",
+    "failed": "La recherche a échoué",
+    "failedHint": "Vérifiez votre connexion, puis réessayez.",
+    "instrumental": "Morceau instrumental",
+    "instrumentalHint": "La base connaît ce morceau et n'y associe aucune parole.",
+    "again": "Chercher à nouveau",
+    "againHelp": "Redemander les paroles aux services",
+    "followAuto": "Suivi",
+    "followManual": "Manuel",
+    "fromStored": "Enregistrées",
+    "timed": "synchronisées",
+    "untimed": "texte seul",
+    "jumpTo": "Lire à partir de cette ligne",
+    "nothingPlayingHint": "Lance un morceau pour voir ses paroles."
+  }
 }

@@ -1,9 +1,48 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Music Manager</title>
+    <title>Sonarche</title>
+
+    <!--
+      This block exists to remove the one frame nobody can un-see: the webview
+      opens on its own default white, and on the night theme that is a
+      full-window flash a moment before the splash. Nothing in the bundle can
+      fix it, because the bundle has not been fetched yet.
+
+      A script and not a `<style>` element, which would read better. Tauri
+      nonces every `<style>` in the shipped HTML, and a nonce in `style-src`
+      makes the browser ignore `'unsafe-inline'` for inline style *attributes*
+      too — which is how Motion and HeroUI position everything. One decorative
+      stylesheet would have taken the whole component layer down with it under
+      the CSP next door in tauri.conf.json.
+
+      `lang` is a placeholder — i18n rewrites it from the stored language as
+      soon as it initialises. It is here so the document is never without one.
+    -->
+    <script>
+      // Same storage key, same fallback, same resolution as
+      // features/settings/theme.ts, whose `applyTheme` clears the inline
+      // background again the moment the real stylesheet is in charge. Inline
+      // and synchronous on purpose: a module script is deferred, and deferred
+      // is already too late to beat the first paint.
+      try {
+        var stored = localStorage.getItem("sonarche.theme");
+        var preference = stored === "light" || stored === "dark" ? stored : "system";
+        var dark =
+          preference === "dark" ||
+          (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        // Mirrors `--background` in app/theme.css, both themes. Duplicated
+        // deliberately: a custom property cannot be read before the stylesheet
+        // declaring it has loaded, and being ahead of that load is the point.
+        document.documentElement.style.background = dark ? "oklch(0.175 0.016 279)" : "oklch(0.982 0.006 279)";
+      } catch {
+        // Storage throws rather than returning null in a hardened webview. A
+        // theme is never worth failing a launch over; light is the safe guess.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

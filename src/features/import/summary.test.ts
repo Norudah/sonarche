@@ -87,4 +87,16 @@ describe("shortenPath", () => {
 
     expect(short).toBe("/Volumes/…/music/rips/FLAC");
   });
+
+  it("cuts a Windows path too, and spells it back with backslashes", () => {
+    // Split on "/" alone this was a single segment: always under the ceiling,
+    // so a Windows path was never shortened and overflowed its one line.
+    const short = shortenPath("C:\\Users\\pieru\\Music\\archive\\rips\\FLAC");
+
+    expect(short).toBe("C:\\…\\archive\\rips\\FLAC");
+  });
+
+  it("does not put a leading separator in front of a drive letter", () => {
+    expect(shortenPath("C:\\a\\b\\c\\d\\e")).not.toMatch(/^[/\\]/);
+  });
 });

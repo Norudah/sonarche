@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSaveAcoustidKey } from "@/features/onboarding/hooks";
+import { ActionButton } from "@/shared/ui/ActionLink";
 
 /**
  * The step that is optional and shouldn't feel it.
@@ -99,13 +100,9 @@ export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean;
       {/* Nothing left to pass over once a key is in: the way out only exists
           while the step is still asking. */}
       {!isConfigured && (
-        <button
-          type="button"
-          onClick={onSkip}
-          className="cursor-pointer self-start rounded-sm text-xs text-muted underline-offset-4 transition-colors outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent/40"
-        >
+        <ActionButton tone="muted" onPress={onSkip} className="self-start">
           {t("steps.acoustid.skip")}
-        </button>
+        </ActionButton>
       )}
     </div>
   );

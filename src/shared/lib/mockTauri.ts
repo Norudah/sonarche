@@ -473,6 +473,15 @@ function inflate<
 const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
 /**
+ * `?empty` answers every listing with nothing.
+ *
+ * The mock's whole job is to make states reachable, and the emptiest one — a
+ * library and a history with nothing in them, which is what the very first
+ * launch looks like — was the one state the seed data made unreachable.
+ */
+const isEmpty = new URLSearchParams(window.location.search).has("empty");
+
+/**
  * Which rung of the walkthrough to open on: `?setup=python` (nothing found),
  * `?setup=engine` (an interpreter but no venv), anything else a healthy
  * install. Pair with `?onboarding=1`, which makes the gate ignore the
@@ -524,8 +533,8 @@ function runMockSetup(): Promise<unknown> {
 }
 
 const responses: Record<string, unknown> = {
-  list_jobs: jobs,
-  list_library: { tracks: inflate(libraryTracks, requestedTracks) },
+  list_jobs: isEmpty ? [] : jobs,
+  list_library: { tracks: isEmpty ? [] : inflate(libraryTracks, requestedTracks) },
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };
@@ -601,6 +610,11 @@ export function installMockTauri() {
       // The OS folder picker, standing in for a choice that cannot be made in a
       // browser. Always the same folder, so the summary below is about it.
       if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // What the Settings pane shows as the installed version. A browser has no
+      // bundle to read one from. Kept equal to the `currentVersion` the check
+      // below reports, so `?update` previews a coherent 0.8.0 → 0.9.0 and not a
+      // downgrade.
+      if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
       if (cmd === "plugin:updater|check") {
@@ -612,7 +626,19 @@ export function installMockTauri() {
       if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
-      if (cmd === "get_env_status") return { ...env };
+      if (cmd === "list_imports") return [...mockImports];
+      if (cmd === "library_align_scan") return mockAlignScan();
+      if (cmd === "library_align_apply") return mockAlignApply(payload);
+      if (cmd === "get_env_status") {
+        // The real check spawns Python and imports beets: a second or two, and
+        // the whole reason there is a splash at all. The mock answers in the
+        // same tick, so the splash and its hand-over flash past unseen —
+        // `?splash` (optionally `?splash=3000`) holds the answer back long
+        // enough to look at them.
+        const held = new URLSearchParams(window.location.search).get("splash");
+        if (held !== null) await new Promise((resolve) => window.setTimeout(resolve, Number(held) || 2000));
+        return { ...env };
+      }
       if (cmd === "setup_env") return runMockSetup();
       if (cmd === "get_onboarding_state") return { ...onboarding };
       if (cmd === "set_onboarding_completed") {
@@ -624,6 +650,40 @@ export function installMockTauri() {
       if (cmd === "check_acoustid_key") {
         const valid = String(payload?.key ?? "").trim() !== "bad";
         return { valid, reason: valid ? null : "invalidKey" };
+      }
+      // One of each verdict, so the panel's three registers are all reachable
+      // without waiting for a real service to fall over.
+      if (cmd === "check_services") {
+        return {
+          services: [
+            { name: "musicbrainz", state: "up", detail: "200" },
+            { name: "acoustid", state: "up", detail: "400" },
+            { name: "coverart", state: "up", detail: "200" },
+            { name: "lastfm", state: "down", detail: "503" },
+            { name: "lrclib", state: "unreachable", detail: "ReadTimeout" },
+            { name: "lyricsovh", state: "up", detail: "200" },
+          ],
+        };
+      }
+      if (cmd === "get_library_location") {
+        return {
+          path: "/Users/preview/Music/Sonarche",
+          defaultPath: "/Users/preview/Music/Sonarche",
+          isDefault: true,
+        };
+      }
+      // A plausible move, across volumes so the confirmation's slower branch is
+      // the one on screen; picking a folder under /Users/preview shows a
+      // refusal instead.
+      if (cmd === "check_library_move") {
+        const parent = String(payload?.parent ?? "");
+        return {
+          target: `${parent}/Sonarche`,
+          refusal: parent.startsWith("/Users/preview/Music/Sonarche") ? "intoItself" : null,
+          fileCount: 12_412,
+          sizeBytes: 68_400_000_000,
+          sameVolume: false,
+        };
       }
       if (cmd === "set_rate_limit_delay") {
         const field = preferenceFields[String(payload?.key)];
@@ -641,6 +701,16 @@ export function installMockTauri() {
         });
         jobs.unshift(queued);
         return queued;
+      }
+      // One sweep for both archives, as the Rust command does: terminal jobs
+      // out, the imports emptied wholesale, in-flight rows untouched.
+      if (cmd === "clear_job_history") {
+        for (let i = jobs.length - 1; i >= 0; i--) {
+          const status = (jobs[i] as { status?: string }).status;
+          if (status === "done" || status === "failed") jobs.splice(i, 1);
+        }
+        mockImports.length = 0;
+        return [...jobs];
       }
       if (cmd === "retry_job") {
         const target = jobs.find((j) => j.id === payload?.id);
@@ -668,6 +738,7 @@ export function installMockTauri() {
       // playhead is what keeps the player bar, the seek bar and the queue panel
       // explorable here: without it nothing ever advances and "playing" is a
       // state the UI can never be seen in.
+      if (cmd === "fetch_lyrics") return mockLyrics(payload);
       if (cmd.startsWith("player_") || cmd === "now_playing_set") return mockPlayback(cmd, payload);
       return responses[cmd] ?? {};
     },
@@ -741,6 +812,63 @@ const MOCK_IMPORT_FOLDERS = [
   "The Avalanches/Since I Left You",
 ];
 
+/** The scan's counts as the archive keeps them — the subset a finished import
+ * can still be asked about. */
+function mockScanCounts() {
+  const report = mockScan(MOCK_IMPORT_FOLDER) as Record<string, unknown>;
+  return {
+    playable: report.playable,
+    unplayable: report.unplayable,
+    unplayableByExtension: report.unplayableByExtension,
+    bytes: report.bytes,
+    albumFolders: MOCK_IMPORT_FOLDERS.length,
+  };
+}
+
+/**
+ * Two runs already in the archive, so the History page has both verdicts on it
+ * before anything is imported in the preview. The older one failed: the row that
+ * says an import stopped is the one nobody thinks to look at.
+ */
+const mockImports: unknown[] = [
+  {
+    id: "import-seed-2",
+    folder: "/Volumes/Backup/archive/2019/Soundtracks",
+    status: "done",
+    error: null,
+    scan: { playable: 312, unplayable: 0, unplayableByExtension: {}, bytes: 2_100_000_000, albumFolders: 14 },
+    folders: 14,
+    renditions: 9,
+    recap: {
+      tracks: 312,
+      albums: 14,
+      withoutYear: 0,
+      withoutGenre: 0,
+      offTree: 0,
+      albumsWithoutArt: 0,
+      albumsWithGaps: 0,
+    },
+    finishedAt: Date.now() - 86_400_000 * 3,
+  },
+  {
+    id: "import-seed-1",
+    folder: "/Volumes/Elements/Musique (sauvegarde)",
+    status: "failed",
+    error: "beet import failed (exit 1): [Errno 13] Permission denied: '/Volumes/Elements/Musique (sauvegarde)'",
+    scan: {
+      playable: 1904,
+      unplayable: 61,
+      unplayableByExtension: { wma: 61 },
+      bytes: 12_800_000_000,
+      albumFolders: 97,
+    },
+    folders: 0,
+    renditions: 0,
+    recap: null,
+    finishedAt: Date.now() - 86_400_000 * 11,
+  },
+];
+
 /**
  * An import that takes visible time.
  *
@@ -772,7 +900,153 @@ async function mockLibraryImport(folder: string): Promise<unknown> {
     });
   }
 
-  return { folders: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2) };
+  const record = {
+    id: `import-${Date.now()}`,
+    folder,
+    status: "done" as const,
+    error: null,
+    scan: mockScanCounts(),
+    folders: MOCK_IMPORT_FOLDERS.length,
+    renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2),
+    recap: {
+      tracks: 118,
+      albums: MOCK_IMPORT_FOLDERS.length,
+      withoutYear: 12,
+      withoutGenre: 41,
+      offTree: 3,
+      albumsWithoutArt: 2,
+      albumsWithGaps: 1,
+    },
+    finishedAt: Date.now(),
+  };
+  // The archive gains a row the moment an import ends, exactly as the backend
+  // does it — so the History page has something to show after a preview import.
+  mockImports.unshift(record);
+
+  return { folders: record.folders, renditions: record.renditions, recap: record.recap };
+}
+
+/** The align pass, at preview pace: a few progress ticks, then a small plan
+ * naming real fixture albums so the verdict list has something to say. */
+async function mockAlignScan(): Promise<unknown> {
+  const scanned = ["Iberia", "Hotline Miami OST", "Discovery", "Random Access Memories"];
+  for (const [index, album] of scanned.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    emitMockEvent("sidecar:event", {
+      event: "library_align_progress",
+      data: { stage: "scan", done: index + 1, total: scanned.length, album },
+    });
+  }
+  const albums = [
+    {
+      album_id: 1,
+      album: "Hotline Miami OST",
+      albumartist: "Various Artists",
+      release_id: "mb-hlm",
+      release_group_id: "rg-hlm",
+      release_title: "Hotline Miami: Official Soundtrack",
+      release_artist: "Various Artists",
+      release_year: 2012,
+      cover_missing: false,
+      items: [
+        { item_id: 200, fills: { mb_trackid: "rec-hydrogen", mb_albumid: "mb-hlm" }, genres: ["Synthwave"] },
+        { item_id: 201, fills: { mb_trackid: "rec-roller", mb_albumid: "mb-hlm", year: 2012 }, genres: [] },
+      ],
+      album_fills: { mb_albumid: "mb-hlm", mb_releasegroupid: "rg-hlm" },
+    },
+    {
+      album_id: 2,
+      album: "Discovery",
+      albumartist: "Daft Punk",
+      release_id: "mb-discovery",
+      release_group_id: "rg-discovery",
+      release_title: "Discovery",
+      release_artist: "Daft Punk",
+      release_year: 2001,
+      cover_missing: true,
+      items: [{ item_id: 100, fills: { mb_trackid: "rec-omt", mb_albumid: "mb-discovery", year: 2001 } }],
+      album_fills: { mb_albumid: "mb-discovery", year: 2001 },
+    },
+  ];
+  return { scanned: scanned.length, matched: albums.length, albums };
+}
+
+async function mockAlignApply(payload?: Record<string, unknown>): Promise<unknown> {
+  const plan = (payload?.plan ?? {}) as { albums?: { album: string; items: unknown[]; cover_missing: boolean }[] };
+  const albums = plan.albums ?? [];
+  for (const [index, album] of albums.entries()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    emitMockEvent("sidecar:event", {
+      event: "library_align_progress",
+      data: { stage: "apply", done: index + 1, total: albums.length, album: album.album },
+    });
+  }
+  return {
+    albums_updated: albums.length,
+    items_updated: albums.reduce((sum, album) => sum + album.items.length, 0),
+    covers_fetched: albums.filter((album) => album.cover_missing).length,
+    genres_filled: albums.reduce((sum, album) => sum + album.items.length, 0),
+  };
+}
+
+/**
+ * Lyrics for the player's panel.
+ *
+ * The words are invented placeholders, not any real song's: this file ships in
+ * the repo. What the fixture reproduces is the *shape* of each answer — timed,
+ * plain, instrumental, absent — because that is what the panel branches on.
+ *
+ * Ids map to the library fixture above: 100 already has its lyrics stored (the
+ * panel fills the moment it opens), 101 and 102 have none until the button is
+ * pressed, and 200 is the instrumental.
+ */
+const mockLyricLines = (offset: number) =>
+  [
+    ...["Placeholder verse, first line", "Placeholder verse, second line", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again", ""],
+    ...["Placeholder second verse, first line", "Placeholder second verse, second line", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again", ""],
+    ...["Placeholder bridge, quietly", "Placeholder bridge, quieter still", ""],
+    ...["Placeholder chorus, over and over", "Placeholder chorus, once again"],
+    "Placeholder verse, last line",
+    // Long enough to overflow the panel, which is the point: a song of seven
+    // lines would never exercise the scroll that follows the playhead.
+  ].map((text, index) => ({ time: offset + index * 4, text }));
+
+async function mockLyrics(payload?: Record<string, unknown>): Promise<unknown> {
+  const id = Number(payload?.id ?? 0);
+  const allowNetwork = Boolean(payload?.allowNetwork);
+  const force = Boolean(payload?.force);
+  const answer = (over: Record<string, unknown> = {}) => ({
+    source: null,
+    plain: null,
+    lines: [],
+    instrumental: false,
+    unreachable: false,
+    ...over,
+  });
+  const plainBody =
+    "Placeholder verse, first line\nPlaceholder verse, second line\n\nPlaceholder chorus, over and over";
+
+  if (id === 100 && !force)
+    return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(6) });
+  if (!allowNetwork) return answer();
+
+  // The wait is the point: it is what the button's disabled state is for.
+  await new Promise((resolve) => window.setTimeout(resolve, 900));
+  if (id === 100) return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(6) });
+  if (id === 101) return answer({ source: "lrclib", plain: "Placeholder verse, first line", lines: mockLyricLines(4) });
+  // 102 is the upgrade path: plain text from the fallback until "look again"
+  // reaches an LRCLIB that has come back, and the same page arrives timed.
+  if (id === 102)
+    return force
+      ? answer({ source: "lrclib", plain: plainBody, lines: mockLyricLines(5) })
+      : answer({ source: "lyrics.ovh", plain: plainBody });
+  // 103 is LRCLIB having a bad day — it accepts the connection and never
+  // answers, which is the failure this feature actually meets in the wild.
+  if (id === 103) return answer({ unreachable: true });
+  if (id === 200) return answer({ source: "lrclib", instrumental: true });
+  return answer();
 }
 
 function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {

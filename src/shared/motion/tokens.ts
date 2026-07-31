@@ -39,6 +39,11 @@ export const durations = {
   fast: 0.18,
   /** Content swapping under a stable frame (now-playing track change). */
   medium: 0.28,
+  /** The launch splash handing the window to the app. Longer than every other
+   * cross-fade and deliberately so: this one is not a transition *within* the
+   * app but the app arriving, it happens once per session, and at `medium` the
+   * splash reads as having been snatched away rather than set down. */
+  handover: 0.45,
   /** A value drawing itself in on arrival — the album completeness ring filling
    * from empty, and the figure counting up with it. The one token allowed to
    * run long: it is not a transition between two states but the reading of a
@@ -89,4 +94,12 @@ export const layoutIds = {
    * because the two switches can be on screen in the same app but never in the
    * same place — sharing one would tween a pill across half the window. */
   viewMode: "sonarche-view-mode",
+  /** The ring travelling between the light/dark/system tiles in Appearance. */
+  themeChoice: "sonarche-theme-choice",
+  /** The Français/English pill in the same section. Its own id: the two
+   * controls sit one under the other, and sharing one would fly the marker
+   * across the card every time either is touched. */
+  languageChoice: "sonarche-language-choice",
+  /** The follow/manual pill in the lyrics panel's footer. */
+  lyricsFollow: "sonarche-lyrics-follow",
 } as const;

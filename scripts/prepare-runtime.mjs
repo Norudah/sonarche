@@ -17,9 +17,11 @@
  *   preserve, and pip wants a directory to point `--find-links` at.
  *
  * The wheels are optional: without them the app installs from PyPI as before.
- * They are what makes the first run offline-capable and quick — beets pulls in
- * numpy, scipy, numba and llvmlite, which is 67 MB of the 73 MB and several
- * minutes of network on a first launch.
+ * They are what makes the first run offline-capable and quick.
+ *
+ * Resolved on the target's own runner, never cross-built: `--platform` does not
+ * move the environment markers, and beets asks for colorama on Windows only.
+ * A set prefetched from macOS for Windows would be one wheel short.
  */
 
 import { spawnSync } from "node:child_process";
@@ -37,12 +39,27 @@ import { fileURLToPath } from "node:url";
  */
 const PYTHON = { release: "20260718", version: "3.13.14" };
 
-/** Host → python-build-standalone triple. Windows and Linux land here when
- * their ports do; the table is the only thing that has to grow. */
+/**
+ * Host → python-build-standalone triple. Linux lands here when its port does.
+ *
+ * `win32-arm64` is now buildable — dropping llvmlite left nothing in the tree
+ * without an ARM wheel — but no runner is wired for it: Windows on ARM runs the
+ * x64 build under emulation, and a fourth bundle is a fourth set of release
+ * minutes for an audience of nearly nobody. Add the line when that changes.
+ */
 const TRIPLES = {
   "darwin-arm64": "aarch64-apple-darwin",
   "darwin-x64": "x86_64-apple-darwin",
+  "win32-x64": "x86_64-pc-windows-msvc",
 };
+
+/** System tar, by absolute path. Windows has shipped bsdtar in System32 since
+ * 10 1803, and it reads the same gzipped tarball. */
+const TAR = process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar";
+
+/** Where the interpreter sits inside the unpacked tree. The Windows
+ * distribution has no `bin/`: the executable is at the root. */
+const PYTHON_EXE = process.platform === "win32" ? ["python", "python.exe"] : ["python", "bin", "python3"];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resources = path.join(root, "src-tauri", "resources");
@@ -102,7 +119,16 @@ async function fetchInterpreter(triple) {
  * set the app cannot use.
  */
 async function fetchWheels(triple) {
-  const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}-wheels`;
+  // The requirements go into the stamp, not just the interpreter: a dependency
+  // added to requirements.txt has to refetch the set, and keying on the pin
+  // alone left the old wheels sitting there looking current. CI already hashes
+  // the file into its cache key, so this is what closes the gap locally.
+  const requirements = path.join(root, "sidecar", "requirements.txt");
+  const digest = createHash("sha256")
+    .update(await fs.readFile(requirements))
+    .digest("hex")
+    .slice(0, 12);
+  const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}-wheels-${digest}`;
   const wheels = path.join(resources, "wheels");
   if (await isCurrent(wheels, stamp)) {
     console.log("[runtime] wheels already current");
@@ -112,19 +138,24 @@ async function fetchWheels(triple) {
   const scratch = path.join(root, "node_modules", ".cache", "sonarche-runtime");
   await fs.rm(scratch, { recursive: true, force: true });
   await fs.mkdir(scratch, { recursive: true });
-  run("/usr/bin/tar", ["-xzf", path.join(resources, "python.tar.gz"), "-C", scratch]);
+  run(TAR, ["-xzf", path.join(resources, "python.tar.gz"), "-C", scratch]);
 
   await fs.rm(wheels, { recursive: true, force: true });
   await fs.mkdir(wheels, { recursive: true });
   console.log("[runtime] resolving wheels");
-  run(path.join(scratch, "python", "bin", "python3"), [
+  run(path.join(scratch, ...PYTHON_EXE), [
     "-m",
     "pip",
     "download",
     "--disable-pip-version-check",
     "-q",
+    // Same two flags as the install this set feeds (see python_env.rs): the
+    // lock is the whole tree, and a package with no wheel has to fail on the
+    // build machine rather than turn into a compile on the user's.
+    "--no-deps",
+    "--only-binary=:all:",
     "-r",
-    path.join(root, "sidecar", "requirements.txt"),
+    requirements,
     "-d",
     wheels,
   ]);

@@ -1,7 +1,7 @@
 import { Alert, Spinner } from "@heroui/react";
+import { ArrowRight, Tags } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
@@ -9,6 +9,8 @@ import { groupCategories } from "@/features/library/categories/categories";
 import { CategoryList } from "@/features/library/categories/CategoryList";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { ActionLink } from "@/shared/ui/ActionLink";
+import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /**
@@ -62,13 +64,16 @@ export function CategoriesView() {
       )}
 
       {library.data && categories.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">◎</p>
-          <p className="max-w-md text-sm text-muted">{t("categories.empty")}</p>
-          <Link to={paths.libraryAlbums} className="text-accent underline-offset-4 hover:underline">
-            {t("categories.emptyAction")}
-          </Link>
-        </div>
+        <EmptyState
+          icon={Tags}
+          title={t("categories.empty.title")}
+          body={t("categories.empty.body")}
+          action={
+            <ActionLink to={paths.libraryAlbums} trailingIcon={ArrowRight}>
+              {t("categories.emptyAction")}
+            </ActionLink>
+          }
+        />
       )}
 
       {categories.length > 0 && <CategoryList categories={categories} labelOf={labelOf} />}

@@ -41,7 +41,7 @@ export function CategoryCard({ category, label, style }: CategoryCardProps) {
         {
           ...style,
           "--tone": tone,
-          background: "color-mix(in oklab, var(--tone) 4%, transparent)",
+          background: "color-mix(in oklab, var(--tone) 7%, transparent)",
         } as CSSProperties
       }
       className="cascade-item flex items-center gap-3 rounded-2xl border border-separator px-5 py-4"
@@ -60,7 +60,7 @@ export function CategoryCard({ category, label, style }: CategoryCardProps) {
         whileHover={{ scale: 1.12 }}
         whileTap={{ scale: 0.94 }}
         transition={springs.snappy}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_22%,transparent)] focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_14%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_24%,transparent)] focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <ArrowRight className="size-4" style={{ color: tone }} />
       </MotionLink>

@@ -1,0 +1,39 @@
+name: checks (sidecar)
+
+# On the PR into `main` — see checks-front.yml for why the checks moved off
+# per-push.
+#
+# This is the one job whose value was never only insurance: it runs on **Linux**,
+# a platform nobody here owns. It is what proved the sidecar had no macOS left
+# in it once `sips` became Pillow, and it is what would catch the next thing
+# that quietly only works on a Mac.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "sidecar/**"
+      - "scripts/check-python-lock.py"
+      - ".github/workflows/checks-sidecar.yml"
+
+concurrency:
+  group: checks-sidecar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sidecar:
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      # The same two flags the app installs with, so a lock that would fail on
+      # a user's machine fails here first. Quoted: `=:all: ` reads as a mapping
+      # key to YAML otherwise.
+      - run: "pip install --no-deps --only-binary=:all: -r sidecar/requirements.txt"
+      - run: python -m unittest discover -s sidecar -p "*_test.py"
+      # Drift this cannot catch locally: the lock is re-resolved against PyPI,
+      # so a new release of a transitive dependency shows up here.
+      - run: python scripts/check-python-lock.py

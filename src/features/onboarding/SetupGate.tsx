@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import { onboardingForcedByDev } from "@/features/onboarding/devOverride";
 import { useCompleteOnboarding, useEnvStatus, useOnboardingState } from "@/features/onboarding/hooks";
 import { SetupWalkthrough } from "@/features/onboarding/SetupWalkthrough";
-import { SplashScreen } from "@/features/onboarding/SplashScreen";
+import { SplashHandover } from "@/features/onboarding/SplashHandover";
+import { useSplashPhase } from "@/features/onboarding/splashPhase";
 import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
 /**
@@ -16,7 +17,7 @@ import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
  * The gate only decides *which* of three surfaces owns the window; the states
  * themselves are computed in `steps.ts` and drawn in `SetupFlow`.
  */
-export function SetupGate({ children }: { children: ReactNode }) {
+export function SetupGate({ children, welcome }: { children: ReactNode; welcome: boolean }) {
   const { t } = useTranslation("onboarding");
   const status = useEnvStatus();
   const onboarding = useOnboardingState();
@@ -36,6 +37,8 @@ export function SetupGate({ children }: { children: ReactNode }) {
     onboardingCompleted: onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true),
   });
 
+  const { phase, revealed } = useSplashPhase(gate, welcome);
+
   if (status.isError) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -49,20 +52,27 @@ export function SetupGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (gate === "checking") return <SplashScreen />;
+  // The walkthrough stays underneath while the "aboard" beat plays over it.
+  // Swapping to the shell the moment the gate opens would flash it for a frame,
+  // between the walkthrough leaving and the curtain arriving — and the whole
+  // point of that beat is that the setup ends on the ark, not on a glimpse of
+  // the app it was building.
+  const walkthroughHoldsTheGround = gate === "onboarding" || phase === "aboard";
 
-  if (gate === "onboarding") {
-    return (
-      <SetupWalkthrough
-        env={status.data ?? null}
-        acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
-        onRecheckPython={() => status.refetch()}
-        isCheckingPython={status.isFetching}
-        onFinish={() => complete.mutate()}
-        isFinishing={complete.isPending}
-      />
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <SplashHandover phase={phase} revealed={revealed}>
+      {walkthroughHoldsTheGround ? (
+        <SetupWalkthrough
+          env={status.data ?? null}
+          acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
+          onRecheckPython={() => status.refetch()}
+          isCheckingPython={status.isFetching}
+          onFinish={() => complete.mutate()}
+          isFinishing={complete.isPending}
+        />
+      ) : (
+        children
+      )}
+    </SplashHandover>
+  );
 }

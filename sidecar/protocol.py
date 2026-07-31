@@ -9,6 +9,29 @@ import threading
 _wire = sys.stdout
 sys.stdout = sys.stderr
 
+# UTF-8 on all three, before anything is written. Python picks the locale
+# encoding for stdio, which on Windows is cp1252 — and `_send` serializes with
+# `ensure_ascii=False`, so the line carries raw characters. A YouTube title with
+# an emoji in it was enough: `'charmap' codec can't encode characters`, and the
+# job died. It never showed on macOS, where the locale encoding is already
+# UTF-8.
+#
+# Both directions, not just the wire: a request carrying a non-ASCII string
+# would fail to *decode* on the way in for exactly the same reason.
+#
+# This is also a contract with the Rust side, which reads the channel with
+# `AsyncBufReadExt::lines()` — that yields `String` and accepts nothing but
+# UTF-8. `PYTHONUTF8=1` is set at spawn too, but the channel's encoding is this
+# module's business and must not depend on who launched it.
+# `errors="replace"` on top: UTF-8 encodes almost everything, but not a lone
+# surrogate, and Windows hands those out whenever a filename is not valid UTF-16
+# (Python's `surrogateescape` puts them there). One unrepresentable character in
+# a track title should cost that character, never the job — a garbled glyph is
+# still valid JSON, a raised UnicodeEncodeError is a download that died.
+for _stream in (_wire, sys.stdin, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 _lock = threading.Lock()
 
 

@@ -3,12 +3,12 @@ import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
-import { HERO_PILL_ICON, HERO_PILL_SECONDARY } from "@/features/library/heroPill";
+import { HERO_BUTTON_ICON, HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { springs } from "@/shared/motion/tokens";
 
-const SECONDARY = HERO_PILL_SECONDARY;
-const ICON_PILL = HERO_PILL_ICON;
+const SECONDARY = HERO_BUTTON_SECONDARY;
+const ICON_PILL = HERO_BUTTON_ICON;
 
 /**
  * Everything destructive, one level down.
@@ -54,25 +54,31 @@ export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumAc
   const { t } = useTranslation("library");
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    /* Two groups, not one row of four: playing and managing are different
+     * subjects, and the wider gap between them is what says so. Inside each
+     * group the buttons stay tight, which is also where the shape rule becomes
+     * readable — two round objects, then two rectangular ones. */
+    <div className="flex flex-wrap items-center gap-3.5">
       <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
-      {/* Same FileText icon as the per-track inspect control in the tables, one
-       * scope up: this opens the album's own metadata drawer. Same press
-       * feedback as the play pills beside it — the row moves as one family. */}
-      <motion.button
-        type="button"
-        onClick={onInspect}
-        whileTap={{ scale: 0.96 }}
-        whileHover={{ scale: 1.03 }}
-        transition={springs.snappy}
-        className={`${SECONDARY} cursor-pointer`}
-      >
-        <FileText className="size-4" />
-        {t("albums.inspectAction")}
-      </motion.button>
+      <div className="flex items-center gap-2">
+        {/* Same FileText icon as the per-track inspect control in the tables,
+         * one scope up: this opens the album's own metadata drawer. Same press
+         * feedback as the play button beside it — the row moves as one family. */}
+        <motion.button
+          type="button"
+          onClick={onInspect}
+          whileTap={{ scale: 0.96 }}
+          whileHover={{ scale: 1.03 }}
+          transition={springs.snappy}
+          className={`${SECONDARY} cursor-pointer`}
+        >
+          <FileText className="size-4" />
+          {t("albums.inspectAction")}
+        </motion.button>
 
-      <OverflowMenu onDelete={onDelete} />
+        <OverflowMenu onDelete={onDelete} />
+      </div>
     </div>
   );
 }

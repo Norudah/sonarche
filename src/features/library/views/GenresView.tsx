@@ -1,10 +1,8 @@
 import { Alert, Spinner } from "@heroui/react";
-import { motion } from "motion/react";
+import { Layers, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
-import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { FamilyList } from "@/features/library/genres/FamilyList";
 import {
@@ -17,11 +15,12 @@ import {
   type FamilySort,
 } from "@/features/library/genres/genres";
 import { GenresHeader } from "@/features/library/genres/GenresHeader";
+import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { SortSelect } from "@/features/library/SortSelect";
-import { fade } from "@/shared/motion/tokens";
+import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /**
@@ -95,24 +94,11 @@ export function GenresView() {
       )}
 
       {library.data && families.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-4xl">♪</p>
-          <p className="text-muted">{t("empty")}</p>
-          <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-            {t("goToDownload")}
-          </Link>
-        </div>
+        <EmptyLibrary icon={Layers} title={t("genres.empty.title")} body={t("genres.empty.body")} />
       )}
 
       {families.length > 0 && visibleFamilies.length === 0 && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={fade}
-          className="py-16 text-center text-sm text-muted"
-        >
-          {t("genres.noResults", { query })}
-        </motion.p>
+        <NoResults icon={SearchX} message={t("genres.noResults", { query })} />
       )}
 
       {visibleFamilies.length > 0 && (

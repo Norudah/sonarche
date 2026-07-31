@@ -1,9 +1,39 @@
 {
   "title": "Métadonnées",
+  "eyebrow": "Entretien",
   "toFix_one": "{{count}} chose à corriger",
   "toFix_other": "{{count}} choses à corriger",
   "allClear": "Rien à corriger",
   "allClearHint": "Tous les morceaux et albums passent les contrôles.",
+  "align": {
+    "heading": "Alignement",
+    "idle_one": "{{count}} album sans identité MusicBrainz",
+    "idle_other": "{{count}} albums sans identité MusicBrainz",
+    "idleHint": "Une recherche par album, à partir de ses propres tags. Rien n'est écrit sans ton accord ; les champs déjà remplis et tes éditions restent intacts.",
+    "scan": "Passer en revue",
+    "scanning": "Recherche {{done}}/{{total}}…",
+    "applying": "Écriture {{done}}/{{total}}…",
+    "planTitle_one": "{{count}} album identifié",
+    "planTitle_other": "{{count}} albums identifiés",
+    "planFields_one": "{{count}} champ à combler",
+    "planFields_other": "{{count}} champs à combler",
+    "planCovers_one": "{{count}} pochette à récupérer",
+    "planCovers_other": "{{count}} pochettes à récupérer",
+    "planNone": "Aucun album identifié avec certitude",
+    "planNoneHint": "Les tags de ces albums ne suffisent pas à une correspondance sûre. L'empreinte audio reste la voie pour eux.",
+    "apply": "Combler",
+    "dismiss": "Ignorer",
+    "ok": "OK",
+    "doneAlbums_one": "{{count}} album aligné",
+    "doneAlbums_other": "{{count}} albums alignés",
+    "doneItems_one": "{{count}} morceau complété",
+    "doneItems_other": "{{count}} morceaux complétés",
+    "doneCovers_one": "{{count}} pochette récupérée",
+    "doneCovers_other": "{{count}} pochettes récupérées",
+    "doneGenres_one": "{{count}} genre trouvé",
+    "doneGenres_other": "{{count}} genres trouvés",
+    "failed": "L'alignement a échoué. Rien n'a été perdu — réessaie."
+  },
   "queue": {
     "suspect": "Correspondance à vérifier",
     "duplicates": "Morceaux en double",
@@ -17,8 +47,5 @@
     "genreOffTree_other": "{{count}} hors arbre",
     "more_one": "+{{count}} autre",
     "more_other": "+{{count}} autres"
-  },
-  "distribution": {
-    "title": "Répartition des genres"
   }
 }

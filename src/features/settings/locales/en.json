@@ -7,44 +7,104 @@
   "save": "Save",
   "saving": "Saving…",
   "saved": "Settings saved",
+  "appearance": {
+    "category": "Appearance",
+    "title": "Appearance",
+    "description": "How the app is dressed, and which language it speaks to you in. Both choices are remembered and apply right away, with no restart.",
+    "theme": {
+      "name": "Theme",
+      "why": "Light is the original. Night is not its negative: black is never pure there, a blue veil runs through every surface, and the accent goes down rather than up. For bright screens and late sessions.",
+      "light": "Light",
+      "dark": "Night",
+      "system": "System",
+      "followingLight": "Your system is set to light, and the app follows.",
+      "followingDark": "Your system is set to dark, and the app switches to Night."
+    },
+    "language": {
+      "name": "Language",
+      "why": "The language of the interface. Your track, artist and album names come from your files, so they stay as they are. With no explicit choice, the app follows your system's language."
+    },
+    "launchWelcome": {
+      "name": "Welcome at launch",
+      "why": "Once the environment check is done, Sonarche takes a second to say hello before opening the window. Turn it off and the app goes straight in — the fade between the two stays either way."
+    }
+  },
   "apiKeys": {
     "category": "API keys",
     "title": "API keys",
-    "description": "Some features rely on external services that require a personal key. Keys are stored in the system keychain, never in a file.",
+    "description": "Some features rely on outside services. One of them needs a personal key; the others are open. Keys are stored in the system keychain, never in a file.",
     "configured": "Configured",
     "notConfigured": "Not configured",
     "fieldLabel": "API key",
     "placeholder": "Paste your key here",
     "acoustid": {
       "name": "AcoustID",
-      "why": "Identifies a track by its acoustic fingerprint (the audio itself, not its name). This is what finds the right studio version of a song and automatically fills in album, year, track number and cover art. Free key at acoustid.org."
+      "why": "Identifies a track by its acoustic fingerprint (the audio itself, not its name). This is what finds the right studio version of a song and automatically fills in album, year, track number and cover art. Free key at acoustid.org.",
+      "savedDetail": "Future imports can now identify your tracks by their fingerprint."
+    },
+    "test": "Test",
+    "savedTitle": "Key saved",
+    "saveFailedTitle": "Could not save the key",
+    "testOkTitle": "The key works",
+    "testOkDetail": "The service accepted it.",
+    "testFailedTitle": "The key was refused",
+    "testUnreachableTitle": "Could not test the key",
+    "testReason": {
+      "invalidKey": "The service does not recognise this key. Check that you copied the application key rather than the account id.",
+      "empty": "There is no key to test.",
+      "unknown": "The service refused it without saying why."
+    },
+    "health": {
+      "name": "Service status",
+      "why": "Nothing is sent until you click. When an import comes back with no cover or no genre, the answer is often here.",
+      "action": "Check",
+      "checking": "Checking…",
+      "failed": "The check could not start. The Python environment may not be ready."
+    },
+    "services": {
+      "musicbrainz": "MusicBrainz",
+      "acoustid": "AcoustID",
+      "coverart": "Cover Art Archive",
+      "lastfm": "Last.fm",
+      "lrclib": "LRCLIB",
+      "lyricsovh": "lyrics.ovh"
+    },
+    "serviceState": {
+      "up": "Answering",
+      "down": "Down",
+      "unreachable": "Unreachable",
+      "unknown": "Not checked"
     }
   },
   "rateLimits": {
     "category": "API rate limits",
     "title": "API rate limits",
-    "description": "Controls how cautious the app is when calling external services. Every service has its own rules: staying polite is what keeps you from getting blocked.",
+    "description": "How carefully the app calls on outside services. Each one has its own rules, and staying polite is what keeps you from being blocked. One second is the recommended floor everywhere.",
     "instant": "Instant",
     "delays": {
       "download": {
         "name": "Delay between two downloads",
-        "why": "On a playlist, the app downloads tracks one by one from YouTube. Back-to-back requests from the same IP are exactly what triggers throttling: a pause between tracks makes the batch look like normal listening. The real delay is randomised between this value and twice it.",
+        "why": "On a playlist, tracks are fetched one by one. This pause spaces the requests out so long batches stay within the source's rate limits instead of triggering 403 errors. The real delay is randomised between this value and twice it.",
         "estimate": "For a {{count}}-track playlist, the pauses add about {{duration}}.",
-        "warning": "Below 3 seconds, the risk of being rate-limited (403 errors) rises sharply on long playlists."
+        "warning": "Below one second the requests run back to back with almost no pause — which is exactly the behaviour that gets a client spotted and handed 403s halfway through a long playlist. Three seconds is the safe setting."
       },
       "acoustid": {
         "name": "Delay between AcoustID requests",
         "why": "Every imported track is identified by its acoustic fingerprint through AcoustID. The service allows 3 requests per second per key, and an album runs its lookups back to back — hence this pause.",
         "estimate": "For a {{count}}-track album, the pauses add about {{duration}}.",
-        "warning": "Below 0.34s you exceed the documented 3 requests/second limit and the key may get throttled."
+        "warning": "Below one second a whole album goes out in a burst. AcoustID documents three requests per second per key: past that it is your key that gets throttled, and the service has no reason to warn you first."
       },
       "lastfm": {
         "name": "Delay between Last.fm requests",
         "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
         "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
-        "warning": "Below one second isn't recommended: stay polite to Last.fm and avoid hitting it with too many requests too close together."
+        "warning": "Below one second we ask more of Last.fm than it invites — on a key shared by every beets user in the world. Getting it blocked blocks it for them too."
       }
-    }
+    },
+    "impoliteTitle": "Not recommended."
+  },
+  "updates": {
+    "category": "Updates"
   },
   "developer": {
     "category": "Developer",
@@ -87,6 +147,74 @@
       "warning": "Every library file and the beets index will be permanently deleted.",
       "resetting": "Wiping…",
       "done": "Library reset."
+    }
+  },
+  "library": {
+    "category": "Library",
+    "title": "Library",
+    "description": "Where the app files your music on this disk, and how to erase all of it if you want to start over.",
+    "location": {
+      "name": "Location",
+      "why": "Pick the parent folder: the app creates and manages its own \"Sonarche\" folder inside it. What is there now moves with it — nothing is left behind.",
+      "action": "Move the library…",
+      "isDefault": "Default location"
+    },
+    "move": {
+      "title": "Move the library?",
+      "body": "All your music moves to this folder. The index stays valid: nothing is re-imported and nothing is identified again.",
+      "factDestination": "Destination",
+      "factContents": "Moving",
+      "factHow": "Method",
+      "contents": "{{count}} files · {{size}}",
+      "contents_one": "{{count}} file · {{size}}",
+      "sameVolume": "Same disk, near-instant",
+      "otherVolume": "Another disk, full copy",
+      "consequences": "Playback stops and the app restarts once the transfer is done.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirm": "Move and restart",
+      "starting": "Getting ready…",
+      "progress": "{{copied}} / {{total}} files",
+      "failedTitle": "The move failed",
+      "refusedTitle": "That folder will not do",
+      "refusal": {
+        "sameLocation": "The library is already there.",
+        "intoItself": "That folder is inside the library, so the library cannot move into it. Pick one outside.",
+        "insideAppData": "That folder belongs to the app's internal data, which \"Erase everything\" is allowed to delete. Your music does not belong there.",
+        "occupied": "A \"Sonarche\" folder is already there and it is not empty. Empty it, or pick another parent.",
+        "notWritable": "The app cannot write into that folder.",
+        "busy": "A download or an import is running. Wait for it to finish: moving the files while something is writing into them would break them."
+      }
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Two actions that cannot be undone. Nothing here comes back.",
+      "reinstall": {
+        "name": "Reinstall the environment",
+        "why": "Deletes the Python environment and the downloaded tools, then rebuilds them on restart. Leaves your music, your index and your history alone. Worth trying when the app refuses to import or download for no clear reason.",
+        "action": "Reinstall",
+        "dialogTitle": "Reinstall the environment?",
+        "dialogBody": "The app deletes its Python engine and restarts into the first-run walkthrough to rebuild it. This takes a few minutes and none of your data is involved.",
+        "cancel": "Cancel",
+        "confirm": "Reinstall and restart",
+        "failedTitle": "The reinstall failed"
+      },
+      "erase": {
+        "name": "Erase everything",
+        "why": "Puts the app back to how it was on first launch. Your audio files are deleted from the disk. There is no bin, no undo and no backup.",
+        "action": "Erase everything",
+        "dialogTitle": "Erase all your data?",
+        "dialogBody": "This is permanent. Here is what goes:",
+        "itemFiles": "Every audio file in the library, deleted from the disk",
+        "itemIndex": "The beets index: titles, albums, artists, genres, artwork",
+        "itemHistory": "The download and import history",
+        "itemKeys": "Your AcoustID key and every setting",
+        "keepsEngine": "The Python environment is kept, so the app is usable again straight away.",
+        "prompt": "Type {{phrase}} to confirm",
+        "cancel": "Cancel",
+        "confirm": "Erase permanently",
+        "failedTitle": "The erase failed"
+      }
     }
   }
 }

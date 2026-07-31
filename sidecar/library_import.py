@@ -18,23 +18,26 @@ Two flags carry the whole doctrine:
 
 import os
 import subprocess
-import sys
 
+import import_recap
 import protocol
-
-
-def _beet_bin() -> str:
-    return os.path.join(os.path.dirname(sys.executable), "beet")
+from importer import beet_bin
 
 
 def handle(request_id: str, params: dict) -> dict:
     folder = params["folder"]
     config_path = params["beets_config"]
+    # The app's id for this run. Stamped on every item beets takes on, which is
+    # the only way to ask afterwards what *this* import brought in — beets keeps
+    # no record of a run, and `added` timestamps cannot separate two imports
+    # started a minute apart.
+    batch = params["import_id"]
     if not os.path.isdir(folder):
         raise RuntimeError(f"folder not found: {folder}")
 
-    cmd = [_beet_bin(), "--config", config_path, "import",
-           "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c", folder]
+    cmd = [beet_bin(), "--config", config_path, "import",
+           "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
+           f"--set={import_recap.BATCH_FIELD}={batch}", folder]
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
 
@@ -51,6 +54,13 @@ def handle(request_id: str, params: dict) -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        # Spelled out rather than left to the locale, which on Windows is
+        # cp1252: beets names each folder it reaches, and one accent in a path
+        # would end a 4 000-track import on a decode error. `replace` because
+        # this is another program's output — a byte we cannot read should cost
+        # a garbled character in a log line, never the import.
+        encoding="utf-8",
+        errors="replace",
         bufsize=1,
     )
 
@@ -80,7 +90,17 @@ def handle(request_id: str, params: dict) -> dict:
     if code != 0:
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
 
-    return {"folders": folders, "renditions": _shrink_covers(request_id, params)}
+    # The recap is read before the cover pass, not after: the pass touches every
+    # album in the library, and holding a write-capable Library open while a
+    # read-only connection counts the same rows is a lock we do not need. The
+    # counts it reports are about tags, which the cover pass cannot change.
+    recap = import_recap.build(params["beets_db"], batch)
+
+    return {
+        "folders": folders,
+        "renditions": _shrink_covers(request_id, params),
+        "recap": recap,
+    }
 
 
 def _shrink_covers(request_id: str, params: dict) -> int:
@@ -94,7 +114,7 @@ def _shrink_covers(request_id: str, params: dict) -> int:
 
     Over every album, not only the ones just imported: beets records nothing
     about which those were, the check is a header read, and an album already
-    holding a rendition costs one `sips -g` to skip. Re-running is a no-op,
+    holding a rendition costs one image header to skip. Re-running is a no-op,
     which is what makes it safe to do after each import.
     """
     from beets.library import Library

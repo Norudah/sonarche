@@ -27,8 +27,8 @@ interface FamilyCardProps {
 /** Washed in the family tone rather than neutral: the chips are the card's
  * content, so they carry the identity at a lower volume than the rule. */
 const chipClass =
-  "inline-block rounded-full bg-[color-mix(in_oklab,var(--tone)_9%,transparent)] px-2.5 py-1 text-[0.75rem] " +
-  "text-foreground/85 outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_16%,transparent)] " +
+  "inline-block rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] px-2.5 py-1 text-[0.75rem] " +
+  "text-foreground/85 outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_20%,transparent)] " +
   "focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /**
@@ -61,7 +61,7 @@ export function FamilyCard({ family, label, style }: FamilyCardProps) {
         {
           ...style,
           "--tone": tone,
-          background: "color-mix(in oklab, var(--tone) 4%, transparent)",
+          background: "color-mix(in oklab, var(--tone) 7%, transparent)",
         } as CSSProperties
       }
       className="cascade-item flex flex-col rounded-2xl border border-separator"
@@ -81,7 +81,7 @@ export function FamilyCard({ family, label, style }: FamilyCardProps) {
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.94 }}
           transition={springs.snappy}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_22%,transparent)] focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_14%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_24%,transparent)] focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <ArrowRight className="size-4" style={{ color: tone }} />
         </MotionLink>

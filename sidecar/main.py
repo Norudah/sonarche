@@ -29,8 +29,11 @@ def _handlers():
     import genres
     import importer
     import library
+    import library_align
     import library_import
+    import lyrics
     import probe
+    import services
 
     return {
         "ping": _handle_ping,
@@ -38,13 +41,17 @@ def _handlers():
         "download": download.handle,
         "import": importer.handle,
         "library_import": library_import.handle,
+        "library_align_scan": library_align.scan,
+        "library_align_apply": library_align.apply,
         "enrich": enrich.handle,
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remove": library.remove,
         "library_update": library.update,
         "genres_recompute": genres.recompute,
+        "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,
+        "services_check": services.check,
     }
 
 

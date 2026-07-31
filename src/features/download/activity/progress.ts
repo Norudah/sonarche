@@ -36,6 +36,14 @@ export interface JobProgress {
   detail: ProgressDetail | null;
 }
 
+/**
+ * Relative widths of the three segments on the rail. Not equal thirds: fetching
+ * a playlist is minutes of network, filing it is seconds, identifying it is
+ * somewhere between — the weights are what make the fill advance at roughly the
+ * rate the work does.
+ */
+export const STAGE_WEIGHTS = [3, 1, 2] as const;
+
 const STEP_INDEX = { download: 0, import: 1, enrich: 2 } as const;
 
 /** Tracks that reached at least the import stage. */

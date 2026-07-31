@@ -1,0 +1,24 @@
+# What the sidecar actually asks for. `requirements.txt` beside this file is
+# what gets installed: the full resolved tree, pinned, minus the three packages
+# listed below.
+#
+# beets declares `numba`, `llvmlite` and `scipy` and never imports one of them —
+# not in `beets/`, not in `beetsplug/`. They are 67 MB of the download, and
+# llvmlite stopped publishing an x86_64 wheel at 0.46, which is what killed the
+# Intel macOS bundle and kept Windows off ARM. Dropping them costs nothing and
+# gets both back.
+#
+# `scripts/check-python-lock.py` re-resolves this file on every push and fails
+# if the lock has drifted, or if beets has started importing one of the three.
+#
+# Regenerate the lock:
+#   python -m venv /tmp/lock && /tmp/lock/bin/pip install -r sidecar/requirements.in
+#   /tmp/lock/bin/pip freeze   # then drop numba/llvmlite/scipy, keep the
+#                              # colorama line, and pin the versions below
+
+beets==2.12.0
+yt-dlp==2026.7.4
+mutagen==1.47.0
+pillow==12.3.0
+requests==2.32.4
+pylast==7.1.0

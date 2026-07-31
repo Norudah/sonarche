@@ -1,10 +1,10 @@
-import { AlertDialog, Button } from "@heroui/react";
 import { Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { useDeleteTrack } from "@/features/library/hooks";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 export function DeleteTrackDialog({
   track,
@@ -36,36 +36,19 @@ export function DeleteTrackDialog({
   };
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       isOpen={track != null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onClose={onClose}
+      status="danger"
+      icon={Trash2}
+      title={t("delete.title")}
+      cancelLabel={t("delete.cancel")}
+      confirmLabel={t("delete.confirm")}
+      onConfirm={confirm}
+      isPending={remove.isPending}
     >
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog>
-            <AlertDialog.Icon status="danger">
-              <Trash2 className="size-5" />
-            </AlertDialog.Icon>
-            <AlertDialog.Header>
-              <AlertDialog.Heading>{t("delete.title")}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
-              <p>{t("delete.body", { title: shown?.title || t("unknownTitle") })}</p>
-              {remove.isError && <p className="mt-2 text-sm text-danger">{t("delete.failed")}</p>}
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button variant="secondary" onPress={onClose} isDisabled={remove.isPending}>
-                {t("delete.cancel")}
-              </Button>
-              <Button variant="danger" onPress={confirm} isDisabled={remove.isPending}>
-                {t("delete.confirm")}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      <p>{t("delete.body", { title: shown?.title || t("unknownTitle") })}</p>
+      {remove.isError && <p className="mt-2 text-danger">{t("delete.failed")}</p>}
+    </ConfirmDialog>
   );
 }

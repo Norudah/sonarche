@@ -1,18 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import { type JobOutcome, OUTCOME_TONE, type OutcomeTone } from "@/features/download/activity/outcome";
-
-const DOT: Record<OutcomeTone, string> = {
-  success: "bg-success",
-  warning: "bg-warning",
-  danger: "bg-danger",
-};
-
-const TEXT: Record<OutcomeTone, string> = {
-  success: "text-muted",
-  warning: "text-warning",
-  danger: "text-danger",
-};
+import { type JobOutcome, OUTCOME_TONE } from "@/features/download/activity/outcome";
+import { Verdict } from "@/shared/ui/Verdict";
 
 /** The i18n key and its interpolation, per verdict. */
 function phrase(outcome: JobOutcome): { key: string; values?: Record<string, number> } {
@@ -33,26 +22,20 @@ function phrase(outcome: JobOutcome): { key: string; values?: Record<string, num
 }
 
 /**
- * A finished job in one word, with a tone dot.
+ * A finished job in one word.
  *
- * A dot and a label rather than a filled chip: the feed shows several of these
- * at once, and the album tracklist already reads its own completeness this way.
- * Success is the quiet case — muted text next to a green dot — because a shelf
- * of green badges makes the one amber row harder to find, not easier.
+ * The dot, its tones and the quiet treatment of success are the app's shared
+ * `Verdict` — the import closes the same way. What belongs here is only which
+ * word a given outcome earns.
  */
 export function JobVerdict({ outcome, source }: { outcome: JobOutcome; source?: string | null }) {
   const { t } = useTranslation("download");
-  const tone = OUTCOME_TONE[outcome.kind];
   const { key, values } = phrase(outcome);
 
   return (
-    <span
-      className={`flex shrink-0 items-center gap-1.5 text-[0.8125rem] whitespace-nowrap tabular-nums ${TEXT[tone]}`}
-      // Which database answered is detail, not headline: it belongs on hover.
-      title={source ?? undefined}
-    >
-      <span className={`size-1.5 shrink-0 rounded-full ${DOT[tone]}`} />
+    // Which database answered is detail, not headline: it belongs on hover.
+    <Verdict tone={OUTCOME_TONE[outcome.kind]} title={source ?? undefined}>
       {t(key, values)}
-    </span>
+    </Verdict>
   );
 }

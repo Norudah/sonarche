@@ -1,13 +1,34 @@
-import { Inbox, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, History, Trash2 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { paths } from "@/app/routes";
 import { JobDeck, type JobSection } from "@/features/download/activity/JobDeck";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
 import { useActiveDownloadProgress, useEnrichProgress, useJobs } from "@/features/download/hooks";
 import { Pagination } from "@/features/download/queue/Pagination";
 import { pageOfJobs } from "@/features/download/queue/page";
+import { ActionButton, ActionLink } from "@/shared/ui/ActionLink";
+import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
+
+interface HistoryPageProps {
+  /**
+   * The other ways music arrived, filed above the downloads.
+   *
+   * A slot, because this page is the archive of *everything* that entered the
+   * ark while this component only knows about downloads — a library import is
+   * another feature's business, and features do not import each other. The shell
+   * composes the two (see `app/routes.tsx`).
+   */
+  arrivals?: ReactNode;
+  /** How many arrivals that slot holds: the clear button sweeps them too, so it
+   * must light up for them and the confirmation must count them. */
+  arrivalsCount?: number;
+  /** Called once the sweep succeeded, so the shell can drop the arrivals'
+   * cache — this component only knows its own. */
+  onHistoryCleared?: () => void;
+}
 
 /**
  * The whole download history, paged.
@@ -22,7 +43,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
  * with the columns: it moved into each row's own panel, where it is read on
  * demand rather than spread across every row at once.
  */
-export function HistoryPage() {
+export function HistoryPage({ arrivals, arrivalsCount = 0, onHistoryCleared }: HistoryPageProps) {
   const { t } = useTranslation("download");
   const [clearingHistory, setClearingHistory] = useState(false);
   const [requestedPage, setRequestedPage] = useState(1);
@@ -33,23 +54,33 @@ export function HistoryPage() {
   // the last page that still exists instead of an empty list.
   const { jobs: visible, page, pageCount } = pageOfJobs(all, requestedPage);
 
-  const hasHistory = all.some((job) => job.status === "done" || job.status === "failed");
+  const terminalCount = all.filter((job) => job.status === "done" || job.status === "failed").length;
+  const hasHistory = terminalCount > 0 || arrivalsCount > 0;
 
   const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
   const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
 
-  // One list, no sections: this page is the archive in one order, newest first.
+  // Named now that it is not the only thing on the page: a library import files
+  // its own section above, and two unlabelled stacks of rows would read as one
+  // list that changes shape half way down.
   const sections: JobSection[] = useMemo(
     () => [
       {
         key: "history",
+        heading: t("history.heading"),
         jobs: visible,
         onTray: true,
         empty: (
-          <div className="flex flex-col items-center gap-2 rounded-2xl bg-tray py-16 text-center">
-            <Inbox className="size-6 text-muted/50" />
-            <p className="text-sm font-medium">{t("history.empty")}</p>
-          </div>
+          <EmptyState
+            icon={History}
+            title={t("history.empty.title")}
+            body={t("history.empty.body")}
+            action={
+              <ActionLink to={paths.download} trailingIcon={ArrowRight}>
+                {t("history.emptyAction")}
+              </ActionLink>
+            }
+          />
         ),
       },
     ],
@@ -63,22 +94,24 @@ export function HistoryPage() {
           <h1 className="text-3xl font-semibold tracking-tight">{t("history.title")}</h1>
           <p className="mt-1 text-sm text-muted">{t("history.lede")}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setClearingHistory(true)}
-          disabled={!hasHistory}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 text-sm text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Trash2 className="size-3.5" />
+        <ActionButton icon={Trash2} tone="muted" isDisabled={!hasHistory} onPress={() => setClearingHistory(true)}>
           {t("queue.clearHistory")}
-        </button>
+        </ActionButton>
       </header>
+
+      {arrivals}
 
       <JobDeck sections={sections} downloadPercent={downloadPercent} enrichStages={enrichStages} />
 
       <Pagination page={page} pageCount={pageCount} onChange={setRequestedPage} />
 
-      <ClearHistoryDialog isOpen={clearingHistory} onClose={() => setClearingHistory(false)} />
+      <ClearHistoryDialog
+        isOpen={clearingHistory}
+        onClose={() => setClearingHistory(false)}
+        downloads={terminalCount}
+        imports={arrivalsCount}
+        onCleared={onHistoryCleared}
+      />
     </PageContainer>
   );
 }

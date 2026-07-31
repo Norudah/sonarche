@@ -1,3 +1,4 @@
+import { LyricsPanel } from "@/shared/player/LyricsPanel";
 import { NowPlaying } from "@/shared/player/NowPlaying";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import { QueuePanel } from "@/shared/player/QueuePanel";
@@ -21,9 +22,10 @@ export function PlayerBar() {
         <SeekBar />
       </div>
 
-      {/* Right side is the annex row — queue now, lyrics someday — with volume
-       * keeping the outer edge. */}
+      {/* Right side is the annex row — what plays next, and the words to what
+       * plays now — with volume keeping the outer edge. */}
       <div className="flex flex-1 items-center justify-end gap-3">
+        <LyricsPanel />
         <QueuePanel />
         <VolumeControl />
       </div>

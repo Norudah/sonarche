@@ -31,14 +31,17 @@ export const paths = {
   libraryCategories: "/library/categories",
   libraryCategory: "/library/categories/:category",
   settings: "/settings",
+  settingsAppearance: "/settings/appearance",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",
+  settingsLibrary: "/settings/library",
+  settingsUpdates: "/settings/updates",
   settingsDeveloper: "/settings/developer",
 } as const;
 
 /**
  * Metadata-triage deep links — the contract between the Metadata page's
- * correction queue and the explorer views (docs/metadata-page-plan.md). Each
+ * correction queue and the explorer views. Each
  * line of the queue navigates to one of these; the explorers parse the same
  * params back out (see the `triage` module beside each view, whose tests
  * round-trip against these strings so the two sides cannot drift).

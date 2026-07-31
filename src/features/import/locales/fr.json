@@ -1,25 +1,46 @@
 {
   "eyebrow": "Ajouter à la bibliothèque",
   "title": "Amène la musique que tu as déjà.",
-  "choose": "Choisir un dossier…",
-  "chooseAnother": "Choisir un autre dossier",
   "lead": "Sonarche lit le dossier, copie ce qu'il y trouve dans l'arche, et garde les tags existants. Tes fichiers d'origine ne bougent pas.",
+  "hint": "Rien n'est déplacé : l'arche en reçoit une copie.",
+  "choose": "Choisir un dossier…",
+  "chooseLabel": "Choisir un dossier à importer",
+  "choosePlaceholder": "Aucun dossier choisi",
+  "chooseHint": "Parcourir…",
+  "activity": "Import",
+  "stages": {
+    "scan": "Analyse",
+    "copy": "Copie",
+    "covers": "Pochettes"
+  },
+  "phase": {
+    "idle": "En attente d'un dossier",
+    "ready": "Prêt à importer"
+  },
+  "verdict": {
+    "ready": "Prêt",
+    "done": "Importé",
+    "failed": "Échec"
+  },
   "scanning": "Lecture du dossier…",
   "scanFailed": "Impossible de lire ce dossier",
   "found_one": "{{count, number}} piste",
   "found_other": "{{count, number}} pistes",
   "foundNone": "Aucune musique dans ce dossier",
   "foundNoneHint": "Sonarche n'y a trouvé aucun fichier audio. Le bon dossier est celui qui contient les albums.",
+  "inFolders_one": "dans {{count, number}} dossier d'album",
+  "inFolders_other": "dans {{count, number}} dossiers d'albums",
   "toCopy": "{{size}} à copier",
   "units": ["o", "ko", "Mo", "Go", "To"],
   "truncated": "Dossier très grand : le décompte s'arrête à 200 000 entrées, il y en a peut-être plus.",
+  "playable_one": "{{count, number}} lisible",
+  "playable_other": "{{count, number}} lisibles",
   "unplayable_one": "{{count, number}} fichier que Sonarche ne sait pas lire",
   "unplayable_other": "{{count, number}} fichiers que Sonarche ne sait pas lire",
   "unplayableFormats_one": "Format concerné : {{formats}}",
   "unplayableFormats_other": "Formats concernés : {{formats}}",
   "unplayableKept": "Ils sont importés quand même : leurs tags comptent, et ils gardent leur place dans leur album.",
   "start": "Importer",
-  "importing": "Import en cours",
   "progress": "Dossier {{done, number}} sur {{total, number}}",
   "importFailed": "L'import s'est arrêté",
   "retry": "Réessayer",
@@ -27,10 +48,30 @@
   "doneDetail_one": "{{count, number}} dossier ajouté à l'arche.",
   "doneDetail_other": "{{count, number}} dossiers ajoutés à l'arche.",
   "seeLibrary": "Voir la bibliothèque",
-  "importAnother": "Importer un autre dossier",
-  "shrinking": "Préparation des pochettes",
   "coversProgress": "Pochette {{done, number}} sur {{total, number}}",
   "shrinkingWhy": "Les pochettes trop grandes reçoivent une version d'affichage. L'originale est conservée à côté.",
   "doneRenditions_one": "{{count, number}} pochette a reçu une version d'affichage.",
-  "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage."
+  "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage.",
+  "history": {
+    "heading": "Imports"
+  },
+  "recap": {
+    "albums_one": "{{count, number}} album",
+    "albums_other": "{{count, number}} albums",
+    "folders_one": "{{count, number}} dossier",
+    "folders_other": "{{count, number}} dossiers",
+    "unplayable_one": "{{count, number}} fichier illisible ({{formats}}) — importé quand même",
+    "unplayable_other": "{{count, number}} fichiers illisibles ({{formats}}) — importés quand même",
+    "tagState": "État des tags à l'arrivée",
+    "clean": "Tout est renseigné : année, genre, pochette, tracklist.",
+    "withoutYear": "Année manquante",
+    "withoutGenre": "Genre manquant",
+    "offTree": "Genre hors arbre",
+    "albumsWithoutArt": "Albums sans pochette",
+    "albumsWithGaps": "Tracklists à trous",
+    "alignHint": "Ces albums arrivent sans identité MusicBrainz. Dans Métadonnées, l'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",
+    "openMetadata": "Ouvrir Métadonnées",
+    "expand": "Voir le détail de l'import",
+    "collapse": "Replier le détail de l'import"
+  }
 }

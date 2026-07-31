@@ -1,9 +1,9 @@
 import { Alert, Spinner } from "@heroui/react";
+import { Music } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
-import { paths } from "@/app/routes";
+import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { useLibrary } from "@/features/library/hooks";
 import { totalPlaytime } from "@/features/library/tracks/filter";
 import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
@@ -52,15 +52,7 @@ export function TracksView() {
       {library.data && (
         <TrackResults
           state={explorer}
-          empty={
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-4xl">♪</p>
-              <p className="text-muted">{t("empty")}</p>
-              <Link to={paths.download} className="text-accent underline-offset-4 hover:underline">
-                {t("goToDownload")}
-              </Link>
-            </div>
-          }
+          empty={<EmptyLibrary icon={Music} title={t("empty.title")} body={t("empty.body")} />}
         />
       )}
     </PageContainer>

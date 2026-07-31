@@ -27,10 +27,5 @@
  * the exact colour underneath the header, ending flush leaves no seam to hide.
  */
 export function HeroWash() {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-x-0 -top-px bottom-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background"
-    />
-  );
+  return <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-px bottom-0 hero-wash" />;
 }

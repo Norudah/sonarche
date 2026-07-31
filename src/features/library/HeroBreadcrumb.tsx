@@ -48,7 +48,11 @@ export function HeroBreadcrumb({ up, upLabel, current, label, actions }: HeroBre
   const canGoBack = useCanGoBack();
 
   return (
-    <div className="flex items-center justify-between gap-4">
+    // `relative z-10` so the window drag strip, which claims the page's top
+    // 2rem, does not swallow this line — the hero starts at 1.25rem and this is
+    // the one row that reaches under it. Same z as the strip and later in the
+    // tree, so it wins; still below the sticky headers at z-20.
+    <div className="relative z-10 flex items-center justify-between gap-4">
       <nav aria-label={label} className="flex min-w-0 items-center gap-1.5 text-[0.8125rem]">
         {canGoBack && (
           <button

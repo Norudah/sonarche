@@ -7,10 +7,18 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::error::{AppError, AppResult};
+use crate::proc::{command, SYSTEM_CURL, SYSTEM_TAR};
 
 const MIN_PYTHON: (u64, u64) = (3, 10);
 
 /// Fixed candidate locations, most specific first. Never rely on PATH.
+///
+/// The fallback for a build made without `npm run prepare:runtime`, and for
+/// macOS installs that predate bundling. Empty on Windows: there is no
+/// conventional location to guess at (a system Python lands under a versioned
+/// `%LOCALAPPDATA%` path, or in the Store's own sandbox), and no Windows build
+/// ever shipped without the interpreter — so a guess could only ever be wrong.
+#[cfg(target_os = "macos")]
 const PYTHON_CANDIDATES: &[&str] = &[
     "/opt/homebrew/bin/python3.14",
     "/opt/homebrew/bin/python3.13",
@@ -23,6 +31,8 @@ const PYTHON_CANDIDATES: &[&str] = &[
     "/usr/local/bin/python3",
     "/usr/bin/python3",
 ];
+#[cfg(not(target_os = "macos"))]
+const PYTHON_CANDIDATES: &[&str] = &[];
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PythonInfo {
@@ -48,8 +58,9 @@ pub struct AppPaths {
     pub venv_dir: PathBuf,
     pub staging_dir: PathBuf,
     pub beets_config: PathBuf,
-    /// The same config with cover embedding off, used only by the library
-    /// import. See `write_beets_config` for why the two cannot be one.
+    /// The variant used only by the library import — cover embedding off, and
+    /// no remote art sources. See `write_beets_config` for why the two cannot
+    /// be one file.
     pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
     pub library_dir: PathBuf,
@@ -62,10 +73,47 @@ pub struct AppPaths {
     /// than laid out as loose resources: the tree is full of symlinks and
     /// executable bits, and `tar` is the thing that reliably restores both.
     pub python_archive: PathBuf,
-    /// Where that archive lands. `runtime/python/bin/python3` afterwards.
+    /// Where that archive lands. See `runtime_python` for what sits inside.
     pub runtime_dir: PathBuf,
     /// Wheels shipped alongside, so the install needs no network.
     pub wheels_dir: PathBuf,
+}
+
+/// Where the library lives, when the user has moved it off the default.
+///
+/// Managed state and not a read of `preferences.json`, because
+/// [`AppPaths::resolve`] is synchronous and runs on nearly every command: a
+/// file read in there would be blocking IO on the tokio runtime, dozens of
+/// times per screen. Seeded once at startup from the preferences file and
+/// rewritten only by a move, which is the only thing that changes it.
+#[derive(Default)]
+pub struct LibraryRoot(std::sync::RwLock<Option<PathBuf>>);
+
+impl LibraryRoot {
+    pub fn get(&self) -> Option<PathBuf> {
+        self.0.read().ok().and_then(|guard| guard.clone())
+    }
+
+    pub fn set(&self, dir: Option<PathBuf>) {
+        if let Ok(mut guard) = self.0.write() {
+            *guard = dir;
+        }
+    }
+}
+
+/// The folder the app picks when nobody has said otherwise: a `Sonarche` inside
+/// the platform's music folder, falling back to app data on a system that has
+/// no such folder.
+pub fn default_library_dir(app: &AppHandle) -> PathBuf {
+    app.path()
+        .audio_dir()
+        .map(|dir| dir.join("Sonarche"))
+        .unwrap_or_else(|_| {
+            app.path()
+                .app_data_dir()
+                .map(|dir| dir.join("Library"))
+                .unwrap_or_else(|_| PathBuf::from("Library"))
+        })
 }
 
 impl AppPaths {
@@ -79,11 +127,11 @@ impl AppPaths {
                 .resolve(name, tauri::path::BaseDirectory::Resource)
                 .unwrap_or_else(|_| data.join(name))
         };
+        // The user's choice wins; the default is only what nobody overrode.
         let library_dir = app
-            .path()
-            .audio_dir()
-            .map(|d| d.join("Sonarche"))
-            .unwrap_or_else(|_| data.join("Library"));
+            .try_state::<LibraryRoot>()
+            .and_then(|root| root.get())
+            .unwrap_or_else(|| default_library_dir(app));
         Ok(Self {
             venv_dir: data.join("venv"),
             staging_dir: data.join("staging"),
@@ -102,25 +150,84 @@ impl AppPaths {
         })
     }
 
+    /// `venv/bin/python3` on Unix, `venv\Scripts\python.exe` on Windows — the
+    /// layout is `venv`'s own, not ours, and there is no common spelling.
     pub fn venv_python(&self) -> PathBuf {
-        self.venv_dir.join("bin").join("python3")
+        if cfg!(windows) {
+            self.venv_dir.join("Scripts").join("python.exe")
+        } else {
+            self.venv_dir.join("bin").join("python3")
+        }
     }
 
     /// The shipped interpreter once unpacked. Not necessarily present: it only
     /// exists after setup has run, and not at all in a build made without
     /// `npm run prepare:runtime`.
+    ///
+    /// The Windows distribution keeps the executable at the root of the tree
+    /// rather than under `bin/`.
     pub fn runtime_python(&self) -> PathBuf {
-        self.runtime_dir.join("python").join("bin").join("python3")
+        let root = self.runtime_dir.join("python");
+        if cfg!(windows) {
+            root.join("python.exe")
+        } else {
+            root.join("bin").join("python3")
+        }
     }
 
     pub fn fpcalc(&self) -> PathBuf {
-        self.tools_dir.join("fpcalc")
+        self.tools_dir.join(if cfg!(windows) {
+            "fpcalc.exe"
+        } else {
+            "fpcalc"
+        })
     }
 }
 
 /// Pinned Chromaprint release; fpcalc ships statically linked (no ffmpeg needed).
+///
+/// The Windows asset is a zip rather than a tarball, which changes nothing at
+/// the call site: bsdtar reads both, and `-xf` lets it work out which.
+#[cfg(target_os = "macos")]
 const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz";
+#[cfg(target_os = "macos")]
 const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-macos-universal/fpcalc";
+#[cfg(target_os = "macos")]
+const FPCALC_SHA256: &str = "d4d8faff4b5f7c558d9be053da47804f9501eaa6c2f87906a9f040f38d61c860";
+
+#[cfg(target_os = "windows")]
+const FPCALC_URL: &str = "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-windows-x86_64.zip";
+#[cfg(target_os = "windows")]
+const FPCALC_ARCHIVE_BIN: &str = "chromaprint-fpcalc-1.5.1-windows-x86_64/fpcalc.exe";
+#[cfg(target_os = "windows")]
+const FPCALC_SHA256: &str = "36b478e16aa69f757f376645db0d436073a42c0097b6bb2677109e7835b59bbc";
+
+// Rather than an unresolved-name error a hundred lines further down: the two
+// constants above are the whole of what a new platform has to add here.
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+compile_error!("no fpcalc asset pinned for this platform — add one beside FPCALC_URL");
+
+/// A file's SHA-256, lowercase hex.
+///
+/// Streamed rather than read whole: the archive is a couple of megabytes today,
+/// but a hasher that has to hold its input in memory is a size limit written
+/// into the wrong place.
+async fn sha256_of(path: &Path) -> AppResult<String> {
+    use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt;
+
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer).await?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
 
 /// Download fpcalc into the app-owned tools dir on first use. Self-healing,
 /// like the venv: a failure only degrades enrichment, never the app.
@@ -130,10 +237,12 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
         return Ok(());
     }
     tokio::fs::create_dir_all(&paths.tools_dir).await?;
-    let archive = paths.tools_dir.join("fpcalc.tar.gz");
+    // Extension-free on purpose: the asset is a tarball on macOS and a zip on
+    // Windows, and bsdtar sniffs the format rather than trusting the name.
+    let archive = paths.tools_dir.join("fpcalc-archive");
 
     eprintln!("[tools] downloading fpcalc from {FPCALC_URL}");
-    let status = Command::new("/usr/bin/curl")
+    let status = command(SYSTEM_CURL)
         .args(["-fsSL", "-o"])
         .arg(&archive)
         .arg(FPCALC_URL)
@@ -144,8 +253,20 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
         return Err(AppError::Setup("fpcalc download failed".into()));
     }
 
-    let status = Command::new("/usr/bin/tar")
-        .arg("-xzf")
+    // Before anything unpacks it, and long before anything runs it. This is the
+    // one binary the app fetches at runtime instead of shipping, so it is the
+    // one place where "what we asked for" and "what we got" can differ without
+    // a build ever noticing.
+    let digest = sha256_of(&archive).await?;
+    if digest != FPCALC_SHA256 {
+        let _ = tokio::fs::remove_file(&archive).await;
+        return Err(AppError::Setup(format!(
+            "fpcalc archive does not match its pinned checksum (got {digest})"
+        )));
+    }
+
+    let status = command(SYSTEM_TAR)
+        .arg("-xf")
         .arg(&archive)
         .arg("-C")
         .arg(&paths.tools_dir)
@@ -168,7 +289,7 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
 }
 
 async fn probe(path: &str) -> Option<PythonInfo> {
-    let output = Command::new(path)
+    let output = command(path)
         .args(["-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"])
         .stdin(Stdio::null())
         .output()
@@ -229,7 +350,7 @@ async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
     let _ = tokio::fs::remove_dir_all(&paths.runtime_dir).await;
     tokio::fs::create_dir_all(&paths.runtime_dir).await?;
 
-    let mut cmd = Command::new("/usr/bin/tar");
+    let mut cmd = command(SYSTEM_TAR);
     cmd.arg("-xzf")
         .arg(&paths.python_archive)
         .arg("-C")
@@ -272,14 +393,10 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     // first setup — otherwise an existing install can keep importing into a stale path after
     // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
     if venv_ok {
-        tokio::fs::create_dir_all(&paths.library_dir).await?;
-        if let Some(parent) = paths.beets_config.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        write_beets_config(&paths).await?;
+        adopt_library_dir(app).await?;
     }
     let deps_ok = if venv_ok {
-        Command::new(&venv_python)
+        command(&venv_python)
             .args(["-c", "import yt_dlp, beets, mutagen"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -337,34 +454,103 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
     Ok(())
 }
 
+/// Which of the two ways music enters the library a config is for.
+///
+/// A flavour rather than a pair of booleans: the two lines that differ both
+/// follow from *this* question, and a caller passing `(true, false)` would have
+/// to remember which flag meant what.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Flavour {
+    /// A staged download: one untagged file alone in an empty folder.
+    App,
+    /// Someone's own collection, covers already sitting beside the tracks.
+    Import,
+}
+
 /// Single config site for beets: the CLI importer reads it via `--config` and
 /// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
 ///
-/// Written twice, differing in one line. `embedart: auto` bakes the album's
-/// cover into every track, which costs nothing on a download — the staged file
-/// is alone in an empty folder when the import stage runs, so there is no art
-/// to bake — and is ruinous on a library import, where the cover is already
-/// sitting beside the tracks. Measured on a real import: 314 MB of duplicated
-/// images across 1.17 GB, one full-size copy per track, 88 MB for a single
-/// 18-track album. The interface reads the folder's file and never the tag, so
-/// the embedding only ever served other players.
+/// Written twice, differing in two lines, and both differences are about art.
+///
+/// `embedart: auto` bakes the album's cover into every track. That costs
+/// nothing on a download — the staged file is alone in an empty folder when the
+/// import stage runs, so there is no art to bake — and is ruinous on a library
+/// import, where the cover is already beside the tracks. Measured on a real
+/// import: 314 MB of duplicated images across 1.17 GB, one full-size copy per
+/// track, 88 MB for a single 18-track album. The interface reads the folder's
+/// file and never the tag, so the embedding only ever served other players.
+///
+/// `fetchart.sources` is pinned to the filesystem for an import, because an
+/// import is meant to touch no network at all. `-A` takes MusicBrainz and
+/// AcoustID out of the picture, but fetchart runs on its own hook and its
+/// default sources include iTunes and Amazon — so a folder whose files already
+/// carry an album and artist (a Sonarche library being re-imported, say) had
+/// beets quietly searching store artwork mid-copy, and adopting whatever came
+/// back as the album's cover. The local file is the only source an import
+/// should trust; it is also the only one that can be right about a collection
+/// nobody has identified yet.
 ///
 /// Two files rather than a flag on one, because beets takes a single
 /// `--config` and offers no way to override a key from the command line.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
-    write_config_file(paths, &paths.beets_config, true).await?;
-    write_config_file(paths, &paths.beets_import_config, false).await
+    write_config_file(paths, &paths.beets_config, Flavour::App).await?;
+    write_config_file(paths, &paths.beets_import_config, Flavour::Import).await
 }
 
-async fn write_config_file(paths: &AppPaths, target: &Path, embed_art: bool) -> AppResult<()> {
-    tokio::fs::write(target, beets_config_yaml(paths, embed_art)).await?;
+async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) -> AppResult<()> {
+    tokio::fs::write(target, beets_config_yaml(paths, flavour)).await?;
     Ok(())
 }
 
-fn beets_config_yaml(paths: &AppPaths, embed_art: bool) -> String {
+/// Make the current library directory the one everything else believes in.
+///
+/// Two things have to be told, and both are easy to forget separately: beets,
+/// through `directory:` in its two configs, and the webview's asset scope,
+/// without which every cover in the app 404s behind a path the security layer
+/// has never heard of. `tauri.conf.json` can only name the default folder, so
+/// a moved library has to be granted at runtime.
+///
+/// Called after a move, and on every environment check — so a library that was
+/// moved while the app was closed, or one whose config was written by an older
+/// build, is repaired on the next launch rather than staying half-pointed.
+pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
+    let paths = AppPaths::resolve(app)?;
+    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    if let Some(parent) = paths.beets_config.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    write_beets_config(&paths).await?;
+    if let Err(err) = app
+        .asset_protocol_scope()
+        .allow_directory(&paths.library_dir, true)
+    {
+        // Not fatal: the default folder is already in the manifest's scope, so
+        // this only ever matters for a moved library — and a library the user
+        // can browse without covers beats an app that refuses to start.
+        eprintln!("[library] could not widen the asset scope: {err}");
+    }
+    Ok(())
+}
+
+/// A path as a YAML scalar.
+///
+/// Single-quoted, and that is the whole point. Inside double quotes YAML treats
+/// `\` as an escape introducer, so `C:\Users\…` opens with `\U` — the start of
+/// an eight-digit unicode escape — and beets refused to load its own config
+/// before it ever saw a track. Every import on Windows failed on this, from the
+/// first build.
+///
+/// A single-quoted scalar has exactly one escape, a doubled `'`, which is why
+/// this is a function and not a pair of quote characters at the call site: a
+/// Windows user named O'Brien has an apostrophe in every path they own.
+fn yaml_scalar(path: &Path) -> String {
+    format!("'{}'", path.display().to_string().replace('\'', "''"))
+}
+
+fn beets_config_yaml(paths: &AppPaths, flavour: Flavour) -> String {
     format!(
-        r#"directory: "{library}"
-library: "{db}"
+        r#"directory: {library}
+library: {db}
 import:
   move: yes
   write: yes
@@ -383,7 +569,7 @@ musicbrainz:
   genres: yes
 fetchart:
   auto: yes
-embedart:
+{art_sources}embedart:
   auto: {embed_art}
 # auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
 # itself. Canonical tree + whitelist are ours (bundled sidecar resources):
@@ -393,19 +579,24 @@ lastgenre:
   auto: no
   source: track
   count: 3
-  canonical: "{tree}"
-  whitelist: "{whitelist}"
+  canonical: {tree}
+  whitelist: {whitelist}
   prefer_specific: yes
   cleanup_existing: yes
   fallback: null
 ui:
   color: no
 "#,
-        library = paths.library_dir.display(),
-        db = paths.beets_db.display(),
-        tree = paths.genres_tree.display(),
-        whitelist = paths.genres_whitelist.display(),
-        embed_art = if embed_art { "yes" } else { "no" },
+        library = yaml_scalar(&paths.library_dir),
+        db = yaml_scalar(&paths.beets_db),
+        tree = yaml_scalar(&paths.genres_tree),
+        whitelist = yaml_scalar(&paths.genres_whitelist),
+        embed_art = if flavour == Flavour::App { "yes" } else { "no" },
+        art_sources = if flavour == Flavour::Import {
+            "  sources: filesystem\n"
+        } else {
+            ""
+        },
     )
 }
 
@@ -425,7 +616,7 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         &format!("Python: {} ({})", python.path, python.version),
     );
     emit_log(app, "Creating virtual environment...");
-    let mut venv_cmd = Command::new(&python.path);
+    let mut venv_cmd = command(&python.path);
     venv_cmd
         .arg("-m")
         .arg("venv")
@@ -433,10 +624,9 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg(&paths.venv_dir);
     run_streamed(app, venv_cmd, "venv creation").await?;
 
-    // Shipped wheels when we have them: beets pulls numpy, scipy, numba and
-    // llvmlite, which is most of a 76 MB download and the whole reason the
-    // install used to be measured in minutes. `--no-index` also makes this the
-    // one step that no longer needs the network.
+    // Shipped wheels when we have them: numpy alone is most of the download,
+    // and the install used to be measured in minutes. `--no-index` also makes
+    // this the one step that no longer needs the network.
     let vendored = tokio::fs::try_exists(&paths.wheels_dir)
         .await
         .unwrap_or(false);
@@ -448,12 +638,21 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
             "Installing dependencies (this can take a few minutes)..."
         },
     );
-    let mut pip_cmd = Command::new(paths.venv_python());
+    let mut pip_cmd = command(paths.venv_python());
     pip_cmd
         .arg("-m")
         .arg("pip")
         .arg("install")
-        .arg("--disable-pip-version-check");
+        .arg("--disable-pip-version-check")
+        // requirements.txt is the whole resolved tree, not a wish list — see
+        // its header. Resolving instead of obeying it would pull back the two
+        // packages we drop on purpose, and on Intel macOS one of them has no
+        // wheel left to pull.
+        .arg("--no-deps")
+        // A missing wheel must fail here, loudly. Without this pip falls back
+        // to the source archive and starts a compile the user watches for
+        // twenty minutes before it dies on a missing toolchain.
+        .arg("--only-binary=:all:");
     if vendored {
         pip_cmd
             .arg("--no-index")
@@ -492,33 +691,133 @@ mod tests {
         }
     }
 
-    /// The one line the two configs may differ on, and the reason the second
-    /// file exists at all. A library import bakes the album's own cover into
-    /// every track when this is `yes` — measured at 314 MB of duplicated images
-    /// in a 1.17 GB library, 88 MB of it in a single 18-track album.
+    /// The bug that made every import on Windows fail, from the first build to
+    /// the fourth: `directory: "C:\Users\…"`. YAML reads `\` as an escape
+    /// introducer inside double quotes, so the path opened with `\U` — the
+    /// start of an eight-digit unicode escape — and beets refused to load its
+    /// own config. Column 12 of line 1, every single time.
     #[test]
-    fn the_import_config_is_the_app_config_with_cover_embedding_off() {
-        let app = beets_config_yaml(&paths(), true);
-        let import = beets_config_yaml(&paths(), false);
+    fn a_windows_path_is_not_read_as_a_yaml_escape() {
+        let mut paths = paths();
+        paths.library_dir = PathBuf::from(r"C:\Users\pieru\Music\Sonarche");
+        paths.beets_db = PathBuf::from(r"C:\Users\pieru\AppData\Roaming\beets\library.db");
 
-        assert!(app.contains("embedart:\n  auto: yes"), "{app}");
-        assert!(import.contains("embedart:\n  auto: no"), "{import}");
-        // Nothing else may drift: the import writes into the same library, with
-        // the same paths, the same genre tree and the same clutter rules.
-        assert_eq!(
-            app.replace("auto: yes", "auto: no"),
-            import.replace("auto: yes", "auto: no")
+        let config = beets_config_yaml(&paths, Flavour::App);
+
+        assert!(
+            config.contains(r"directory: 'C:\Users\pieru\Music\Sonarche'"),
+            "{config}"
         );
+        // The rule, stated once for the whole file rather than per key: a
+        // backslash is a directive between double quotes and a plain character
+        // between single ones, so no line may ever hold both. `clutter` keeps
+        // its double quotes — there is no path in it.
+        for line in config.lines() {
+            assert!(
+                !(line.contains('\\') && line.contains('"')),
+                "a backslash inside double quotes: {line}"
+            );
+        }
+    }
+
+    /// Single quotes have exactly one escape, and a doubled `'` is it. Not a
+    /// hypothetical: `C:\Users\O'Brien\Music` is an ordinary Windows path.
+    #[test]
+    fn an_apostrophe_in_a_path_is_doubled_not_left_to_close_the_scalar() {
+        let mut paths = paths();
+        paths.library_dir = PathBuf::from(r"C:\Users\O'Brien\Music");
+
+        let config = beets_config_yaml(&paths, Flavour::App);
+
+        assert!(
+            config.contains(r"directory: 'C:\Users\O''Brien\Music'"),
+            "{config}"
+        );
+    }
+
+    /// The reason the second file exists at all. A library import bakes the
+    /// album's own cover into every track when this is `yes` — measured at
+    /// 314 MB of duplicated images in a 1.17 GB library, 88 MB of it in a
+    /// single 18-track album.
+    #[test]
+    fn the_import_config_turns_cover_embedding_off() {
+        assert!(
+            beets_config_yaml(&paths(), Flavour::App).contains("embedart:\n  auto: yes"),
+            "the app config embeds"
+        );
+        assert!(
+            beets_config_yaml(&paths(), Flavour::Import).contains("embedart:\n  auto: no"),
+            "the import config does not"
+        );
+    }
+
+    /// An import must reach no network. `-A` takes MusicBrainz and AcoustID out
+    /// of it, but fetchart runs on its own hook, and its default sources
+    /// include iTunes and Amazon — enough for beets to search store artwork
+    /// mid-copy on files that already carry an album and artist.
+    #[test]
+    fn only_the_import_config_pins_art_to_the_filesystem() {
+        assert!(
+            beets_config_yaml(&paths(), Flavour::Import)
+                .contains("fetchart:\n  auto: yes\n  sources: filesystem\n"),
+            "the import config must not reach a remote art source"
+        );
+        assert!(
+            !beets_config_yaml(&paths(), Flavour::App).contains("sources:"),
+            "the app config leaves fetchart's own defaults alone"
+        );
+    }
+
+    /// Everything except those two art lines has to stay identical: the import
+    /// writes into the same library, with the same paths, the same genre tree
+    /// and the same clutter rules.
+    #[test]
+    fn the_two_configs_differ_on_nothing_but_art() {
+        let app = beets_config_yaml(&paths(), Flavour::App);
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+
+        let strip = |config: &str| {
+            config
+                .replace("  sources: filesystem\n", "")
+                .replace("embedart:\n  auto: yes", "embedart:\n  auto: no")
+        };
+
+        assert_eq!(strip(&app), strip(&import));
+    }
+
+    /// The digest guarding the one binary the app fetches at runtime. Checked
+    /// against a value nobody here computed — the empty string's SHA-256 is a
+    /// published constant — so a hasher wired up wrong (a buffer read past its
+    /// length, a chunk hashed twice) cannot agree with itself and pass.
+    #[tokio::test]
+    async fn hashes_a_file_the_way_sha256_says_it_should() {
+        let dir = std::env::temp_dir().join(format!("sonarche-sha-{}", std::process::id()));
+        tokio::fs::create_dir_all(&dir).await.expect("temp dir");
+        let empty = dir.join("empty");
+        let hello = dir.join("hello");
+        tokio::fs::write(&empty, b"").await.expect("write");
+        tokio::fs::write(&hello, b"hello").await.expect("write");
+
+        assert_eq!(
+            sha256_of(&empty).await.expect("hash"),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(
+            sha256_of(&hello).await.expect("hash"),
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
     /// Both point at the same library and the same database — the import is a
     /// different way in, not a different shelf.
     #[test]
     fn both_configs_target_the_one_library() {
-        for embed_art in [true, false] {
-            let config = beets_config_yaml(&paths(), embed_art);
-            assert!(config.contains(r#"directory: "/music/Sonarche""#));
-            assert!(config.contains(r#"library: "/data/beets/library.db""#));
+        for flavour in [Flavour::App, Flavour::Import] {
+            let config = beets_config_yaml(&paths(), flavour);
+            assert!(config.contains("directory: '/music/Sonarche'"));
+            assert!(config.contains("library: '/data/beets/library.db'"));
         }
     }
 }

@@ -3,7 +3,7 @@ import { createMemoryRouter, Navigate } from "react-router";
 import { paths } from "@/app/paths";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
-import { HistoryPage } from "@/features/download/HistoryPage";
+import { HistoryRoute } from "@/app/HistoryRoute";
 import { ImportPage } from "@/features/import/ImportPage";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
@@ -17,9 +17,12 @@ import { GenresView } from "@/features/library/views/GenresView";
 import { MetadataPage } from "@/features/library/triage/MetadataPage";
 import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
+import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
+import { LibrarySection } from "@/features/settings/LibrarySection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
+import { UpdateSection } from "@/features/update/UpdateSection";
 
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
@@ -44,7 +47,9 @@ export const router = createMemoryRouter(
       children: [
         { path: paths.download, element: <DownloadPage /> },
         { path: paths.import, element: <ImportPage /> },
-        { path: paths.history, element: <HistoryPage /> },
+        // Composed in its own shell component: the history is the archive of
+        // both ways music enters the ark, and neither feature may import the other.
+        { path: paths.history, element: <HistoryRoute /> },
         { path: paths.metadata, element: <MetadataPage /> },
         // Settings lives inside the shell like any other destination: same sidebar
         // (which switches to a category menu here), same player bar. Each category
@@ -53,9 +58,12 @@ export const router = createMemoryRouter(
           path: paths.settings,
           element: <SettingsLayout />,
           children: [
-            { index: true, element: <Navigate to={paths.settingsApiKeys} replace /> },
+            { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
+            { path: paths.settingsAppearance, element: <AppearanceSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
+            { path: paths.settingsLibrary, element: <LibrarySection /> },
+            { path: paths.settingsUpdates, element: <UpdateSection /> },
             // Dev builds only; the backend command refuses to run in release anyway.
             ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
           ],

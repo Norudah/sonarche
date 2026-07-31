@@ -1,4 +1,5 @@
 import { Alert, Spinner } from "@heroui/react";
+import { Disc } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams, useSearchParams } from "react-router";
@@ -28,6 +29,7 @@ import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTra
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { parseViewMode } from "@/features/library/viewMode";
 import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
+import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /** The page is already a family and, when refined, a genre — so it offers
@@ -143,7 +145,7 @@ export function GenreDetailView() {
         /* A family can hold tracks and no album at all — every one of them is a
          * minority on a record filed elsewhere. Saying so is honest, and the
          * tracks are one switch away rather than pasted in below. */
-        <p className="py-16 text-center text-sm text-muted">{t("genres.noAlbums")}</p>
+        <NoResults icon={Disc} message={t("genres.noAlbums")} />
       ) : (
         <>
           {/* Keyed on the family, not on the genre. Re-keying on the genre threw

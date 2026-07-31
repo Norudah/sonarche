@@ -5,8 +5,7 @@
     "albums": "Albums",
     "artists": "Artists",
     "genres": "Genres",
-    "categories": "Categories",
-    "comingSoon": "Coming soon."
+    "categories": "Categories"
   },
   "categories": {
     "back": "Categories",
@@ -14,7 +13,10 @@
     "categoryCount_other": "{{count}} categories",
     "categorizedCount_one": "{{count}} categorized track",
     "categorizedCount_other": "{{count}} categorized tracks",
-    "empty": "A category notes a track's context — video games, film… — independently of its genre. Set it from an album's or a track's metadata inspection and the shelves will build themselves here.",
+    "empty": {
+      "title": "No category set yet",
+      "body": "A category notes a track's context — video games, film… — independently of its genre. Set it from an album's or a track's metadata inspection and the shelves will build themselves here."
+    },
     "emptyAction": "Browse albums",
     "noAlbums": "No album carries this category yet.",
     "values": {
@@ -57,13 +59,20 @@
     "recomputing": "Recomputing…",
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
     "recomputeFailed": "Recompute failed, try again in a moment.",
-    "overviewMode": "Albums & artists"
+    "overviewMode": "Albums & artists",
+    "empty": {
+      "title": "No genres yet",
+      "body": "The genres written in your files are grouped into families as the library fills up."
+    }
   },
   "albums": {
     "eyebrow": "Album",
     "back": "Albums",
     "inspect": "Inspect album metadata",
-    "empty": "No album in your library yet.",
+    "empty": {
+      "title": "No albums yet",
+      "body": "Albums arrive with their cover and their tags as soon as a download or an import finishes."
+    },
     "noResults": "No album matches “{{query}}”.",
     "completeness": "{{percent}}%",
     "completenessHint": "Incomplete metadata on this album",
@@ -88,7 +97,10 @@
   "artists": {
     "eyebrow": "Artist",
     "back": "Artists",
-    "empty": "No artist in your library yet.",
+    "empty": {
+      "title": "No artists yet",
+      "body": "Every artist shows up here as soon as one of their tracks enters the ark."
+    },
     "noResults": "No artist matches “{{query}}”.",
     "discography": "Discography",
     "appearances": "Appearances",
@@ -152,8 +164,11 @@
     "duplicateRecording": "Duplicate tracks"
   },
   "loadFailed": "Unable to load the library",
-  "empty": "Your library is empty for now.",
-  "goToDownload": "Download a first track →",
+  "empty": {
+    "title": "Your library is empty",
+    "body": "Paste a link from Downloads, or import a folder you already have: everything that enters the ark is filed here."
+  },
+  "goToDownload": "Download a track",
   "unknownTitle": "Unknown title",
   "unknownArtist": "Unknown artist",
   "metadata": {
@@ -320,5 +335,6 @@
     "byColumn": "Sort by {{column}}"
   },
   "breadcrumb": "Breadcrumb",
-  "back": "Back"
+  "back": "Back",
+  "goToImport": "Import a folder"
 }

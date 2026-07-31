@@ -19,7 +19,11 @@ export type ImportPhase =
   /** Scanned, waiting on the user. */
   | { kind: "scanned"; report: ScanReport }
   | { kind: "importing"; report: ScanReport }
-  | { kind: "imported"; outcome: ImportOutcome }
+  /** Done. The report comes along because the recap is about the two together —
+   * what the folder held (bytes, what could not be decoded) and what became of
+   * it. Absent only if an outcome somehow arrived without a scan preceding it,
+   * which the page cannot produce. */
+  | { kind: "imported"; outcome: ImportOutcome; report: ScanReport | null }
   /** Failed mid-copy. The report is kept so the card can still say what the
    * folder held, and so trying again does not need a second scan. */
   | { kind: "importFailed"; message: string; report: ScanReport };
@@ -42,7 +46,7 @@ export function importPhase(input: PhaseInput): ImportPhase {
   // The import's own states come first: once it has run, a stale scan result
   // sitting beside it is not what the screen is about any more.
   if (importing && report != null) return { kind: "importing", report };
-  if (outcome != null) return { kind: "imported", outcome };
+  if (outcome != null) return { kind: "imported", outcome, report };
   if (importError != null && report != null) return { kind: "importFailed", message: importError, report };
 
   // A fresh scan overrides an older one's failure, and vice versa — whichever

@@ -1,12 +1,11 @@
 import { Button, InputGroup } from "@heroui/react";
-import { ArrowDownToLine, Link2 } from "lucide-react";
+import { ArrowDownToLine, AudioLines, Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { EnqueueRequest, JobKind } from "@/features/download/api";
 import { ComposerSettings } from "@/features/download/ComposerSettings";
 import { readLastCategory, writeLastCategory } from "@/features/download/lastCategory";
-import { YouTubeGlyph } from "@/features/download/YouTubeGlyph";
 import { detectUrlKind } from "@/features/download/urlKind";
 import { Swap } from "@/shared/motion/Swap";
 import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
@@ -62,7 +61,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
        * Ending on the opaque background (not `transparent`) keeps the ramp in
        * one colour family and dissolves it with no seam; see the library's
        * `HeroWash` for the full reasoning. */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-soft/80 via-accent-soft/25 to-background" />
+      <div className="pointer-events-none absolute inset-0 hero-wash" />
 
       <div className="relative flex flex-col gap-5">
         <div>
@@ -70,13 +69,16 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
         </div>
 
-        {/* Lifted by its shadow, never outlined. A hairline ring around a white
-         * card sitting on the accent wash draws the box before it draws the
-         * field, and focus is answered with a soft accent halo for the same
-         * reason — a 1px accent line on a rounded card reads as a validation
-         * error, not as "you are typing here". */}
+        {/* Lifted by its shadow, never outlined at rest: a hairline ring around
+         * a white card sitting on the accent wash draws the box before it draws
+         * the field.
+         *
+         * Focus was answered with a 4px `accent-soft` halo, which at this size
+         * read as a second, blurrier shadow bleeding out of the card rather than
+         * as "you are typing here". It is now the card itself that reacts — it
+         * lifts one step, under a hairline accent ring. Same signal, no glow. */}
         <form
-          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-md transition-shadow focus-within:ring-4 focus-within:ring-accent-soft"
+          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
             event.preventDefault();
             if (canSubmit) onSubmit({ url: url.trim(), kind, category });
@@ -90,12 +92,12 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
             <InputGroup.Root fullWidth className="border-none bg-transparent shadow-none">
               {/* Recognising the link is the composer's first act, and it is
                * reported where the link is rather than on a badge elsewhere:
-               * the neutral chain-link becomes YouTube's own mark, in its own
-               * red, the moment the paste lands. */}
+               * the neutral chain-link becomes the accent audio mark the
+               * moment the paste lands. */}
               <InputGroup.Prefix className="pr-3 pl-4 text-muted">
-                <Swap swapKey={detected != null ? "youtube" : "idle"} mode="cross" className="flex">
+                <Swap swapKey={detected != null ? "recognised" : "idle"} mode="cross" className="flex">
                   {detected != null ? (
-                    <YouTubeGlyph className="size-[1.125rem] text-youtube" />
+                    <AudioLines className="size-[1.125rem] text-accent" />
                   ) : (
                     <Link2 className="size-4" />
                   )}
