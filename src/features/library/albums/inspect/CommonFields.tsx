@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
+import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
@@ -124,18 +125,16 @@ export function CommonFields({
         </p>
       )}
 
-      {/* Derived from the genre, never written — flat and grey so it reads as a
-          consequence rather than as a field someone forgot to fill. */}
-      <div className="-mt-2 flex items-center gap-1.5 text-[0.6875rem] text-muted/85">
-        <span>
-          {t("metadata.fields.genreBucket")} ·{" "}
-          <span className="font-medium text-muted">{genreFamily || t("metadata.emptyValue")}</span>
-        </span>
-        <FieldHelp
-          label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
-          text={t("metadata.help.genreBucket")}
-        />
-      </div>
+      <DerivedField
+        label={t("metadata.fields.genreBucket")}
+        value={genreFamily}
+        help={
+          <FieldHelp
+            label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
+            text={t("metadata.help.genreBucket")}
+          />
+        }
+      />
 
       {/* Chips only, no free-text input: the taxonomy writes canonical English
           values while showing translated labels, and a typed value would break
