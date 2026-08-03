@@ -1,5 +1,5 @@
 import { Drawer, useOverlayState } from "@heroui/react";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -7,9 +7,10 @@ import { albumPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { useUpdateTracks } from "@/features/library/hooks";
+import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
-import { diffFields, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
+import { diffFields, fieldEdit, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
 import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
 import { MetadataFooter, type SaveFeedback } from "@/features/library/metadata/MetadataFooter";
 import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
@@ -28,7 +29,17 @@ import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
  * a single track used to move that one track into an album of its own, silently
  * splitting the record in two. It reads as context beside the artist instead.
  */
-function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => void }) {
+function MetadataForm({
+  track,
+  onClose,
+  requestCloseRef,
+}: {
+  track: LibraryTrack;
+  onClose: () => void;
+  /** Where the Drawer's own dismiss gestures (backdrop, Escape) find the
+   * guard-aware close — only this form knows whether a draft is at stake. */
+  requestCloseRef: RefObject<() => void>;
+}) {
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const update = useUpdateTracks();
@@ -51,7 +62,9 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
 
   const setField = (key: keyof FieldValues) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
   const revert = (key: keyof FieldValues) => () => setDraft((prev) => ({ ...prev, [key]: live[key] }));
-  const originOf = (key: keyof FieldValues) => (draft[key] !== live[key] ? live[key] : undefined);
+  // Same effective-edit rule as the save, so a "modified" mark can never point
+  // at an edit the save would not write.
+  const originOf = (key: keyof FieldValues) => (fieldEdit(key, live, draft) != null ? live[key] : undefined);
 
   const save = () => {
     if (changed === 0) return;
@@ -78,6 +91,24 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
     else onClose();
   };
 
+  // The backdrop click lands on the Drawer, outside this form; hand it the
+  // current requestClose so that gesture meets the same guard as the ✕.
+  // Escape rides the same wiring: on macOS a button click leaves focus on the
+  // body — outside both this tree and react-aria's overlay — so an element
+  // handler misses the key. One document listener owns it instead; overlays
+  // that answer Escape themselves (help popovers, the guard) preventDefault
+  // first, and `isKeyboardDismissDisabled` keeps react-aria from competing.
+  useEffect(() => {
+    requestCloseRef.current = requestClose;
+  });
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) requestCloseRef.current();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [requestCloseRef]);
+
   // The album is keyed by its album artist (the identity shared across the
   // record), falling back to the track artist for a single that has none.
   const openAlbum = () => {
@@ -85,11 +116,9 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
     onClose();
   };
 
+  /** ⌘S writes without leaving. Escape lives on the document, above. */
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      requestClose();
-    } else if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       save();
     }
@@ -207,23 +236,16 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
           />
         </div>
 
-        {/* Derived from the genre, never written: shown flat and grey so it
-            reads as a consequence rather than as a field left unfilled. */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[0.75rem] font-medium text-muted">
-              {t("metadata.fields.genreBucket")}
-              <span className="ml-1.5 font-normal opacity-70">· {t("metadata.derived")}</span>
-            </span>
+        <DerivedField
+          label={t("metadata.fields.genreBucket")}
+          value={track.genreBucket ?? ""}
+          help={
             <FieldHelp
               label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
               text={t("metadata.help.genreBucket")}
             />
-          </div>
-          <p className="rounded-xl bg-default px-3 py-2 text-[0.875rem] text-muted">
-            {track.genreBucket || t("metadata.emptyValue")}
-          </p>
-        </div>
+          }
+        />
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
@@ -265,22 +287,29 @@ function MetadataForm({ track, onClose }: { track: LibraryTrack; onClose: () => 
 }
 
 export function MetadataDrawer({ track, onClose }: { track: LibraryTrack | null; onClose: () => void }) {
+  // `isOpen` is controlled, so react-aria can never close this on its own
+  // terms: Escape and the backdrop click only *request* it, and the form
+  // answers — straight close, or the exit guard when a draft is at stake.
+  const requestCloseRef = useRef(onClose);
   const state = useOverlayState({
     isOpen: track != null,
-    // Nothing closes this on its own: the ✕ and Escape go through the form, so a
-    // pending draft gets the guard rather than the bin.
-    onOpenChange: () => {},
+    onOpenChange: (open) => {
+      if (!open) requestCloseRef.current();
+    },
   });
 
   return (
     <Drawer state={state}>
-      <Drawer.Backdrop isDismissable={false} isKeyboardDismissDisabled>
+      {/* Keyboard dismiss stays off: Escape is handled by the form's own
+          document listener (react-aria's would miss it whenever focus sits on
+          the body, and would double-handle it whenever it does not). */}
+      <Drawer.Backdrop isKeyboardDismissDisabled>
         <Drawer.Content placement="right">
           {/* Width belongs on the dialog, not the content (that one is the
               full-screen positioning layer). HeroUI's default sm:w-96 is too
               narrow for a two-column metadata form. */}
           <Drawer.Dialog className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[31rem]">
-            {track && <MetadataForm key={track.id} track={track} onClose={onClose} />}
+            {track && <MetadataForm key={track.id} track={track} onClose={onClose} requestCloseRef={requestCloseRef} />}
           </Drawer.Dialog>
         </Drawer.Content>
       </Drawer.Backdrop>

@@ -1,6 +1,6 @@
 import { Modal } from "@heroui/react";
 import { X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
@@ -9,6 +9,7 @@ import {
   buildAlbumUpdates,
   changeSummary,
   commonBaseline,
+  commonOrigins,
   distinctCommonCount,
   draftGenreCell,
   rowOrigins,
@@ -42,7 +43,17 @@ import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlacehold
  * visible is not "can you type here" but "what have you changed" — the accent
  * rules on moved fields, and the count in the footer that adds them up.
  */
-function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) {
+function InspectBody({
+  album,
+  onClose,
+  requestCloseRef,
+}: {
+  album: Album;
+  onClose: () => void;
+  /** Where the Modal's own dismiss gestures (backdrop, Escape) find the
+   * guard-aware close — only this body knows whether a draft is at stake. */
+  requestCloseRef: RefObject<() => void>;
+}) {
   const { t } = useTranslation("library");
   const update = useUpdateTracks();
   const rematch = useReenrichAlbum();
@@ -106,17 +117,7 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
   const families = new Set(album.tracks.map((track) => track.genreBucket ?? "").filter(Boolean));
   const genreFamily = families.size === 1 ? [...families][0] : "";
 
-  const commonOrigins: Partial<AlbumCommonValues> = {};
-  for (const field of Object.keys(draft.common) as AlbumCommonField[]) {
-    if (field === "genre") {
-      // Moved when the rows no longer read as they did — including into "mixed".
-      if (!baseline.genre.mixed && (genreCell.mixed || genreCell.value !== baseline.genre.value)) {
-        commonOrigins.genre = baseline.genre.value;
-      }
-    } else if (!baseline[field].mixed && draft.common[field] !== baseline[field].value) {
-      commonOrigins[field] = baseline[field].value;
-    }
-  }
+  const origins = commonOrigins(album.tracks, baseline, draft);
 
   const setCommon = (field: AlbumCommonField, value: string) => {
     // Writing the shared genre *is* writing every row's genre — the field is a
@@ -213,20 +214,39 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
     else onClose();
   };
 
+  // The backdrop click lands on the Modal, outside this body; hand it the
+  // current requestClose so that gesture meets the same guard as the ✕.
+  // Escape rides the same effect: on macOS a button click leaves focus on the
+  // body — outside both this tree and react-aria's overlay — so an element
+  // handler misses the key. One document listener owns it instead; overlays
+  // that answer Escape themselves (help popovers, the guard) preventDefault
+  // first, and `isKeyboardDismissDisabled` keeps react-aria from competing.
+  const escapeRef = useRef(() => {});
+  useEffect(() => {
+    requestCloseRef.current = requestClose;
+    escapeRef.current = () => {
+      // An open suggestion is the innermost thing on screen, so it goes first.
+      if (activeOffer) answerOffer(activeOffer);
+      else requestClose();
+    };
+  });
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) escapeRef.current();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, []);
+
   const shown = applyTrackFilter(album.tracks, filter);
   const completeIds = useMemo(() => {
     const incomplete = new Set(completion.incompleteIds);
     return new Set(album.tracks.map((track) => track.id).filter((id) => !incomplete.has(id)));
   }, [album.tracks, completion.incompleteIds]);
 
-  /** Escape asks to leave (so the guard can speak); ⌘S writes without leaving. */
+  /** ⌘S writes without leaving. Escape lives on the document, above. */
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      // An open suggestion is the innermost thing on screen, so it goes first.
-      if (activeOffer) answerOffer(activeOffer);
-      else requestClose();
-    } else if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       save();
     }
@@ -272,7 +292,7 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
           completion={completion}
           baseline={shownBaseline}
           values={shownCommon}
-          origins={commonOrigins}
+          origins={origins}
           distinctCounts={distinctCounts}
           genreFamily={genreFamily}
           trackCount={album.tracks.length}
@@ -342,19 +362,24 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
 }
 
 export function AlbumInspectModal({ album, onClose }: { album: Album | null; onClose: () => void }) {
+  // `isOpen` is controlled, so react-aria can never close this on its own
+  // terms: Escape and the backdrop click only *request* it, and the body
+  // answers — straight close, or the exit guard when a draft is at stake.
+  const requestCloseRef = useRef(onClose);
   return (
-    // `onOpenChange` deliberately does nothing: react-aria would close on its
-    // own terms, and only the body knows whether a draft is at stake. Every way
-    // out — the ✕, Escape, the guard's own buttons — calls `onClose` itself.
-    <Modal isOpen={album != null} onOpenChange={() => {}}>
-      {/* An outside click cannot close this one either. Losing a draft to a
-          stray press on the page behind is the very accident the guard exists
-          for, and an editing surface is the one place where "click away to
-          dismiss" is not worth its cost. */}
-      <Modal.Backdrop isDismissable={false} isKeyboardDismissDisabled>
+    <Modal
+      isOpen={album != null}
+      onOpenChange={(open) => {
+        if (!open) requestCloseRef.current();
+      }}
+    >
+      {/* Keyboard dismiss stays off: Escape is handled by the body's own
+          document listener (react-aria's would miss it whenever focus sits on
+          the body, and would double-handle it whenever it does not). */}
+      <Modal.Backdrop isKeyboardDismissDisabled>
         <Modal.Container>
           <Modal.Dialog className="flex h-[92vh] max-h-[54rem] w-[96vw] max-w-[74rem] flex-col overflow-hidden p-0!">
-            {album && <InspectBody key={album.key} album={album} onClose={onClose} />}
+            {album && <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />}
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
