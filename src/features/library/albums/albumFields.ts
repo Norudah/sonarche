@@ -1,4 +1,5 @@
 import type { LibraryTrack, TrackFieldPatch, TrackUpdate } from "@/features/library/api";
+import { effectiveEdit } from "@/features/library/metadata/fields";
 
 /**
  * Album inspection edits two shapes at once: tags the whole record shares
@@ -107,17 +108,22 @@ export function toAlbumDraft(tracks: LibraryTrack[], baseline: AlbumCommonBaseli
  * A uniform field counts as changed when its value differs from the baseline
  * (clearing included). A *mixed* field counts only once the user gives it a
  * value: an untouched "multiple values" field must never blanket-wipe the album,
- * so an empty mixed field is left alone. */
+ * so an empty mixed field is left alone.
+ *
+ * Genre never diffs here. The common genre is a *reading* of the rows
+ * (`draftGenreCell`), and editing it fans out to the rows, so the row diffs
+ * already carry every genre change; `draft.common.genre` is only the
+ * mount-time seed, which nothing updates. Diffing that seed against a
+ * baseline that moves with every save manufactured a phantom pending change
+ * right after a successful save — and re-saving the phantom wiped the
+ * album's genres. */
 export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
   const patch: Partial<AlbumCommonValues> = {};
   for (const field of ALBUM_COMMON_FIELDS) {
+    if (field === "genre") continue;
     const cell = baseline[field];
-    const next = draft.common[field];
-    if (cell.mixed) {
-      if (next.trim() !== "") patch[field] = next;
-    } else if (next !== cell.value) {
-      patch[field] = next;
-    }
+    const value = effectiveEdit(field, draft.common[field], cell.mixed ? "" : cell.value);
+    if (value != null) patch[field] = value;
   }
   return patch;
 }
@@ -140,13 +146,11 @@ export function buildAlbumUpdates(
     const fields: TrackFieldPatch = { ...common };
     const row = draft.rows[track.id];
     if (row) {
-      const liveTrack = track.track != null ? String(track.track) : "";
-      if (row.track !== liveTrack) fields.track = row.track;
-      if (row.title !== track.title) fields.title = row.title;
-      if (row.artist !== track.artist) fields.artist = row.artist;
-      // A row's genre edit wins over the common fan-out for that track — the
-      // row is the more specific intent.
-      if (row.genre !== (track.genre ?? "")) fields.genre = row.genre;
+      const live = trackRowValues(track);
+      for (const key of Object.keys(live) as (keyof TrackRowValues)[]) {
+        const value = effectiveEdit(key, row[key], live[key]);
+        if (value != null) fields[key] = value;
+      }
     }
     if (Object.keys(fields).length > 0) updates.push({ id: track.id, fields });
   }
@@ -169,6 +173,30 @@ export function draftGenreCell(tracks: LibraryTrack[], draft: AlbumDraft): Commo
   return { value: "", mixed: true, distinct: values.size };
 }
 
+/** The common fields the draft has moved, mapped to the value each left —
+ * feeds the revert chips. Genre is judged on its derived cell (the rows'
+ * shared reading), the rest on the same effective-edit rule as the save, so a
+ * chip can never point at an edit the save would not write. */
+export function commonOrigins(
+  tracks: LibraryTrack[],
+  baseline: AlbumCommonBaseline,
+  draft: AlbumDraft,
+): Partial<AlbumCommonValues> {
+  const origins: Partial<AlbumCommonValues> = {};
+  const genreCell = draftGenreCell(tracks, draft);
+  // Moved when the rows no longer read as they did — including into "mixed".
+  if (!baseline.genre.mixed && (genreCell.mixed || genreCell.value !== baseline.genre.value)) {
+    origins.genre = baseline.genre.value;
+  }
+  for (const field of ALBUM_COMMON_FIELDS) {
+    if (field === "genre" || baseline[field].mixed) continue;
+    if (effectiveEdit(field, draft.common[field], baseline[field].value) != null) {
+      origins[field] = baseline[field].value;
+    }
+  }
+  return origins;
+}
+
 /** How many distinct values a mixed field actually holds — "4 different values"
  * is a fact about the tags, where the track count would only restate the size of
  * the record. */
@@ -185,7 +213,9 @@ export function rowOrigins(track: LibraryTrack, row: TrackRowValues | undefined)
   const live = trackRowValues(track);
   const origins: Partial<TrackRowValues> = {};
   for (const key of Object.keys(live) as (keyof TrackRowValues)[]) {
-    if (row[key] !== live[key]) origins[key] = live[key];
+    // Same effective-edit rule as the save, so a "modified" mark can never
+    // point at an edit the save would not write.
+    if (effectiveEdit(key, row[key], live[key]) != null) origins[key] = live[key];
   }
   return origins;
 }

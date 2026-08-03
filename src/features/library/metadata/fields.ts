@@ -54,13 +54,45 @@ const WIRE_KEY: Record<keyof FieldValues, keyof TrackFieldPatch> = {
   category: "grouping",
 };
 
+/** Wire fields beets stores as integers, where 0 means "absent". */
+const INT_WIRE_FIELDS: ReadonlySet<keyof TrackFieldPatch> = new Set(["year", "track", "tracktotal"]);
+
+const INT_TEXT = /^-?\d+$/;
+
+/**
+ * The value an edit would actually store, or null when it would not move the
+ * stored one. Mirrors the sidecar's write rules — text is trimmed, an int
+ * field must parse (a non-numeric value is skipped, an emptied one clears to
+ * 0/"absent") — so "pending change" means exactly "a save would write
+ * something". Diffing raw drafts against stored values left phantom pending
+ * changes that survived their own save: the exit guard fired after a
+ * successful write, and re-saving the phantom could overwrite real tags.
+ */
+export function effectiveEdit(field: keyof TrackFieldPatch, draft: string, live: string): string | null {
+  const next = draft.trim();
+  const stored = live.trim();
+  if (INT_WIRE_FIELDS.has(field)) {
+    if (next !== "" && !INT_TEXT.test(next)) return null;
+    const nextInt = next === "" ? 0 : Number.parseInt(next, 10);
+    const storedInt = INT_TEXT.test(stored) ? Number.parseInt(stored, 10) : 0;
+    return nextInt !== storedInt ? next : null;
+  }
+  return next !== stored ? next : null;
+}
+
+/** `effectiveEdit` for one form field, keyed by its front name. */
+export function fieldEdit(key: keyof FieldValues, live: FieldValues, draft: FieldValues): string | null {
+  return effectiveEdit(WIRE_KEY[key], draft[key], live[key]);
+}
+
 /** Only the fields the user actually changed, keyed for the sidecar. Sending
  * just the diff keeps the write minimal — the sidecar re-tags a file only when
  * a value moved. */
 export function diffFields(live: FieldValues, draft: FieldValues): TrackFieldPatch {
   const patch: TrackFieldPatch = {};
   for (const key of Object.keys(WIRE_KEY) as (keyof FieldValues)[]) {
-    if (draft[key] !== live[key]) patch[WIRE_KEY[key]] = draft[key];
+    const value = fieldEdit(key, live, draft);
+    if (value != null) patch[WIRE_KEY[key]] = value;
   }
   return patch;
 }
