@@ -24,10 +24,9 @@ use crate::error::{AppError, AppResult};
 use crate::jobs::{AlbumTrack, Job};
 use crate::library_import::{ImportRecord, ScanCounts};
 
-/// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
-/// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
-/// EXISTS` don't need a bump.
-const SCHEMA_VERSION: i64 = 3;
+/// Schema version stamped into `PRAGMA user_version`. Informational: it records
+/// which build last touched the file. Nothing branches on it — see `open()`.
+const SCHEMA_VERSION: i64 = 4;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -49,6 +48,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- applied to every item the job produces once enrich is through. NULL means
     -- leave it alone, which is what every job written before this existed did.
     category    TEXT,
+    -- The album the user forced this playlist into, as JSON ({title, artist}).
+    -- NULL is the normal path: let the pipeline decide what album this is.
+    forced_album TEXT,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -110,12 +112,14 @@ pub fn open(path: &Path) -> AppResult<Connection> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.execute_batch(SCHEMA)?;
-    // Establish the migration baseline on a fresh (or pre-versioning) file.
-    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version < SCHEMA_VERSION {
-        migrate(&conn)?;
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-    }
+    // Unconditional, deliberately. This used to run only when the file was
+    // stamped below SCHEMA_VERSION, which meant a migration step added without
+    // bumping the constant never reached a single existing install: the column
+    // stayed missing and the first write failed with "table jobs has no column
+    // named …". Every step is idempotent (`add_column` checks first), so the
+    // gate bought nothing but that failure mode.
+    migrate(&conn)?;
+    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(conn)
 }
 
@@ -138,6 +142,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         "INTEGER NOT NULL DEFAULT 0",
     )?;
     add_column(conn, "jobs", "category", "TEXT")?;
+    add_column(conn, "jobs", "forced_album", "TEXT")?;
     Ok(())
 }
 
@@ -207,6 +212,11 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
         tracks: Vec::new(),
         download_attempts: row.get::<_, i64>("download_attempts")? as u32,
         category: row.get("category")?,
+        forced_album: row
+            .get::<_, Option<String>>("forced_album")?
+            .map(|text| serde_json::from_str(&text))
+            .transpose()
+            .map_err(|e| AppError::Sidecar(format!("bad forced_album json: {e}")))?,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -234,8 +244,8 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
             duration, staged_path, item_id, report, download_attempts, category,
-            created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            forced_album, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         params![
             job.id,
             job.url,
@@ -252,6 +262,11 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
             report_to_text(&job.report)?,
             job.download_attempts as i64,
             job.category,
+            job.forced_album
+                .as_ref()
+                .map(serde_json::to_string)
+                .transpose()
+                .map_err(|e| AppError::Sidecar(format!("forced_album not serializable: {e}")))?,
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -457,7 +472,7 @@ pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jobs::{JobKind, JobStatus, JobStep, TrackStatus};
+    use crate::jobs::{ForcedAlbum, JobKind, JobStatus, JobStep, TrackStatus};
     use crate::library_import::ImportStatus;
     use serde_json::json;
 
@@ -522,6 +537,79 @@ mod tests {
         assert!(column_names(&conn, "jobs").contains(&"category".to_string()));
     }
 
+    /// Regression: `open()` used to migrate only when the file was stamped
+    /// *below* SCHEMA_VERSION. Add a migration step without bumping the
+    /// constant and no existing install ever ran it — the column stayed missing
+    /// and the first write failed with "table jobs has no column named …".
+    ///
+    /// The stamp is deliberately the current version over an old schema, which
+    /// is exactly the state that shipped: writing `SCHEMA_VERSION - 1` here
+    /// would follow the bug instead of catching it, and the other migration
+    /// tests call `migrate()` directly and sail straight past the gate.
+    #[test]
+    fn opening_an_old_file_migrates_it_however_it_is_stamped() {
+        let path = std::env::temp_dir().join(format!("sonarche-migrate-{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+
+        {
+            let old = Connection::open(&path).unwrap();
+            old.execute_batch(SCHEMA_V1).unwrap();
+            old.pragma_update(None, "user_version", SCHEMA_VERSION)
+                .unwrap();
+        }
+
+        let conn = open(&path).unwrap();
+
+        for column in ["download_attempts", "category", "forced_album"] {
+            assert!(
+                column_names(&conn, "jobs").contains(&column.to_string()),
+                "{column} missing after opening an older file"
+            );
+        }
+        drop(conn);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn migrate_adds_the_forced_album_column_to_an_older_file() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA_V1).unwrap();
+        assert!(!column_names(&conn, "jobs").contains(&"forced_album".to_string()));
+
+        migrate(&conn).unwrap();
+
+        assert!(column_names(&conn, "jobs").contains(&"forced_album".to_string()));
+    }
+
+    #[test]
+    fn a_forced_album_survives_the_round_trip() {
+        let conn = mem();
+        let mut job = single("forced", JobStatus::Queued);
+        job.forced_album = Some(ForcedAlbum {
+            title: "Inception".into(),
+            artist: Some("Hans Zimmer".into()),
+        });
+        upsert_job(&conn, &job).unwrap();
+
+        let read = list_jobs(&conn).unwrap().pop().unwrap();
+        let forced = read.forced_album.expect("forced album lost in the store");
+        assert_eq!(forced.title, "Inception");
+        assert_eq!(forced.artist.as_deref(), Some("Hans Zimmer"));
+    }
+
+    #[test]
+    fn a_job_written_before_forced_albums_reads_back_without_one() {
+        let conn = mem();
+        upsert_job(&conn, &single("plain", JobStatus::Queued)).unwrap();
+
+        assert!(list_jobs(&conn)
+            .unwrap()
+            .pop()
+            .unwrap()
+            .forced_album
+            .is_none());
+    }
+
     #[test]
     fn migrate_is_idempotent_on_a_current_file() {
         // A fresh file already has the column but is stamped user_version 0, so
@@ -556,6 +644,7 @@ mod tests {
             tracks: Vec::new(),
             download_attempts: 1,
             category: Some("Video Games".into()),
+            forced_album: None,
             created_at: 1000,
             updated_at: 1000,
         }
