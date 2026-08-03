@@ -333,15 +333,17 @@ def download_cover(
     return None
 
 
-def set_album_art(album, data: bytes, is_png: bool) -> None:
+def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Archive") -> None:
     """Set beets' artpath (cover.jpg) — expects the 500px thumb, so the beets
-    copy stays light."""
+    copy stays light. `source` records where the picture came from: a forced
+    album may fall back to a video thumbnail, and the row should not claim the
+    Cover Art Archive gave it one."""
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
     try:
         album.set_art(tmp_path, copy=True)
-        album["art_source"] = "Cover Art Archive"
+        album["art_source"] = source
         album.store()
     finally:
         if os.path.exists(tmp_path):

@@ -139,8 +139,24 @@ pub struct Job {
     /// `None` means "don't touch it", which is what every pre-existing job does.
     #[serde(default)]
     pub category: Option<String>,
+    /// The album the user declared this playlist to *be*, overriding whatever
+    /// releases its tracks turn out to belong to. `None` is the normal path.
+    #[serde(default)]
+    pub forced_album: Option<ForcedAlbum>,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+/// A record the user assembled by hand — a film, a series, a game — filed under
+/// one name however many releases its tracks came from. Per-track identity is
+/// still looked up; only the filing is decided here.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForcedAlbum {
+    pub title: String,
+    /// Left to the sidecar's compilation default when the user names none.
+    #[serde(default)]
+    pub artist: Option<String>,
 }
 
 struct JobsInner {
@@ -790,6 +806,16 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                     t.status = TrackStatus::Downloaded;
                 })
                 .await;
+                // The first video's thumbnail stands in as the record's cover
+                // when a forced album finds no artwork of its own. Only the
+                // first: they are per-video, and a playlist's cover should not
+                // change with whichever track happened to finish last.
+                if let Some(thumbnail) = as_string("thumbnail") {
+                    update_job(app, inner, id, |j| {
+                        j.thumbnail.get_or_insert(thumbnail);
+                    })
+                    .await;
+                }
             }
             Err(err) => {
                 // One dead video must not sink the album; the row shows it.
@@ -1010,6 +1036,17 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
         })
         .collect();
 
+    // The category rides along so the cover lookup knows whether there is a
+    // medium to search for; the thumbnail is the stand-in when there is not.
+    let forced_album = job.forced_album.as_ref().map(|forced| {
+        json!({
+            "title": forced.title,
+            "artist": forced.artist,
+            "category": job.category,
+            "thumbnail": job.thumbnail,
+        })
+    });
+
     let sidecar = app.state::<SidecarState>();
     sidecar
         .request(
@@ -1023,6 +1060,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
                 "acoustid_key": acoustid_key,
                 "album_title": job.title,
                 "artist": job.artist,
+                "forced_album": forced_album,
                 "track_hints": track_hints,
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
                 "lookup_pause_seconds": prefs.acoustid_lookup_delay_seconds,
@@ -1039,6 +1077,7 @@ impl JobsState {
         url: String,
         kind: JobKind,
         category: Option<String>,
+        forced_album: Option<ForcedAlbum>,
     ) -> AppResult<Job> {
         let now = now_ms();
         let job = Job {
@@ -1058,6 +1097,7 @@ impl JobsState {
             tracks: Vec::new(),
             download_attempts: 0,
             category,
+            forced_album,
             created_at: now,
             updated_at: now,
         };

@@ -15,7 +15,15 @@
     "title": "Options",
     "category": "Category",
     "categoryHint": "Context, not musical style — where the music comes from. You can change it later on any track.",
-    "categoryNone": "None"
+    "categoryNone": "None",
+    "forcedAlbum": {
+      "legend": "Force an album",
+      "hint": "For a film, a series, a game: files the whole playlist under one album, whatever releases its tracks came from. Each track keeps its own artist.",
+      "singleHint": "Available on a full album — a single track has no playlist to gather.",
+      "title": "Album title",
+      "titlePlaceholder": "Name of the film, series, game…",
+      "artist": "Album artist"
+    }
   },
   "activity": {
     "inFlight": "In progress",

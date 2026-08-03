@@ -402,6 +402,10 @@ const libraryTracks = [
     bonus_source: null,
     mb_trackid: null,
     suspect_match: false,
+    // A forced album that found no artwork of its own and kept the video's
+    // thumbnail — the state the album panel's cover notice exists to report,
+    // and one nothing else in the mock could reach.
+    provisional_cover: true,
     // Categorized soundtrack: the Categories page's first card.
     category: "Video Games",
     soundtrack: true,
@@ -696,6 +700,8 @@ export function installMockTauri() {
         const queued = job({
           url: String(payload?.url ?? ""),
           kind: String(payload?.kind ?? "single"),
+          category: (payload?.category as string | null) ?? null,
+          forcedAlbum: (payload?.forcedAlbum as unknown) ?? null,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });

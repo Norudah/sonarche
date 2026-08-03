@@ -10,7 +10,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::identity;
-use crate::jobs::{Job, JobKind, JobsState};
+use crate::jobs::{ForcedAlbum, Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_move;
@@ -34,6 +34,11 @@ const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
 /// tag writer.
 const MAX_CATEGORY_CHARS: usize = 100;
 
+/// Bound on a forced album's title and artist. Same reasoning as the category —
+/// both land in a tag on every file the job writes — with the headroom real
+/// soundtrack names need ("… Original Motion Picture Soundtrack").
+const MAX_ALBUM_CHARS: usize = 300;
+
 #[tauri::command]
 pub async fn get_env_status(app: AppHandle) -> AppResult<EnvStatus> {
     python_env::env_status(&app).await
@@ -51,6 +56,7 @@ pub async fn enqueue_download(
     url: String,
     kind: Option<JobKind>,
     category: Option<String>,
+    forced_album: Option<ForcedAlbum>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -71,8 +77,39 @@ pub async fn enqueue_download(
         }
         other => other,
     };
+    // A forced album with no title is the toggle left on over an empty field —
+    // "no forced album", not a rejected download.
+    let forced_album = match forced_album {
+        Some(forced) => {
+            let title = forced.title.trim().to_string();
+            let artist = forced
+                .artist
+                .map(|a| a.trim().to_string())
+                .filter(|a| !a.is_empty());
+            if title.is_empty() {
+                None
+            } else if title.chars().count() > MAX_ALBUM_CHARS
+                || artist
+                    .as_ref()
+                    .is_some_and(|a| a.chars().count() > MAX_ALBUM_CHARS)
+            {
+                return Err(AppError::InvalidInput(
+                    "forced album name is too long".into(),
+                ));
+            } else {
+                Some(ForcedAlbum { title, artist })
+            }
+        }
+        None => None,
+    };
     state
-        .enqueue(&app, url, kind.unwrap_or(JobKind::Single), category)
+        .enqueue(
+            &app,
+            url,
+            kind.unwrap_or(JobKind::Single),
+            category,
+            forced_album,
+        )
         .await
 }
 

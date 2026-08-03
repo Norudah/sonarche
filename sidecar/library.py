@@ -27,6 +27,7 @@ _GENRE_FMT_DELIMITER = "; "
 # in item_attributes and is never read.
 _BONUS_SOURCE_KEY = "sonarche_bonus_source"
 _SUSPECT_KEY = "sonarche_suspect_match"
+_PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
@@ -108,7 +109,9 @@ def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
     }
 
 
-def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: str) -> dict:
+def track_row(
+    row, art_by_album, bonus_by_item, suspect_by_item, provisional_cover_by_item, library_dir: str
+) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
     genre = first_genre(row["genres"])
     return {
@@ -142,6 +145,9 @@ def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: st
         # The match contradicts the download's own title (see suspect.py):
         # shown by the triage page as "to review".
         "suspect_match": row["id"] in suspect_by_item,
+        # A forced album whose cover is the video's thumbnail, not real art:
+        # the right shape, the wrong picture, and worth replacing.
+        "provisional_cover": row["id"] in provisional_cover_by_item,
         "added": row["added"],
     }
 
@@ -169,13 +175,22 @@ def handle(_request_id: str, params: dict) -> dict:
         art_by_album = art_paths_by_album(conn, library_dir)
         bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
+        provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
         # `added` at the bottom instead of letting NULL sort unpredictably.
         rows = conn.execute(
             f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC"
         )
         tracks = [
-            track_row(r, art_by_album, bonus_by_item, suspect_by_item, library_dir) for r in rows
+            track_row(
+                r,
+                art_by_album,
+                bonus_by_item,
+                suspect_by_item,
+                provisional_cover_by_item,
+                library_dir,
+            )
+            for r in rows
         ]
     finally:
         conn.close()

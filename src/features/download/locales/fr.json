@@ -15,7 +15,15 @@
     "title": "Options",
     "category": "Catégorie",
     "categoryHint": "Le contexte, pas le style : d'où vient la musique. Modifiable ensuite sur chaque morceau.",
-    "categoryNone": "Aucune"
+    "categoryNone": "Aucune",
+    "forcedAlbum": {
+      "legend": "Forcer un album",
+      "hint": "Pour un film, une série, un jeu : range toute la playlist sous un seul album, quels que soient les albums d'origine des morceaux. Les artistes de chaque titre sont conservés.",
+      "singleHint": "Disponible pour un album entier : un titre seul n'a pas de playlist à regrouper.",
+      "title": "Titre de l'album",
+      "titlePlaceholder": "Nom du film, de la série, du jeu…",
+      "artist": "Artiste de l'album"
+    }
   },
   "activity": {
     "inFlight": "En cours",

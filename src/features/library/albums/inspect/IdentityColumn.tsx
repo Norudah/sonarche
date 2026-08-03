@@ -2,6 +2,7 @@ import type { AlbumCompletion } from "@/features/library/albums/albumCompletion"
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
 import { CommonFields } from "@/features/library/albums/inspect/CommonFields";
 import { CompletionCard } from "@/features/library/albums/inspect/CompletionCard";
+import { ProvisionalCoverNotice } from "@/features/library/albums/inspect/ProvisionalCoverNotice";
 import type { TrackFilter } from "@/features/library/albums/inspect/trackFilter";
 
 /**
@@ -24,6 +25,7 @@ export function IdentityColumn({
   genreFamily,
   trackCount,
   soundtrack,
+  hasProvisionalCover,
   filter,
   onFilter,
   onChange,
@@ -37,6 +39,8 @@ export function IdentityColumn({
   genreFamily: string;
   trackCount: number;
   soundtrack: boolean;
+  /** The cover is a stand-in the user should replace — see the notice. */
+  hasProvisionalCover: boolean;
   filter: TrackFilter | null;
   onFilter: (filter: TrackFilter | null) => void;
   onChange: (field: AlbumCommonField, value: string) => void;
@@ -45,6 +49,8 @@ export function IdentityColumn({
   return (
     <div className="flex w-[21rem] shrink-0 flex-col gap-4 overflow-y-auto border-r border-separator bg-panel px-5 py-4 xl:w-[23rem]">
       <CompletionCard completion={completion} filter={filter} onFilter={onFilter} />
+
+      {hasProvisionalCover && <ProvisionalCoverNotice />}
 
       <hr className="border-separator" />
 

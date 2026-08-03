@@ -66,8 +66,20 @@ export interface DownloadJob {
    * onto every item it produced. Null on jobs queued before the option existed,
    * and whenever the user chose to leave the axis alone. */
   category: string | null;
+  /** The album the user declared this playlist to be, overriding whatever
+   * releases its tracks belong to. Null on every ordinary download. */
+  forcedAlbum: ForcedAlbum | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A record assembled by hand — a film, a series, a game — filed under one name
+ * however many releases its tracks came from. The per-track artist survives it:
+ * only the filing is forced. */
+export interface ForcedAlbum {
+  title: string;
+  /** Left to the sidecar's compilation default ("Various Artists") when empty. */
+  artist: string | null;
 }
 
 interface WireReport {
@@ -110,6 +122,7 @@ export interface WireJob {
   tracks?: WireTrack[];
   downloadAttempts?: number;
   category?: string | null;
+  forcedAlbum?: ForcedAlbum | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -152,6 +165,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     tracks: (raw.tracks ?? []).map(mapTrack),
     downloadAttempts: raw.downloadAttempts ?? 0,
     category: raw.category ?? null,
+    forcedAlbum: raw.forcedAlbum ?? null,
   };
 }
 
@@ -163,10 +177,12 @@ export interface EnqueueRequest {
   kind: JobKind;
   /** Canonical category value, or null to leave the axis untouched. */
   category: string | null;
+  /** One album for the whole playlist, or null to let the pipeline decide. */
+  forcedAlbum: ForcedAlbum | null;
 }
 
-export async function enqueueDownload({ url, kind, category }: EnqueueRequest): Promise<DownloadJob> {
-  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind, category }));
+export async function enqueueDownload({ url, kind, category, forcedAlbum }: EnqueueRequest): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind, category, forcedAlbum }));
 }
 
 export async function listJobs(): Promise<DownloadJob[]> {

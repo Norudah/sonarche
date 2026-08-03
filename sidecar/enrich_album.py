@@ -16,6 +16,7 @@ import time
 
 import covers
 import enrich
+import forced_album
 import metadata
 import protocol
 import provenance
@@ -858,6 +859,36 @@ def _tag_unidentified(lib, album, items, params: dict) -> None:
             _embed_album_cover(album, fresh)
 
 
+def _handle_forced(
+    request_id: str, lib, items, params: dict, pause: float, forced: dict, duplicate_reports: list
+) -> dict:
+    """The user named the record; identify the tracks, then file them under it.
+
+    No release vote and no text search: both exist to answer "what album is
+    this?", which the user has just answered. What the per-track pass is still
+    worth is everything below the album — title, artist, genre, year — which is
+    exactly what makes the artist column readable once the album name stops
+    coming from MusicBrainz.
+
+    The provisional fill runs *before* the album is forced, because it parks a
+    zero in `track` on purpose; forcing afterwards is what puts the playlist
+    position back."""
+    protocol.log(f"enrich_album: album forced to « {forced['title']} », per-track identification")
+    any_matched = _enrich_per_track(request_id, lib, items, params, pause)
+    _tag_unidentified(lib, None, items, params)
+
+    fresh = [item for item in (lib.get_item(i.id) for i in items) if item is not None]
+    album = forced_album.apply(lib, fresh, forced)
+    provisional_cover = forced_album.ensure_cover(lib, album, fresh, forced)
+
+    return {
+        "matched": any_matched,
+        "mode": "forced",
+        "provisional_cover": provisional_cover,
+        "reports": _build_reports(lib, fresh) + duplicate_reports,
+    }
+
+
 def handle(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
@@ -877,14 +908,23 @@ def handle(request_id: str, params: dict) -> dict:
 
     metadata.ensure_plugins()
     pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
+    forced = forced_album.requested(params)
 
     duplicate_reports: list[dict] = []
     recordings: dict[int, list[str]] = {}
     if params.get("acoustid_key"):
         recordings = _fingerprint_all(request_id, items, params)
         items, duplicates = _remove_duplicates(request_id, lib, items, recordings)
-        items, library_duplicates = _remove_library_duplicates(request_id, lib, items, recordings)
-        duplicates.update(library_duplicates)
+        # A forced album is a compilation the user is assembling on purpose, so
+        # a track they already own under its original release is not a mistake
+        # to drop — dropping it would hand them a record with a hole in it and
+        # no way to see why. Two copies of the same recording *inside the
+        # playlist* stay a mis-upload either way, so that pass above still runs.
+        if not forced:
+            items, library_duplicates = _remove_library_duplicates(
+                request_id, lib, items, recordings
+            )
+            duplicates.update(library_duplicates)
         duplicate_reports = [
             {"item_id": item_id, "duplicate_of": kept_id, "report": None}
             for item_id, kept_id in sorted(duplicates.items())
@@ -896,6 +936,9 @@ def handle(request_id: str, params: dict) -> dict:
 
     hints = {h["item_id"]: h for h in params.get("track_hints") or []}
     _apply_hints(items, hints, params.get("artist"))
+
+    if forced:
+        return _handle_forced(request_id, lib, items, params, pause, forced, duplicate_reports)
 
     match, leftovers = None, []
     source = None

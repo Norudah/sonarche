@@ -99,4 +99,13 @@ describe("mapJob", () => {
   it("reads a job queued before the category option as carrying none", () => {
     expect(mapJob(wireJob({ category: undefined })).category).toBeNull();
   });
+
+  it("reads a job queued before forced albums as forcing none", () => {
+    expect(mapJob(wireJob({ forcedAlbum: undefined })).forcedAlbum).toBeNull();
+  });
+
+  it("carries a forced album through", () => {
+    const forced = { title: "Inception", artist: "Hans Zimmer" };
+    expect(mapJob(wireJob({ forcedAlbum: forced })).forcedAlbum).toEqual(forced);
+  });
 });

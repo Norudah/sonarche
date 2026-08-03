@@ -297,6 +297,7 @@ function InspectBody({
           genreFamily={genreFamily}
           trackCount={album.tracks.length}
           soundtrack={album.tracks.some((track) => track.soundtrack)}
+          hasProvisionalCover={album.tracks.some((track) => track.provisionalCover)}
           filter={filter}
           onFilter={setFilter}
           onChange={setCommon}

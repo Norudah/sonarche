@@ -33,6 +33,10 @@ export interface LibraryTrack {
   /** The match contradicts the download's own title (cross-language
    * fingerprint collisions): surfaced by the metadata triage as "to review". */
   suspectMatch: boolean;
+  /** The album's cover is the video's thumbnail rather than real artwork — a
+   * forced album whose media had none on the Cover Art Archive. Right shape,
+   * wrong picture: the album panel says so and points at replacing it. */
+  provisionalCover: boolean;
   /** The user's own axis (beets' grouping tag): context — Video Games, Film…
    * — not musical style. Canonical English values; the UI translates known
    * taxonomy entries. Optional by nature: not counted in tag completeness. */
@@ -61,6 +65,7 @@ interface WireTrack {
   bonus_source: string | null;
   mb_trackid: string | null;
   suspect_match: boolean;
+  provisional_cover?: boolean;
   category: string | null;
   soundtrack: boolean;
 }
@@ -125,6 +130,8 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     bonusSource: track.bonus_source,
     mbTrackId: track.mb_trackid,
     suspectMatch: track.suspect_match,
+    // Absent from a library read by a build that predates forced albums.
+    provisionalCover: track.provisional_cover ?? false,
     category: track.category,
     soundtrack: track.soundtrack,
   }));

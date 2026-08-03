@@ -35,6 +35,7 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
+    provisionalCover: false,
     category: null,
     soundtrack: false,
     ...over,

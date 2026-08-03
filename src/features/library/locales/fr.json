@@ -310,7 +310,8 @@
     "rematch": {
       "blocked": "Indisponible tant que des modifications sont en attente — le re-match réécrirait les tags.",
       "progress": "{{done}} / {{total}} morceaux · {{matched}} identifiés"
-    }
+    },
+    "provisionalCover": "La pochette est la miniature de la vidéo, pas une vraie jaquette : remplace-la quand tu auras l'image du média."
   },
   "delete": {
     "action": "Supprimer le morceau",
