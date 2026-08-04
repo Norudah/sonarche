@@ -122,6 +122,17 @@ export function JobDetail({
         {job.category && <Fact label={t("activity.detail.category")}>{categoryLabel(job.category)}</Fact>}
       </dl>
 
+      {/* Slots YouTube kept as dead placeholders (deleted/private/claimed):
+          skipped before download, but the set has holes the listing cannot
+          even name — so the one honest move is to say so and hand the search
+          back to the user. */}
+      {job.unavailable > 0 && (
+        <p className="flex items-start gap-2 rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2.5 text-[0.75rem] leading-snug text-warning">
+          <TriangleAlert className="mt-px size-3.5 shrink-0" />
+          {t("activity.detail.unavailable", { count: job.unavailable })}
+        </p>
+      )}
+
       {isAlbum && (
         <div className="flex flex-col">
           <div

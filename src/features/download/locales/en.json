@@ -17,9 +17,12 @@
     "categoryHint": "Context, not musical style — where the music comes from. You can change it later on any track.",
     "categoryNone": "None",
     "forcedAlbum": {
-      "legend": "Force an album",
-      "hint": "For a film, a series, a game: files the whole playlist under one album, whatever releases its tracks came from. Each track keeps its own artist.",
-      "singleHint": "Available on a full album — a single track has no playlist to gather.",
+      "legend": "Gather the whole playlist under one album",
+      "problem": "Music from a film, a series or a game belongs to different artists and different albums. Filed as they come, the tracks scatter: each one joins its original album, and the soundtrack exists nowhere.",
+      "effect": "This gathers them under the album you name. Every track keeps its own artist and genre — only the filing changes.",
+      "without": "Without",
+      "with": "With",
+      "singleHint": "For a full album only — a single track has no playlist to gather.",
       "title": "Album title",
       "titlePlaceholder": "Name of the film, series, game…",
       "artist": "Album artist"
@@ -52,7 +55,9 @@
       "cover": "Cover",
       "category": "Category",
       "track": "Track",
-      "attempts": "Attempts"
+      "attempts": "Attempts",
+      "unavailable_one": "{{count}} video in the playlist couldn't be fetched: removed, made private or blocked. That doesn't necessarily leave the album incomplete — playlists often carry duplicates, or entries whoever built it never took out. Compare the list below against the album you expected before hunting elsewhere.",
+      "unavailable_other": "{{count}} videos in the playlist couldn't be fetched: removed, made private or blocked. That doesn't necessarily leave the album incomplete — playlists often carry duplicates, or entries whoever built it never took out. Compare the list below against the album you expected before hunting elsewhere."
     },
     "empty": {
       "title": "Nothing has come through yet.",
@@ -130,6 +135,8 @@
     "clearHistoryImports_other": "{{count}} imports",
     "clearHistoryCancel": "Cancel",
     "clearHistoryConfirm": "Clear",
-    "clearHistoryFailed": "Clearing the history failed."
+    "clearHistoryFailed": "Clearing the history failed.",
+    "trackUnavailable": "This video is no longer available.",
+    "unavailableChip": "Unavailable"
   }
 }

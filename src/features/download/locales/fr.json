@@ -17,9 +17,12 @@
     "categoryHint": "Le contexte, pas le style : d'où vient la musique. Modifiable ensuite sur chaque morceau.",
     "categoryNone": "Aucune",
     "forcedAlbum": {
-      "legend": "Forcer un album",
-      "hint": "Pour un film, une série, un jeu : range toute la playlist sous un seul album, quels que soient les albums d'origine des morceaux. Les artistes de chaque titre sont conservés.",
-      "singleHint": "Disponible pour un album entier : un titre seul n'a pas de playlist à regrouper.",
+      "legend": "Réunir toute la playlist sous un seul album",
+      "problem": "Les musiques d'un film, d'une série ou d'un jeu appartiennent à des artistes et à des albums différents. Rangées telles quelles, elles se dispersent : chaque morceau rejoint son album d'origine, et la bande originale n'existe nulle part.",
+      "effect": "Cette option les réunit sous l'album que tu nommes. Chaque morceau garde son artiste et son genre — seul le rangement change.",
+      "without": "Sans",
+      "with": "Avec",
+      "singleHint": "Réservé à un album entier : un titre seul n'a pas de playlist à réunir.",
       "title": "Titre de l'album",
       "titlePlaceholder": "Nom du film, de la série, du jeu…",
       "artist": "Artiste de l'album"
@@ -52,7 +55,9 @@
       "cover": "Pochette",
       "category": "Catégorie",
       "track": "Titre",
-      "attempts": "Tentatives"
+      "attempts": "Tentatives",
+      "unavailable_one": "{{count}} vidéo de la playlist n'a pas pu être récupérée : retirée, passée en privé ou bloquée. L'album n'est pas forcément incomplet pour autant — une playlist contient souvent des doublons, ou des ajouts que la personne qui l'a créée n'a jamais retirés. Compare la liste ci-dessous à l'album que tu attendais avant d'aller chercher ailleurs.",
+      "unavailable_other": "{{count}} vidéos de la playlist n'ont pas pu être récupérées : retirées, passées en privé ou bloquées. L'album n'est pas forcément incomplet pour autant — une playlist contient souvent des doublons, ou des ajouts que la personne qui l'a créée n'a jamais retirés. Compare la liste ci-dessous à l'album que tu attendais avant d'aller chercher ailleurs."
     },
     "empty": {
       "title": "Rien n'est encore passé par ici.",
@@ -130,6 +135,8 @@
     "clearHistoryImports_other": "{{count}} imports",
     "clearHistoryCancel": "Annuler",
     "clearHistoryConfirm": "Vider",
-    "clearHistoryFailed": "La suppression de l'historique a échoué."
+    "clearHistoryFailed": "La suppression de l'historique a échoué.",
+    "trackUnavailable": "Cette vidéo n'est plus disponible.",
+    "unavailableChip": "Indisponible"
   }
 }

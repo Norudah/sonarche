@@ -81,7 +81,7 @@ export function canRetry(job: DownloadJob): boolean {
  * three. */
 export function survivingTracks(job: DownloadJob): { kept: number; total: number } | null {
   if (job.kind !== "album" || job.tracks.length === 0) return null;
-  const kept = job.tracks.filter((track) => track.status !== "failed").length;
+  const kept = job.tracks.filter((track) => track.status !== "failed" && track.status !== "unavailable").length;
   return kept === job.tracks.length ? null : { kept, total: job.tracks.length };
 }
 
@@ -137,5 +137,9 @@ export function trackPipeline(track: AlbumTrackJob, isEnriched: boolean): StepSt
       return ["done", "done", enrichOutcome(track.report, track.duplicateOf != null)];
     case "failed":
       return ["failed", "pending", "pending"];
+    case "unavailable":
+      // `empty`, not `failed`: the step never had a video to work on. Painting
+      // it red would blame the run for something YouTube did to the playlist.
+      return ["empty", "empty", "empty"];
   }
 }

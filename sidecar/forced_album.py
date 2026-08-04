@@ -121,13 +121,15 @@ def _release_group_id(title: str) -> str | None:
 
     plugin = metadata.mb_plugin()
     try:
-        results = plugin.mb_api.search_release_groups(
-            releasegroup=title, secondarytype="Soundtrack", limit=5
+        results = plugin.mb_api.search(
+            "release-group",
+            {"releasegroup": title, "secondarytype": "Soundtrack"},
+            limit=5,
         )
     except Exception as exc:
         protocol.log(f"forced_album: release-group search failed: {exc}")
         return None
-    for group in results.get("release-group-list") or []:
+    for group in results:
         if title_matches(group.get("title"), title):
             protocol.log(
                 f"forced_album: « {group.get('title')} » matches « {title} » "
@@ -236,7 +238,9 @@ def ensure_cover(lib, album, items, spec: dict) -> bool:
         return False
 
     hq, thumb = cover
-    source = "YouTube thumbnail" if provisional else "Cover Art Archive"
+    # Written onto the album row and shown in the metadata panel, so it names
+    # the *kind* of picture rather than the site it came from.
+    source = "Video thumbnail" if provisional else "Cover Art Archive"
     try:
         enrich.set_album_art(album, *thumb, source=source)
         enrich.save_hq_cover(album, *hq)

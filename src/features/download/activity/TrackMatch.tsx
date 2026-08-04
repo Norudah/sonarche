@@ -30,6 +30,15 @@ export function TrackMatch({ track }: { track: AlbumTrackJob }) {
       </Chip>
     );
   }
+  // Nothing was ever identified because nothing was ever fetched — and the
+  // neutral dot would read as "still working" on a row that is finished.
+  if (track.status === "unavailable") {
+    return (
+      <Chip variant="soft" size="sm" color="warning">
+        {t("queue.unavailableChip")}
+      </Chip>
+    );
+  }
   if (track.status !== "done") return <Awaiting />;
   if (track.report?.mbMatched) {
     return (

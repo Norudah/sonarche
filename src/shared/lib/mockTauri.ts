@@ -170,6 +170,9 @@ const jobs = [
     title: "Awake",
     artist: "Skillet",
     thumbnail: thumb("#2c8", "#083"),
+    // Two dead playlist slots (deleted/private videos), skipped at probe:
+    // exercises the detail panel's "album may be incomplete" notice.
+    unavailable: 2,
     createdAt: now - 5500,
     tracks: [
       albumTrack({

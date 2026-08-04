@@ -77,6 +77,11 @@ pub enum TrackStatus {
     Imported,
     Done,
     Failed,
+    /// The source will never serve this one: removed, made private, blocked or
+    /// claimed since the playlist was assembled. Distinct from `Failed` because
+    /// there is nothing to retry and nothing went wrong on our side — the
+    /// playlist simply lists a video that no longer plays.
+    Unavailable,
 }
 
 /// One entry of an album job's playlist. `staged_path`/`item_id` encode the
@@ -143,6 +148,11 @@ pub struct Job {
     /// releases its tracks turn out to belong to. `None` is the normal path.
     #[serde(default)]
     pub forced_album: Option<ForcedAlbum>,
+    /// Playlist slots whose video was deleted, made private or claimed:
+    /// skipped before download (they can only fail) but counted, because the
+    /// record has holes YouTube cannot even name.
+    #[serde(default)]
+    pub unavailable: u32,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -417,6 +427,15 @@ fn job_log(id: &str, msg: &str) {
     eprintln!("[job {}] {msg}", &id[..id.len().min(8)]);
 }
 
+/// The marker `sidecar/download.py` puts on a video YouTube will never serve.
+/// The wording of yt-dlp's own message stays the sidecar's business; this side
+/// only needs to know the verdict.
+const UNAVAILABLE_PREFIX: &str = "video-unavailable:";
+
+fn is_unavailable(message: &str) -> bool {
+    message.contains(UNAVAILABLE_PREFIX)
+}
+
 /// Raw sidecar download of one URL into the staging dir.
 async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
@@ -484,6 +503,14 @@ async fn download_with_retry(
             Ok(result) => {
                 job_log(job_id, "downloaded ok");
                 return Ok(result);
+            }
+            // A video that no longer exists will not exist on the third try
+            // either. Retrying cost two more round-trips and 18s of sleeping
+            // per dead entry — on a playlist with four of them, a minute of
+            // waiting for an answer the first attempt already gave.
+            Err(err) if is_unavailable(&err.to_string()) => {
+                job_log(job_id, &format!("unavailable, not retrying: {err}"));
+                return Err(err);
             }
             Err(err) if attempt < DOWNLOAD_ATTEMPTS => {
                 job_log(job_id, &format!("failed: {err}"));
@@ -819,10 +846,22 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             }
             Err(err) => {
                 // One dead video must not sink the album; the row shows it.
-                job_log(id, &format!("track {} marked failed", track.index));
                 let message = err.to_string();
+                let gone = is_unavailable(&message);
+                job_log(
+                    id,
+                    &format!(
+                        "track {} marked {}",
+                        track.index,
+                        if gone { "unavailable" } else { "failed" }
+                    ),
+                );
                 update_track(app, inner, id, track.index, |t| {
-                    t.status = TrackStatus::Failed;
+                    t.status = if gone {
+                        TrackStatus::Unavailable
+                    } else {
+                        TrackStatus::Failed
+                    };
                     t.error = Some(message);
                 })
                 .await;
@@ -948,12 +987,39 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .iter()
         .filter(|t| t.status == TrackStatus::Failed)
         .count();
+    // Videos YouTube pulled out from under the playlist. Counted on the job so
+    // the card can say the record has holes, and kept out of `failed`: nothing
+    // went wrong here, and there is nothing to retry.
+    let unavailable = job
+        .tracks
+        .iter()
+        .filter(|t| t.status == TrackStatus::Unavailable)
+        .count() as u32;
+    if unavailable > 0 {
+        job_log(
+            id,
+            &format!("{unavailable} of {total} track(s) no longer available at the source"),
+        );
+    }
+    update_job(app, inner, id, |j| j.unavailable = unavailable).await;
 
     // `Failed` means the batch produced nothing — a dead playlist, a network
     // that never answered. One dead video out of twenty-four is not that: the
     // run reached the end and the library gained twenty-three tracks, so the
     // job is `Done` and `error` carries the tally. Calling it failed made the
     // row paint its whole pipeline red and claim the import never happened.
+    // Every video gone is a dead end, not a success with nothing in it: the
+    // `failed == 0` branch below would otherwise call this run `Done`.
+    if unavailable as usize == total {
+        job_log(id, &format!("job FAILED: all {total} video(s) unavailable"));
+        update_job(app, inner, id, |j| {
+            j.status = JobStatus::Failed;
+            j.failed_step = Some(JobStep::Download);
+            j.error = Some(format!("all {total} videos are no longer available"));
+        })
+        .await;
+        return;
+    }
     if failed == 0 {
         job_log(id, "job done");
         update_job(app, inner, id, |j| {
@@ -1098,6 +1164,7 @@ impl JobsState {
             download_attempts: 0,
             category,
             forced_album,
+            unavailable: 0,
             created_at: now,
             updated_at: now,
         };

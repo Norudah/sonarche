@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- The album the user forced this playlist into, as JSON ({title, artist}).
     -- NULL is the normal path: let the pipeline decide what album this is.
     forced_album TEXT,
+    -- Playlist slots skipped at probe time because their video was deleted,
+    -- private or claimed: the job's downloads mirror the playable playlist.
+    unavailable INTEGER NOT NULL DEFAULT 0,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -143,6 +146,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     )?;
     add_column(conn, "jobs", "category", "TEXT")?;
     add_column(conn, "jobs", "forced_album", "TEXT")?;
+    add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
     Ok(())
 }
 
@@ -217,6 +221,7 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
             .map(|text| serde_json::from_str(&text))
             .transpose()
             .map_err(|e| AppError::Sidecar(format!("bad forced_album json: {e}")))?,
+        unavailable: row.get::<_, i64>("unavailable")? as u32,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -244,8 +249,8 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
             duration, staged_path, item_id, report, download_attempts, category,
-            forced_album, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+            forced_album, unavailable, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
         params![
             job.id,
             job.url,
@@ -267,6 +272,7 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
                 .map(serde_json::to_string)
                 .transpose()
                 .map_err(|e| AppError::Sidecar(format!("forced_album not serializable: {e}")))?,
+            job.unavailable as i64,
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -560,7 +566,12 @@ mod tests {
 
         let conn = open(&path).unwrap();
 
-        for column in ["download_attempts", "category", "forced_album"] {
+        for column in [
+            "download_attempts",
+            "category",
+            "forced_album",
+            "unavailable",
+        ] {
             assert!(
                 column_names(&conn, "jobs").contains(&column.to_string()),
                 "{column} missing after opening an older file"
@@ -645,6 +656,7 @@ mod tests {
             download_attempts: 1,
             category: Some("Video Games".into()),
             forced_album: None,
+            unavailable: 0,
             created_at: 1000,
             updated_at: 1000,
         }

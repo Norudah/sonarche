@@ -2,6 +2,7 @@ import { Switch } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import type { ForcedAlbum } from "@/features/download/api";
+import { ForcedAlbumPreview } from "@/features/download/ForcedAlbumPreview";
 
 /** The default the sidecar applies when the user names no album artist. Shown
  * as the field's placeholder so the fallback is visible before it happens. */
@@ -51,15 +52,27 @@ export function ForcedAlbumChoice({
           <Switch.Control>
             <Switch.Thumb />
           </Switch.Control>
-          <span className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
+          {/* Sentence case and full weight, unlike the uppercase legends above:
+              this is a decision the user makes, not a group of settings, and it
+              should read as the question it is. */}
+          <span className={`text-[0.8125rem] font-semibold ${isOn ? "text-accent" : ""}`}>
             {t("options.forcedAlbum.legend")}
           </span>
         </Switch.Content>
       </Switch>
 
-      <p className="text-xs text-muted">
-        {isDisabled ? t("options.forcedAlbum.singleHint") : t("options.forcedAlbum.hint")}
-      </p>
+      {isDisabled ? (
+        <p className="text-xs text-muted">{t("options.forcedAlbum.singleHint")}</p>
+      ) : (
+        <>
+          {/* The problem first, the option second: nobody reaches for this
+              until they know a media playlist scatters by default. Capped
+              measure — the composer is far wider than a readable line. */}
+          <p className="max-w-[62ch] text-xs leading-relaxed text-muted">{t("options.forcedAlbum.problem")}</p>
+          <p className="max-w-[62ch] text-xs leading-relaxed text-muted">{t("options.forcedAlbum.effect")}</p>
+          <ForcedAlbumPreview isOn={isOn} />
+        </>
+      )}
 
       {isOn && !isDisabled && (
         <div className="mt-1 flex flex-col gap-2 sm:flex-row">

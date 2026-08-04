@@ -60,6 +60,7 @@ export function job(over: Partial<DownloadJob> = {}): DownloadJob {
     downloadAttempts: 0,
     category: null,
     forcedAlbum: null,
+    unavailable: 0,
     createdAt: 0,
     updatedAt: 0,
     ...over,

@@ -41,19 +41,30 @@ export function JobTrackRow({ track, libraryTrack, isEnriched, onInspect, onDele
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   const isDropped = track.duplicateOf != null;
+  const isGone = track.status === "unavailable";
 
   return (
     <div
-      className={`${TRACK_GRID} rounded-lg px-2 py-1.5 transition-colors hover:bg-default/50 ${isDropped ? "opacity-60" : ""}`}
+      className={`${TRACK_GRID} rounded-lg px-2 py-1.5 transition-colors hover:bg-default/50 ${isDropped || isGone ? "opacity-60" : ""}`}
     >
       <span className="text-right text-xs tabular-nums text-muted">{track.index}</span>
 
       <div className="min-w-0">
-        <p className="truncate text-[0.8125rem]">{track.title ?? track.url}</p>
-        {track.status === "failed" && track.error && (
-          <p className="truncate text-[0.6875rem] text-danger" title={track.error}>
-            {track.error}
-          </p>
+        <p className={`truncate text-[0.8125rem] ${isGone ? "text-muted line-through" : ""}`}>
+          {track.title ?? track.url}
+        </p>
+        {/* A gone video gets one plain sentence, not yt-dlp's stack of prose:
+            nothing here is actionable inside the app, so the row says what
+            happened and stops. */}
+        {isGone ? (
+          <p className="truncate text-[0.6875rem] text-muted">{t("queue.trackUnavailable")}</p>
+        ) : (
+          track.status === "failed" &&
+          track.error && (
+            <p className="truncate text-[0.6875rem] text-danger" title={track.error}>
+              {track.error}
+            </p>
+          )
         )}
       </div>
 

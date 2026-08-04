@@ -3,7 +3,17 @@ import { invoke } from "@tauri-apps/api/core";
 export type JobKind = "single" | "album";
 export type JobStatus = "queued" | "downloading" | "importing" | "enriching" | "done" | "failed";
 export type JobStep = "download" | "import" | "enrich";
-export type TrackStatus = "pending" | "downloading" | "downloaded" | "imported" | "done" | "failed";
+export type TrackStatus =
+  | "pending"
+  | "downloading"
+  | "downloaded"
+  | "imported"
+  | "done"
+  | "failed"
+  /** YouTube will never serve this one — deleted, private, blocked or claimed
+   * since the playlist was assembled. Not a failure of ours, and not
+   * retryable: the playlist lists a video that no longer plays. */
+  | "unavailable";
 
 export interface MetadataReportFields {
   title: boolean;
@@ -69,6 +79,10 @@ export interface DownloadJob {
   /** The album the user declared this playlist to be, overriding whatever
    * releases its tracks belong to. Null on every ordinary download. */
   forcedAlbum: ForcedAlbum | null;
+  /** Playlist slots whose video was deleted, private or claimed — skipped
+   * before download (they could only fail), but the set has holes YouTube
+   * cannot even name, and the user deserves to know. */
+  unavailable: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -123,6 +137,7 @@ export interface WireJob {
   downloadAttempts?: number;
   category?: string | null;
   forcedAlbum?: ForcedAlbum | null;
+  unavailable?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -166,6 +181,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     downloadAttempts: raw.downloadAttempts ?? 0,
     category: raw.category ?? null,
     forcedAlbum: raw.forcedAlbum ?? null,
+    unavailable: raw.unavailable ?? 0,
   };
 }
 
