@@ -1,4 +1,5 @@
 import { Switch } from "@heroui/react";
+import { Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ForcedAlbum } from "@/features/download/api";
@@ -64,14 +65,25 @@ export function ForcedAlbumChoice({
       {isDisabled ? (
         <p className="text-xs text-muted">{t("options.forcedAlbum.singleHint")}</p>
       ) : (
-        <>
-          {/* The problem first, the option second: nobody reaches for this
-              until they know a media playlist scatters by default. Capped
-              measure — the composer is far wider than a readable line. */}
-          <p className="max-w-[62ch] text-xs leading-relaxed text-muted">{t("options.forcedAlbum.problem")}</p>
-          <p className="max-w-[62ch] text-xs leading-relaxed text-muted">{t("options.forcedAlbum.effect")}</p>
+        /* Prose and picture side by side: stacked, the explanation pushed the
+           fields a screenful down for an option most downloads never need. The
+           diagram sits at its natural width and the text takes the rest. */
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+          {/* Sized to its own text, not to the strip: stretched to fill, the
+              column capped the measure anyway and left the diagram marooned at
+              the far right. */}
+          <div className="flex max-w-[52ch] flex-col gap-1.5">
+            <p className="text-xs leading-relaxed text-muted">{t("options.forcedAlbum.problem")}</p>
+            {/* The load-bearing correction: a released soundtrack is matched on
+                its own, and forcing one skips that. Kept visually apart from the
+                description because it changes whether you tick the box at all. */}
+            <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted">
+              <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-accent" />
+              <span>{t("options.forcedAlbum.tryWithout")}</span>
+            </p>
+          </div>
           <ForcedAlbumPreview isOn={isOn} />
-        </>
+        </div>
       )}
 
       {isOn && !isDisabled && (

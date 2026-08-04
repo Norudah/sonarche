@@ -18,8 +18,8 @@
     "categoryNone": "None",
     "forcedAlbum": {
       "legend": "Gather the whole playlist under one album",
-      "problem": "Music from a film, a series or a game belongs to different artists and different albums. Filed as they come, the tracks scatter: each one joins its original album, and the soundtrack exists nowhere.",
-      "effect": "This gathers them under the album you name. Every track keeps its own artist and genre — only the filing changes.",
+      "problem": "A hand-built playlist gathers tracks from different albums: filed as they come, each rejoins its own. This files them under the album you name, leaving their artist and genre alone.",
+      "tryWithout": "Try without it first: a soundtrack already released as an album is recognised on its own. Forcing only helps when no such album exists.",
       "without": "Without",
       "with": "With",
       "singleHint": "For a full album only — a single track has no playlist to gather.",

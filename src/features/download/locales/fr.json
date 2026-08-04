@@ -18,8 +18,8 @@
     "categoryNone": "Aucune",
     "forcedAlbum": {
       "legend": "Réunir toute la playlist sous un seul album",
-      "problem": "Les musiques d'un film, d'une série ou d'un jeu appartiennent à des artistes et à des albums différents. Rangées telles quelles, elles se dispersent : chaque morceau rejoint son album d'origine, et la bande originale n'existe nulle part.",
-      "effect": "Cette option les réunit sous l'album que tu nommes. Chaque morceau garde son artiste et son genre — seul le rangement change.",
+      "problem": "Une playlist assemblée à la main réunit des morceaux d'albums différents : rangés tels quels, chacun rejoint le sien. Cette option les range sous l'album que tu nommes, sans toucher à leur artiste ni à leur genre.",
+      "tryWithout": "Essaie d'abord sans : une bande originale déjà publiée comme album est reconnue toute seule. Forcer ne sert que si l'album n'existe pas.",
       "without": "Sans",
       "with": "Avec",
       "singleHint": "Réservé à un album entier : un titre seul n'a pas de playlist à réunir.",
