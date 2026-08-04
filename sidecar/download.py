@@ -6,8 +6,52 @@ AcoustID…) finds a real match. The YouTube info is only returned to the caller
 display and as search hints."""
 
 import os
+import re
 
 import protocol
+
+# Prefix the caller matches on to tell "YouTube will never serve this" apart
+# from "the download failed". A machine-readable marker rather than the raw
+# yt-dlp sentence: the wording is yt-dlp's to change, and only this module
+# should have to know it.
+UNAVAILABLE_PREFIX = "video-unavailable:"
+
+# What yt-dlp says when the video is gone for good — deleted, made private,
+# blocked or claimed. The playlist still lists these with a full title,
+# duration and channel (see probe.py), so this is the first and only moment
+# the truth is knowable. Matched case-insensitively on the error text.
+_UNAVAILABLE_MARKERS = (
+    "video unavailable",
+    "this video is not available",
+    "private video",
+    "video has been removed",
+    "account associated with this video has been terminated",
+    "who has blocked it",
+    "available in your country",
+    "blocked it on copyright grounds",
+)
+
+
+def is_unavailable_error(message: str) -> bool:
+    """Whether a yt-dlp failure means the video itself is gone, rather than the
+    download going wrong. Pure — unit-tested against the real messages."""
+    low = (message or "").casefold()
+    return any(marker in low for marker in _UNAVAILABLE_MARKERS)
+
+
+def scrub(message: str) -> str:
+    """A yt-dlp error with the extractor tag removed.
+
+    Errors reach the download history and are shown on the failing row, and
+    yt-dlp stamps every one with the site it came from (`ERROR: [youtube] …`).
+    The app never names the site it fetches from, so the tag comes off here —
+    at the one place that reads yt-dlp's output — while the part that says what
+    actually went wrong is kept verbatim. Pure."""
+    text = (message or "").strip()
+    text = re.sub(r"^ERROR:\s*", "", text)
+    # The tag and the video id it carries: "[youtube] dQw4w9WgXcQ: ".
+    text = re.sub(r"^\[[^\]]+\]\s*[\w-]*:?\s*", "", text)
+    return text.strip()
 
 
 def _progress_hook(request_id):
@@ -52,8 +96,17 @@ def handle(request_id: str, params: dict) -> dict:
         "progress_hooks": [_progress_hook(request_id)],
     }
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+    except yt_dlp.utils.DownloadError as exc:
+        # A video removed from the playlist's reach is not a failed download:
+        # retrying can only fail again, and the job should report a hole in the
+        # record rather than an error it could have avoided.
+        message = str(exc)
+        if is_unavailable_error(message):
+            raise RuntimeError(f"{UNAVAILABLE_PREFIX} {scrub(message)}") from exc
+        raise RuntimeError(scrub(message)) from exc
 
     downloads = info.get("requested_downloads") or []
     path = downloads[0]["filepath"] if downloads else None

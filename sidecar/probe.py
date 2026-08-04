@@ -3,9 +3,15 @@
 Used before enqueueing an album job: the caller needs the entry list (per-track
 watch URLs) to drive downloads one by one with its own pacing."""
 
-
 def summarize(info: dict, max_entries: int) -> dict:
-    """Reduce a yt-dlp flat info dict to the wire shape. Pure — unit-tested."""
+    """Reduce a yt-dlp flat info dict to the wire shape. Pure — unit-tested.
+
+    Dead entries are *not* filtered here, and cannot be: a video that YouTube
+    has since blocked or claimed is listed with a full title, duration, channel
+    and view count — byte for byte like a healthy one — and `availability` is
+    null for every entry in flat mode. The listing simply does not carry the
+    answer. It surfaces at download time, where `download.py` names it and the
+    track lands `unavailable` rather than `failed`."""
     if info.get("_type") == "playlist":
         # Dedupe by video id: playlists can list the same video twice, but both
         # would stage to one file (title [id].m4a) — the first import moves it
