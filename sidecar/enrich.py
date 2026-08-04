@@ -126,6 +126,44 @@ def _album_for_recording(rec_id: str):
     return album_info, track_info, release
 
 
+# The three verdicts the video's title can pass on a candidate, in sort order.
+_TITLE_NAMES = 0  # shares a real word with the video title
+_TITLE_NEUTRAL = 1  # no evidence either way (junk or empty titles)
+_TITLE_CONTRADICTS = 2  # both carry words, none shared
+
+
+def candidate_sort_key(
+    title_hint: str | None, candidate_title: str | None, release: dict
+) -> tuple:
+    """How much to trust one candidate recording; lower is better. Pure.
+
+    The video's own title outranks the release type. AcoustID's crowd data
+    mislinks confusable recordings (language versions, or two songs off one
+    soundtrack whose fingerprints someone cross-submitted), and submission
+    count then puts the wrong song first — « Real Gone » landed as
+    « Sleepin' on the Foldout » with the right title sitting in candidate slot
+    two. A candidate the video names beats any candidate it contradicts; the
+    release rank (studio album over best-of, earliest date) only arbitrates
+    within the same title verdict. Junk titles cost nothing: both sides
+    reduced to noise judge every candidate neutral, which is the old order."""
+    if suspect.titles_agree(title_hint, candidate_title):
+        verdict = _TITLE_NAMES
+    elif suspect.is_title_mismatch(title_hint, candidate_title):
+        verdict = _TITLE_CONTRADICTS
+    else:
+        verdict = _TITLE_NEUTRAL
+    return (verdict, metadata.release_rank(release))
+
+
+def is_settled(key: tuple, title_hint: str | None) -> bool:
+    """Whether a candidate is unbeatable, ending the scan early: a clean studio
+    album (no unwanted secondary type, primary rank 0) that the video's title
+    vouches for — or, when the hint carries no usable words, on rank alone."""
+    verdict, rank = key
+    confirmed = verdict == _TITLE_NAMES or not suspect.has_words(title_hint)
+    return confirmed and not rank[0] and rank[1] == 0
+
+
 def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str | None:
     """Search MusicBrainz by name using the YouTube hints. In-memory only:
     nothing is stored unless a near-perfect match is applied afterwards."""
@@ -405,13 +443,20 @@ def enrich_one(
     params: dict,
     fetch_cover: bool = True,
     provisional_fallback: bool = True,
+    known_recordings: list[str] | None = None,
 ) -> dict:
     """Fingerprint-first enrichment of one item. Caller owns the Library and
     must have called metadata.ensure_plugins(). `params` carries fpcalc,
     acoustid_key and the optional title/artist hints. `fetch_cover=False`
     lets the album batch fetch one cover per album instead of per track;
     `provisional_fallback=False` likewise defers the unidentified-file guess to
-    the album batch, which can borrow its siblings' release."""
+    the album batch, which can borrow its siblings' release.
+
+    `known_recordings` short-circuits the fingerprint+lookup with recording ids
+    the album batch already resolved for this very file: without it, every
+    track the batch handed to the per-track pass paid fpcalc and the AcoustID
+    round-trip a second time. An empty list is a real answer (fingerprinted,
+    nothing above the score bar) — only None means "not looked up yet"."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
@@ -419,7 +464,10 @@ def enrich_one(
     recordings: list[str] = []
     fingerprinted = False
     api_key = params.get("acoustid_key")
-    if api_key:
+    if known_recordings is not None:
+        recordings = known_recordings
+        fingerprinted = True
+    elif api_key:
         # item_id lets the album batch's UI animate the matching child row.
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
@@ -438,9 +486,20 @@ def enrich_one(
     # recording for the album version and for each best-of it lands on), ordered
     # by AcoustID submission count. Picking the first that resolves tags whatever
     # release happens to top that list — often a compilation. Score every
-    # candidate's canonical release and keep the best (studio album over best-of).
+    # candidate's canonical release and keep the best.
+    #
+    # The video's own title outranks the release type. AcoustID's crowd data
+    # mislinks confusable recordings (language versions, or two songs off one
+    # soundtrack whose fingerprints someone cross-submitted), and submission
+    # count then puts the wrong song first — « Real Gone » landed as
+    # « Sleepin' on the Foldout » with the right title sitting in candidate
+    # slot two. A candidate whose title shares a word with the video's beats
+    # any candidate that contradicts it; the release rank only arbitrates
+    # within the same title verdict. Junk titles cost nothing: both sides
+    # reduced to noise judge every candidate "neutral", which is the old order.
+    title_hint = params.get("title")
     album_info = track_info = None
-    best_rank = None
+    best_key = None
     for rec_id in recordings:
         try:
             ai, ti, release = _album_for_recording(rec_id)
@@ -449,11 +508,18 @@ def enrich_one(
             continue
         if ti is None:
             continue
-        rank = metadata.release_rank(release)
-        if best_rank is None or rank < best_rank:
-            album_info, track_info, best_rank = ai, ti, rank
-        if not rank[0] and rank[1] == 0:  # clean studio album: nothing beats it
+        key = candidate_sort_key(title_hint, ti.title, release)
+        if best_key is None or key < best_key:
+            album_info, track_info, best_key = ai, ti, key
+        # A clean studio album the video's title vouches for (or, with no
+        # usable hint, any clean studio album): nothing later can beat it.
+        if is_settled(key, title_hint):
             break
+    if track_info is not None and best_key is not None and best_key[0] == _TITLE_CONTRADICTS:
+        protocol.log(
+            f"enrich: no candidate matched the video title « {title_hint} », "
+            f"keeping best-ranked « {track_info.title} »"
+        )
 
     source = "acoustid" if track_info is not None else None
     if track_info is None:

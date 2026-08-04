@@ -777,10 +777,16 @@ def _consolidate_album_rows(lib, items) -> list:
     return albums
 
 
-def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -> bool:
+def _enrich_per_track(
+    request_id: str, lib, items, params: dict, pause: float, recordings: dict | None = None
+) -> bool:
     """Per-track enrichment loop (full batch or an album match's leftovers).
     Covers are deferred to _finalize_fallback: tracks landing on the same
-    release share one album row and one Cover Art Archive fetch."""
+    release share one album row and one Cover Art Archive fetch.
+
+    `recordings` is the batch's own fingerprint work ({item_id: [recording
+    ids]}): handing it down means a track already fingerprinted upstream never
+    pays fpcalc and the AcoustID round-trip a second time."""
     hints = {h["item_id"]: h for h in params.get("track_hints") or []}
     any_matched = False
     total = len(items)
@@ -797,6 +803,7 @@ def _enrich_per_track(request_id: str, lib, items, params: dict, pause: float) -
                 track_params,
                 fetch_cover=False,
                 provisional_fallback=False,
+                known_recordings=(recordings or {}).get(item.id),
             )
         except Exception as exc:  # one bad track must not sink the rest
             protocol.log(f"enrich_album: item {item.id} enrich failed: {exc}")
@@ -860,7 +867,14 @@ def _tag_unidentified(lib, album, items, params: dict) -> None:
 
 
 def _handle_forced(
-    request_id: str, lib, items, params: dict, pause: float, forced: dict, duplicate_reports: list
+    request_id: str,
+    lib,
+    items,
+    params: dict,
+    pause: float,
+    forced: dict,
+    duplicate_reports: list,
+    recordings: dict,
 ) -> dict:
     """The user named the record; identify the tracks, then file them under it.
 
@@ -874,7 +888,7 @@ def _handle_forced(
     zero in `track` on purpose; forcing afterwards is what puts the playlist
     position back."""
     protocol.log(f"enrich_album: album forced to « {forced['title']} », per-track identification")
-    any_matched = _enrich_per_track(request_id, lib, items, params, pause)
+    any_matched = _enrich_per_track(request_id, lib, items, params, pause, recordings)
     _tag_unidentified(lib, None, items, params)
 
     fresh = [item for item in (lib.get_item(i.id) for i in items) if item is not None]
@@ -938,7 +952,9 @@ def handle(request_id: str, params: dict) -> dict:
     _apply_hints(items, hints, params.get("artist"))
 
     if forced:
-        return _handle_forced(request_id, lib, items, params, pause, forced, duplicate_reports)
+        return _handle_forced(
+            request_id, lib, items, params, pause, forced, duplicate_reports, recordings
+        )
 
     match, leftovers = None, []
     source = None
@@ -970,7 +986,7 @@ def handle(request_id: str, params: dict) -> dict:
         rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
         if rest:
             protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
-            _enrich_per_track(request_id, lib, rest, params, pause)
+            _enrich_per_track(request_id, lib, rest, params, pause, recordings)
         _finalize_fallback(lib, mapped + adopted + rest)
         if rest:
             _tag_unidentified(lib, album, rest, params)
@@ -978,7 +994,7 @@ def handle(request_id: str, params: dict) -> dict:
         return {"matched": True, "mode": "album", "reports": reports}
 
     protocol.log("enrich_album: no album-level match, falling back per track")
-    any_matched = _enrich_per_track(request_id, lib, items, params, pause)
+    any_matched = _enrich_per_track(request_id, lib, items, params, pause, recordings)
     _finalize_fallback(lib, items)
     # No release was ever voted, so there is nothing to borrow: each survivor
     # gets only what its own video knew.
