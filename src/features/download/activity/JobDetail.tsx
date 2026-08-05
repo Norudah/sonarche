@@ -7,7 +7,7 @@ import { JobTrackRow, TRACK_GRID } from "@/features/download/activity/JobTrackRo
 import type { EnrichStage } from "@/features/download/hooks";
 import { AttemptDots } from "@/features/download/activity/StepMarkers";
 import { jobAttempts } from "@/features/download/queue/attempts";
-import { albumPresence, type LibraryPresence } from "@/features/download/queue/library";
+import { jobPresence, type LibraryPresence } from "@/features/download/queue/library";
 import { formatTags, jobTags } from "@/features/download/queue/tags";
 import type { LibraryTrack } from "@/features/library/api";
 // The taxonomy the download composer offers is the library's own axis, and its
@@ -63,15 +63,7 @@ export function JobDetail({
   const isAlbum = job.kind === "album" && job.tracks.length > 0;
   const tags = jobTags(job);
 
-  const presence = isLibraryLoaded
-    ? isAlbum
-      ? albumPresence(job, isInLibrary)
-      : job.report?.itemId != null
-        ? isInLibrary(job.report.itemId)
-          ? "full"
-          : "none"
-        : null
-    : null;
+  const presence = isLibraryLoaded ? jobPresence(job, isInLibrary) : null;
 
   const source = isAlbum
     ? job.tracks.find((track) => track.report?.source)?.report?.source

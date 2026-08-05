@@ -17,7 +17,7 @@ import { formatDuration } from "@/shared/lib/format";
  * the width `RowActions` reserves for its largest set, which is also why the
  * rows here do not pass `dense`.
  */
-export const TRACK_GRID = "grid grid-cols-[1.75rem_1fr_4.5rem_7rem_3rem_6.5rem] items-center gap-3";
+export const TRACK_GRID = "grid grid-cols-[1.75rem_1fr_4.5rem_7rem_3rem_4.5rem] items-center gap-3";
 
 interface JobTrackRowProps {
   track: AlbumTrackJob;

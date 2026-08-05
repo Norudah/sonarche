@@ -30,7 +30,12 @@
   },
   "activity": {
     "inFlight": "In progress",
-    "recent": "Recent",
+    "recent": "Recent history",
+    "presence": {
+      "full": "In the library",
+      "partial": "Partly removed",
+      "none": "Removed from the library"
+    },
     "expand": "Show details",
     "collapse": "Hide details",
     "percent": "{{value}} %",
