@@ -231,6 +231,29 @@ const jobs = [
       albumTrack({ index: 4, videoId: "d4", title: "Sh-Boom", duration: 158, status: "done", itemId: 200 }),
     ],
   }),
+  // Stopped by the user mid-download: terminal without an error, retryable,
+  // and its tracks keep the resume markers a retry would pick up.
+  job({
+    kind: "album",
+    status: "cancelled",
+    url: "https://youtube.com/playlist?list=OLAK5uy_stopped",
+    title: "Random Access Memories",
+    artist: "Daft Punk",
+    thumbnail: thumb("#888", "#334"),
+    createdAt: now - 5900,
+    tracks: [
+      albumTrack({
+        index: 1,
+        videoId: "c1",
+        title: "Give Life Back to Music",
+        duration: 275,
+        status: "downloaded",
+        stagedPath: "/tmp/1.m4a",
+      }),
+      albumTrack({ index: 2, videoId: "c2", title: "The Game of Love", duration: 322 }),
+      albumTrack({ index: 3, videoId: "c3", title: "Giorgio by Moroder", duration: 544 }),
+    ],
+  }),
   job({
     status: "failed",
     failedStep: "download",
@@ -716,7 +739,7 @@ export function installMockTauri() {
       if (cmd === "clear_job_history") {
         for (let i = jobs.length - 1; i >= 0; i--) {
           const status = (jobs[i] as { status?: string }).status;
-          if (status === "done" || status === "failed") jobs.splice(i, 1);
+          if (status === "done" || status === "failed" || status === "cancelled") jobs.splice(i, 1);
         }
         mockImports.length = 0;
         return [...jobs];
@@ -725,6 +748,15 @@ export function installMockTauri() {
         const target = jobs.find((j) => j.id === payload?.id);
         if (!target) return {};
         Object.assign(target, { status: "queued", error: null, failedStep: null });
+        return target;
+      }
+      if (cmd === "cancel_job") {
+        const target = jobs.find((j) => j.id === payload?.id);
+        if (!target) return {};
+        Object.assign(target, { status: "cancelled", error: null, failedStep: null });
+        for (const track of (target as { tracks: { status: string }[] }).tracks) {
+          if (track.status === "downloading") track.status = "pending";
+        }
         return target;
       }
       // Apply edits to the in-memory seed so a re-list reflects them — without

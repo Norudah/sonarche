@@ -124,6 +124,16 @@ pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) 
 }
 
 #[tauri::command]
+pub async fn cancel_job(
+    app: AppHandle,
+    state: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+    id: String,
+) -> AppResult<Job> {
+    state.cancel(&app, &sidecar, &id).await
+}
+
+#[tauri::command]
 pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
     Ok(state.clear_history().await)
 }

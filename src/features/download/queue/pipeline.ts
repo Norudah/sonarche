@@ -41,6 +41,10 @@ function currentIndex(job: DownloadJob): number {
       return PIPELINE_STEPS.length;
     case "failed":
       return job.failedStep ? PIPELINE_STEPS.indexOf(job.failedStep) : 0;
+    case "cancelled":
+      // Stopped between steps, no single step to blame; the per-track rows
+      // still carry what each one reached before the stop.
+      return -1;
   }
 }
 
@@ -72,7 +76,11 @@ function detailFor(
  * it landed while some of its tracks did not. Mirrors the backend's own gate —
  * a retry only re-queues the failed tracks, never the whole batch. */
 export function canRetry(job: DownloadJob): boolean {
-  return job.status === "failed" || (job.status === "done" && job.tracks.some((track) => track.status === "failed"));
+  return (
+    job.status === "failed" ||
+    job.status === "cancelled" ||
+    (job.status === "done" && job.tracks.some((track) => track.status === "failed"))
+  );
 }
 
 /** Tracks the batch carried to the end, over its total — null when nothing was

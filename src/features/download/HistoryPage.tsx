@@ -54,7 +54,9 @@ export function HistoryPage({ arrivals, arrivalsCount = 0, onHistoryCleared }: H
   // the last page that still exists instead of an empty list.
   const { jobs: visible, page, pageCount } = pageOfJobs(all, requestedPage);
 
-  const terminalCount = all.filter((job) => job.status === "done" || job.status === "failed").length;
+  const terminalCount = all.filter(
+    (job) => job.status === "done" || job.status === "failed" || job.status === "cancelled",
+  ).length;
   const hasHistory = terminalCount > 0 || arrivalsCount > 0;
 
   const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));

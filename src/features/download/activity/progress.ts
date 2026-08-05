@@ -12,9 +12,9 @@ import { isFetched } from "@/features/download/queue/pipeline";
  * is, right now.
  */
 
-/** Which stage the job is on. `queued` and the two terminal states are phases
- * of their own: none of them has a segment doing work. */
-export type JobPhase = "queued" | "download" | "import" | "enrich" | "done" | "failed";
+/** Which stage the job is on. `queued` and the terminal states are phases of
+ * their own: none of them has a segment doing work. */
+export type JobPhase = "queued" | "download" | "import" | "enrich" | "done" | "failed" | "cancelled";
 
 /** The figure the phase line carries after the stage name — a tally of tracks
  * for a playlist, bytes for a lone file. Structured, not formatted: this module
@@ -124,5 +124,9 @@ export function jobProgress(
       const fills = [0, 0, 0].map((_, i) => (i < index ? 1 : 0)) as [number, number, number];
       return { phase: "failed", fills, activeIndex: null, failedIndex: index, detail: null };
     }
+
+    case "cancelled":
+      // Terminal and quiet: the rail is never drawn for it, the verdict speaks.
+      return { phase: "cancelled", fills: [0, 0, 0], activeIndex: null, failedIndex: null, detail: null };
   }
 }

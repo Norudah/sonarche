@@ -41,7 +41,8 @@
       "import": "Rangement",
       "enrich": "Identification",
       "done": "Terminé",
-      "failed": "Échec"
+      "failed": "Échec",
+      "cancelled": "Arrêté"
     },
     "verdict": {
       "matched": "Identifié",
@@ -49,7 +50,8 @@
       "guessed": "Tags devinés",
       "unmatched": "Non identifié",
       "lostTracks": "Partiel {{kept}}/{{total}}",
-      "failed": "Échec"
+      "failed": "Échec",
+      "cancelled": "Arrêté"
     },
     "detail": {
       "cover": "Pochette",
@@ -116,6 +118,7 @@
     "trackCount_one": "{{count}} piste",
     "trackCount_other": "{{count}} pistes",
     "retry": "Réessayer",
+    "cancel": "Arrêter",
     "matched": "Correspondance trouvée",
     "matchNone": "Aucune",
     "duplicate": "Doublon ignoré",

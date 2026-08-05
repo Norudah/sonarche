@@ -2,6 +2,7 @@
 //! `download → import`, persists state to app data, and pushes every
 //! transition to the webview as a `jobs:updated` event.
 
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -56,6 +57,9 @@ pub enum JobStatus {
     Enriching,
     Done,
     Failed,
+    /// Stopped by the user. Terminal like `Failed`, but nothing went wrong:
+    /// per-track resume markers survive, so a retry picks up where it stopped.
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -174,6 +178,35 @@ struct JobsInner {
     /// sync, so every touch runs inside `spawn_blocking` via `with_conn`.
     conn: Arc<StdMutex<Connection>>,
     tx: mpsc::UnboundedSender<String>,
+    /// Jobs the user asked to stop. In-memory on purpose: a cancel only makes
+    /// sense against a live worker, and startup recovery already fails whatever
+    /// a dead app left behind. The worker consumes an entry at its next
+    /// checkpoint and writes the terminal `Cancelled` state.
+    cancels: StdMutex<HashSet<String>>,
+}
+
+fn request_cancel(inner: &JobsInner, id: &str) {
+    inner
+        .cancels
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(id.to_string());
+}
+
+fn cancel_requested(inner: &JobsInner, id: &str) -> bool {
+    inner
+        .cancels
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .contains(id)
+}
+
+fn take_cancel(inner: &JobsInner, id: &str) -> bool {
+    inner
+        .cancels
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(id)
 }
 
 pub struct JobsState(Arc<JobsInner>);
@@ -256,6 +289,7 @@ pub fn init(app: &AppHandle) -> AppResult<JobsState> {
     let inner = Arc::new(JobsInner {
         conn: Arc::new(StdMutex::new(conn)),
         tx,
+        cancels: StdMutex::new(HashSet::new()),
     });
     spawn_worker(app.clone(), inner.clone(), rx);
     Ok(JobsState(inner))
@@ -336,10 +370,19 @@ async fn run_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
+    // Cancelled while still in line: the cancel command already wrote the
+    // terminal state, this side only consumes the flag it left armed.
+    if job.status == JobStatus::Cancelled {
+        take_cancel(inner, id);
+        return;
+    }
     match job.kind {
         JobKind::Album => run_album_job(app, inner, id).await,
         JobKind::Single => run_single_job(app, inner, id).await,
     }
+    // A cancel that landed after the last checkpoint changed nothing; drop it
+    // so it cannot bleed into a later retry of the same job.
+    take_cancel(inner, id);
 }
 
 async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
@@ -366,6 +409,9 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 }
             },
         };
+        if settle_cancel(app, inner, id).await {
+            return;
+        }
 
         job_log(id, "━━ import phase ━━");
         update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
@@ -390,6 +436,9 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         update_job(app, inner, id, |j| j.status = JobStatus::Done).await;
         return;
     };
+    if settle_cancel(app, inner, id).await {
+        return;
+    }
 
     job_log(id, "━━ metadata phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Enriching).await;
@@ -411,7 +460,35 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     }
 }
 
+/// Terminal write of a user cancellation, if one was requested: the job stops
+/// where it stands, keeping every per-track resume marker; a track caught
+/// mid-download goes back to pending — its file never finished. Returns whether
+/// the job was settled, in which case the caller must stop driving it.
+async fn settle_cancel(app: &AppHandle, inner: &JobsInner, id: &str) -> bool {
+    if !take_cancel(inner, id) {
+        return false;
+    }
+    job_log(id, "job cancelled by user");
+    update_job(app, inner, id, |j| {
+        j.status = JobStatus::Cancelled;
+        j.failed_step = None;
+        j.error = None;
+        for track in &mut j.tracks {
+            if track.status == TrackStatus::Downloading {
+                track.status = TrackStatus::Pending;
+            }
+        }
+    })
+    .await;
+    true
+}
+
 async fn fail(app: &AppHandle, inner: &JobsInner, id: &str, step: JobStep, err: AppError) {
+    // Killing the work process to interrupt a step surfaces here as a sidecar
+    // error; the user's stop must not be recorded as a failure.
+    if settle_cancel(app, inner, id).await {
+        return;
+    }
     job_log(id, &format!("job FAILED at {step:?}: {err}"));
     update_job(app, inner, id, |j| {
         j.status = JobStatus::Failed;
@@ -510,6 +587,12 @@ async fn download_with_retry(
             // waiting for an answer the first attempt already gave.
             Err(err) if is_unavailable(&err.to_string()) => {
                 job_log(job_id, &format!("unavailable, not retrying: {err}"));
+                return Err(err);
+            }
+            // A stop request killed the request out from under us; retrying
+            // would restart the sidecar and download the file the user just
+            // refused. The caller's cancel checkpoint settles the job.
+            Err(err) if cancel_requested(inner, job_id) => {
                 return Err(err);
             }
             Err(err) if attempt < DOWNLOAD_ATTEMPTS => {
@@ -774,6 +857,9 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .download_delay_seconds;
     let mut downloaded_before = false;
     for track in &tracks {
+        if settle_cancel(app, inner, id).await {
+            return;
+        }
         if track.status == TrackStatus::Done {
             continue;
         }
@@ -844,6 +930,16 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                     .await;
                 }
             }
+            // The stop request killed this track's request; it did nothing
+            // wrong, so it rejoins the pending set for a future retry. The
+            // checkpoint at the top of the next iteration settles the job.
+            Err(_) if cancel_requested(inner, id) => {
+                update_track(app, inner, id, track.index, |t| {
+                    t.status = TrackStatus::Pending;
+                    t.error = None;
+                })
+                .await;
+            }
             Err(err) => {
                 // One dead video must not sink the album; the row shows it.
                 let message = err.to_string();
@@ -867,6 +963,10 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 .await;
             }
         }
+    }
+
+    if settle_cancel(app, inner, id).await {
+        return;
     }
 
     // Import loop: singleton per file (the real album row is created by
@@ -901,6 +1001,13 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 })
                 .await;
             }
+            // Interrupted by the stop request, not broken: the staged file is
+            // intact and a retry re-imports it.
+            Err(_) if cancel_requested(inner, id) => {
+                if settle_cancel(app, inner, id).await {
+                    return;
+                }
+            }
             Err(err) => {
                 let message = err.to_string();
                 update_track(app, inner, id, track.index, |t| {
@@ -910,6 +1017,10 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 .await;
             }
         }
+    }
+
+    if settle_cancel(app, inner, id).await {
+        return;
     }
 
     // Enrich: one album-wide request so a single MusicBrainz release covers
@@ -1180,18 +1291,60 @@ impl JobsState {
         Ok(job)
     }
 
+    /// Stop a job. A queued one is settled on the spot; a running one gets its
+    /// in-flight sidecar request killed — the worker's next checkpoint records
+    /// the terminal state. Resume markers survive, so a retry can pick it up.
+    pub async fn cancel(
+        &self,
+        app: &AppHandle,
+        sidecar: &SidecarState,
+        id: &str,
+    ) -> AppResult<Job> {
+        let current = snapshot(&self.0, id)
+            .await
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
+        if matches!(
+            current.status,
+            JobStatus::Done | JobStatus::Failed | JobStatus::Cancelled
+        ) {
+            return Err(AppError::InvalidInput("job already finished".into()));
+        }
+        request_cancel(&self.0, id);
+        if current.status == JobStatus::Queued {
+            // Nothing in flight to interrupt; write the terminal state here.
+            // The flag stays armed on purpose: if the worker picked the job up
+            // between our snapshot and this write, its next checkpoint wins;
+            // otherwise `run_job` (or a retry) consumes the leftover.
+            update_job(app, &self.0, id, |j| j.status = JobStatus::Cancelled).await;
+        } else {
+            // The worker is blocked on this job's request — the queue is
+            // serial, so whatever the work channel is running belongs to this
+            // job. Killing the process is the only way to interrupt it; the
+            // channel restarts itself on the next request.
+            sidecar.abort_work().await;
+        }
+        snapshot(&self.0, id)
+            .await
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))
+    }
+
     pub async fn retry(&self, app: &AppHandle, id: &str) -> AppResult<Job> {
         let current = snapshot(&self.0, id)
             .await
             .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
+        // A cancel armed but never consumed (the job was already queued when it
+        // arrived) must not shoot down the run it is now asked to redo.
+        take_cancel(&self.0, id);
         // A partly-successful album is `Done` (see the album worker's final
         // status) yet still holds dead tracks worth another try, so "failed"
-        // alone is too narrow a gate.
+        // alone is too narrow a gate. A cancelled job is the user changing
+        // their mind: it resumes from its per-track markers.
         let has_failed_tracks = current
             .tracks
             .iter()
             .any(|t| t.status == TrackStatus::Failed);
-        if current.status != JobStatus::Failed && !has_failed_tracks {
+        if !matches!(current.status, JobStatus::Failed | JobStatus::Cancelled) && !has_failed_tracks
+        {
             return Err(AppError::InvalidInput("job has nothing to retry".into()));
         }
         let job = update_job(app, &self.0, id, |j| {

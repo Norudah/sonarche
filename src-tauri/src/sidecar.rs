@@ -305,6 +305,14 @@ impl SidecarState {
         self.read.request(app, cmd, params, timeout).await
     }
 
+    /// Kill the work process to interrupt whatever request is in flight on it —
+    /// the one lever a cancel has over a busy serial channel (yt-dlp dies with
+    /// its parent). Every pending work request fails fast, and the next request
+    /// restarts the process; the read channel is untouched.
+    pub async fn abort_work(&self) {
+        self.work.shutdown().await;
+    }
+
     pub async fn shutdown(&self) {
         self.work.shutdown().await;
         self.read.shutdown().await;

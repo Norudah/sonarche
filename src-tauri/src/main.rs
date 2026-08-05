@@ -78,6 +78,7 @@ fn main() {
             commands::enqueue_download,
             commands::list_jobs,
             commands::retry_job,
+            commands::cancel_job,
             commands::clear_job_history,
             commands::list_library,
             commands::reenrich_track,

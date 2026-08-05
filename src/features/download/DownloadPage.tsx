@@ -13,7 +13,7 @@ import { ActionLink } from "@/shared/ui/ActionLink";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-const isTerminal = (job: DownloadJob) => job.status === "done" || job.status === "failed";
+const isTerminal = (job: DownloadJob) => job.status === "done" || job.status === "failed" || job.status === "cancelled";
 
 export function DownloadPage() {
   const { t } = useTranslation("download");

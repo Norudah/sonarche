@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import type { DownloadJob } from "@/features/download/api";
 import { JobCard, type LibraryLookup } from "@/features/download/activity/JobCard";
-import { type EnrichStage, useRetryJob } from "@/features/download/hooks";
+import { type EnrichStage, useCancelJob, useRetryJob } from "@/features/download/hooks";
 import { useNewJobIds } from "@/features/download/queue/useNewJobIds";
 import type { LibraryTrack } from "@/features/library/api";
 import { type AlbumDeletion, DeleteAlbumDialog } from "@/features/library/DeleteAlbumDialog";
@@ -60,6 +60,7 @@ interface JobDeckProps {
  */
 export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProps) {
   const retry = useRetryJob();
+  const cancel = useCancelJob();
   const libraryQuery = useLibrary();
   const [inspected, setInspected] = useState<LibraryTrack | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
@@ -87,6 +88,7 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
   );
 
   const onRetry = useCallback((id: string) => retry.mutate(id), [retry]);
+  const onCancel = useCallback((id: string) => cancel.mutate(id), [cancel]);
   const onDeleteAlbum = useCallback((job: DownloadJob) => {
     setDeletingAlbum({
       title: job.title ?? "",
@@ -104,6 +106,8 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
     onDeleteAlbum,
     onRetry,
     isRetrying: retry.isPending,
+    onCancel,
+    isCancelling: cancel.isPending,
   };
 
   return (

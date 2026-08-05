@@ -18,6 +18,8 @@ function phrase(outcome: JobOutcome): { key: string; values?: Record<string, num
       return { key: "activity.verdict.lostTracks", values: { kept: outcome.kept, total: outcome.total } };
     case "failed":
       return { key: "activity.verdict.failed" };
+    case "cancelled":
+      return { key: "activity.verdict.cancelled" };
   }
 }
 

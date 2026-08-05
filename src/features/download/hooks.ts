@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
 import {
+  cancelJob,
   clearJobHistory,
   type DownloadJob,
   type EnqueueRequest,
@@ -34,7 +35,9 @@ export function useJobs() {
     const unlisten = listen<WireJob>("jobs:updated", (event) => {
       const job = mapJob(event.payload);
       upsertJob(queryClient, job);
-      if (job.status === "done") {
+      // Cancelled counts too: an album stopped mid-run may already have filed
+      // part of its tracks into the library.
+      if (job.status === "done" || job.status === "cancelled") {
         queryClient.invalidateQueries({ queryKey: libraryKey });
       }
     });
@@ -58,6 +61,16 @@ export function useRetryJob() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: retryJob,
+    onSuccess: (job) => upsertJob(queryClient, job),
+  });
+}
+
+/** Stops a queued or running job; the worker records the cancelled state and
+ * the event stream carries it here. */
+export function useCancelJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: cancelJob,
     onSuccess: (job) => upsertJob(queryClient, job),
   });
 }

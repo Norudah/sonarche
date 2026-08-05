@@ -434,13 +434,16 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
     })
 }
 
-/// The history page's one sweep: terminal (done/failed) jobs — their tracks go
-/// with them via cascade — and the whole import archive. In-flight jobs stay.
-/// One transaction, because the page shows both archives under one button and a
-/// crash between the two deletes would leave it half-cleared.
+/// The history page's one sweep: terminal (done/failed/cancelled) jobs — their
+/// tracks go with them via cascade — and the whole import archive. In-flight
+/// jobs stay. One transaction, because the page shows both archives under one
+/// button and a crash between the two deletes would leave it half-cleared.
 pub fn clear_history(conn: &Connection) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
-    tx.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
+    tx.execute(
+        "DELETE FROM jobs WHERE status IN ('done', 'failed', 'cancelled')",
+        [],
+    )?;
     tx.execute("DELETE FROM imports", [])?;
     tx.commit()?;
     Ok(())
@@ -452,7 +455,7 @@ pub fn clear_history(conn: &Connection) -> AppResult<()> {
 pub fn fail_interrupted(conn: &Connection, now: u64) -> AppResult<bool> {
     let jobs = conn.execute(
         "UPDATE jobs SET status = 'failed', error = 'interrupted by app restart', updated_at = ?1
-         WHERE status NOT IN ('done', 'failed')",
+         WHERE status NOT IN ('done', 'failed', 'cancelled')",
         params![now as i64],
     )?;
     conn.execute(
@@ -760,6 +763,7 @@ mod tests {
         ];
         upsert_job(&conn, &running).unwrap();
         upsert_job(&conn, &single("f", JobStatus::Done)).unwrap();
+        upsert_job(&conn, &single("f2", JobStatus::Cancelled)).unwrap();
 
         assert!(fail_interrupted(&conn, 3000).unwrap());
 
@@ -771,6 +775,10 @@ mod tests {
 
         let f = get_job(&conn, "f").unwrap().unwrap();
         assert_eq!(f.status, JobStatus::Done);
+
+        // A user's stop is terminal state, not an interruption to repaint.
+        let f2 = get_job(&conn, "f2").unwrap().unwrap();
+        assert_eq!(f2.status, JobStatus::Cancelled);
     }
 
     #[test]
@@ -781,6 +789,7 @@ mod tests {
         album.tracks = vec![track(1, TrackStatus::Done)];
         upsert_job(&conn, &album).unwrap();
         upsert_job(&conn, &single("h", JobStatus::Failed)).unwrap();
+        upsert_job(&conn, &single("h2", JobStatus::Cancelled)).unwrap();
         upsert_job(&conn, &single("i", JobStatus::Downloading)).unwrap();
 
         clear_history(&conn).unwrap();

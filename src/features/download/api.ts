@@ -1,7 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type JobKind = "single" | "album";
-export type JobStatus = "queued" | "downloading" | "importing" | "enriching" | "done" | "failed";
+export type JobStatus =
+  | "queued"
+  | "downloading"
+  | "importing"
+  | "enriching"
+  | "done"
+  | "failed"
+  /** Stopped by the user. Terminal, but nothing went wrong: resume markers
+   * survive, so the job can be retried and picks up where it stopped. */
+  | "cancelled";
 export type JobStep = "download" | "import" | "enrich";
 export type TrackStatus =
   | "pending"
@@ -208,6 +217,10 @@ export async function listJobs(): Promise<DownloadJob[]> {
 
 export async function retryJob(id: string): Promise<DownloadJob> {
   return mapJob(await invoke<WireJob>("retry_job", { id }));
+}
+
+export async function cancelJob(id: string): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("cancel_job", { id }));
 }
 
 export async function clearJobHistory(): Promise<DownloadJob[]> {

@@ -41,7 +41,8 @@
       "import": "Filing",
       "enrich": "Identifying",
       "done": "Done",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelled": "Stopped"
     },
     "verdict": {
       "matched": "Identified",
@@ -49,7 +50,8 @@
       "guessed": "Guessed tags",
       "unmatched": "Not identified",
       "lostTracks": "Partial {{kept}}/{{total}}",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelled": "Stopped"
     },
     "detail": {
       "cover": "Cover",
@@ -116,6 +118,7 @@
     "trackCount_one": "{{count}} track",
     "trackCount_other": "{{count}} tracks",
     "retry": "Retry",
+    "cancel": "Stop",
     "matched": "Match found",
     "matchNone": "None",
     "duplicate": "Duplicate skipped",

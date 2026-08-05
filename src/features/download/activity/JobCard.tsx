@@ -1,4 +1,4 @@
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw, Square } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -43,6 +43,8 @@ export interface JobCardProps {
   onDeleteAlbum: (job: DownloadJob) => void;
   onRetry: (id: string) => void;
   isRetrying: boolean;
+  onCancel: (id: string) => void;
+  isCancelling: boolean;
 }
 
 /** Cover art the enrich step produced, once any of the job's items carries one;
@@ -67,6 +69,8 @@ function JobCardImpl({
   onDeleteAlbum,
   onRetry,
   isRetrying,
+  onCancel,
+  isCancelling,
 }: JobCardProps) {
   const { t } = useTranslation("download");
   const labelOf = useProgressLabel();
@@ -240,6 +244,21 @@ function JobCardImpl({
         </div>
 
         <div className="flex w-32 shrink-0 items-center justify-end gap-1">
+          {/* Queued or working: the one thing the user can still change about
+              this job is whether it keeps going. Same quiet register as retry —
+              stopping is a normal decision, not an emergency control. */}
+          {(job.status === "queued" || isActive) && (
+            <button
+              type="button"
+              onClick={() => onCancel(job.id)}
+              disabled={isCancelling}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Square className="size-3.5" />
+              {t("queue.cancel")}
+            </button>
+          )}
+
           {canRetry(job) && (
             <button
               type="button"

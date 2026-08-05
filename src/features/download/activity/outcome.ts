@@ -23,9 +23,11 @@ export type JobOutcome =
   | { kind: "unmatched" }
   /** Landed, minus the videos that were gone. */
   | { kind: "lostTracks"; kept: number; total: number }
-  | { kind: "failed" };
+  | { kind: "failed" }
+  /** Stopped by the user — deliberate, so neither a success nor an alarm. */
+  | { kind: "cancelled" };
 
-export type OutcomeTone = "success" | "warning" | "danger";
+export type OutcomeTone = "accent" | "success" | "warning" | "danger";
 
 export const OUTCOME_TONE: Record<JobOutcome["kind"], OutcomeTone> = {
   matched: "success",
@@ -34,6 +36,7 @@ export const OUTCOME_TONE: Record<JobOutcome["kind"], OutcomeTone> = {
   unmatched: "warning",
   lostTracks: "warning",
   failed: "danger",
+  cancelled: "accent",
 };
 
 /**
@@ -46,6 +49,7 @@ export const OUTCOME_TONE: Record<JobOutcome["kind"], OutcomeTone> = {
  */
 export function jobOutcome(job: DownloadJob): JobOutcome | null {
   if (job.status === "failed") return { kind: "failed" };
+  if (job.status === "cancelled") return { kind: "cancelled" };
   if (job.status !== "done") return null;
 
   const losses = survivingTracks(job);
