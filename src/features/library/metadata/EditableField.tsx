@@ -2,6 +2,9 @@ import { Undo2 } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SuggestInput } from "@/features/library/metadata/SuggestInput";
+import type { SuggestKind } from "@/features/library/metadata/suggestions";
+
 /**
  * A labelled field in a metadata panel — the album modal's identity column, and
  * the track drawer.
@@ -23,6 +26,7 @@ export function EditableField({
   hint,
   mixedCount,
   isMissing,
+  suggest,
   onChange,
   onRevert,
   className,
@@ -40,6 +44,9 @@ export function EditableField({
   /** Counted by completion and still empty — worth pointing at, in the same
    * amber the tag dots and the completion ring use. */
   isMissing?: boolean;
+  /** Pool to suggest from while typing — for the values the library already
+   * knows (artists, albums, genres), where exact spelling is identity. */
+  suggest?: SuggestKind;
   onChange: (value: string) => void;
   onRevert?: () => void;
   className?: string;
@@ -75,30 +82,28 @@ export function EditableField({
         )}
       </div>
 
-      <div className="relative">
-        <input
-          id={id}
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={
-            isMixed
-              ? t("albumMetadata.mixed.value", { count: mixedCount })
-              : showMissing
-                ? t("albumMetadata.tracks.missing")
-                : undefined
-          }
-          // Border width is on every state, modified or not: switching it on
-          // alone would nudge the text sideways as you type.
-          className={`w-full rounded-xl border border-l-[3px] px-3 py-2 text-[0.875rem] text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25 ${
-            isMixed
-              ? "border-dashed border-muted/35 bg-surface placeholder:text-muted/60"
-              : showMissing
-                ? "border-dashed border-warning/45 bg-warning-soft placeholder:text-warning"
-                : "border-separator bg-surface"
-          } ${isModified ? "border-l-accent!" : ""}`}
-        />
-      </div>
+      <SuggestInput
+        id={id}
+        value={value}
+        suggest={suggest}
+        onChange={onChange}
+        placeholder={
+          isMixed
+            ? t("albumMetadata.mixed.value", { count: mixedCount })
+            : showMissing
+              ? t("albumMetadata.tracks.missing")
+              : undefined
+        }
+        // Border width is on every state, modified or not: switching it on
+        // alone would nudge the text sideways as you type.
+        className={`w-full rounded-xl border border-l-[3px] px-3 py-2 text-[0.875rem] text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25 ${
+          isMixed
+            ? "border-dashed border-muted/35 bg-surface placeholder:text-muted/60"
+            : showMissing
+              ? "border-dashed border-warning/45 bg-warning-soft placeholder:text-warning"
+              : "border-separator bg-surface"
+        } ${isModified ? "border-l-accent!" : ""}`}
+      />
     </div>
   );
 }

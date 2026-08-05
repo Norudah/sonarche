@@ -180,6 +180,11 @@
     "comingSoon": "Bientôt disponible",
     "emptyValue": "—",
     "bonusFrom": "Piste bonus issue de « {{source}} », rangée avec l'album principal.",
+    "suggest": {
+      "count_one": "{{count}} morceau",
+      "count_other": "{{count}} morceaux",
+      "newValue": "Nouvelle valeur"
+    },
     "fields": {
       "title": "Titre",
       "artist": "Artiste",

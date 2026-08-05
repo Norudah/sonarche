@@ -14,6 +14,7 @@ import { diffFields, fieldEdit, toFieldValues, type FieldValues } from "@/featur
 import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
 import { MetadataFooter, type SaveFeedback } from "@/features/library/metadata/MetadataFooter";
 import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
+import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
 /**
@@ -167,6 +168,7 @@ function MetadataForm({
             value={draft.artist}
             origin={originOf("artist")}
             isMissing={live.artist.trim() === ""}
+            suggest="artist"
             help={
               <FieldHelpPopover
                 label={t("metadata.help.open", { field: t("metadata.fields.artist") })}
@@ -197,6 +199,7 @@ function MetadataForm({
           value={draft.album}
           origin={originOf("album")}
           isMissing={live.album.trim() === ""}
+          suggest="album"
           onChange={setField("album")}
           onRevert={revert("album")}
         />
@@ -224,6 +227,7 @@ function MetadataForm({
             value={draft.genre}
             origin={originOf("genre")}
             isMissing={live.genre.trim() === ""}
+            suggest="genre"
             help={
               <FieldHelp
                 label={t("metadata.help.open", { field: t("metadata.fields.genre") })}
@@ -309,7 +313,11 @@ export function MetadataDrawer({ track, onClose }: { track: LibraryTrack | null;
               full-screen positioning layer). HeroUI's default sm:w-96 is too
               narrow for a two-column metadata form. */}
           <Drawer.Dialog className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[31rem]">
-            {track && <MetadataForm key={track.id} track={track} onClose={onClose} requestCloseRef={requestCloseRef} />}
+            {track && (
+              <MetadataSuggestionsProvider>
+                <MetadataForm key={track.id} track={track} onClose={onClose} requestCloseRef={requestCloseRef} />
+              </MetadataSuggestionsProvider>
+            )}
           </Drawer.Dialog>
         </Drawer.Content>
       </Drawer.Backdrop>

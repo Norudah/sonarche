@@ -180,6 +180,11 @@
     "comingSoon": "Coming soon",
     "emptyValue": "—",
     "bonusFrom": "Bonus track from “{{source}}”, filed with the main album.",
+    "suggest": {
+      "count_one": "{{count}} track",
+      "count_other": "{{count}} tracks",
+      "newValue": "New value"
+    },
     "fields": {
       "title": "Title",
       "artist": "Artist",

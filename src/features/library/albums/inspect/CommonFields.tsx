@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
 import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
+import type { SuggestKind } from "@/features/library/metadata/suggestions";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
@@ -13,6 +14,14 @@ const FIELD_LABEL: Record<AlbumCommonField, string> = {
   year: "year",
   genre: "genre",
   grouping: "category",
+};
+
+/** Suggestion pool per common tag — the album artist draws from the same name
+ * pool as the track artist, since either field may already know the spelling. */
+const FIELD_SUGGEST: Partial<Record<AlbumCommonField, SuggestKind>> = {
+  album: "album",
+  albumartist: "artist",
+  genre: "genre",
 };
 
 /**
@@ -59,6 +68,7 @@ export function CommonFields({
         value={values[name]}
         origin={origins[name]}
         help={extra?.help}
+        suggest={FIELD_SUGGEST[name]}
         mixedCount={baseline[name].mixed ? (distinctCounts[name] ?? trackCount) : undefined}
         onChange={(value) => onChange(name, value)}
         onRevert={() => onRevert(name)}
