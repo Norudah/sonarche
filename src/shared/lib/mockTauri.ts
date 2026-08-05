@@ -619,6 +619,11 @@ function tickDownloadProgress() {
 
 export function installMockTauri() {
   tickDownloadProgress();
+  // @tauri-apps/api v2 routes `unlisten` through this internals object rather
+  // than an IPC call; without it every effect cleanup rejects in the console.
+  (window as unknown as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    unregisterListener: () => {},
+  };
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     transformCallback: (callback: (message: unknown) => void) => {
@@ -660,6 +665,40 @@ export function installMockTauri() {
       // reframe slider — the modal's one real control — is exercised.
       if (cmd === "allow_cover_preview") {
         return { path: thumb("#0ea5e9", "#164e63"), bytes: 4_600_000 };
+      }
+      // The Cover Art Archive's uploads for a release: three plausible scans,
+      // front first, after a network-ish delay. `?nocandidates` previews the
+      // empty state, `?candidatesfail` the error one.
+      if (cmd === "list_cover_candidates") {
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        const search = new URLSearchParams(window.location.search);
+        if (search.has("candidatesfail")) throw new Error("caa unreachable");
+        if (search.has("nocandidates")) return { candidates: [] };
+        return {
+          candidates: [
+            {
+              id: "caa-1",
+              thumb: thumb("#7c3aed", "#312e81"),
+              image_url: "https://coverartarchive.org/release/mock/1.jpg",
+              front: true,
+              types: ["Front"],
+            },
+            {
+              id: "caa-2",
+              thumb: thumb("#0d9488", "#134e4a"),
+              image_url: "https://coverartarchive.org/release/mock/2.jpg",
+              front: false,
+              types: ["Back"],
+            },
+            {
+              id: "caa-3",
+              thumb: thumb("#b45309", "#78350f"),
+              image_url: "https://coverartarchive.org/release/mock/3.jpg",
+              front: false,
+              types: ["Medium"],
+            },
+          ],
+        };
       }
       if (cmd === "set_album_cover") {
         const albumId = Number(payload?.albumId);

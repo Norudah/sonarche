@@ -39,3 +39,25 @@ export function previewShift(source: SourceSize, offset: number): number {
   const play = long - Math.min(width, height);
   return (clampOffset(offset) * play) / long;
 }
+
+/** The crop stage's on-screen geometry: the whole image scaled to fit `maxPx`
+ * on its long side, the square window's side, and how far the window can
+ * travel. All in CSS pixels; `horizontal` says which axis it travels on. */
+export interface StageLayout {
+  width: number;
+  height: number;
+  side: number;
+  travel: number;
+  horizontal: boolean;
+}
+
+export function stageLayout(source: SourceSize, maxPx: number): StageLayout {
+  const { width, height } = source;
+  const horizontal = width >= height;
+  if (width === 0 || height === 0) return { width: maxPx, height: maxPx, side: maxPx, travel: 0, horizontal };
+  const scale = maxPx / Math.max(width, height);
+  const stageWidth = horizontal ? maxPx : Math.round(width * scale);
+  const stageHeight = horizontal ? Math.round(height * scale) : maxPx;
+  const side = Math.min(stageWidth, stageHeight);
+  return { width: stageWidth, height: stageHeight, side, travel: Math.max(stageWidth, stageHeight) - side, horizontal };
+}

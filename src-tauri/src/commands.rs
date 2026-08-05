@@ -612,26 +612,45 @@ pub struct CoverCrop {
     size: u32,
 }
 
-/// Replace an album's cover with a local image: archive it as cover-hq.*,
-/// write the 500px rendition as beets' artpath, embed it into the album's m4a
-/// files, and drop the provisional-cover flag.
+/// Replace an album's cover: archive the image as cover-hq.*, write the 500px
+/// rendition as beets' artpath, embed it into the album's m4a files, and drop
+/// the provisional-cover flag. The image is either a local file (with an
+/// optional crop) or a Cover Art Archive upload picked from the candidates.
 #[tauri::command]
 pub async fn set_album_cover(
     app: AppHandle,
     state: State<'_, SidecarState>,
     album_id: i64,
-    source_path: String,
+    source_path: Option<String>,
     crop: Option<CoverCrop>,
+    candidate_url: Option<String>,
 ) -> AppResult<Value> {
     if album_id <= 0 {
         return Err(AppError::InvalidInput(format!("bad album id: {album_id}")));
+    }
+    if source_path.is_some() == candidate_url.is_some() {
+        return Err(AppError::InvalidInput(
+            "exactly one of source_path / candidate_url is required".into(),
+        ));
     }
     if let Some(CoverCrop { size, .. }) = crop {
         if size == 0 {
             return Err(AppError::InvalidInput("empty crop".into()));
         }
     }
-    let canonical = checked_cover_source(&source_path).await?;
+    if let Some(url) = &candidate_url {
+        // Only what our own candidates listing handed out: the sidecar will
+        // fetch this URL, so nothing else may choose where it connects.
+        if !url.starts_with("https://coverartarchive.org/") {
+            return Err(AppError::InvalidInput(
+                "candidate URL outside the Cover Art Archive".into(),
+            ));
+        }
+    }
+    let source = match source_path {
+        Some(path) => Some(checked_cover_source(&path).await?),
+        None => None,
+    };
     let paths = AppPaths::resolve(&app)?;
     state
         .request(
@@ -641,10 +660,39 @@ pub async fn set_album_cover(
                 "beets_db": paths.beets_db.to_string_lossy(),
                 "library_dir": paths.library_dir.to_string_lossy(),
                 "album_id": album_id,
-                "source_path": canonical.to_string_lossy(),
+                "source_path": source.map(|p| p.to_string_lossy().into_owned()),
+                "image_url": candidate_url,
                 "crop": crop.map(|c| json!({ "left": c.left, "top": c.top, "size": c.size })),
             }),
-            QUERY_TIMEOUT,
+            // Downloading a full-size CAA upload can outlast a query.
+            Duration::from_secs(120),
+        )
+        .await
+}
+
+/// What the Cover Art Archive holds for this album — thumbnails inlined as
+/// data URLs (the webview's CSP allows no remote images).
+#[tauri::command]
+pub async fn list_cover_candidates(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_id: i64,
+) -> AppResult<Value> {
+    if album_id <= 0 {
+        return Err(AppError::InvalidInput(format!("bad album id: {album_id}")));
+    }
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "cover_candidates",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "album_id": album_id,
+            }),
+            // The index plus up to eight thumbnail fetches.
+            Duration::from_secs(90),
         )
         .await
 }

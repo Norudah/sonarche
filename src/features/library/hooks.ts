@@ -8,7 +8,7 @@ import {
   reenrichTrack,
   setAlbumCover,
   updateTracks,
-  type CoverCrop,
+  type CoverSource,
 } from "@/features/library/api";
 
 export const libraryKey = ["library"] as const;
@@ -128,16 +128,8 @@ export function useReenrichAlbum() {
 export function useSetAlbumCover() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      albumIds,
-      sourcePath,
-      crop,
-    }: {
-      albumIds: number[];
-      sourcePath: string;
-      crop: CoverCrop | null;
-    }) => {
-      for (const albumId of albumIds) await setAlbumCover(albumId, sourcePath, crop);
+    mutationFn: async ({ albumIds, source }: { albumIds: number[]; source: CoverSource }) => {
+      for (const albumId of albumIds) await setAlbumCover(albumId, source);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });

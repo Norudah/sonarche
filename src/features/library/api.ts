@@ -127,12 +127,44 @@ export async function allowCoverPreview(path: string): Promise<{ path: string; b
   return { ...result, url: convertFileSrc(result.path) };
 }
 
+/** What replaces the cover: a local file (with its crop) or a Cover Art
+ * Archive upload picked from the candidates. */
+export type CoverSource = { sourcePath: string; crop: CoverCrop | null } | { candidateUrl: string };
+
 export async function setAlbumCover(
   albumId: number,
-  sourcePath: string,
-  crop: CoverCrop | null,
+  source: CoverSource,
 ): Promise<{ art_path: string | null; side: number; embedded: number }> {
-  return invoke("set_album_cover", { albumId, sourcePath, crop });
+  return invoke("set_album_cover", {
+    albumId,
+    sourcePath: "sourcePath" in source ? source.sourcePath : null,
+    crop: "sourcePath" in source ? source.crop : null,
+    candidateUrl: "candidateUrl" in source ? source.candidateUrl : null,
+  });
+}
+
+/** One Cover Art Archive upload the album could wear instead. The thumbnail is
+ * a data URL (the webview's CSP allows no remote images); `imageUrl` is what a
+ * selection sends back for the sidecar to download full-size. */
+export interface CoverCandidate {
+  id: string;
+  thumb: string;
+  imageUrl: string;
+  front: boolean;
+  types: string[];
+}
+
+export async function listCoverCandidates(albumId: number): Promise<CoverCandidate[]> {
+  const raw = await invoke<{
+    candidates: { id: string; thumb: string; image_url: string; front: boolean; types: string[] }[];
+  }>("list_cover_candidates", { albumId });
+  return raw.candidates.map((candidate) => ({
+    id: candidate.id,
+    thumb: candidate.thumb,
+    imageUrl: candidate.image_url,
+    front: candidate.front,
+    types: candidate.types,
+  }));
 }
 
 export async function listLibrary(): Promise<LibraryTrack[]> {

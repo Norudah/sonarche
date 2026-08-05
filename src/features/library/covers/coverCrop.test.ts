@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clampOffset, cropRect, previewShift } from "@/features/library/covers/coverCrop";
+import { clampOffset, cropRect, previewShift, stageLayout } from "@/features/library/covers/coverCrop";
 
 describe("cropRect", () => {
   it("returns null for a square source — nothing to choose", () => {
@@ -32,6 +32,33 @@ describe("previewShift", () => {
 
   it("survives a degenerate zero-size image", () => {
     expect(previewShift({ width: 0, height: 0 }, 0.5)).toBe(0);
+  });
+});
+
+describe("stageLayout", () => {
+  it("fits the long side to the stage and travels along it", () => {
+    expect(stageLayout({ width: 1000, height: 600 }, 280)).toEqual({
+      width: 280,
+      height: 168,
+      side: 168,
+      travel: 112,
+      horizontal: true,
+    });
+  });
+
+  it("travels vertically for a portrait source", () => {
+    const layout = stageLayout({ width: 600, height: 1000 }, 280);
+    expect(layout.horizontal).toBe(false);
+    expect(layout.height).toBe(280);
+    expect(layout.travel).toBe(280 - layout.width);
+  });
+
+  it("a square source has no travel", () => {
+    expect(stageLayout({ width: 800, height: 800 }, 280).travel).toBe(0);
+  });
+
+  it("survives a degenerate zero-size image", () => {
+    expect(stageLayout({ width: 0, height: 0 }, 280).travel).toBe(0);
   });
 });
 

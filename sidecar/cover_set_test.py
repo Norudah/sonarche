@@ -91,5 +91,56 @@ class PrepareCoverTest(unittest.TestCase):
             cover_set.prepare_cover(path, None)
 
 
+class HandleParamsTest(unittest.TestCase):
+    def test_exactly_one_source_is_required(self):
+        with self.assertRaises(RuntimeError):
+            cover_set.handle("r1", {})
+        with self.assertRaises(RuntimeError):
+            cover_set.handle("r1", {"source_path": "/a.jpg", "image_url": "https://coverartarchive.org/x"})
+
+
+class DownloadCandidateTest(unittest.TestCase):
+    def test_refuses_a_url_outside_the_archive(self):
+        with self.assertRaises(RuntimeError):
+            cover_set._download_candidate("https://evil.example/cover.jpg")
+
+
+class ShapeCandidatesTest(unittest.TestCase):
+    def _image(self, image_id, front=False, image="https://coverartarchive.org/full.jpg", thumbs=None):
+        return {
+            "id": image_id,
+            "front": front,
+            "image": image,
+            "thumbnails": {"250": f"https://coverartarchive.org/{image_id}-250.jpg"} if thumbs is None else thumbs,
+            "types": ["Front"] if front else ["Back"],
+        }
+
+    def test_fronts_come_first_and_the_list_is_capped(self):
+        images = [self._image(i) for i in range(cover_set.MAX_CANDIDATES + 3)] + [self._image("front", front=True)]
+        out = cover_set.shape_candidates(images, lambda url: "data:image/jpeg;base64,x")
+        self.assertEqual(len(out), cover_set.MAX_CANDIDATES)
+        self.assertEqual(out[0]["id"], "front")
+        self.assertTrue(out[0]["front"])
+
+    def test_drops_entries_the_strip_could_not_draw(self):
+        images = [
+            self._image("ok"),
+            self._image("no-urls", image=None, thumbs={}),
+            self._image("dead-thumb"),
+        ]
+        out = cover_set.shape_candidates(images, lambda url: None if "dead-thumb" in url else "data:image/jpeg;base64,x")
+        self.assertEqual([c["id"] for c in out], ["ok"])
+
+    def test_falls_back_to_the_full_image_when_no_small_thumbnail(self):
+        seen = []
+
+        def fetch(url):
+            seen.append(url)
+            return "data:image/jpeg;base64,x"
+
+        cover_set.shape_candidates([self._image("bare", thumbs={})], fetch)
+        self.assertEqual(seen, ["https://coverartarchive.org/full.jpg"])
+
+
 if __name__ == "__main__":
     unittest.main()

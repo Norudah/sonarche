@@ -50,6 +50,7 @@ def _handlers():
         "library_remove": library.remove,
         "library_update": library.update,
         "cover_set": cover_set.handle,
+        "cover_candidates": cover_set.candidates,
         "genres_recompute": genres.recompute,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,

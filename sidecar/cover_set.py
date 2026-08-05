@@ -14,8 +14,10 @@ the image *after* EXIF orientation, which is also how a browser displays it —
 what the user framed is what gets cut.
 """
 
+import base64
 import io
 import os
+import tempfile
 
 from PIL import Image, ImageOps
 
@@ -28,8 +30,19 @@ import protocol
 MAX_SOURCE_PX = 12_000
 
 ART_SOURCE = "Local file"
+CAA_ART_SOURCE = "Cover Art Archive"
 
 _PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
+
+CAA_ROOT = "https://coverartarchive.org"
+
+# The index lists every scan people uploaded; past a handful the strip stops
+# informing and starts costing (each thumbnail ships as a data URL, since the
+# webview's CSP allows no remote images).
+MAX_CANDIDATES = 8
+
+# A full-size CAA upload is the archive we keep; bound what one click may pull.
+MAX_CANDIDATE_BYTES = 60 * 1024 * 1024
 
 
 def square_crop_box(width: int, height: int, crop: dict | None) -> tuple[int, int, int]:
@@ -128,13 +141,110 @@ def _clear_stale_art(album, old_art: str | None, decode) -> None:
             protocol.log(f"cover_set: could not remove old art {old_art}: {exc}")
 
 
+def _caa_index(entity_path: str) -> list[dict] | None:
+    """The Cover Art Archive index for one entity, or None when it has none."""
+    import requests
+
+    resp = requests.get(f"{CAA_ROOT}/{entity_path}", timeout=30, headers={"Accept": "application/json"})
+    if resp.status_code != 200:
+        return None
+    try:
+        images = resp.json().get("images")
+    except ValueError:
+        return None
+    return images or None
+
+
+def _thumb_data_url(url: str) -> str | None:
+    """A candidate's small thumbnail, inlined: the webview's CSP allows no
+    remote images, so the strip can only show what travels over the wire."""
+    import requests
+
+    try:
+        resp = requests.get(url, timeout=30)
+    except requests.RequestException as exc:
+        protocol.log(f"cover_set: thumbnail fetch failed: {exc}")
+        return None
+    if resp.status_code != 200 or not resp.content:
+        return None
+    mime = "image/png" if resp.content[:4] == b"\x89PNG" else "image/jpeg"
+    return f"data:{mime};base64,{base64.b64encode(resp.content).decode('ascii')}"
+
+
+def candidates(_request_id: str, params: dict) -> dict:
+    """What the Cover Art Archive holds for this album — the way back to an
+    official cover after a personal one, or to a different edition's art.
+    Front images first; the specific release, then its group."""
+    from beets.library import Library
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    album = lib.get_album(params["album_id"])
+    if album is None:
+        raise RuntimeError(f"album not found: {params['album_id']}")
+
+    images = None
+    release_id = album.get("mb_albumid")
+    group_id = album.get("mb_releasegroupid")
+    if release_id:
+        images = _caa_index(f"release/{release_id}")
+    if not images and group_id:
+        images = _caa_index(f"release-group/{group_id}")
+    if not images:
+        return {"candidates": []}
+
+    return {"candidates": shape_candidates(images, _thumb_data_url)}
+
+
+def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
+    """CAA index entries -> the wire shape, fronts first, capped, and dropping
+    anything the strip could not draw (no URLs, or a thumbnail that failed)."""
+    ordered = sorted(images, key=lambda image: not image.get("front"))[:MAX_CANDIDATES]
+    out = []
+    for image in ordered:
+        thumbs = image.get("thumbnails") or {}
+        thumb_url = thumbs.get("250") or thumbs.get("small") or image.get("image")
+        full_url = image.get("image")
+        if not thumb_url or not full_url:
+            continue
+        thumb = fetch_thumb(thumb_url)
+        if thumb is None:
+            continue
+        out.append(
+            {
+                "id": str(image.get("id")),
+                "thumb": thumb,
+                "image_url": full_url,
+                "front": bool(image.get("front")),
+                "types": image.get("types") or [],
+            }
+        )
+    return out
+
+
+def _download_candidate(url: str) -> bytes:
+    """The chosen upload, full size — it becomes the archive."""
+    import requests
+
+    if not url.startswith(f"{CAA_ROOT}/"):
+        raise RuntimeError("candidate URL outside the Cover Art Archive")
+    resp = requests.get(url, timeout=60)
+    if resp.status_code != 200 or not resp.content:
+        raise RuntimeError(f"cover download failed ({resp.status_code})")
+    if len(resp.content) > MAX_CANDIDATE_BYTES:
+        raise RuntimeError("cover image too large")
+    return resp.content
+
+
 def handle(_request_id: str, params: dict) -> dict:
     from beets.library import Library
 
     import enrich
 
-    source_path = params["source_path"]
-    if not os.path.isfile(source_path):
+    source_path = params.get("source_path")
+    image_url = params.get("image_url")
+    if bool(source_path) == bool(image_url):
+        raise RuntimeError("exactly one of source_path / image_url is required")
+    if source_path and not os.path.isfile(source_path):
         raise RuntimeError(f"file not found: {source_path}")
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
@@ -145,12 +255,28 @@ def handle(_request_id: str, params: dict) -> dict:
     def decode(raw) -> str:
         return raw.decode("utf-8", "surrogateescape") if isinstance(raw, bytes) else raw
 
-    hq_bytes, thumb_bytes, is_png, side = prepare_cover(source_path, params.get("crop"))
+    if image_url:
+        # Through a temp file so the CAA path and the local path share every
+        # rule downstream — center square, format preservation, size ceiling.
+        data = _download_candidate(image_url)
+        suffix = ".png" if data[:4] == b"\x89PNG" else ".jpg"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
+        try:
+            hq_bytes, thumb_bytes, is_png, side = prepare_cover(tmp_path, None)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        art_source = CAA_ART_SOURCE
+    else:
+        hq_bytes, thumb_bytes, is_png, side = prepare_cover(source_path, params.get("crop"))
+        art_source = ART_SOURCE
 
     old_art = decode(album.artpath) if album.artpath else None
     # The thumb becomes beets' artpath; the archive is only written after, once
     # artpath says which directory the album lives in.
-    enrich.set_album_art(album, thumb_bytes, is_png, source=ART_SOURCE)
+    enrich.set_album_art(album, thumb_bytes, is_png, source=art_source)
     _clear_stale_art(album, old_art, decode)
     enrich.save_hq_cover(album, hq_bytes, is_png)
 
