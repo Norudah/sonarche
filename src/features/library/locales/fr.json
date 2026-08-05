@@ -353,6 +353,7 @@
       "candidates": {
         "heading": "Propositions en ligne",
         "hint": "Depuis la Cover Art Archive, d'après l'identification MusicBrainz de l'album.",
+        "search": "Chercher des propositions",
         "loading": "Recherche des pochettes…",
         "empty": "Aucune proposition en ligne pour cet album.",
         "failed": "Impossible de récupérer les propositions.",

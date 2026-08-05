@@ -353,6 +353,7 @@
       "candidates": {
         "heading": "Online proposals",
         "hint": "From the Cover Art Archive, via the album's MusicBrainz identification.",
+        "search": "Search for proposals",
         "loading": "Looking for covers…",
         "empty": "No online proposal for this album.",
         "failed": "Couldn't fetch the proposals.",

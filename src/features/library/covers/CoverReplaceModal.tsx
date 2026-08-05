@@ -78,6 +78,9 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const [currentBytes, setCurrentBytes] = useState<number | null>(null);
   const [currentSize, setCurrentSize] = useState<SourceSize | null>(null);
   const [embeddedEstimate, setEmbeddedEstimate] = useState<number | null>(null);
+  // The online lookup is the user's move, never the modal's: opening it must
+  // not cost a network round-trip to the Cover Art Archive.
+  const [wantsCandidates, setWantsCandidates] = useState(false);
 
   const albumIds = [...new Set(album.tracks.map((track) => track.albumId).filter((id): id is number => id != null))];
   const embedCount = album.tracks.filter((track) => track.path.toLowerCase().endsWith(".m4a")).length;
@@ -87,7 +90,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const candidatesQuery = useQuery({
     queryKey: ["cover-candidates", albumIds[0] ?? 0],
     queryFn: () => listCoverCandidates(albumIds[0]),
-    enabled: isOpen && albumIds.length > 0,
+    enabled: isOpen && wantsCandidates && albumIds.length > 0,
     staleTime: Infinity,
     retry: 1,
   });
@@ -98,6 +101,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     setOffset(0.5);
     setError(null);
     setIsDropTarget(false);
+    setWantsCandidates(false);
   };
 
   const close = () => {
@@ -430,10 +434,12 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
 
                 {albumIds.length > 0 && (
                   <CandidateStrip
+                    hasSearched={wantsCandidates}
                     candidates={candidatesQuery.data}
                     isLoading={candidatesQuery.isLoading}
                     isError={candidatesQuery.isError}
                     selectedId={source?.kind === "candidate" ? source.candidate.id : null}
+                    onSearch={() => setWantsCandidates(true)}
                     onSelect={(candidate) => {
                       setError(null);
                       setSource({ kind: "candidate", candidate });

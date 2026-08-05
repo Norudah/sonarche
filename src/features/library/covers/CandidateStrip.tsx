@@ -1,26 +1,33 @@
 import { Spinner } from "@heroui/react";
+import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { CoverCandidate } from "@/features/library/api";
 
 /**
  * What the Cover Art Archive holds for this album — the way back to an
- * official cover after a personal one, or to another edition's art. Thumbnails
- * arrive as data URLs from the sidecar; picking one only *selects* it, the
- * full-size download happens on confirm.
+ * official cover after a personal one, or to another edition's art. The lookup
+ * only runs when asked: the strip rests as a button, and opening the modal
+ * costs no network. Thumbnails arrive as data URLs from the sidecar; picking
+ * one only *selects* it, the full-size download happens on confirm.
  */
 export function CandidateStrip({
+  hasSearched,
   candidates,
   isLoading,
   isError,
   selectedId,
+  onSearch,
   onSelect,
   onRetry,
 }: {
+  /** Whether the user asked for the lookup — before that, the strip is a button. */
+  hasSearched: boolean;
   candidates: CoverCandidate[] | undefined;
   isLoading: boolean;
   isError: boolean;
   selectedId: string | null;
+  onSearch: () => void;
   onSelect: (candidate: CoverCandidate) => void;
   onRetry: () => void;
 }) {
@@ -35,7 +42,18 @@ export function CandidateStrip({
         <span className="text-[0.6875rem] text-muted/70">{t("albumMetadata.cover.candidates.hint")}</span>
       </div>
 
-      {isLoading ? (
+      {!hasSearched ? (
+        <div className="flex h-20 items-center">
+          <button
+            type="button"
+            onClick={onSearch}
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <Search className="size-3.5" />
+            {t("albumMetadata.cover.candidates.search")}
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="flex h-20 items-center gap-2 text-[0.75rem] text-muted">
           <Spinner size="sm" />
           {t("albumMetadata.cover.candidates.loading")}
