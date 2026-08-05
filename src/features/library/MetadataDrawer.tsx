@@ -1,12 +1,14 @@
 import { Drawer, useOverlayState } from "@heroui/react";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { albumPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
-import { useUpdateTracks } from "@/features/library/hooks";
+import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
+import { useLibrary, useUpdateTracks } from "@/features/library/hooks";
 import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
@@ -44,11 +46,22 @@ function MetadataForm({
   const { t } = useTranslation("library");
   const navigate = useNavigate();
   const update = useUpdateTracks();
+  const { data: libraryTracks } = useLibrary();
 
   const live = toFieldValues(track);
   const [draft, setDraft] = useState<FieldValues>(live);
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isCoverOpen, setIsCoverOpen] = useState(false);
+
+  // The record this track belongs to — the cover is the album's, so that is
+  // what the artwork affordance edits. A singleton resolves to none and the
+  // affordance stays off.
+  const album = useMemo(() => {
+    if (!track.album.trim()) return null;
+    const filedUnder = track.albumArtist.trim() || track.artist.trim();
+    return findAlbum(groupAlbums(libraryTracks ?? []), filedUnder, track.album);
+  }, [libraryTracks, track]);
 
   const patch = diffFields(live, draft);
   const changed = Object.keys(patch).length;
@@ -130,7 +143,12 @@ function MetadataForm({
     // (it excludes pointer-downs inside a drawer-body), so text selection for
     // copy-paste works.
     <div data-slot="drawer-body" className="flex h-full flex-col" onKeyDown={onKeyDown}>
-      <MetadataHeader track={track} pendingFields={changed} onClose={requestClose} />
+      <MetadataHeader
+        track={track}
+        pendingFields={changed}
+        onClose={requestClose}
+        onEditArtwork={album ? () => setIsCoverOpen(true) : undefined}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-7 py-5">
         <MetadataCompleteness values={live} onOpenAlbum={track.album ? openAlbum : undefined} />
@@ -286,6 +304,8 @@ function MetadataForm({
         }}
         onSave={save}
       />
+
+      {album && <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />}
     </div>
   );
 }
