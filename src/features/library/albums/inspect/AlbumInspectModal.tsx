@@ -1,5 +1,5 @@
 import { Modal } from "@heroui/react";
-import { X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,11 +22,13 @@ import {
 } from "@/features/library/albums/albumFields";
 import { fillArtistOffer, pendingOffers, renumbered, type Offer } from "@/features/library/albums/albumOffers";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
+import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 import { IdentityColumn } from "@/features/library/albums/inspect/IdentityColumn";
 import { InspectFooter, type SaveFeedback } from "@/features/library/albums/inspect/InspectFooter";
 import { PendingBadge } from "@/features/library/metadata/PendingBadge";
 import { Tracklist } from "@/features/library/albums/inspect/Tracklist";
 import { applyTrackFilter, type TrackFilter } from "@/features/library/albums/inspect/trackFilter";
+import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
 import { useReenrichAlbum, useUpdateTracks } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 
@@ -72,6 +74,7 @@ function InspectBody({
   const [filter, setFilter] = useState<TrackFilter | null>(null);
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isCoverOpen, setIsCoverOpen] = useState(false);
 
   const summary = changeSummary(album.tracks, baseline, draft);
 
@@ -255,15 +258,23 @@ function InspectBody({
   return (
     <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
       <header className="flex shrink-0 items-center gap-4 border-b border-separator panel-wash px-5 py-3.5">
-        {album.artUrl ? (
-          <img
-            src={album.artUrl}
-            alt=""
-            className="size-11 shrink-0 rounded-lg object-cover ring-1 ring-artwork-edge"
-          />
-        ) : (
-          <ArtworkPlaceholder className="size-11 shrink-0 rounded-lg ring-1 ring-artwork-edge" />
-        )}
+        {/* The cover is the way to the cover: hover says so, and the same
+            modal is reachable from the provisional-cover notice below. */}
+        <button
+          type="button"
+          onClick={() => setIsCoverOpen(true)}
+          aria-label={t("albumMetadata.cover.title")}
+          className="group relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none ring-1 ring-artwork-edge focus-visible:ring-2 focus-visible:ring-accent/60"
+        >
+          {album.artUrl ? (
+            <img src={album.artUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <ArtworkPlaceholder className="size-full" />
+          )}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <ImagePlus className="size-4 text-white" />
+          </span>
+        </button>
         <div className="min-w-0 flex-1">
           <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">
             {t("albumMetadata.eyebrow")}
@@ -302,6 +313,7 @@ function InspectBody({
           onFilter={setFilter}
           onChange={setCommon}
           onRevert={(field) => setCommon(field, baseline[field].value)}
+          onReplaceCover={() => setIsCoverOpen(true)}
         />
 
         <Tracklist
@@ -358,6 +370,8 @@ function InspectBody({
         }}
         onSave={save}
       />
+
+      <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />
     </div>
   );
 }
@@ -380,7 +394,11 @@ export function AlbumInspectModal({ album, onClose }: { album: Album | null; onC
       <Modal.Backdrop isKeyboardDismissDisabled>
         <Modal.Container>
           <Modal.Dialog className="flex h-[92vh] max-h-[54rem] w-[96vw] max-w-[74rem] flex-col overflow-hidden p-0!">
-            {album && <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />}
+            {album && (
+              <MetadataSuggestionsProvider>
+                <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />
+              </MetadataSuggestionsProvider>
+            )}
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

@@ -316,7 +316,32 @@
       "blocked": "Unavailable while changes are pending — a re-match would overwrite the tags.",
       "progress": "{{done}} / {{total}} tracks · {{matched}} identified"
     },
-    "provisionalCover": "The cover is the video's thumbnail, not real artwork — replace it once you have the media's own image."
+    "provisionalCover": "The cover is the video's thumbnail, not real artwork — replace it once you have the media's own image.",
+    "cover": {
+      "title": "Replace the cover",
+      "filterName": "Images",
+      "pick": "Choose an image…",
+      "formats": "JPEG, PNG or WebP",
+      "pickAnother": "Choose another image",
+      "reframe": "Reframe",
+      "reframeHint": "The image isn't square — slide to place the crop.",
+      "sourceLine": "Chosen image",
+      "archiveLine": "Archived full-size (cover-hq)",
+      "embeddedLine": "Displayed & written into the files",
+      "mb": "MB",
+      "tooSmall": "Smaller than the 500 px display size — it will be used as-is, but may look soft.",
+      "unreadable": "This image can't be read.",
+      "failed": "The replacement failed — try again in a moment.",
+      "noAlbumRow": "This album has no cover slot to write to.",
+      "cancel": "Cancel",
+      "replace": "Replace the cover",
+      "help": {
+        "title": "What replacing the cover writes",
+        "embed": "Audio files carry their cover inside the file itself — that's how other players and devices show it. Sonarche embeds the image into each track of the album.",
+        "weight": "The embedded copy is capped at 500×500 px. That's the whole point: a 3000×3000 scan embedded as-is would add several MB to every single track, where the 500 px rendition adds a few dozen KB.",
+        "archive": "Your full image isn't lost: it's archived once next to the album (cover-hq) and stays available the day a full-size view needs it."
+      }
+    }
   },
   "delete": {
     "action": "Delete track",

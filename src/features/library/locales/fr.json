@@ -316,7 +316,32 @@
       "blocked": "Indisponible tant que des modifications sont en attente — le re-match réécrirait les tags.",
       "progress": "{{done}} / {{total}} morceaux · {{matched}} identifiés"
     },
-    "provisionalCover": "La pochette est la miniature de la vidéo, pas une vraie jaquette : remplace-la quand tu auras l'image du média."
+    "provisionalCover": "La pochette est la miniature de la vidéo, pas une vraie jaquette : remplace-la quand tu auras l'image du média.",
+    "cover": {
+      "title": "Remplacer la pochette",
+      "filterName": "Images",
+      "pick": "Choisir une image…",
+      "formats": "JPEG, PNG ou WebP",
+      "pickAnother": "Choisir une autre image",
+      "reframe": "Recadrage",
+      "reframeHint": "L'image n'est pas carrée — fais glisser pour placer le cadre.",
+      "sourceLine": "Image choisie",
+      "archiveLine": "Archivée en pleine taille (cover-hq)",
+      "embeddedLine": "Affichée & écrite dans les fichiers",
+      "mb": "Mo",
+      "tooSmall": "Plus petite que l'affichage (500 px) — elle sera utilisée telle quelle, mais pourra paraître floue.",
+      "unreadable": "Impossible de lire cette image.",
+      "failed": "Le remplacement a échoué — réessaie dans un instant.",
+      "noAlbumRow": "Cet album n'a pas d'emplacement de pochette où écrire.",
+      "cancel": "Annuler",
+      "replace": "Remplacer la pochette",
+      "help": {
+        "title": "Ce que le remplacement écrit",
+        "embed": "Un fichier audio transporte sa pochette à l'intérieur du fichier lui-même — c'est ainsi que les autres lecteurs et appareils l'affichent. Sonarche incruste l'image dans chaque morceau de l'album.",
+        "weight": "La copie incrustée est plafonnée à 500×500 px, et c'est tout l'intérêt : un scan de 3000×3000 incrusté tel quel ajouterait plusieurs Mo à chaque morceau, là où la version 500 px ajoute quelques dizaines de Ko.",
+        "archive": "Ton image complète n'est pas perdue : elle est archivée une fois à côté de l'album (cover-hq) et reste disponible le jour où une vue plein format en aura besoin."
+      }
+    }
   },
   "delete": {
     "action": "Supprimer le morceau",

@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { deleteTrack, listLibrary, recomputeGenres, reenrichTrack, updateTracks } from "@/features/library/api";
+import {
+  deleteTrack,
+  listLibrary,
+  recomputeGenres,
+  reenrichTrack,
+  setAlbumCover,
+  updateTracks,
+  type CoverCrop,
+} from "@/features/library/api";
 
 export const libraryKey = ["library"] as const;
 
@@ -111,6 +119,30 @@ export function useReenrichAlbum() {
   });
 
   return { ...mutation, progress };
+}
+
+/** Replace the cover of every beets album behind one shelf album. Usually one
+ * id; a group spanning two beets rows (a merge beets has not consolidated yet)
+ * gets the picture on both, so no folder keeps the old art. Sequential for the
+ * same single-writer reason as the other batch mutations. */
+export function useSetAlbumCover() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      albumIds,
+      sourcePath,
+      crop,
+    }: {
+      albumIds: number[];
+      sourcePath: string;
+      crop: CoverCrop | null;
+    }) => {
+      for (const albumId of albumIds) await setAlbumCover(albumId, sourcePath, crop);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
 }
 
 export function useRecomputeGenres() {

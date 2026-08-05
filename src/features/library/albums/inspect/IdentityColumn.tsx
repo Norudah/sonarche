@@ -30,6 +30,7 @@ export function IdentityColumn({
   onFilter,
   onChange,
   onRevert,
+  onReplaceCover,
 }: {
   completion: AlbumCompletion;
   baseline: AlbumCommonBaseline;
@@ -45,12 +46,13 @@ export function IdentityColumn({
   onFilter: (filter: TrackFilter | null) => void;
   onChange: (field: AlbumCommonField, value: string) => void;
   onRevert: (field: AlbumCommonField) => void;
+  onReplaceCover: () => void;
 }) {
   return (
     <div className="flex w-[21rem] shrink-0 flex-col gap-4 overflow-y-auto border-r border-separator bg-panel px-5 py-4 xl:w-[23rem]">
       <CompletionCard completion={completion} filter={filter} onFilter={onFilter} />
 
-      {hasProvisionalCover && <ProvisionalCoverNotice />}
+      {hasProvisionalCover && <ProvisionalCoverNotice onReplace={onReplaceCover} />}
 
       <hr className="border-separator" />
 

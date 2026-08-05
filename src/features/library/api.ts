@@ -16,6 +16,9 @@ export interface LibraryTrack {
   format: string;
   path: string;
   audioUrl: string;
+  /** beets' own album id — the identity cover operations key on. Null for a
+   * singleton, which has no album row to hang a cover on. */
+  albumId: number | null;
   /** The album cover at display size (beets' 500px rendition), not the CAA
    * original we archive beside it. Every surface draws it at 384px or less, so
    * there is no call site the original would serve better — see
@@ -61,7 +64,9 @@ interface WireTrack {
   bitrate: number | null;
   format: string;
   path: string;
+  album_id?: number | null;
   art_path: string | null;
+  art_mtime?: number | null;
   bonus_source: string | null;
   mb_trackid: string | null;
   suspect_match: boolean;
@@ -107,6 +112,29 @@ export async function recomputeGenres(): Promise<{ total: number; updated: numbe
   return invoke<{ total: number; updated: number }>("recompute_genres");
 }
 
+/** The square to cut from a replacement cover, in source pixels after EXIF
+ * orientation — the frame the preview showed. */
+export interface CoverCrop {
+  left: number;
+  top: number;
+  size: number;
+}
+
+/** Admit a user-picked image into the asset scope so the modal can preview it,
+ * and learn its weight for the size line. */
+export async function allowCoverPreview(path: string): Promise<{ path: string; bytes: number; url: string }> {
+  const result = await invoke<{ path: string; bytes: number }>("allow_cover_preview", { path });
+  return { ...result, url: convertFileSrc(result.path) };
+}
+
+export async function setAlbumCover(
+  albumId: number,
+  sourcePath: string,
+  crop: CoverCrop | null,
+): Promise<{ art_path: string | null; side: number; embedded: number }> {
+  return invoke("set_album_cover", { albumId, sourcePath, crop });
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({
@@ -125,7 +153,13 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     format: track.format,
     path: track.path,
     audioUrl: convertFileSrc(track.path),
-    artUrl: track.art_path ? convertFileSrc(track.art_path) : null,
+    albumId: track.album_id ?? null,
+    // Versioned by the cover file's mtime: artpath keeps its name when the
+    // picture behind it is replaced, and an unversioned URL would let the
+    // webview's cache show the old pixels forever.
+    artUrl: track.art_path
+      ? convertFileSrc(track.art_path) + (track.art_mtime != null ? `?v=${track.art_mtime}` : "")
+      : null,
     artPath: track.art_path,
     bonusSource: track.bonus_source,
     mbTrackId: track.mb_trackid,

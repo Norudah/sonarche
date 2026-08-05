@@ -500,6 +500,18 @@ function inflate<
   });
 }
 
+/** beets album ids, assigned per (album artist, album) group — what the cover
+ * replacement keys its write on. */
+function withAlbumIds<T extends { album: string; album_artist: string }>(tracks: T[]): (T & { album_id: number })[] {
+  const ids = new Map<string, number>();
+  return tracks.map((track) => {
+    const key = `${track.album_artist}␟${track.album}`;
+    const id = ids.get(key) ?? ids.size + 1;
+    ids.set(key, id);
+    return { ...track, album_id: id };
+  });
+}
+
 const requestedTracks = Number(new URLSearchParams(window.location.search).get("tracks") ?? 0);
 
 /**
@@ -564,7 +576,7 @@ function runMockSetup(): Promise<unknown> {
 
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
-  list_library: { tracks: isEmpty ? [] : inflate(libraryTracks, requestedTracks) },
+  list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };
@@ -637,9 +649,36 @@ export function installMockTauri() {
         if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
         return key;
       }
-      // The OS folder picker, standing in for a choice that cannot be made in a
-      // browser. Always the same folder, so the summary below is about it.
-      if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // The OS picker, standing in for a choice that cannot be made in a
+      // browser. A folder request gets the import folder; a file request is the
+      // cover picker, and gets a stand-in image path.
+      if (cmd === "plugin:dialog|open") {
+        const options = payload?.options as { directory?: boolean } | undefined;
+        return options?.directory ? MOCK_IMPORT_FOLDER : "/Users/dev/Pictures/discovery-scan.jpg";
+      }
+      // The picked image, admitted for preview. Landscape on purpose, so the
+      // reframe slider — the modal's one real control — is exercised.
+      if (cmd === "allow_cover_preview") {
+        return { path: thumb("#0ea5e9", "#164e63"), bytes: 4_600_000 };
+      }
+      if (cmd === "set_album_cover") {
+        const albumId = Number(payload?.albumId);
+        const { tracks } = responses.list_library as { tracks: { album_id: number }[] };
+        const fresh = thumb("#0ea5e9", "#164e63");
+        let embedded = 0;
+        for (const track of tracks as unknown as {
+          album_id: number;
+          art_path: string | null;
+          provisional_cover?: boolean;
+        }[]) {
+          if (track.album_id !== albumId) continue;
+          track.art_path = fresh;
+          track.provisional_cover = false;
+          embedded += 1;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        return { art_path: fresh, side: 180, embedded };
+      }
       // What the Settings pane shows as the installed version. A browser has no
       // bundle to read one from. Kept equal to the `currentVersion` the check
       // below reports, so `?update` previews a coherent 0.8.0 → 0.9.0 and not a

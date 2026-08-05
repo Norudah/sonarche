@@ -18,6 +18,7 @@ export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     format: "AAC",
     path: "",
     audioUrl: "",
+    albumId: 1,
     artUrl: null,
     artPath: null,
     bonusSource: null,

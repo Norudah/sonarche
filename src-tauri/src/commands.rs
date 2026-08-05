@@ -560,6 +560,95 @@ pub async fn delete_track(
         .await
 }
 
+/// Image formats a replacement cover may arrive in: what Pillow decodes, the
+/// webview previews, and the pipeline can archive. Deliberately short — HEIC
+/// and the like can join once each reader is proven, not before.
+const COVER_SOURCE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
+
+/// A user-picked image path, canonicalised and checked before anything trusts
+/// it: it must exist, be a file, and wear a whitelisted extension.
+async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
+    let canonical = tokio::fs::canonicalize(path)
+        .await
+        .map_err(|_| AppError::InvalidInput(format!("file not found: {path}")))?;
+    let extension = canonical
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+    if !COVER_SOURCE_EXTENSIONS.contains(&extension.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unsupported image type: .{extension}"
+        )));
+    }
+    let meta = tokio::fs::metadata(&canonical).await?;
+    if !meta.is_file() {
+        return Err(AppError::InvalidInput("not a file".into()));
+    }
+    Ok(canonical)
+}
+
+/// Let the webview preview a cover candidate that lives outside the library:
+/// the asset scope only covers the library and app data, so a picked file is
+/// admitted one path at a time. Returns its size for the modal's weight line.
+#[tauri::command]
+pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Value> {
+    use tauri::Manager;
+
+    let canonical = checked_cover_source(&path).await?;
+    let bytes = tokio::fs::metadata(&canonical).await?.len();
+    app.asset_protocol_scope()
+        .allow_file(&canonical)
+        .map_err(|err| AppError::InvalidInput(format!("could not admit the file: {err}")))?;
+    Ok(json!({ "path": canonical.to_string_lossy(), "bytes": bytes }))
+}
+
+/// The square the sidecar should cut from the source image, in source pixels
+/// after EXIF orientation — the same frame the preview showed the user.
+#[derive(Deserialize)]
+pub struct CoverCrop {
+    left: u32,
+    top: u32,
+    size: u32,
+}
+
+/// Replace an album's cover with a local image: archive it as cover-hq.*,
+/// write the 500px rendition as beets' artpath, embed it into the album's m4a
+/// files, and drop the provisional-cover flag.
+#[tauri::command]
+pub async fn set_album_cover(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_id: i64,
+    source_path: String,
+    crop: Option<CoverCrop>,
+) -> AppResult<Value> {
+    if album_id <= 0 {
+        return Err(AppError::InvalidInput(format!("bad album id: {album_id}")));
+    }
+    if let Some(CoverCrop { size, .. }) = crop {
+        if size == 0 {
+            return Err(AppError::InvalidInput("empty crop".into()));
+        }
+    }
+    let canonical = checked_cover_source(&source_path).await?;
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "cover_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.library_dir.to_string_lossy(),
+                "album_id": album_id,
+                "source_path": canonical.to_string_lossy(),
+                "crop": crop.map(|c| json!({ "left": c.left, "top": c.top, "size": c.size })),
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
 /// The Appearance setting, pushed to the native frame. Thin on purpose: the
 /// window is the state, so there is nothing to keep here.
 #[tauri::command]

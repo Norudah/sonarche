@@ -20,6 +20,7 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     format: "AAC",
     path: "/music/monster.m4a",
     audioUrl: "asset://music/monster.m4a",
+    albumId: 1,
     artUrl: null,
     artPath: null,
     bonusSource: null,

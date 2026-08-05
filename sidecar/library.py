@@ -95,6 +95,25 @@ def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     }
 
 
+def art_mtimes(art_by_album: dict[int, str | None]) -> dict[int, int]:
+    """Modification time of each resolved cover, whole seconds.
+
+    Surfaced so the front can version its cover URLs: `artpath` keeps the same
+    name when the picture behind it is replaced (a re-enrich, a user-chosen
+    cover), and the webview's image cache would happily keep showing the old
+    pixels forever. One stat per album, same budget as the resolve above.
+    """
+    mtimes: dict[int, int] = {}
+    for album_id, path in art_by_album.items():
+        if not path:
+            continue
+        try:
+            mtimes[album_id] = int(os.stat(path).st_mtime)
+        except OSError:
+            pass
+    return mtimes
+
+
 def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
     """One surfaced flexible attribute for the whole library — they live in
     item_attributes rather than columns. One indexed query per key instead of
@@ -110,7 +129,13 @@ def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
 
 
 def track_row(
-    row, art_by_album, bonus_by_item, suspect_by_item, provisional_cover_by_item, library_dir: str
+    row,
+    art_by_album,
+    art_mtime_by_album,
+    bonus_by_item,
+    suspect_by_item,
+    provisional_cover_by_item,
+    library_dir: str,
 ) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
     genre = first_genre(row["genres"])
@@ -131,7 +156,10 @@ def track_row(
         "format": row["format"],
         "path": expand_db_path(row["path"], library_dir),
         # Singletons carry no album_id and simply miss.
+        "album_id": row["album_id"] or None,
         "art_path": art_by_album.get(row["album_id"]),
+        # Versions the cover URL: same artpath, new pixels -> new mtime.
+        "art_mtime": art_mtime_by_album.get(row["album_id"]),
         # Origin release of an adopted bonus track (deluxe/regional
         # edition filed with the main album), or None.
         "bonus_source": bonus_by_item.get(row["id"]),
@@ -173,6 +201,7 @@ def handle(_request_id: str, params: dict) -> dict:
     conn.row_factory = sqlite3.Row
     try:
         art_by_album = art_paths_by_album(conn, library_dir)
+        art_mtime_by_album = art_mtimes(art_by_album)
         bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
         provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
@@ -185,6 +214,7 @@ def handle(_request_id: str, params: dict) -> dict:
             track_row(
                 r,
                 art_by_album,
+                art_mtime_by_album,
                 bonus_by_item,
                 suspect_by_item,
                 provisional_cover_by_item,
