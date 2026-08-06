@@ -23,6 +23,7 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 
 def _handlers():
     import acoustid_key
+    import artist_image
     import cover_set
     import download
     import enrich
@@ -51,6 +52,7 @@ def _handlers():
         "library_update": library.update,
         "cover_set": cover_set.handle,
         "cover_candidates": cover_set.candidates,
+        "artist_image_set": artist_image.handle,
         "genres_recompute": genres.recompute,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,

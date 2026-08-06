@@ -167,6 +167,32 @@ export async function listCoverCandidates(albumId: number): Promise<CoverCandida
   }));
 }
 
+/** The image an artist wears, keyed by the exact albumartist string the shelf
+ * groups on. The file lives in app data (`artists/`), never in the library;
+ * its name is a fresh random stem per write, so the URL itself is the cache
+ * buster. */
+export interface ArtistImage {
+  name: string;
+  url: string;
+}
+
+export async function listArtistImages(): Promise<ArtistImage[]> {
+  const raw = await invoke<{ images: { name: string; path: string; updated_at: number }[] }>("list_artist_images");
+  return raw.images.map((image) => ({ name: image.name, url: convertFileSrc(image.path) }));
+}
+
+export async function setArtistImage(
+  name: string,
+  sourcePath: string,
+  crop: CoverCrop | null,
+): Promise<{ name: string; filename: string }> {
+  return invoke("set_artist_image", { name, sourcePath, crop });
+}
+
+export async function removeArtistImage(name: string): Promise<{ removed: boolean }> {
+  return invoke("remove_artist_image", { name });
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({

@@ -107,7 +107,25 @@
       "tracks": "Titres"
     },
     "overviewMode": "Discographie",
-    "guest": "Invité"
+    "guest": "Invité",
+    "image": {
+      "title": "Remplacer l'image de l'artiste",
+      "current": "Actuelle",
+      "next": "Nouvelle",
+      "hasCurrent": "L'image que tu as choisie pour cet artiste.",
+      "noCurrent": "Pas encore d'image — un motif de genre fait office.",
+      "drop": "Glisse une image ici, ou clique pour choisir un fichier",
+      "unreadable": "Cette image ne peut pas être lue.",
+      "failed": "Le changement a échoué — réessaie dans un instant.",
+      "tooSmall": "Plus petite que l'affichage (500 px) — elle sera utilisée telle quelle, mais pourra paraître floue.",
+      "replace": "Utiliser cette image",
+      "remove": "Retirer l'image",
+      "help": {
+        "title": "Où vit l'image",
+        "storage": "L'image est rangée dans les données propres de Sonarche, à côté de sa base — jamais dans ton dossier musique, qui reste exactement tel que beets l'a classé.",
+        "display": "Elle est stockée en carré de 500 px et dessinée comme disque de l'artiste partout : l'étagère des artistes, cette page, la barre compacte."
+      }
+    }
   },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",

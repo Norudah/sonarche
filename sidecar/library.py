@@ -341,14 +341,23 @@ def update(_request_id: str, params: dict) -> dict:
     # album to re-file.
     album_edits: dict[int, dict[str, str]] = {}
     solo: list = []
+    # Albumartist renames, old -> new, deduplicated in order. The write is the
+    # one moment both names are in scope, and Rust needs the pair to move the
+    # artist's image (our own asset, keyed by name) along with the rename.
+    artist_renames: dict[tuple[str, str], None] = {}
 
     for entry in params.get("updates") or []:
         item = lib.get_item(entry["id"])
         if item is None:
             continue
+        old_artist = (getattr(item, "albumartist", "") or "").strip()
         changed = _apply_fields(item, entry.get("fields") or {})
         if not changed:
             continue
+        if "albumartist" in changed:
+            new_artist = (item.albumartist or "").strip()
+            if old_artist and new_artist and old_artist != new_artist:
+                artist_renames[(old_artist, new_artist)] = None
         # These edits are the one provenance signal that cannot be
         # reconstructed later; record them in the same store.
         provenance.mark_edited(item, changed)
@@ -394,7 +403,10 @@ def update(_request_id: str, params: dict) -> dict:
     for album_id, old_dir in art_dirs.items():
         covers.follow_hq_cover(lib, lib.get_album(album_id), old_dir, _decode)
 
-    return {"updated": updated}
+    return {
+        "updated": updated,
+        "artist_renames": [{"old": old, "new": new} for old, new in artist_renames],
+    }
 
 
 def _album_art_dir(lib, album_id: int) -> str | None:

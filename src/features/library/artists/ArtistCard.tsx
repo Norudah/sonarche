@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { artistPath } from "@/app/routes";
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
+import { useArtistImages } from "@/features/library/hooks";
 import { springs } from "@/shared/motion/tokens";
 
 interface ArtistCardProps {
@@ -29,6 +30,9 @@ interface ArtistCardProps {
 export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
+  // Looked up here rather than plumbed through every grid: the map is one
+  // cached query, shared by all cards.
+  const imageUrl = useArtistImages().data?.get(artist.name) ?? null;
 
   return (
     <div style={style} className="group/card cascade-item relative">
@@ -40,6 +44,7 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
       >
         <ArtistAvatar
           family={artist.family}
+          imageUrl={imageUrl}
           className="aspect-square w-full shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg"
         />
         <p className="mt-2.5 truncate text-center text-sm font-medium">{artist.name}</p>

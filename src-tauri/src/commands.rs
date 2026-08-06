@@ -503,6 +503,7 @@ pub struct TrackUpdate {
 pub async fn update_tracks(
     app: AppHandle,
     state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
     updates: Vec<TrackUpdate>,
 ) -> AppResult<Value> {
     if updates.is_empty() {
@@ -525,7 +526,7 @@ pub async fn update_tracks(
     }
 
     let paths = AppPaths::resolve(&app)?;
-    state
+    let result = state
         .request(
             &app,
             "library_update",
@@ -536,7 +537,12 @@ pub async fn update_tracks(
             }),
             QUERY_TIMEOUT,
         )
-        .await
+        .await?;
+    // The write is the one moment old and new albumartist are both known: any
+    // rename it reported takes the artist's image (our asset, keyed by name)
+    // along. Best-effort — the edit itself already succeeded.
+    crate::artist_images::follow_renames(&app, &jobs, &result).await;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -567,7 +573,7 @@ const COVER_SOURCE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
 
 /// A user-picked image path, canonicalised and checked before anything trusts
 /// it: it must exist, be a file, and wear a whitelisted extension.
-async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
+pub(crate) async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
     let canonical = tokio::fs::canonicalize(path)
         .await
         .map_err(|_| AppError::InvalidInput(format!("file not found: {path}")))?;
@@ -607,9 +613,9 @@ pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Valu
 /// after EXIF orientation — the same frame the preview showed the user.
 #[derive(Deserialize)]
 pub struct CoverCrop {
-    left: u32,
-    top: u32,
-    size: u32,
+    pub(crate) left: u32,
+    pub(crate) top: u32,
+    pub(crate) size: u32,
 }
 
 /// Replace an album's cover: archive the image as cover-hq.*, write the 500px

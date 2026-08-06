@@ -3,15 +3,20 @@ import { useState } from "react";
 
 import {
   deleteTrack,
+  listArtistImages,
   listLibrary,
   recomputeGenres,
   reenrichTrack,
+  removeArtistImage,
   setAlbumCover,
+  setArtistImage,
   updateTracks,
+  type CoverCrop,
   type CoverSource,
 } from "@/features/library/api";
 
 export const libraryKey = ["library"] as const;
+export const artistImagesKey = ["artist-images"] as const;
 
 /**
  * The whole library, once.
@@ -76,6 +81,9 @@ export function useUpdateTracks() {
     // holds the page steady across the gap.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
+      // An albumartist rename moves the artist's image with the name; the
+      // name -> image map has to follow.
+      queryClient.invalidateQueries({ queryKey: artistImagesKey });
     },
   });
 }
@@ -133,6 +141,40 @@ export function useSetAlbumCover() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
+/** The artist -> image URL map, once. Same `staleTime: Infinity` reasoning as
+ * the library: only our own mutations move it, and each invalidates the key. */
+export function useArtistImages() {
+  return useQuery({
+    queryKey: artistImagesKey,
+    queryFn: async () => {
+      const images = await listArtistImages();
+      return new Map(images.map((image) => [image.name, image.url]));
+    },
+    staleTime: Infinity,
+  });
+}
+
+export function useSetArtistImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, sourcePath, crop }: { name: string; sourcePath: string; crop: CoverCrop | null }) =>
+      setArtistImage(name, sourcePath, crop),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: artistImagesKey });
+    },
+  });
+}
+
+export function useRemoveArtistImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: removeArtistImage,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: artistImagesKey });
     },
   });
 }

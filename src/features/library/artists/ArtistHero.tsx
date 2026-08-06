@@ -1,3 +1,4 @@
+import { ImagePlus } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -12,8 +13,12 @@ import { HeroWash } from "@/features/library/HeroWash";
 
 interface ArtistHeroProps {
   artist: Artist;
+  /** The artist's own picture, when they have one. */
+  imageUrl: string | null;
   onPlay: () => void;
   onShuffle: () => void;
+  /** Opens the image replacement modal — the disc is the way to the disc. */
+  onEditImage: () => void;
   /** The view switcher, in the same spot as on the genre and category heroes. */
   actions?: ReactNode;
   ref?: Ref<HTMLElement>;
@@ -29,7 +34,7 @@ interface ArtistHeroProps {
  * play counter exists; a hero that states a number nothing measures is worse
  * than a hero that states less.
  */
-export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHeroProps) {
+export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEditImage, actions, ref }: ArtistHeroProps) {
   const { t } = useTranslation("library");
 
   const span =
@@ -61,8 +66,19 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
         <div className="mt-5 flex items-end gap-6">
           {/* Matches the album hero's 192px cover box, as a circle: the two
            * heroes share one baseline, the shape is the only tell of which one
-           * you are on. */}
-          <ArtistAvatar family={artist.family} className="size-48 shrink-0 glow-accent-deep" />
+           * you are on. Like the album's cover, the disc is the way to the
+           * disc: hover says so. */}
+          <button
+            type="button"
+            onClick={onEditImage}
+            aria-label={t("artists.image.title")}
+            className="group relative size-48 shrink-0 cursor-pointer overflow-hidden rounded-full outline-none glow-accent-deep focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            <ArtistAvatar family={artist.family} imageUrl={imageUrl} className="size-full" />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              <ImagePlus className="size-6 text-white" />
+            </span>
+          </button>
 
           {/* Capped rather than stretched: the album's text column is bounded on
            * its right by the completeness ring, so it never looks empty. This

@@ -574,6 +574,10 @@ function runMockSetup(): Promise<unknown> {
   });
 }
 
+/** Artist images this preview session set, name -> stand-in path. Starts
+ * empty on purpose: the generated motif is the shipped default. */
+const artistImages = new Map<string, string>();
+
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
   list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
@@ -717,6 +721,19 @@ export function installMockTauri() {
         }
         await new Promise((resolve) => window.setTimeout(resolve, 700));
         return { art_path: fresh, side: 180, embedded };
+      }
+      if (cmd === "list_artist_images") {
+        return {
+          images: [...artistImages].map(([name, path]) => ({ name, path, updated_at: 0 })),
+        };
+      }
+      if (cmd === "set_artist_image") {
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        artistImages.set(String(payload?.name), thumb("#7c3aed", "#312e81"));
+        return { name: payload?.name, filename: "mock.jpg" };
+      }
+      if (cmd === "remove_artist_image") {
+        return { removed: artistImages.delete(String(payload?.name)) };
       }
       // What the Settings pane shows as the installed version. A browser has no
       // bundle to read one from. Kept equal to the `currentVersion` the check

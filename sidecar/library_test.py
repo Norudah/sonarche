@@ -414,7 +414,7 @@ class UpdateMovesTheFileTest(unittest.TestCase):
             lib._close()
 
     def test_renaming_the_album_refiles_the_track(self):
-        self.assertEqual(self._update({"album": "New Album"}), {"updated": 1})
+        self.assertEqual(self._update({"album": "New Album"}), {"updated": 1, "artist_renames": []})
 
         moved = self._current_path()
         self.assertIn(os.path.join("Old Artist", "New Album"), moved)
@@ -422,11 +422,19 @@ class UpdateMovesTheFileTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.old_path), "the old file must not linger")
 
     def test_renaming_the_album_artist_refiles_the_track(self):
-        self.assertEqual(self._update({"albumartist": "New Artist"}), {"updated": 1})
+        self.assertEqual(
+            self._update({"albumartist": "New Artist"}),
+            {"updated": 1, "artist_renames": [{"old": "Old Artist", "new": "New Artist"}]},
+        )
 
         moved = self._current_path()
         self.assertIn(os.path.join("New Artist", "Old Album"), moved)
         self.assertTrue(os.path.exists(moved))
+
+    def test_a_rename_to_the_same_name_reports_no_artist_rename(self):
+        """A no-op edit must not surface as a rename: Rust would move the
+        artist's image onto itself, or worse, orphan it."""
+        self.assertEqual(self._update({"albumartist": "Old Artist"}), {"updated": 0, "artist_renames": []})
 
     def test_the_emptied_folder_does_not_survive(self):
         self._update({"album": "New Album"})
@@ -439,7 +447,7 @@ class UpdateMovesTheFileTest(unittest.TestCase):
     def test_an_edit_that_changes_no_filing_field_leaves_the_path_alone(self):
         before = self._current_path()
 
-        self.assertEqual(self._update({"year": "2011"}), {"updated": 1})
+        self.assertEqual(self._update({"year": "2011"}), {"updated": 1, "artist_renames": []})
 
         self.assertEqual(self._current_path(), before)
 

@@ -1414,4 +1414,43 @@ impl JobsState {
         }
         self.list().await
     }
+
+    // Artist images live in the same store (app/user state, not a fact about
+    // an audio file); these thin wrappers keep the connection discipline —
+    // every touch through `with_conn`, off the async runtime.
+
+    pub async fn list_artist_images(&self) -> AppResult<Vec<jobs_store::ArtistImageRow>> {
+        with_conn(&self.0, jobs_store::list_artist_images).await
+    }
+
+    /// Returns the replaced file's name, if the write orphaned one.
+    pub async fn set_artist_image(
+        &self,
+        name: String,
+        filename: String,
+        source: String,
+    ) -> AppResult<Option<String>> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            jobs_store::upsert_artist_image(c, &name, &filename, &source, now)
+        })
+        .await
+    }
+
+    /// Returns the removed row's filename, if there was one.
+    pub async fn remove_artist_image(&self, name: String) -> AppResult<Option<String>> {
+        with_conn(&self.0, move |c| jobs_store::remove_artist_image(c, &name)).await
+    }
+
+    /// Returns the filename left ownerless by the rename, if any.
+    pub async fn rename_artist_image(&self, old: String, new: String) -> AppResult<Option<String>> {
+        with_conn(&self.0, move |c| {
+            jobs_store::rename_artist_image(c, &old, &new)
+        })
+        .await
+    }
+
+    pub async fn clear_artist_images(&self) -> AppResult<()> {
+        with_conn(&self.0, jobs_store::clear_artist_images).await
+    }
 }

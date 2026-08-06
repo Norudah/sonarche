@@ -72,6 +72,10 @@ pub struct AppPaths {
     pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
     pub library_dir: PathBuf,
+    /// Where user-chosen artist images land (app data, not the library: an
+    /// artist has no folder of their own in a beets-clean library). Indexed by
+    /// the `artist_images` table in sonarche.db.
+    pub artist_images_dir: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
     pub genres_tree: PathBuf,
@@ -150,6 +154,7 @@ impl AppPaths {
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir,
+            artist_images_dir: data.join("artists"),
             sidecar_main: sidecar_dir.join("main.py"),
             requirements: sidecar_dir.join("requirements.txt"),
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
@@ -623,6 +628,7 @@ mod tests {
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir: PathBuf::from("/music/Sonarche"),
+            artist_images_dir: data.join("artists"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),

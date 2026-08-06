@@ -107,7 +107,25 @@
       "tracks": "Tracks"
     },
     "overviewMode": "Discography",
-    "guest": "Guest"
+    "guest": "Guest",
+    "image": {
+      "title": "Replace the artist image",
+      "current": "Current",
+      "next": "New",
+      "hasCurrent": "The image you chose for this artist.",
+      "noCurrent": "No image yet — a genre motif stands in.",
+      "drop": "Drop an image here, or click to choose a file",
+      "unreadable": "This image can't be read.",
+      "failed": "The change failed — try again in a moment.",
+      "tooSmall": "Smaller than the 500 px display size — it will be used as-is, but may look soft.",
+      "replace": "Use this image",
+      "remove": "Remove the image",
+      "help": {
+        "title": "Where the image lives",
+        "storage": "The image is kept in Sonarche's own data, next to its database — never inside your music folder, which stays exactly as beets filed it.",
+        "display": "It is stored as a 500 px square and drawn as the artist's disc everywhere: the artists shelf, this page, the compact bar."
+      }
+    }
   },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",

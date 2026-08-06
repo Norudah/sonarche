@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod artist_images;
 mod audio_formats;
 mod commands;
 mod error;
@@ -96,6 +97,9 @@ fn main() {
             commands::allow_cover_preview,
             commands::set_album_cover,
             commands::list_cover_candidates,
+            artist_images::list_artist_images,
+            artist_images::set_artist_image,
+            artist_images::remove_artist_image,
             commands::scan_import_folder,
             commands::start_library_import,
             commands::list_imports,

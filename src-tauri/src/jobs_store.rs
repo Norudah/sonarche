@@ -26,7 +26,7 @@ use crate::library_import::{ImportRecord, ScanCounts};
 
 /// Schema version stamped into `PRAGMA user_version`. Informational: it records
 /// which build last touched the file. Nothing branches on it — see `open()`.
-const SCHEMA_VERSION: i64 = 4;
+const SCHEMA_VERSION: i64 = 5;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -97,6 +97,19 @@ CREATE TABLE IF NOT EXISTS imports (
     renditions    INTEGER NOT NULL DEFAULT 0,
     recap         TEXT,
     finished_at   INTEGER NOT NULL
+);
+
+-- The image an artist wears in the interface. An artist is an entity nowhere
+-- else — no beets table, no folder, no audio tag — so this row IS the artist's
+-- existence as far as images go. `name` is the exact albumartist string the
+-- front groups on; `filename` lives under app data's `artists/` directory and
+-- is a fresh random stem per write, so a replaced image never fights the
+-- webview's cache. `source` says where the picture came from (today: local).
+CREATE TABLE IF NOT EXISTS artist_images (
+    name       TEXT PRIMARY KEY,
+    filename   TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
 );
 
 -- Read path ordering + the queryable columns future features (retry-all,
@@ -446,6 +459,103 @@ pub fn clear_history(conn: &Connection) -> AppResult<()> {
     )?;
     tx.execute("DELETE FROM imports", [])?;
     tx.commit()?;
+    Ok(())
+}
+
+/// One artist image row: which file (under app data's `artists/`) the named
+/// artist wears. `updated_at` rides along for a future "when" in the UI.
+pub struct ArtistImageRow {
+    pub name: String,
+    pub filename: String,
+    pub updated_at: u64,
+}
+
+pub fn list_artist_images(conn: &Connection) -> AppResult<Vec<ArtistImageRow>> {
+    let mut stmt =
+        conn.prepare("SELECT name, filename, updated_at FROM artist_images ORDER BY name ASC")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(ArtistImageRow {
+            name: row.get("name")?,
+            filename: row.get("filename")?,
+            updated_at: row.get::<_, i64>("updated_at")? as u64,
+        })
+    })?;
+    let mut images = Vec::new();
+    for row in rows {
+        images.push(row?);
+    }
+    Ok(images)
+}
+
+/// Record the image an artist now wears. Returns the filename it replaces, if
+/// any, so the caller can remove the orphaned file — the row can't, it only
+/// knows names.
+pub fn upsert_artist_image(
+    conn: &Connection,
+    name: &str,
+    filename: &str,
+    source: &str,
+    now: u64,
+) -> AppResult<Option<String>> {
+    let previous: Option<String> = conn
+        .query_row(
+            "SELECT filename FROM artist_images WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )
+        .optional()?;
+    conn.execute(
+        "INSERT OR REPLACE INTO artist_images (name, filename, source, updated_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![name, filename, source, now as i64],
+    )?;
+    Ok(previous.filter(|old| old != filename))
+}
+
+/// Forget an artist's image. Returns the filename that just went ownerless.
+pub fn remove_artist_image(conn: &Connection, name: &str) -> AppResult<Option<String>> {
+    let filename: Option<String> = conn
+        .query_row(
+            "SELECT filename FROM artist_images WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )
+        .optional()?;
+    conn.execute("DELETE FROM artist_images WHERE name = ?1", params![name])?;
+    Ok(filename)
+}
+
+/// Follow an albumartist rename: the image goes with the name. When the new
+/// name already wears an image of its own, that one wins — the rename usually
+/// merges a misspelling into an artist that already exists, and their chosen
+/// picture should not be overwritten by the stray's. Returns the filename left
+/// ownerless (the loser's), if any, for the caller to delete.
+pub fn rename_artist_image(conn: &Connection, old: &str, new: &str) -> AppResult<Option<String>> {
+    if old == new {
+        return Ok(None);
+    }
+    let target_taken: bool = conn
+        .query_row(
+            "SELECT 1 FROM artist_images WHERE name = ?1",
+            params![new],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if target_taken {
+        return remove_artist_image(conn, old);
+    }
+    conn.execute(
+        "UPDATE artist_images SET name = ?2 WHERE name = ?1",
+        params![old, new],
+    )?;
+    Ok(None)
+}
+
+/// The erase-all sweep for artist images: every row at once. File removal is
+/// the caller's job (the directory goes wholesale).
+pub fn clear_artist_images(conn: &Connection) -> AppResult<()> {
+    conn.execute("DELETE FROM artist_images", [])?;
     Ok(())
 }
 
@@ -877,6 +987,88 @@ mod tests {
             .map(|record| record.id)
             .collect();
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+
+    #[test]
+    fn an_artist_image_round_trips_and_replacement_reports_the_orphan() {
+        let conn = mem();
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 100).unwrap(),
+            None
+        );
+        // Same file again: nothing to delete.
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 150).unwrap(),
+            None
+        );
+        // New file: the old one goes ownerless.
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "b.png", "local", 200).unwrap(),
+            Some("a.jpg".to_string())
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "Hans Zimmer");
+        assert_eq!(rows[0].filename, "b.png");
+        assert_eq!(rows[0].updated_at, 200);
+    }
+
+    #[test]
+    fn removing_an_artist_image_hands_back_its_file() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            remove_artist_image(&conn, "Hans Zimmer").unwrap(),
+            Some("a.jpg".to_string())
+        );
+        assert!(list_artist_images(&conn).unwrap().is_empty());
+        assert_eq!(remove_artist_image(&conn, "Hans Zimmer").unwrap(), None);
+    }
+
+    #[test]
+    fn a_rename_moves_the_image_with_the_name() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hanz Zimmer", "a.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer").unwrap(),
+            None
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows[0].name, "Hans Zimmer");
+        assert_eq!(rows[0].filename, "a.jpg");
+    }
+
+    /// Renaming usually merges a misspelling into an artist that already
+    /// exists: the established artist's picture wins, the stray's file is
+    /// reported for deletion.
+    #[test]
+    fn a_rename_onto_an_existing_image_keeps_the_target_and_orphans_the_source() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hanz Zimmer", "stray.jpg", "local", 100).unwrap();
+        upsert_artist_image(&conn, "Hans Zimmer", "kept.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer").unwrap(),
+            Some("stray.jpg".to_string())
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].filename, "kept.jpg");
+    }
+
+    #[test]
+    fn a_rename_with_no_image_is_a_no_op() {
+        let conn = mem();
+        assert_eq!(
+            rename_artist_image(&conn, "Nobody", "Somebody").unwrap(),
+            None
+        );
+        assert!(list_artist_images(&conn).unwrap().is_empty());
     }
 
     /// The page archives both ways music arrives, and its one button says

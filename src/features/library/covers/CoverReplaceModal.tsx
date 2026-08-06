@@ -1,15 +1,15 @@
 import { Modal, Spinner } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
-import { open } from "@tauri-apps/plugin-dialog";
-import { ImagePlus, MoveRight, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { MoveRight, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { allowCoverPreview, listCoverCandidates, type CoverCandidate, type CoverSource } from "@/features/library/api";
 import type { Album } from "@/features/library/albums/albums";
 import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { cropRect, type SourceSize } from "@/features/library/covers/coverCrop";
-import { CropStage } from "@/features/library/covers/CropStage";
+import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
+import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
 import { useSetAlbumCover } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
@@ -25,11 +25,7 @@ import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
  * way back to an official cover. Confirming is the only step that writes.
  */
 
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 const STAGE_PX = 280;
-
-type NewSource =
-  { kind: "local"; path: string; url: string; bytes: number } | { kind: "candidate"; candidate: CoverCandidate };
 
 function formatWeight(bytes: number, locale: string, mb: string, kb: string): string {
   const format = (value: number) =>
@@ -70,17 +66,25 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const { t, i18n } = useTranslation("library");
   const replace = useSetAlbumCover();
 
-  const [source, setSource] = useState<NewSource | null>(null);
-  const [natural, setNatural] = useState<SourceSize | null>(null);
-  const [offset, setOffset] = useState(0.5);
+  const [candidate, setCandidate] = useState<CoverCandidate | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isDropTarget, setIsDropTarget] = useState(false);
   const [currentBytes, setCurrentBytes] = useState<number | null>(null);
   const [currentSize, setCurrentSize] = useState<SourceSize | null>(null);
   const [embeddedEstimate, setEmbeddedEstimate] = useState<number | null>(null);
   // The online lookup is the user's move, never the modal's: opening it must
   // not cost a network round-trip to the Cover Art Archive.
   const [wantsCandidates, setWantsCandidates] = useState(false);
+
+  const local = useLocalImageSource({
+    isOpen,
+    filterName: t("albumMetadata.cover.filterName"),
+    // A local pick supersedes a selected candidate, and vice versa below.
+    onAdopt: () => {
+      setError(null);
+      setCandidate(null);
+    },
+    onUnreadable: () => setError(t("albumMetadata.cover.unreadable")),
+  });
 
   const albumIds = [...new Set(album.tracks.map((track) => track.albumId).filter((id): id is number => id != null))];
   const embedCount = album.tracks.filter((track) => track.path.toLowerCase().endsWith(".m4a")).length;
@@ -96,11 +100,9 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   });
 
   const reset = () => {
-    setSource(null);
-    setNatural(null);
-    setOffset(0.5);
+    local.clear();
+    setCandidate(null);
     setError(null);
-    setIsDropTarget(false);
     setWantsCandidates(false);
   };
 
@@ -109,62 +111,6 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     reset();
     onClose();
   };
-
-  const adoptLocal = async (path: string) => {
-    setError(null);
-    try {
-      const admitted = await allowCoverPreview(path);
-      setSource({ kind: "local", ...admitted });
-      setNatural(null);
-      setOffset(0.5);
-    } catch {
-      setError(t("albumMetadata.cover.unreadable"));
-    }
-  };
-
-  const pick = async () => {
-    const chosen = await open({
-      multiple: false,
-      filters: [{ name: t("albumMetadata.cover.filterName"), extensions: IMAGE_EXTENSIONS }],
-    });
-    if (typeof chosen === "string") await adoptLocal(chosen);
-  };
-
-  // OS drag-and-drop reaches the webview as Tauri's own drag events (HTML5
-  // drop never fires while the interceptor owns it), so the listener exists
-  // exactly while the modal is up. The ref keeps the handler current without
-  // re-subscribing on every render.
-  const dropRef = useRef<(paths: string[]) => void>(() => {});
-  dropRef.current = (paths) => {
-    const image = paths.find((path) => IMAGE_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(`.${ext}`)));
-    if (image) void adoptLocal(image);
-    else setError(t("albumMetadata.cover.unreadable"));
-  };
-  useEffect(() => {
-    if (!isOpen) return;
-    let cancelled = false;
-    let unlisten: (() => void) | undefined;
-    void import("@tauri-apps/api/webview")
-      .then(({ getCurrentWebview }) =>
-        getCurrentWebview().onDragDropEvent((event) => {
-          if (event.payload.type === "enter") setIsDropTarget(true);
-          if (event.payload.type === "leave") setIsDropTarget(false);
-          if (event.payload.type === "drop") {
-            setIsDropTarget(false);
-            dropRef.current(event.payload.paths);
-          }
-        }),
-      )
-      .then((stop) => {
-        if (cancelled) stop();
-        else unlisten = stop;
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [isOpen]);
 
   // The current cover's weight, read once per opening — it feeds the "what it
   // costs today" line the comparison is anchored to.
@@ -184,31 +130,33 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
 
   // Estimated embedded weight of the crop, re-measured shortly after the frame
   // settles — an encode per keypress would churn for nothing.
+  const { image, natural, offset } = local;
   useEffect(() => {
-    if (source?.kind !== "local" || !natural) {
+    if (!image || !natural) {
       setEmbeddedEstimate(null);
       return;
     }
     const crop = cropRect(natural, offset) ?? { left: 0, top: 0, size: natural.width };
     let stale = false;
     const timer = window.setTimeout(async () => {
-      const bytes = await estimateEmbeddedBytes(source.url, crop, source.path.toLowerCase().endsWith(".png"));
+      const bytes = await estimateEmbeddedBytes(image.url, crop, image.path.toLowerCase().endsWith(".png"));
       if (!stale) setEmbeddedEstimate(bytes);
     }, 250);
     return () => {
       stale = true;
       window.clearTimeout(timer);
     };
-  }, [source, natural, offset]);
+  }, [image, natural, offset]);
 
   const confirm = () => {
-    if (!source || albumIds.length === 0) return;
+    if (albumIds.length === 0) return;
     let wire: CoverSource;
-    if (source.kind === "local") {
-      if (!natural) return;
-      wire = { sourcePath: source.path, crop: cropRect(natural, offset) };
+    if (candidate) {
+      wire = { candidateUrl: candidate.imageUrl };
+    } else if (image && natural) {
+      wire = { sourcePath: image.path, crop: cropRect(natural, offset) };
     } else {
-      wire = { candidateUrl: source.candidate.imageUrl };
+      return;
     }
     setError(null);
     replace.mutate(
@@ -223,8 +171,8 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     );
   };
 
-  const squareSide = source?.kind === "local" && natural ? Math.min(natural.width, natural.height) : null;
-  const canConfirm = source != null && (source.kind !== "local" || natural != null) && !replace.isPending;
+  const squareSide = candidate == null && image && natural ? Math.min(natural.width, natural.height) : null;
+  const canConfirm = (candidate != null || (image != null && natural != null)) && !replace.isPending;
 
   return (
     <Modal
@@ -326,73 +274,42 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                       </FieldHelpPopover>
                     </h3>
 
-                    {source == null ? (
-                      <button
-                        type="button"
-                        onClick={pick}
-                        className={`flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed text-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                          isDropTarget
-                            ? "border-accent bg-accent-soft text-accent"
-                            : "border-separator hover:border-accent/50 hover:text-foreground"
-                        }`}
-                        style={{ width: STAGE_PX, height: STAGE_PX }}
-                      >
-                        <ImagePlus className="size-7 opacity-60" />
-                        <span className="px-6 text-center text-[0.8125rem] font-medium">
-                          {t("albumMetadata.cover.drop")}
-                        </span>
-                        <span className="text-[0.6875rem] opacity-70">{t("albumMetadata.cover.formats")}</span>
-                      </button>
-                    ) : source.kind === "local" ? (
-                      <div
-                        className={`flex items-center justify-center rounded-xl ${isDropTarget ? "ring-2 ring-accent" : ""}`}
-                        style={{ minHeight: STAGE_PX }}
-                      >
-                        {/* onLoad on a hidden probe when the stage needs natural
-                            dimensions before it can lay itself out. */}
-                        {natural ? (
-                          <CropStage
-                            url={source.url}
-                            natural={natural}
-                            offset={offset}
-                            maxPx={STAGE_PX}
-                            label={t("albumMetadata.cover.reframe")}
-                            onOffset={setOffset}
-                          />
-                        ) : (
-                          <img
-                            src={source.url}
-                            alt=""
-                            onLoad={(event) =>
-                              setNatural({
-                                width: event.currentTarget.naturalWidth,
-                                height: event.currentTarget.naturalHeight,
-                              })
-                            }
-                            onError={() => {
-                              setSource(null);
-                              setError(t("albumMetadata.cover.unreadable"));
-                            }}
-                            className="max-h-full max-w-full rounded-xl opacity-0"
-                          />
-                        )}
-                      </div>
-                    ) : (
+                    {candidate ? (
                       <img
-                        src={source.candidate.thumb}
+                        src={candidate.thumb}
                         alt=""
-                        className={`rounded-xl object-cover ring-1 ring-artwork-edge ${isDropTarget ? "ring-2 ring-accent" : ""}`}
+                        className={`rounded-xl object-cover ring-1 ring-artwork-edge ${local.isDropTarget ? "ring-2 ring-accent" : ""}`}
                         style={{ width: STAGE_PX, height: STAGE_PX }}
+                      />
+                    ) : (
+                      <ImagePickStage
+                        image={local.image}
+                        natural={local.natural}
+                        offset={local.offset}
+                        stagePx={STAGE_PX}
+                        isDropTarget={local.isDropTarget}
+                        labels={{
+                          drop: t("albumMetadata.cover.drop"),
+                          formats: t("albumMetadata.cover.formats"),
+                          reframe: t("albumMetadata.cover.reframe"),
+                        }}
+                        onPick={() => void local.pick()}
+                        onOffset={local.setOffset}
+                        onNatural={local.setNatural}
+                        onUnreadable={() => {
+                          local.clear();
+                          setError(t("albumMetadata.cover.unreadable"));
+                        }}
                       />
                     )}
 
                     <div className="w-full text-[0.75rem] leading-relaxed text-muted">
-                      {source?.kind === "local" && natural && (
+                      {candidate == null && image && natural && (
                         <>
                           <p>
                             {t("albumMetadata.cover.sourceLine")}{" "}
                             <span className="text-foreground tabular-nums">
-                              {natural.width}×{natural.height} px · {weight(source.bytes)}
+                              {natural.width}×{natural.height} px · {weight(image.bytes)}
                             </span>
                           </p>
                           {natural.width !== natural.height && (
@@ -412,11 +329,11 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                           )}
                         </>
                       )}
-                      {source?.kind === "candidate" && <p>{t("albumMetadata.cover.candidateNote")}</p>}
-                      {source != null && (
+                      {candidate != null && <p>{t("albumMetadata.cover.candidateNote")}</p>}
+                      {(candidate != null || image != null) && (
                         <button
                           type="button"
-                          onClick={pick}
+                          onClick={() => void local.pick()}
                           className="mt-1 cursor-pointer text-[0.75rem] font-medium text-accent outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent/40"
                         >
                           {t("albumMetadata.cover.pickAnother")}
@@ -438,11 +355,12 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                     candidates={candidatesQuery.data}
                     isLoading={candidatesQuery.isLoading}
                     isError={candidatesQuery.isError}
-                    selectedId={source?.kind === "candidate" ? source.candidate.id : null}
+                    selectedId={candidate?.id ?? null}
                     onSearch={() => setWantsCandidates(true)}
-                    onSelect={(candidate) => {
+                    onSelect={(picked) => {
                       setError(null);
-                      setSource({ kind: "candidate", candidate });
+                      local.clear();
+                      setCandidate(picked);
                     }}
                     onRetry={() => void candidatesQuery.refetch()}
                   />

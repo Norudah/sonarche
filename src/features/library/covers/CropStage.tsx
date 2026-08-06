@@ -16,6 +16,7 @@ export function CropStage({
   offset,
   maxPx,
   label,
+  round = false,
   onOffset,
 }: {
   url: string;
@@ -25,6 +26,10 @@ export function CropStage({
   maxPx: number;
   /** Accessible name for the window's slider role. */
   label: string;
+  /** Circular window instead of a square one — for images worn as a disc
+   * (artists). What is written stays the square; the circle previews the mask
+   * the interface will draw it under, corners honestly washed out. */
+  round?: boolean;
   onOffset: (offset: number) => void;
 }) {
   const stage = stageLayout(natural, maxPx);
@@ -89,7 +94,7 @@ export function CropStage({
         aria-valuemax={100}
         aria-valuenow={Math.round(clampOffset(offset) * 100)}
         onKeyDown={onKeyDown}
-        className={`absolute rounded-lg ring-2 ring-white/90 outline-none focus-visible:ring-accent ${
+        className={`absolute ${round ? "rounded-full" : "rounded-lg"} ring-2 ring-white/90 outline-none focus-visible:ring-accent ${
           stage.travel > 0 ? "cursor-grab active:cursor-grabbing" : ""
         }`}
         style={{

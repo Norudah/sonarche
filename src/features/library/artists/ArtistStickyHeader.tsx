@@ -8,6 +8,8 @@ import { durations, easings, springs } from "@/shared/motion/tokens";
 
 interface ArtistStickyHeaderProps {
   artist: Artist;
+  /** The artist's own picture, when they have one. */
+  imageUrl: string | null;
   /** False while the hero is still on screen — the bar would only duplicate it. */
   isVisible: boolean;
   onPlay: () => void;
@@ -18,7 +20,7 @@ interface ArtistStickyHeaderProps {
  * and removed: building a blurred full-width bar mid-scroll gesture is the one
  * moment the main thread has nothing to spare, and the hitch showed.
  */
-export function ArtistStickyHeader({ artist, isVisible, onPlay }: ArtistStickyHeaderProps) {
+export function ArtistStickyHeader({ artist, imageUrl, isVisible, onPlay }: ArtistStickyHeaderProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -33,7 +35,7 @@ export function ArtistStickyHeader({ artist, isVisible, onPlay }: ArtistStickyHe
         (isVisible ? "" : "pointer-events-none")
       }
     >
-      <ArtistAvatar family={artist.family} className="size-9 shrink-0" />
+      <ArtistAvatar family={artist.family} imageUrl={imageUrl} className="size-9 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{artist.name}</p>
         <p className="truncate text-[0.6875rem] text-muted">{t("albumCount", { count: artist.albums.length })}</p>

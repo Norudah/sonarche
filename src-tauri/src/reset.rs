@@ -146,7 +146,14 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
 /// venv, the runtime and the tools are deliberately absent — a user asking to
 /// forget their library has not asked to re-download a Python.
 fn user_data_to_remove(paths: &AppPaths) -> Vec<PathBuf> {
-    vec![paths.library_dir.clone(), paths.beets_db.clone()]
+    vec![
+        paths.library_dir.clone(),
+        paths.beets_db.clone(),
+        // User-chosen artist images: they are about this library's artists,
+        // and "forget everything I put in" includes them. The setup resets
+        // never touch them — they are precious, not rebuildable.
+        paths.artist_images_dir.clone(),
+    ]
 }
 
 /// Wipe everything the user put in: the music, the index, the history, the
@@ -193,6 +200,10 @@ pub async fn erase_data(
     }
 
     jobs.clear_history().await;
+    // The files went with the directory above; the index rows go here.
+    if let Err(err) = jobs.clear_artist_images().await {
+        eprintln!("[reset] artist image index not cleared: {err}");
+    }
     settings::set("acoustid".into(), String::new()).await?;
 
     // The preferences file last and wholesale, so the library location goes
@@ -247,6 +258,7 @@ mod tests {
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
             library_dir: PathBuf::from("/music/Sonarche"),
+            artist_images_dir: data.join("artists"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
@@ -275,6 +287,7 @@ mod tests {
             for dir in dirs_to_remove(&paths, &targets) {
                 assert!(!paths.library_dir.starts_with(&dir), "{targets:?}");
                 assert!(!paths.beets_db.starts_with(&dir), "{targets:?}");
+                assert!(!paths.artist_images_dir.starts_with(&dir), "{targets:?}");
             }
         }
     }
@@ -308,6 +321,7 @@ mod tests {
 
         assert!(removed.contains(&paths.library_dir));
         assert!(removed.contains(&paths.beets_db));
+        assert!(removed.contains(&paths.artist_images_dir));
     }
 
     #[test]
