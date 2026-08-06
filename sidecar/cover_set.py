@@ -195,6 +195,15 @@ def candidates(_request_id: str, params: dict) -> dict:
     return {"candidates": shape_candidates(images, _thumb_data_url)}
 
 
+def _https(url: str | None) -> str | None:
+    """The CAA index hands out http:// URLs; both IPC validators and the
+    download are pinned to https://coverartarchive.org, so the scheme is
+    upgraded here, where the wire shape is made."""
+    if url and url.startswith("http://"):
+        return "https://" + url[len("http://") :]
+    return url
+
+
 def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
     """CAA index entries -> the wire shape, fronts first, capped, and dropping
     anything the strip could not draw (no URLs, or a thumbnail that failed)."""
@@ -202,8 +211,8 @@ def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
     out = []
     for image in ordered:
         thumbs = image.get("thumbnails") or {}
-        thumb_url = thumbs.get("250") or thumbs.get("small") or image.get("image")
-        full_url = image.get("image")
+        thumb_url = _https(thumbs.get("250") or thumbs.get("small") or image.get("image"))
+        full_url = _https(image.get("image"))
         if not thumb_url or not full_url:
             continue
         thumb = fetch_thumb(thumb_url)

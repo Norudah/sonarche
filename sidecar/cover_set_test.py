@@ -131,6 +131,27 @@ class ShapeCandidatesTest(unittest.TestCase):
         out = cover_set.shape_candidates(images, lambda url: None if "dead-thumb" in url else "data:image/jpeg;base64,x")
         self.assertEqual([c["id"] for c in out], ["ok"])
 
+    def test_http_urls_from_the_index_are_upgraded_to_https(self):
+        # The live CAA index returns http:// URLs; left as-is they fail the
+        # https-pinned validation on both sides of the IPC and the replacement
+        # dies before any work.
+        fetched = []
+
+        def fetch(url):
+            fetched.append(url)
+            return "data:image/jpeg;base64,x"
+
+        images = [
+            self._image(
+                "plain",
+                image="http://coverartarchive.org/release/x/1.png",
+                thumbs={"250": "http://coverartarchive.org/release/x/1-250.jpg"},
+            )
+        ]
+        out = cover_set.shape_candidates(images, fetch)
+        self.assertEqual(out[0]["image_url"], "https://coverartarchive.org/release/x/1.png")
+        self.assertEqual(fetched, ["https://coverartarchive.org/release/x/1-250.jpg"])
+
     def test_falls_back_to_the_full_image_when_no_small_thumbnail(self):
         seen = []
 
