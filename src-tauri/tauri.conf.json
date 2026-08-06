@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Sonarche",
+        "maximized": true,
         "width": 1360,
         "height": 860,
         "minWidth": 1080,
