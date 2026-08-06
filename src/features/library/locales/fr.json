@@ -124,10 +124,7 @@
         "title": "Où vit l'image",
         "storage": "L'image est rangée dans les données propres de Sonarche, à côté de sa base — jamais dans ton dossier musique, qui reste exactement tel que beets l'a classé.",
         "display": "Elle est stockée en carré de 500 px et dessinée comme disque de l'artiste partout : l'étagère des artistes, cette page, la barre compacte."
-      },
-      "urlPlaceholder": "https://… lien direct vers une image",
-      "urlFetch": "Récupérer",
-      "urlFailed": "Le lien n'a pas donné d'image lisible."
+      }
     },
     "export": {
       "name": "Exporter les images d'artistes",
@@ -394,6 +391,11 @@
         "front": "Face avant"
       }
     }
+  },
+  "imageUrl": {
+    "placeholder": "https://… lien direct vers une image",
+    "fetch": "Récupérer",
+    "failed": "Le lien n'a pas donné d'image lisible."
   },
   "delete": {
     "action": "Supprimer le morceau",

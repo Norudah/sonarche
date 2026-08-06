@@ -195,8 +195,10 @@ export async function removeArtistImage(name: string): Promise<{ removed: boolea
 
 /** Download a pasted image link into a temp file (sidecar-side: https only,
  * size cap, magic-byte sniff) — the modal then adopts the path exactly like a
- * local pick, same crop, same rendition. */
-export async function fetchArtistImageUrl(url: string): Promise<{ path: string; bytes: number }> {
+ * local pick, same crop, same rendition. The command kept its historical name
+ * from the artist modal, but the download is source-agnostic: covers ride the
+ * same path. */
+export async function fetchImageUrl(url: string): Promise<{ path: string; bytes: number }> {
   return invoke("fetch_artist_image_url", { url });
 }
 

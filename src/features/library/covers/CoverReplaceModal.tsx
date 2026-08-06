@@ -9,6 +9,7 @@ import type { Album } from "@/features/library/albums/albums";
 import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { cropRect, type SourceSize } from "@/features/library/covers/coverCrop";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
+import { ImageUrlField } from "@/features/library/covers/ImageUrlField";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
 import { useSetAlbumCover } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
@@ -342,6 +343,15 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                     </div>
                   </section>
                 </div>
+
+                {/* Or straight from the web, like the artist modal: the user
+                    pastes the link, the fetched file joins the local-pick flow
+                    (a fetch supersedes a selected candidate via onAdopt). */}
+                <ImageUrlField
+                  disabled={replace.isPending}
+                  onFetched={(path) => local.adopt(path)}
+                  onError={() => setError(t("imageUrl.failed"))}
+                />
 
                 {squareSide != null && squareSide < 500 && (
                   <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">

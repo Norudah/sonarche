@@ -1,13 +1,13 @@
 import { Modal, Spinner } from "@heroui/react";
-import { Link2, MoveRight, X } from "lucide-react";
+import { MoveRight, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { fetchArtistImageUrl } from "@/features/library/api";
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
 import { cropRect } from "@/features/library/covers/coverCrop";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
+import { ImageUrlField } from "@/features/library/covers/ImageUrlField";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
 import { useRemoveArtistImage, useSetArtistImage } from "@/features/library/hooks";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
@@ -43,8 +43,6 @@ export function ArtistImageModal({
   const remove = useRemoveArtistImage();
 
   const [error, setError] = useState<string | null>(null);
-  const [urlDraft, setUrlDraft] = useState("");
-  const [isFetching, setIsFetching] = useState(false);
 
   const local = useLocalImageSource({
     isOpen,
@@ -55,28 +53,9 @@ export function ArtistImageModal({
 
   const isPending = replace.isPending || remove.isPending;
 
-  // The paste-a-link path: the sidecar downloads it into a temp file, and the
-  // result joins the exact local-pick flow — same admission, crop, rendition.
-  const fetchFromUrl = async () => {
-    const url = urlDraft.trim();
-    if (!url || isFetching) return;
-    setError(null);
-    setIsFetching(true);
-    try {
-      const fetched = await fetchArtistImageUrl(url);
-      await local.adopt(fetched.path);
-      setUrlDraft("");
-    } catch {
-      setError(t("artists.image.urlFailed"));
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
   const reset = () => {
     local.clear();
     setError(null);
-    setUrlDraft("");
   };
 
   const close = () => {
@@ -227,31 +206,11 @@ export function ArtistImageModal({
 
                 {/* Or straight from the web: the user pastes the link, the app
                     does the download-save-pick dance for them. */}
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void fetchFromUrl();
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Link2 className="size-4 shrink-0 text-muted" />
-                  <input
-                    type="url"
-                    value={urlDraft}
-                    onChange={(event) => setUrlDraft(event.target.value)}
-                    placeholder={t("artists.image.urlPlaceholder")}
-                    disabled={isFetching}
-                    className="min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
-                  />
-                  <button
-                    type="submit"
-                    disabled={urlDraft.trim() === "" || isFetching}
-                    className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-default/60 px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
-                  >
-                    {isFetching && <Spinner size="sm" />}
-                    {t("artists.image.urlFetch")}
-                  </button>
-                </form>
+                <ImageUrlField
+                  disabled={isPending}
+                  onFetched={(path) => local.adopt(path)}
+                  onError={() => setError(t("imageUrl.failed"))}
+                />
 
                 {squareSide != null && squareSide < 500 && (
                   <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
