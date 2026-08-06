@@ -3,7 +3,7 @@ import { ImagePlus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Album } from "@/features/library/albums/albums";
+import { groupAlbums, type Album } from "@/features/library/albums/albums";
 import { albumCompletion } from "@/features/library/albums/albumCompletion";
 import {
   buildAlbumUpdates,
@@ -21,6 +21,9 @@ import {
   type TrackRowValues,
 } from "@/features/library/albums/albumFields";
 import { fillArtistOffer, pendingOffers, renumbered, type Offer } from "@/features/library/albums/albumOffers";
+import { findArtist, groupArtists } from "@/features/library/artists/artists";
+import { ArtistImageButton } from "@/features/library/artists/ArtistImageButton";
+import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
 import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 import { RematchConfirmDialog } from "@/features/library/metadata/RematchConfirmDialog";
@@ -31,7 +34,7 @@ import { PendingBadge } from "@/features/library/metadata/PendingBadge";
 import { Tracklist } from "@/features/library/albums/inspect/Tracklist";
 import { applyTrackFilter, type TrackFilter } from "@/features/library/albums/inspect/trackFilter";
 import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
-import { useReenrichAlbum, useUpdateTracks } from "@/features/library/hooks";
+import { useArtistImages, useLibrary, useReenrichAlbum, useUpdateTracks } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 
 /**
@@ -77,6 +80,7 @@ function InspectBody({
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
+  const [isArtistOpen, setIsArtistOpen] = useState(false);
   const [isRematchConfirmOpen, setIsRematchConfirmOpen] = useState(false);
 
   const startRematch = () => rematch.mutate(album.tracks.map((track) => track.id));
@@ -86,6 +90,15 @@ function InspectBody({
     else startRematch();
   };
 
+  // The record's artist, resolved on the shelf — their disc sits beside the
+  // cover in the header and opens the same image modal as the artist page.
+  const { data: libraryTracks } = useLibrary();
+  const artistImages = useArtistImages();
+  const artist = useMemo(
+    () => findArtist(groupArtists(groupAlbums(libraryTracks ?? [])), album.artist),
+    [libraryTracks, album.artist],
+  );
+  const artistImageUrl = (artist && artistImages.data?.get(artist.name)) ?? null;
 
   const summary = changeSummary(album.tracks, baseline, draft);
 
@@ -286,6 +299,14 @@ function InspectBody({
             <ImagePlus className="size-4 text-white" />
           </span>
         </button>
+        {artist && (
+          <ArtistImageButton
+            family={artist.family}
+            imageUrl={artistImageUrl}
+            label={t("artists.image.title")}
+            onClick={() => setIsArtistOpen(true)}
+          />
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">
             {t("albumMetadata.eyebrow")}
@@ -398,6 +419,14 @@ function InspectBody({
       />
 
       <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />
+      {artist && (
+        <ArtistImageModal
+          artist={artist}
+          imageUrl={artistImageUrl}
+          isOpen={isArtistOpen}
+          onClose={() => setIsArtistOpen(false)}
+        />
+      )}
     </div>
   );
 }

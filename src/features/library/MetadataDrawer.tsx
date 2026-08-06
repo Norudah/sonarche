@@ -6,9 +6,12 @@ import { useNavigate } from "react-router";
 import { albumPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
+import { findArtist, groupArtists } from "@/features/library/artists/artists";
+import { ArtistImageButton } from "@/features/library/artists/ArtistImageButton";
+import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
-import { useLibrary, useUpdateTracks } from "@/features/library/hooks";
+import { useArtistImages, useLibrary, useUpdateTracks } from "@/features/library/hooks";
 import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
@@ -53,15 +56,26 @@ function MetadataForm({
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
+  const [isArtistOpen, setIsArtistOpen] = useState(false);
 
   // The record this track belongs to — the cover is the album's, so that is
   // what the artwork affordance edits. A singleton resolves to none and the
   // affordance stays off.
+  const albums = useMemo(() => groupAlbums(libraryTracks ?? []), [libraryTracks]);
   const album = useMemo(() => {
     if (!track.album.trim()) return null;
     const filedUnder = track.albumArtist.trim() || track.artist.trim();
-    return findAlbum(groupAlbums(libraryTracks ?? []), filedUnder, track.album);
-  }, [libraryTracks, track]);
+    return findAlbum(albums, filedUnder, track.album);
+  }, [albums, track]);
+
+  // The one the record is filed under — their disc rides the artwork's corner
+  // and opens the same image modal as the artist page.
+  const artistImages = useArtistImages();
+  const artist = useMemo(
+    () => findArtist(groupArtists(albums), track.albumArtist.trim() || track.artist.trim()),
+    [albums, track],
+  );
+  const artistImageUrl = (artist && artistImages.data?.get(artist.name)) ?? null;
 
   const patch = diffFields(live, draft);
   const changed = Object.keys(patch).length;
@@ -148,6 +162,16 @@ function MetadataForm({
         pendingFields={changed}
         onClose={requestClose}
         onEditArtwork={album ? () => setIsCoverOpen(true) : undefined}
+        artistBadge={
+          artist && (
+            <ArtistImageButton
+              family={artist.family}
+              imageUrl={artistImageUrl}
+              label={t("artists.image.title")}
+              onClick={() => setIsArtistOpen(true)}
+            />
+          )
+        }
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-7 py-5">
@@ -306,6 +330,14 @@ function MetadataForm({
       />
 
       {album && <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />}
+      {artist && (
+        <ArtistImageModal
+          artist={artist}
+          imageUrl={artistImageUrl}
+          isOpen={isArtistOpen}
+          onClose={() => setIsArtistOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -331,8 +363,18 @@ export function MetadataDrawer({ track, onClose }: { track: LibraryTrack | null;
         <Drawer.Content placement="right">
           {/* Width belongs on the dialog, not the content (that one is the
               full-screen positioning layer). HeroUI's default sm:w-96 is too
-              narrow for a two-column metadata form. */}
-          <Drawer.Dialog className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[31rem]">
+              narrow for a two-column metadata form.
+              Drag-to-dismiss is switched off entirely: its handlers live on
+              this dialog and portaled overlays (the cover modal, popovers)
+              still bubble pointer events here through the React tree, so
+              selecting text in them dragged the drawer along. Own props spread
+              after the built-in handlers, so undefined removes them. */}
+          <Drawer.Dialog
+            className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[31rem]"
+            onPointerDown={undefined}
+            onPointerMove={undefined}
+            onPointerUp={undefined}
+          >
             {track && (
               <MetadataSuggestionsProvider>
                 <MetadataForm key={track.id} track={track} onClose={onClose} requestCloseRef={requestCloseRef} />
