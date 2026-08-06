@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   deleteTrack,
@@ -102,31 +102,49 @@ export function useReenrichTrack() {
  * came back matched. Sequential for the same reason as `useDeleteTracks`: each
  * call has beets rewrite the same library file, so firing eighteen at once only
  * makes them queue on that file — with the cache invalidated once at the end
- * rather than eighteen times mid-flight. */
+ * rather than eighteen times mid-flight.
+ *
+ * The sequence is also what makes `cancel` honest: the flag is read between
+ * tracks, so stopping never abandons a half-written file — the track in flight
+ * finishes, the rest are simply not started. */
 export function useReenrichAlbum() {
   const queryClient = useQueryClient();
   // Twenty-nine sequential network round-trips is a wait, not a blink: a
   // spinner alone leaves the user unable to decide whether to sit through it.
   const [progress, setProgress] = useState<{ done: number; matched: number; total: number } | null>(null);
+  // The ref is what the loop reads (state would be a stale closure there); the
+  // state is what the Stop button reflects while the current track drains.
+  const cancelRef = useRef(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (ids: number[]) => {
+      cancelRef.current = false;
       let matched = 0;
+      let done = 0;
       setProgress({ done: 0, matched: 0, total: ids.length });
-      for (const [index, id] of ids.entries()) {
+      for (const id of ids) {
+        if (cancelRef.current) break;
         const result = await reenrichTrack(id);
         if (result.matched) matched += 1;
-        setProgress({ done: index + 1, matched, total: ids.length });
+        done += 1;
+        setProgress({ done, matched, total: ids.length });
       }
-      return { matched, total: ids.length };
+      return { matched, done, total: ids.length, cancelled: cancelRef.current };
     },
     onSettled: () => {
       setProgress(null);
+      setIsCancelling(false);
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },
   });
 
-  return { ...mutation, progress };
+  const cancel = () => {
+    cancelRef.current = true;
+    setIsCancelling(true);
+  };
+
+  return { ...mutation, progress, cancel, isCancelling };
 }
 
 /** Replace the cover of every beets album behind one shelf album. Usually one

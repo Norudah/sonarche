@@ -344,7 +344,16 @@
     "retry": "Try again",
     "rematch": {
       "blocked": "Unavailable while changes are pending — a re-match would overwrite the tags.",
-      "progress": "{{done}} / {{total}} tracks · {{matched}} identified"
+      "progress": "{{done}} / {{total}} tracks · {{matched}} identified",
+      "confirmTitle": "Re-run the identification?",
+      "confirmBodyTrack": "Sonarche will query MusicBrainz again from the track's acoustic fingerprint and rewrite every tag it recognises — including the ones you fixed by hand.",
+      "confirmBodyAlbum": "Sonarche will query MusicBrainz again from each track's acoustic fingerprint and rewrite every tag it recognises — including the ones you fixed by hand.",
+      "confirmSkip": "Don't ask me again",
+      "confirmSkipWhere": "The confirmation can be turned back on in Settings → Metadata.",
+      "stop": "Stop",
+      "stopping": "Stopping…",
+      "stopped": "Re-match stopped — {{done}}/{{total}} tracks processed, {{matched}} identified.",
+      "failed": "The re-match failed — try again in a moment."
     },
     "provisionalCover": "The cover is the video's thumbnail, not real artwork — replace it once you have the media's own image.",
     "cover": {

@@ -885,6 +885,11 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // Re-match: a slow yes, so the album loop's progress bar and its Stop
+      // button are observable here (the real call is a network round-trip).
+      if (cmd === "reenrich_track") {
+        return new Promise((resolve) => window.setTimeout(() => resolve({ matched: true }), 1200));
+      }
       // The Rust engine owns playback, so a browser preview has none. A fake
       // playhead is what keeps the player bar, the seek bar and the queue panel
       // explorable here: without it nothing ever advances and "playing" is a

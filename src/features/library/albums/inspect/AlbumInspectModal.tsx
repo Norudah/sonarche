@@ -23,6 +23,8 @@ import {
 import { fillArtistOffer, pendingOffers, renumbered, type Offer } from "@/features/library/albums/albumOffers";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
 import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
+import { RematchConfirmDialog } from "@/features/library/metadata/RematchConfirmDialog";
+import { readRematchConfirm } from "@/shared/lib/rematchConfirm";
 import { IdentityColumn } from "@/features/library/albums/inspect/IdentityColumn";
 import { InspectFooter, type SaveFeedback } from "@/features/library/albums/inspect/InspectFooter";
 import { PendingBadge } from "@/features/library/metadata/PendingBadge";
@@ -75,6 +77,15 @@ function InspectBody({
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
+  const [isRematchConfirmOpen, setIsRematchConfirmOpen] = useState(false);
+
+  const startRematch = () => rematch.mutate(album.tracks.map((track) => track.id));
+  // The dialog is the default; the preference (or its own switch) silences it.
+  const requestRematch = () => {
+    if (readRematchConfirm()) setIsRematchConfirmOpen(true);
+    else startRematch();
+  };
+
 
   const summary = changeSummary(album.tracks, baseline, draft);
 
@@ -354,7 +365,12 @@ function InspectBody({
         feedback={feedback}
         isSaving={update.isPending}
         rematchProgress={rematch.progress}
-        onRematch={() => rematch.mutate(album.tracks.map((track) => track.id))}
+        rematchOutcome={
+          rematch.isError ? { kind: "failed" } : rematch.isSuccess ? { kind: "finished", ...rematch.data } : null
+        }
+        isCancellingRematch={rematch.isCancelling}
+        onRematch={requestRematch}
+        onCancelRematch={rematch.cancel}
         onDiscard={discard}
         onSave={save}
         onDismissFeedback={() => setFeedback(null)}
@@ -369,6 +385,16 @@ function InspectBody({
           onClose();
         }}
         onSave={save}
+      />
+
+      <RematchConfirmDialog
+        scope="album"
+        isOpen={isRematchConfirmOpen}
+        onClose={() => setIsRematchConfirmOpen(false)}
+        onConfirm={() => {
+          setIsRematchConfirmOpen(false);
+          startRematch();
+        }}
       />
 
       <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />

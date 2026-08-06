@@ -344,7 +344,16 @@
     "retry": "Réessayer",
     "rematch": {
       "blocked": "Indisponible tant que des modifications sont en attente — le re-match réécrirait les tags.",
-      "progress": "{{done}} / {{total}} morceaux · {{matched}} identifiés"
+      "progress": "{{done}} / {{total}} morceaux · {{matched}} identifiés",
+      "confirmTitle": "Relancer l'identification ?",
+      "confirmBodyTrack": "Sonarche va ré-interroger MusicBrainz à partir de l'empreinte acoustique du morceau et réécrire tous les tags reconnus — y compris ceux que tu as corrigés à la main.",
+      "confirmBodyAlbum": "Sonarche va ré-interroger MusicBrainz à partir de l'empreinte acoustique de chaque morceau de l'album et réécrire tous les tags reconnus — y compris ceux que tu as corrigés à la main.",
+      "confirmSkip": "Ne plus me demander",
+      "confirmSkipWhere": "La confirmation se réactive dans Paramètres → Métadonnées.",
+      "stop": "Stopper",
+      "stopping": "Arrêt…",
+      "stopped": "Re-match interrompu — {{done}}/{{total}} morceaux traités, {{matched}} identifiés.",
+      "failed": "Le re-match a échoué — réessaie dans un instant."
     },
     "provisionalCover": "La pochette est la miniature de la vidéo, pas une vraie jaquette : remplace-la quand tu auras l'image du média.",
     "cover": {
