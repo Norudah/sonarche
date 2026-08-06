@@ -96,6 +96,21 @@ export function DangerZone() {
         <span className="flex flex-col gap-0.5">
           <span className="text-[0.8125rem] font-semibold text-danger">{t("library.danger.title")}</span>
           <span className="text-[0.8125rem] text-muted">{t("library.danger.description")}</span>
+          {/* Folded, the zone still says what it holds: the two actions by
+              name, so nobody has to open it just to find out. The fold keeps
+              being the misclick guard; it stops being a mystery box. */}
+          {!open && (
+            <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
+                <RotateCcw className="size-3.5 shrink-0" />
+                {t("library.danger.reinstall.name")}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
+                <Trash2 className="size-3.5 shrink-0" />
+                {t("library.danger.erase.name")}
+              </span>
+            </span>
+          )}
         </span>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={springs.snappy} className="shrink-0">
           <ChevronDown className="size-4 text-muted" />

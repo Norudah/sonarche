@@ -30,7 +30,7 @@ function Setting({ name, why, children }: { name: string; why: string; children:
  */
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  const { preference, resolved, choose } = useTheme();
+  const { preference, choose } = useTheme();
   // Local state, no context: the shell read this once at mount and nothing else
   // on screen answers to it. The switch is showing a stored value, not driving
   // anything live.
@@ -57,14 +57,6 @@ export function AppearanceSection() {
               <ThemeTile key={option} value={option} selected={preference} label={t(`appearance.theme.${option}`)} />
             ))}
           </RadioGroup>
-
-          {/* Only under `system`: with an explicit choice the tile already
-              says which theme is on, and repeating it would be noise. */}
-          {preference === "system" && (
-            <p className="text-[0.75rem] text-muted">
-              {t(resolved === "dark" ? "appearance.theme.followingDark" : "appearance.theme.followingLight")}
-            </p>
-          )}
         </Setting>
       </SettingCard>
 

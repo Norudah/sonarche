@@ -16,9 +16,7 @@
       "why": "Le thème clair est celui d'origine. Nuit n'est pas son négatif : le noir n'y est jamais pur, un voile bleuté traverse chaque surface et l'accent y descend au lieu de monter. Pour les écrans trop lumineux et les sessions tardives.",
       "light": "Clair",
       "dark": "Nuit",
-      "system": "Système",
-      "followingLight": "Ton système est en clair, l'app suit.",
-      "followingDark": "Ton système est en sombre, l'app passe en Nuit."
+      "system": "Système"
     },
     "language": {
       "name": "Langue",

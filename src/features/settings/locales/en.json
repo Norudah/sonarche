@@ -16,9 +16,7 @@
       "why": "Light is the original. Night is not its negative: black is never pure there, a blue veil runs through every surface, and the accent goes down rather than up. For bright screens and late sessions.",
       "light": "Light",
       "dark": "Night",
-      "system": "System",
-      "followingLight": "Your system is set to light, and the app follows.",
-      "followingDark": "Your system is set to dark, and the app switches to Night."
+      "system": "System"
     },
     "language": {
       "name": "Language",
