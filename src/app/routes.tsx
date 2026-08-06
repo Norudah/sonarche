@@ -19,6 +19,7 @@ import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
+import { MetadataSection } from "@/features/settings/MetadataSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 import { LibrarySection } from "@/features/settings/LibrarySection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
@@ -60,6 +61,7 @@ export const router = createMemoryRouter(
           children: [
             { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
             { path: paths.settingsAppearance, element: <AppearanceSection /> },
+            { path: paths.settingsMetadata, element: <MetadataSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
             { path: paths.settingsLibrary, element: <LibrarySection /> },

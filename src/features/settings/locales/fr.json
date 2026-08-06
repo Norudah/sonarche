@@ -27,6 +27,15 @@
       "why": "Une fois l'environnement vérifié, Sonarche prend une seconde pour se présenter avant d'ouvrir la fenêtre. Désactive-le et l'application entre directement — le fondu entre les deux, lui, reste."
     }
   },
+  "metadata": {
+    "category": "Métadonnées",
+    "title": "Métadonnées",
+    "description": "Comment l'app te signale ce qu'il reste à corriger dans ta bibliothèque.",
+    "badges": {
+      "name": "Pastille sur l'onglet Métadonnées",
+      "why": "Affiche dans la barre latérale le nombre de choses à corriger, le même que celui de la page Métadonnées. Désactive-la si tu préfères consulter la page à ton rythme."
+    }
+  },
   "apiKeys": {
     "category": "Clefs API",
     "title": "Clefs API",

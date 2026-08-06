@@ -20,7 +20,9 @@ import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { paths } from "@/app/routes";
+import { useTriageCount } from "@/features/library/triage/useTriageCount";
 import { settingsCategories } from "@/features/settings/categories";
+import { useNotificationBadges } from "@/features/settings/notificationBadges";
 import { isMacOS } from "@/shared/lib/platform";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { SonarcheMark } from "@/shared/ui/SonarcheMark";
@@ -30,12 +32,15 @@ function NavItem({
   label,
   icon: Icon,
   end,
+  badge = 0,
   indicatorId = layoutIds.navIndicator,
 }: {
   to: string;
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  /** A count worth a glance (things to fix behind this entry). Zero hides it. */
+  badge?: number;
   indicatorId?: string;
 }) {
   return (
@@ -62,6 +67,14 @@ function NavItem({
           )}
           <Icon className="relative size-4 shrink-0" />
           <span className="relative">{label}</span>
+          {/* Amber, like the triage counts it echoes — accent would dissolve
+              into the active pill. Capped so a neglected library cannot bend
+              the sidebar's column. */}
+          {badge > 0 && (
+            <span className="relative ml-auto rounded-full bg-warning-soft px-1.5 py-px text-[0.6875rem] font-semibold text-warning tabular-nums">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -93,6 +106,10 @@ function Divider() {
 function MainNav() {
   const { t } = useTranslation("common");
   const { t: tLibrary } = useTranslation("library");
+  // Subscribing here also warms the library cache from app start, so the
+  // explorers open on data the sidebar already paid for.
+  const toFix = useTriageCount();
+  const badges = useNotificationBadges();
 
   return (
     <div className="flex flex-col">
@@ -102,7 +119,7 @@ function MainNav() {
             order most people meet them. */}
         <NavItem to={paths.import} label={t("nav.import")} icon={FolderInput} />
         <NavItem to={paths.history} label={t("nav.history")} icon={History} />
-        <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
+        <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} badge={badges ? toFix : 0} />
       </NavSection>
 
       <Divider />

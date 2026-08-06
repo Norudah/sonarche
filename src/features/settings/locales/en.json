@@ -27,6 +27,15 @@
       "why": "Once the environment check is done, Sonarche takes a second to say hello before opening the window. Turn it off and the app goes straight in — the fade between the two stays either way."
     }
   },
+  "metadata": {
+    "category": "Metadata",
+    "title": "Metadata",
+    "description": "How the app flags what is left to fix in your library.",
+    "badges": {
+      "name": "Badge on the Metadata tab",
+      "why": "Shows the number of things to fix in the sidebar — the same count the Metadata page delivers. Turn it off if you would rather visit the page at your own pace."
+    }
+  },
   "apiKeys": {
     "category": "API keys",
     "title": "API keys",

@@ -1,4 +1,4 @@
-import { Gauge, HardDrive, KeyRound, Palette, RefreshCw, Wrench } from "lucide-react";
+import { FileText, Gauge, HardDrive, KeyRound, Palette, RefreshCw, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { paths } from "@/app/paths";
@@ -18,6 +18,9 @@ export interface SettingsCategory {
  * compiled out of release builds, mirroring its route guard in `routes.tsx`. */
 export const settingsCategories: SettingsCategory[] = [
   { path: paths.settingsAppearance, labelKey: "appearance.category", icon: Palette },
+  // Same icon as the Metadata destination in the main nav: the category tunes
+  // that page, and the two entries should read as the same thing.
+  { path: paths.settingsMetadata, labelKey: "metadata.category", icon: FileText },
   { path: paths.settingsApiKeys, labelKey: "apiKeys.category", icon: KeyRound },
   { path: paths.settingsRateLimits, labelKey: "rateLimits.category", icon: Gauge },
   { path: paths.settingsLibrary, labelKey: "library.category", icon: HardDrive },
