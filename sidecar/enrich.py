@@ -315,6 +315,12 @@ def _apply(lib, item, album_info, track_info) -> None:
     # Last.fm fetch (its client swallows network errors and returns []).
     # An empty result means nothing resolved: keep the raw MB genre (it may
     # simply be off-whitelist) rather than erasing it.
+    #
+    # Hand-edited genres are NOT spared, deliberately: a re-match rewrites
+    # every tag it recognises, and the confirmation dialog upstream is what
+    # says so — sparing fields quietly would make its warning a lie. The bulk
+    # genre recompute (`genres.assign`) keeps its own hand-edit guard; that
+    # pass runs without a per-item warning.
     genres, label = metadata.lastgenre_plugin()._get_genre(item)
     if genres:
         item.genres = genres
@@ -536,12 +542,25 @@ def enrich_one(
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
         )
+        # Read before _apply rewrites it: whether this match lands on the
+        # release the item already wore.
+        previous_release = str(item.mb_albumid or "")
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
-            try:
-                _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
-            except Exception as exc:  # metadata landed; a missing cover is not a failure
-                protocol.log(f"enrich: cover fetch failed: {exc}")
+            # A re-match confirming the same release must not stomp the cover
+            # the album already wears — the user may have replaced it by hand.
+            # A changed release is a changed record: fetch as before.
+            album = item.get_album()
+            same_release = bool(previous_release) and previous_release == str(
+                album_info.album_id or ""
+            )
+            if same_release and album is not None and album.artpath:
+                protocol.log("enrich: release unchanged and cover present, keeping it")
+            else:
+                try:
+                    _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
+                except Exception as exc:  # metadata landed; a missing cover is not a failure
+                    protocol.log(f"enrich: cover fetch failed: {exc}")
     elif provisional_fallback:
         apply_provisional(lib, item, params)
 
@@ -553,6 +572,10 @@ def enrich_one(
         if fingerprinted:
             provenance.mark_fingerprinted(fresh)
         if matched and source:
+            # The tags stop being guesses the moment a real match vouches for
+            # them — a provisional track re-matched later must drop its flag.
+            if provisional.clear(fresh):
+                protocol.log(f"enrich: item {item.id} no longer provisional")
             provenance.mark_match(fresh, source)
             if suspect.mark(fresh, params.get("title")):
                 protocol.log(

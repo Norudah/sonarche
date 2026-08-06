@@ -20,6 +20,7 @@ import forced_album
 import metadata
 import protocol
 import provenance
+import provisional
 import suspect
 from report import build_report
 
@@ -534,6 +535,8 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
             protocol.log(f"enrich_album: genre {genres} ({label})")
         if source:
             provenance.mark_match(item, source)
+        # A real match lifts the provisional flag a failed earlier run left.
+        provisional.clear(item)
         if suspect.mark(item, (hints.get(item.id) or {}).get("title")):
             protocol.log(
                 f"enrich_album: item {item.id} flagged {suspect.TITLE_MISMATCH}: "
@@ -640,6 +643,7 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
                 protocol.log(f"enrich_album: genre {genres} ({label})")
             # Adopted through its own AcoustID recording on a sibling edition.
             provenance.mark_match(item, "acoustid")
+            provisional.clear(item)
             suspect.mark(item, (hints.get(item.id) or {}).get("title"))
             item.store()
             try:
