@@ -53,6 +53,7 @@ def _handlers():
         "cover_set": cover_set.handle,
         "cover_candidates": cover_set.candidates,
         "artist_image_set": artist_image.handle,
+        "artist_image_fetch": artist_image.fetch,
         "genres_recompute": genres.recompute,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,

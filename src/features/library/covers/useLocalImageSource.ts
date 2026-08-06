@@ -103,5 +103,5 @@ export function useLocalImageSource({
     };
   }, [isOpen]);
 
-  return { image, natural, offset, isDropTarget, pick, clear, setOffset, setNatural };
+  return { image, natural, offset, isDropTarget, pick, adopt, clear, setOffset, setNatural };
 }

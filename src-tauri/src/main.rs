@@ -100,6 +100,8 @@ fn main() {
             artist_images::list_artist_images,
             artist_images::set_artist_image,
             artist_images::remove_artist_image,
+            artist_images::fetch_artist_image_url,
+            artist_images::export_artist_images,
             commands::scan_import_folder,
             commands::start_library_import,
             commands::list_imports,

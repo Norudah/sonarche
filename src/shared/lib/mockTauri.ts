@@ -735,6 +735,21 @@ export function installMockTauri() {
       if (cmd === "remove_artist_image") {
         return { removed: artistImages.delete(String(payload?.name)) };
       }
+      // A pasted link: pretend the download landed in a temp file. Adoption
+      // then goes through allow_cover_preview, which serves the stand-in.
+      if (cmd === "fetch_artist_image_url") {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        if (new URLSearchParams(window.location.search).has("urlfail")) throw new Error("not an image");
+        return { path: "/tmp/mock-fetched.jpg", bytes: 2_400_000 };
+      }
+      if (cmd === "export_artist_images") {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        return {
+          exported: artistImages.size,
+          missing: 0,
+          folder: `${payload?.dest}/${payload?.folderName}`,
+        };
+      }
       // What the Settings pane shows as the installed version. A browser has no
       // bundle to read one from. Kept equal to the `currentVersion` the check
       // below reports, so `?update` previews a coherent 0.8.0 → 0.9.0 and not a

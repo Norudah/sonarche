@@ -124,7 +124,22 @@
         "title": "Où vit l'image",
         "storage": "L'image est rangée dans les données propres de Sonarche, à côté de sa base — jamais dans ton dossier musique, qui reste exactement tel que beets l'a classé.",
         "display": "Elle est stockée en carré de 500 px et dessinée comme disque de l'artiste partout : l'étagère des artistes, cette page, la barre compacte."
-      }
+      },
+      "urlPlaceholder": "https://… lien direct vers une image",
+      "urlFetch": "Récupérer",
+      "urlFailed": "Le lien n'a pas donné d'image lisible."
+    },
+    "export": {
+      "name": "Exporter les images d'artistes",
+      "why": "Copie chaque image que tu as choisie dans un dossier à part, nommée par artiste — dans l'app, elles portent des noms techniques qui ne disent rien tout seuls.",
+      "action": "Exporter…",
+      "folderName": "Images d'artistes Sonarche",
+      "doneTitle": "Images exportées",
+      "done_one": "{{count}} image dans {{folder}}.",
+      "done_other": "{{count}} images dans {{folder}}.",
+      "emptyTitle": "Rien à exporter",
+      "empty": "Aucun artiste ne porte d'image pour l'instant.",
+      "failedTitle": "L'export a échoué"
     }
   },
   "albumCount_one": "{{count}} album",

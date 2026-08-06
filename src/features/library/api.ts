@@ -193,6 +193,13 @@ export async function removeArtistImage(name: string): Promise<{ removed: boolea
   return invoke("remove_artist_image", { name });
 }
 
+/** Download a pasted image link into a temp file (sidecar-side: https only,
+ * size cap, magic-byte sniff) — the modal then adopts the path exactly like a
+ * local pick, same crop, same rendition. */
+export async function fetchArtistImageUrl(url: string): Promise<{ path: string; bytes: number }> {
+  return invoke("fetch_artist_image_url", { url });
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({

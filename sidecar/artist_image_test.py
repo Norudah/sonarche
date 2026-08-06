@@ -4,7 +4,7 @@ import unittest
 
 from PIL import Image
 
-from artist_image import handle
+from artist_image import fetch, handle, sniff_suffix
 
 
 class HandleTest(unittest.TestCase):
@@ -60,6 +60,23 @@ class HandleTest(unittest.TestCase):
     def test_a_missing_source_is_refused(self):
         with self.assertRaises(RuntimeError):
             handle("req", {"source_path": "/nowhere/img.jpg", "dest_dir": self._dest(), "stem": "abc"})
+
+
+class SniffSuffixTest(unittest.TestCase):
+    def test_recognizes_the_three_shipped_formats(self):
+        self.assertEqual(sniff_suffix(b"\xff\xd8\xff\xe0rest"), ".jpg")
+        self.assertEqual(sniff_suffix(b"\x89PNG\r\n\x1a\nrest"), ".png")
+        self.assertEqual(sniff_suffix(b"RIFF\x00\x00\x00\x00WEBPrest"), ".webp")
+
+    def test_a_hotlink_protection_page_is_not_an_image(self):
+        self.assertIsNone(sniff_suffix(b"<!DOCTYPE html><html>..."))
+        self.assertIsNone(sniff_suffix(b""))
+
+
+class FetchTest(unittest.TestCase):
+    def test_a_plain_http_link_is_refused_before_any_network(self):
+        with self.assertRaises(RuntimeError):
+            fetch("req", {"url": "http://example.com/image.jpg"})
 
 
 if __name__ == "__main__":

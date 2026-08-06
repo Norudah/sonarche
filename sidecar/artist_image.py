@@ -12,9 +12,54 @@ screen from here), no embedding (there is no file to embed into), no beets.
 """
 
 import os
+import tempfile
 
 import cover_set
 import protocol
+
+# A pasted link is a one-off personal fetch, not a service integration: the
+# user chooses the source, the app only executes the click — the same act as
+# a browser's "save image as". Bound what one paste may pull.
+MAX_FETCH_BYTES = 30 * 1024 * 1024
+
+
+def sniff_suffix(data: bytes) -> str | None:
+    """The file suffix the bytes actually are, or None when they are not an
+    image we handle. Trusting magic bytes over the URL or Content-Type: a
+    hotlink-protection page arrives as 200 text/html, and an extensionless
+    CDN URL says nothing."""
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def fetch(_request_id: str, params: dict) -> dict:
+    """Download a pasted image URL into a temp file the picker then adopts
+    exactly like a local pick — one pipeline downstream, crop included."""
+    url = params["url"]
+    if not url.startswith("https://"):
+        raise RuntimeError("only https links are accepted")
+
+    import requests
+
+    resp = requests.get(url, timeout=30)
+    if resp.status_code != 200 or not resp.content:
+        raise RuntimeError(f"image download failed ({resp.status_code})")
+    if len(resp.content) > MAX_FETCH_BYTES:
+        raise RuntimeError("image too large")
+    suffix = sniff_suffix(resp.content)
+    if suffix is None:
+        raise RuntimeError("the link did not return an image")
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(resp.content)
+        tmp_path = tmp.name
+    protocol.log(f"artist_image: fetched {len(resp.content)} bytes into {tmp_path}")
+    return {"path": tmp_path, "bytes": len(resp.content)}
 
 
 def handle(_request_id: str, params: dict) -> dict:
