@@ -114,7 +114,7 @@
       "next": "Nouvelle",
       "hasCurrent": "L'image que tu as choisie pour cet artiste.",
       "noCurrent": "Pas encore d'image — un motif de genre fait office.",
-      "drop": "Glisse une image ici, ou clique pour choisir un fichier",
+      "drop": "Glisse ou colle ({{chord}}) une image ici, ou clique pour choisir un fichier",
       "unreadable": "Cette image ne peut pas être lue.",
       "failed": "Le changement a échoué — réessaie dans un instant.",
       "tooSmall": "Plus petite que l'affichage (500 px) — elle sera utilisée telle quelle, mais pourra paraître floue.",
@@ -361,9 +361,8 @@
       "filterName": "Images",
       "current": "Actuelle",
       "next": "Nouvelle",
-      "drop": "Glisse une image ici, ou clique pour choisir un fichier",
+      "drop": "Glisse ou colle ({{chord}}) une image ici, ou clique pour choisir un fichier",
       "formats": "JPEG, PNG ou WebP",
-      "pickAnother": "Choisir une autre image",
       "reframe": "Recadrage",
       "reframeHint": "Pas carrée — déplace le cadre pour choisir ce qui reste.",
       "sourceLine": "Image choisie :",
@@ -405,6 +404,16 @@
     "placeholder": "https://… lien direct vers une image",
     "fetch": "Récupérer",
     "failed": "Le lien n'a pas donné d'image lisible."
+  },
+  "imageSource": {
+    "heading": "Source",
+    "hint": "Fichier, lien ou image copiée — au choix.",
+    "browse": "Parcourir…",
+    "pasteLink": "Coller un lien",
+    "clipboard": "Presse-papiers",
+    "clipboardEmpty": "Le presse-papiers ne contient ni image ni lien.",
+    "clipboardTooLarge": "L'image copiée est démesurée — passe par un fichier.",
+    "clipboardUnreadable": "L'image copiée n'a pas pu être lue."
   },
   "delete": {
     "action": "Supprimer le morceau",

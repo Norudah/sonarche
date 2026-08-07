@@ -114,7 +114,7 @@
       "next": "New",
       "hasCurrent": "The image you chose for this artist.",
       "noCurrent": "No image yet — a genre motif stands in.",
-      "drop": "Drop an image here, or click to choose a file",
+      "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
       "unreadable": "This image can't be read.",
       "failed": "The change failed — try again in a moment.",
       "tooSmall": "Smaller than the 500 px display size — it will be used as-is, but may look soft.",
@@ -361,9 +361,8 @@
       "filterName": "Images",
       "current": "Current",
       "next": "New",
-      "drop": "Drop an image here, or click to choose a file",
+      "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
       "formats": "JPEG, PNG or WebP",
-      "pickAnother": "Choose another image",
       "reframe": "Reframe",
       "reframeHint": "Not square — move the frame to choose what stays.",
       "sourceLine": "Chosen image:",
@@ -405,6 +404,16 @@
     "placeholder": "https://… direct link to an image",
     "fetch": "Fetch",
     "failed": "The link didn't return a readable image."
+  },
+  "imageSource": {
+    "heading": "Source",
+    "hint": "A file, a link, or a copied image — your pick.",
+    "browse": "Browse…",
+    "pasteLink": "Paste a link",
+    "clipboard": "Clipboard",
+    "clipboardEmpty": "The clipboard holds neither an image nor a link.",
+    "clipboardTooLarge": "The copied image is outsized — go through a file instead.",
+    "clipboardUnreadable": "The copied image could not be read."
   },
   "delete": {
     "action": "Delete track",
