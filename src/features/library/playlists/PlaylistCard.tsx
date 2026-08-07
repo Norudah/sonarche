@@ -11,6 +11,8 @@ import { springs } from "@/shared/motion/tokens";
 
 interface PlaylistCardProps {
   playlist: Playlist;
+  /** The name as shown — the favorites' localized label, not its stored name. */
+  displayName: string;
   /** The members' covers, resolved by the page — the card has no library. */
   covers: string[];
   trackCount: number;
@@ -20,7 +22,7 @@ interface PlaylistCardProps {
 
 /** Same anatomy as `AlbumCard` — link and play button as siblings, the wrapper
  * as their shared positioning context — so the two shelves move as one. */
-export function PlaylistCard({ playlist, covers, trackCount, style, onPlay }: PlaylistCardProps) {
+export function PlaylistCard({ playlist, displayName, covers, trackCount, style, onPlay }: PlaylistCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
 
@@ -31,9 +33,14 @@ export function PlaylistCard({ playlist, covers, trackCount, style, onPlay }: Pl
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">
-          <PlaylistCoverMosaic covers={covers} className="size-full" />
+          <PlaylistCoverMosaic
+            covers={covers}
+            customUrl={playlist.coverUrl}
+            favorites={playlist.kind === "favorites"}
+            className="size-full"
+          />
         </div>
-        <p className="mt-2.5 truncate text-sm font-medium">{playlist.name}</p>
+        <p className="mt-2.5 truncate text-sm font-medium">{displayName}</p>
         <p className="truncate text-[0.8125rem] text-muted">{t("trackCount", { count: trackCount })}</p>
       </Link>
 

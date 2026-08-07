@@ -2,6 +2,8 @@ import { Dropdown } from "@heroui/react";
 import { FileText, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { FavoriteButton } from "@/features/library/playlists/FavoriteButton";
+
 // Round, like every other icon-only control in the app: the hero's play pill,
 // its icon pills, the sidebar. `shrink-0` is what keeps them round — flex
 // children shrink by default, and a too-narrow cell turns both circles to ovals.
@@ -11,6 +13,8 @@ const ACTION =
 interface RowActionsProps {
   onInspect: () => void;
   onDelete: () => void;
+  /** The row's beets item id, when the row should carry the favorites heart. */
+  favoriteId?: number;
   /** Offers "add to a playlist" in the menu. Optional so the tables that
    * cannot host the picker simply don't grow the item. */
   onAddToPlaylist?: () => void;
@@ -28,7 +32,13 @@ interface RowActionsProps {
  * menu, where a destructive click takes a deliberate second step instead of
  * sitting under the cursor on every row.
  */
-export function RowActions({ onInspect, onDelete, onAddToPlaylist, onRemoveFromPlaylist }: RowActionsProps) {
+export function RowActions({
+  onInspect,
+  onDelete,
+  favoriteId,
+  onAddToPlaylist,
+  onRemoveFromPlaylist,
+}: RowActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -38,6 +48,7 @@ export function RowActions({ onInspect, onDelete, onAddToPlaylist, onRemoveFromP
     // as "there is something here", quiet enough not to compete with the
     // titles — and come up to full on row hover.
     <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+      {favoriteId != null && <FavoriteButton itemId={favoriteId} className={ACTION} />}
       <button
         type="button"
         onClick={onInspect}

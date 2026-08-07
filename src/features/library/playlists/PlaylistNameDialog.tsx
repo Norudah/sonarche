@@ -15,6 +15,9 @@ interface PlaylistNameDialogProps {
   /** Every playlist, for the duplicate check — the same rule the backend
    * enforces, applied before the round-trip so the dialog can say why. */
   existing: Playlist[];
+  /** Names taken by something that is not a stored row name — the favorites'
+   * localized label. See `playlistNameTaken`. */
+  reservedNames?: string[];
   /** On a rename, the playlist allowed to keep its own name. */
   excludingId?: number;
   onSubmit: (name: string) => void;
@@ -29,6 +32,7 @@ function NameForm({
   confirmLabel,
   initialName,
   existing,
+  reservedNames,
   excludingId,
   onSubmit,
   isPending,
@@ -44,7 +48,7 @@ function NameForm({
 
   const trimmed = name.trim();
   const unchanged = excludingId != null && trimmed === (initialName ?? "").trim();
-  const taken = trimmed !== "" && !unchanged && playlistNameTaken(existing, trimmed, excludingId);
+  const taken = trimmed !== "" && !unchanged && playlistNameTaken(existing, trimmed, excludingId, reservedNames);
   const canSubmit = trimmed !== "" && !taken && !isPending && !unchanged;
 
   return (

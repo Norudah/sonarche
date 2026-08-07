@@ -475,6 +475,30 @@
     "emptyDetail": {
       "title": "Cette playlist est vide",
       "body": "Ajoutez des titres depuis le menu d'une ligne — dans la bibliothèque, un album ou une page d'artiste."
+    },
+    "favorites": "Favoris",
+    "favorite": "Ajouter aux favoris",
+    "unfavorite": "Retirer des favoris",
+    "emptyFavorites": {
+      "title": "Aucun favori pour l'instant",
+      "body": "Appuyez sur le cœur d'un titre — ici, dans la bibliothèque ou depuis la barre de lecture."
+    },
+    "image": {
+      "title": "Image de la playlist",
+      "replace": "Utiliser cette image",
+      "remove": "Retirer l'image",
+      "current": "Image actuelle",
+      "next": "Nouvelle image",
+      "hasCurrent": "Votre image, affichée sur toutes les étagères.",
+      "noCurrent": "Composée des premières pochettes de la liste.",
+      "drop": "Déposez une image, cliquez pour parcourir, ou collez ({{chord}})",
+      "unreadable": "Ce fichier n'a pas pu être lu comme une image.",
+      "failed": "L'image n'a pas pu être enregistrée.",
+      "help": {
+        "title": "Où vit cette image",
+        "storage": "L'image est rangée avec les données de l'app, jamais dans votre dossier de musique — la bibliothèque reste propre pour les exports et sauvegardes.",
+        "display": "Sans image à vous, la playlist porte une mosaïque de ses premières pochettes."
+      }
     }
   }
 }

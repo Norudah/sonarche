@@ -9,6 +9,7 @@ import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { useLibrary } from "@/features/library/hooks";
 import { DeletePlaylistDialog, type PlaylistDeletion } from "@/features/library/playlists/DeletePlaylistDialog";
 import { PlaylistHero } from "@/features/library/playlists/PlaylistHero";
+import { PlaylistImageModal } from "@/features/library/playlists/PlaylistImageModal";
 import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
 import { PlaylistStickyHeader } from "@/features/library/playlists/PlaylistStickyHeader";
 import { PlaylistTrackList } from "@/features/library/playlists/PlaylistTrackList";
@@ -27,6 +28,7 @@ export function PlaylistDetailView() {
   const { playOrdered, playShuffled } = usePlayQueue();
   const rename = useRenamePlaylist();
   const [renaming, setRenaming] = useState(false);
+  const [editingImage, setEditingImage] = useState(false);
   const [deleting, setDeleting] = useState<PlaylistDeletion | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
@@ -61,15 +63,19 @@ export function PlaylistDetailView() {
   // shelf rather than a "not found" screen the user cannot act on.
   if (!playlist) return <Navigate to={paths.libraryPlaylists} replace />;
 
+  const isFavorites = playlist.kind === "favorites";
+  const displayName = isFavorites ? t("playlists.favorites") : playlist.name;
   const tracks = resolvePlaylistTracks(playlist.itemIds, tracksById(library.data ?? []));
 
   return (
     <PageContainer
       sticky={
         <PlaylistStickyHeader
-          name={playlist.name}
+          name={displayName}
           trackCount={tracks.length}
           covers={playlistCovers(tracks)}
+          customUrl={playlist.coverUrl}
+          favorites={isFavorites}
           isVisible={heroPassed}
           onPlay={() => playOrdered(tracks)}
         />
@@ -78,15 +84,21 @@ export function PlaylistDetailView() {
       <PlaylistHero
         ref={heroRef}
         playlist={playlist}
+        displayName={displayName}
         tracks={tracks}
         onPlay={() => playOrdered(tracks)}
         onShuffle={() => playShuffled(tracks)}
+        onEditImage={() => setEditingImage(true)}
         onRename={() => setRenaming(true)}
         onDelete={() => setDeleting({ id: playlist.id, name: playlist.name, trackCount: tracks.length })}
       />
 
       {tracks.length === 0 ? (
-        <EmptyState icon={ListMusic} title={t("playlists.emptyDetail.title")} body={t("playlists.emptyDetail.body")} />
+        <EmptyState
+          icon={ListMusic}
+          title={isFavorites ? t("playlists.emptyFavorites.title") : t("playlists.emptyDetail.title")}
+          body={isFavorites ? t("playlists.emptyFavorites.body") : t("playlists.emptyDetail.body")}
+        />
       ) : (
         <PlaylistTrackList playlistId={playlist.id} tracks={tracks} />
       )}
@@ -98,9 +110,17 @@ export function PlaylistDetailView() {
         confirmLabel={t("playlists.renameConfirm")}
         initialName={playlist.name}
         existing={playlists.data ?? []}
+        reservedNames={[t("playlists.favorites")]}
         excludingId={playlist.id}
         isPending={rename.isPending}
         onSubmit={(name) => rename.mutate({ id: playlist.id, name }, { onSuccess: () => setRenaming(false) })}
+      />
+      <PlaylistImageModal
+        playlist={playlist}
+        displayName={displayName}
+        tracks={tracks}
+        isOpen={editingImage}
+        onClose={() => setEditingImage(false)}
       />
       <DeletePlaylistDialog
         playlist={deleting}

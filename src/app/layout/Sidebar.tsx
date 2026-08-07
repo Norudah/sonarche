@@ -6,21 +6,26 @@ import {
   Download,
   FileText,
   FolderInput,
+  Heart,
   History,
   Layers,
   ListMusic,
   Mic2,
   Music,
+  Plus,
   Settings,
   Tags,
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
-import { paths } from "@/app/routes";
+import { paths, playlistPath } from "@/app/routes";
+import { useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
+import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
+import { orderedPlaylists } from "@/features/library/playlists/playlists";
 import { useTriageCount } from "@/features/library/triage/useTriageCount";
 import { settingsCategories } from "@/features/settings/categories";
 import { useNotificationBadges } from "@/features/settings/notificationBadges";
@@ -67,7 +72,9 @@ function NavItem({
             />
           )}
           <Icon className="relative size-4 shrink-0" />
-          <span className="relative">{label}</span>
+          {/* min-w-0 + truncate: playlist names are user text and must clip
+              rather than bend the sidebar's column. */}
+          <span className="relative min-w-0 truncate">{label}</span>
           {/* Amber, like the triage counts it echoes — accent would dissolve
               into the active pill. Capped so a neglected library cannot bend
               the sidebar's column. */}
@@ -82,13 +89,17 @@ function NavItem({
   );
 }
 
-function NavSection({ label, children }: { label: string; children: ReactNode }) {
+function NavSection({ label, action, children }: { label: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
       {/* A shade lighter and a hair smaller than the items they head: these are
           signposts, and they should be found when looked for rather than read
-          on the way past. */}
-      <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">{label}</p>
+          on the way past. The optional action keeps to the same register — a
+          control found when looked for, not a button competing with the items. */}
+      <div className="flex items-center justify-between pr-2 pl-3">
+        <p className="text-[10px] font-semibold tracking-widest text-muted/70 uppercase">{label}</p>
+        {action}
+      </div>
       <nav className="flex flex-col gap-1">{children}</nav>
     </div>
   );
@@ -131,11 +142,78 @@ function MainNav() {
         <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
         <NavItem to={paths.libraryGenres} label={tLibrary("views.genres")} icon={Layers} />
         <NavItem to={paths.libraryCategories} label={tLibrary("views.categories")} icon={Tags} />
-        {/* Last: the shelves above catalogue what the library *is*; this one
-            holds what the user made out of it. */}
-        <NavItem to={paths.libraryPlaylists} label={tLibrary("views.playlists")} icon={ListMusic} />
       </NavSection>
+
+      <Divider />
+
+      <PlaylistsNav />
     </div>
+  );
+}
+
+/**
+ * Its own section, not a shelf of the Arche: the shelves above catalogue what
+ * the library *is*, while a playlist is something the user made out of it —
+ * and each one is a destination, so each one gets a nav entry of its own.
+ *
+ * The "+" lives in the section header rather than as a pseudo-item in the
+ * list: an item that creates instead of navigating would be a button dressed
+ * as a destination, and it would sink below the fold as the list grows. The
+ * grid overview stays routed behind each playlist's breadcrumb.
+ */
+function PlaylistsNav() {
+  const { t: tLibrary } = useTranslation("library");
+  const navigate = useNavigate();
+  const playlists = usePlaylists();
+  const create = useCreatePlaylist();
+  const [creating, setCreating] = useState(false);
+
+  const rows = orderedPlaylists(playlists.data ?? []);
+
+  return (
+    <NavSection
+      label={tLibrary("views.playlists")}
+      action={
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          aria-label={tLibrary("playlists.create")}
+          title={tLibrary("playlists.create")}
+          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted/70 outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      }
+    >
+      {rows.map((playlist) => (
+        <NavItem
+          key={playlist.id}
+          to={playlistPath(playlist.id)}
+          label={playlist.kind === "favorites" ? tLibrary("playlists.favorites") : playlist.name}
+          icon={playlist.kind === "favorites" ? Heart : ListMusic}
+        />
+      ))}
+
+      <PlaylistNameDialog
+        isOpen={creating}
+        onClose={() => setCreating(false)}
+        title={tLibrary("playlists.create")}
+        confirmLabel={tLibrary("playlists.createConfirm")}
+        existing={playlists.data ?? []}
+        reservedNames={[tLibrary("playlists.favorites")]}
+        isPending={create.isPending}
+        onSubmit={(name) =>
+          create.mutate(name, {
+            onSuccess: (created) => {
+              setCreating(false);
+              // Straight into the new, empty list: its empty state says how to
+              // fill it, which is the next thing the user will want to know.
+              navigate(playlistPath(created.id));
+            },
+          })
+        }
+      />
+    </NavSection>
   );
 }
 
@@ -205,7 +283,9 @@ export function Sidebar() {
       <div className="relative flex-1">
         <div
           className={cn(
-            "absolute inset-0 px-3 transition-opacity duration-200 ease-out",
+            // Scrolls: the playlists section grows with the user's lists, and
+            // the column must clip and scroll rather than push Settings out.
+            "absolute inset-0 overflow-y-auto px-3 pb-2 transition-opacity duration-200 ease-out",
             inSettings ? "pointer-events-none opacity-0" : "opacity-100",
           )}
           aria-hidden={inSettings}

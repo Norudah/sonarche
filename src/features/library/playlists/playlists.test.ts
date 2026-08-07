@@ -3,15 +3,17 @@ import { describe, expect, it } from "vitest";
 import { track } from "@/features/library/testFixtures";
 import type { Playlist } from "@/features/library/playlists/api";
 import {
+  orderedPlaylists,
   playlistCovers,
   playlistDuration,
   playlistNameTaken,
+  playlistView,
   resolvePlaylistTracks,
   tracksById,
 } from "@/features/library/playlists/playlists";
 
-function playlist(id: number, name: string): Playlist {
-  return { id, name, createdAt: 0, updatedAt: 0, itemIds: [] };
+function playlist(id: number, name: string, kind: Playlist["kind"] = "user"): Playlist {
+  return { id, name, kind, coverUrl: null, createdAt: 0, updatedAt: 0, itemIds: [] };
 }
 
 describe("resolvePlaylistTracks", () => {
@@ -65,5 +67,43 @@ describe("playlistNameTaken", () => {
     const playlists = [playlist(1, "Détente")];
     expect(playlistNameTaken(playlists, "détente", 1)).toBe(false);
     expect(playlistNameTaken(playlists, "détente", 2)).toBe(true);
+  });
+
+  it("treats reserved labels as taken — the favorites' localized name", () => {
+    expect(playlistNameTaken([], "favoris", undefined, ["Favoris"])).toBe(true);
+    expect(playlistNameTaken([], "Sport", undefined, ["Favoris"])).toBe(false);
+  });
+});
+
+describe("playlistView", () => {
+  const tracks = [
+    track({ id: 1, title: "Charlie", length: 100 }),
+    track({ id: 2, title: "Alpha", length: 300 }),
+    track({ id: 3, title: "Bravo", length: 200 }),
+  ];
+
+  it("without a sort, display order and stored positions coincide", () => {
+    const view = playlistView(tracks, null);
+    expect(view.map((row) => [row.track.id, row.position])).toEqual([
+      [1, 0],
+      [2, 1],
+      [3, 2],
+    ]);
+  });
+
+  it("sorted, each row keeps its stored position for the mutations", () => {
+    const view = playlistView(tracks, { key: "title", dir: "asc" });
+    expect(view.map((row) => [row.track.title, row.position])).toEqual([
+      ["Alpha", 1],
+      ["Bravo", 2],
+      ["Charlie", 0],
+    ]);
+  });
+});
+
+describe("orderedPlaylists", () => {
+  it("puts the favorites first and keeps the rest in incoming order", () => {
+    const rows = [playlist(1, "Aube"), playlist(2, "Favorites", "favorites"), playlist(3, "Zénith")];
+    expect(orderedPlaylists(rows).map((row) => row.id)).toEqual([2, 1, 3]);
   });
 });

@@ -579,39 +579,67 @@ function runMockSetup(): Promise<unknown> {
 const artistImages = new Map<string, string>();
 
 /**
- * The playlists store, mutated in place as the Rust commands would. Seeded
- * with three shapes worth looking at: a mixed list long enough for the 2×2
- * mosaic, a single-album list (one cover, not four copies of it), and one
+ * The playlists store, mutated in place as the Rust commands would. The
+ * favorites row is always there (the backend seeds it at startup); the user
+ * rows cover three shapes worth looking at: a mixed list long enough for the
+ * 2×2 mosaic, a single-album list (one cover, not four copies of it), and one
  * carrying a dead item id — the pruned-library case the views must absorb.
  */
-const mockPlaylists = isEmpty
-  ? []
-  : [
-      {
-        id: 1,
-        name: "Sessions de nuit",
-        created_at: now - 86_400_000 * 9,
-        updated_at: now - 3_600_000,
-        item_ids: [110, 106, 112, 116, 100, 2, 118],
-      },
-      {
-        id: 2,
-        name: "French touch",
-        created_at: now - 86_400_000 * 4,
-        updated_at: now - 86_400_000,
-        item_ids: [103, 104, 105],
-      },
-      {
-        id: 3,
-        name: "Rétro console",
-        created_at: now - 86_400_000 * 2,
-        updated_at: now - 7_200_000,
-        item_ids: [200, 201, 9999, 203],
-      },
-    ];
+interface MockPlaylist {
+  id: number;
+  name: string;
+  kind: "user" | "favorites";
+  cover_path: string | null;
+  created_at: number;
+  updated_at: number;
+  item_ids: number[];
+}
+
+const mockPlaylists: MockPlaylist[] = [
+  {
+    id: 100,
+    name: "Favorites",
+    kind: "favorites",
+    cover_path: null,
+    created_at: now - 86_400_000 * 30,
+    updated_at: now - 86_400_000,
+    item_ids: isEmpty ? [] : [104, 112],
+  },
+  ...(isEmpty
+    ? []
+    : ([
+        {
+          id: 1,
+          name: "Sessions de nuit",
+          kind: "user",
+          cover_path: null,
+          created_at: now - 86_400_000 * 9,
+          updated_at: now - 3_600_000,
+          item_ids: [110, 106, 112, 116, 100, 2, 118],
+        },
+        {
+          id: 2,
+          name: "French touch",
+          kind: "user",
+          cover_path: null,
+          created_at: now - 86_400_000 * 4,
+          updated_at: now - 86_400_000,
+          item_ids: [103, 104, 105],
+        },
+        {
+          id: 3,
+          name: "Rétro console",
+          kind: "user",
+          cover_path: null,
+          created_at: now - 86_400_000 * 2,
+          updated_at: now - 7_200_000,
+          item_ids: [200, 201, 9999, 203],
+        },
+      ] as MockPlaylist[])),
+];
 let nextPlaylistId = 4;
 
-function mockPlaylist(id: unknown) {
+function mockPlaylist(id: unknown): MockPlaylist {
   const playlist = mockPlaylists.find((row) => row.id === Number(id));
   if (!playlist) throw "invalid input: playlist not found";
   return playlist;
@@ -804,20 +832,46 @@ export function installMockTauri() {
         if (mockPlaylists.some((row) => row.name.toLowerCase() === name.toLowerCase())) {
           throw "invalid input: a playlist with this name already exists";
         }
-        const row = { id: nextPlaylistId++, name, created_at: Date.now(), updated_at: Date.now(), item_ids: [] };
+        const row: MockPlaylist = {
+          id: nextPlaylistId++,
+          name,
+          kind: "user",
+          cover_path: null,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          item_ids: [],
+        };
         mockPlaylists.push(row);
         mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
         return { playlist: { ...row } };
       }
       if (cmd === "rename_playlist") {
-        mockPlaylist(payload?.id).name = String(payload?.name ?? "").trim();
+        const row = mockPlaylist(payload?.id);
+        if (row.kind === "favorites") throw "invalid input: the favorites playlist cannot be renamed";
+        row.name = String(payload?.name ?? "").trim();
         mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
         return { ok: true };
       }
       if (cmd === "delete_playlist") {
+        if (mockPlaylist(payload?.id).kind === "favorites") {
+          throw "invalid input: the favorites playlist cannot be deleted";
+        }
         const index = mockPlaylists.findIndex((row) => row.id === Number(payload?.id));
         if (index >= 0) mockPlaylists.splice(index, 1);
         return { ok: true };
+      }
+      if (cmd === "set_playlist_cover") {
+        const row = mockPlaylist(payload?.id);
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        row.cover_path = thumb("#0ea5e9", "#164e63");
+        row.updated_at = Date.now();
+        return { id: row.id, filename: "mock.jpg" };
+      }
+      if (cmd === "remove_playlist_cover") {
+        const row = mockPlaylist(payload?.id);
+        const had = row.cover_path != null;
+        row.cover_path = null;
+        return { removed: had };
       }
       if (cmd === "add_playlist_tracks") {
         const row = mockPlaylist(payload?.id);

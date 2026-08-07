@@ -8,7 +8,12 @@ import { useLibrary } from "@/features/library/hooks";
 import { PlaylistCard } from "@/features/library/playlists/PlaylistCard";
 import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
 import { useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
-import { playlistCovers, resolvePlaylistTracks, tracksById } from "@/features/library/playlists/playlists";
+import {
+  orderedPlaylists,
+  playlistCovers,
+  resolvePlaylistTracks,
+  tracksById,
+} from "@/features/library/playlists/playlists";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -28,7 +33,7 @@ export function PlaylistsView() {
   const [creating, setCreating] = useState(false);
 
   const byId = tracksById(library.data ?? []);
-  const rows = playlists.data ?? [];
+  const rows = orderedPlaylists(playlists.data ?? []);
   const isPending = playlists.isPending || library.isPending;
   const error = playlists.error ?? library.error;
 
@@ -81,6 +86,7 @@ export function PlaylistsView() {
               <PlaylistCard
                 key={playlist.id}
                 playlist={playlist}
+                displayName={playlist.kind === "favorites" ? t("playlists.favorites") : playlist.name}
                 covers={playlistCovers(tracks)}
                 trackCount={tracks.length}
                 style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
@@ -97,6 +103,7 @@ export function PlaylistsView() {
         title={t("playlists.create")}
         confirmLabel={t("playlists.createConfirm")}
         existing={rows}
+        reservedNames={[t("playlists.favorites")]}
         isPending={create.isPending}
         onSubmit={(name) => create.mutate(name, { onSuccess: () => setCreating(false) })}
       />

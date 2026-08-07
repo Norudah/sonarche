@@ -154,9 +154,14 @@ export function TrackRow({
        * opacity for the length of the entrance — every row would flash its icons
        * on arrival. The animation lands on this div; the hover layer sits a
        * level deeper. `pl-6` is the breathing room from the duration column. */}
-      <td className={`${CELL} w-28 pl-6`}>
+      <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions onInspect={onInspect} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />
+          <RowActions
+            onInspect={onInspect}
+            onDelete={onDelete}
+            onAddToPlaylist={onAddToPlaylist}
+            favoriteId={track.id}
+          />
         </div>
       </td>
     </tr>

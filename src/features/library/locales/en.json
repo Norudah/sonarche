@@ -475,6 +475,30 @@
     "emptyDetail": {
       "title": "This playlist is empty",
       "body": "Add tracks from any row's menu — in the library, an album or an artist page."
+    },
+    "favorites": "Favorites",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "emptyFavorites": {
+      "title": "No favorites yet",
+      "body": "Press the heart on any track — here, in the library or from the player bar."
+    },
+    "image": {
+      "title": "Playlist image",
+      "replace": "Use this image",
+      "remove": "Remove image",
+      "current": "Current image",
+      "next": "New image",
+      "hasCurrent": "Your image, shown on every shelf.",
+      "noCurrent": "Built from the first covers in the list.",
+      "drop": "Drop an image, click to browse, or paste ({{chord}})",
+      "unreadable": "This file could not be read as an image.",
+      "failed": "The image could not be saved.",
+      "help": {
+        "title": "Where this image lives",
+        "storage": "The image is stored with the app's own data, never in your music folder — the library stays clean for exports and backups.",
+        "display": "Without an image of yours, the playlist wears a mosaic of its first covers."
+      }
     }
   }
 }

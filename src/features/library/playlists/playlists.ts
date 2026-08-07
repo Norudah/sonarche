@@ -1,5 +1,6 @@
 import type { LibraryTrack } from "@/features/library/api";
 import type { Playlist } from "@/features/library/playlists/api";
+import { sortTracks, type TrackSort } from "@/features/library/tracks/sort";
 
 /**
  * A playlist's members joined back against the library, order preserved.
@@ -48,8 +49,44 @@ export function playlistDuration(tracks: LibraryTrack[]): number {
 }
 
 /** Case-insensitive name collision, the same rule the backend enforces —
- * checked here first so the dialog can refuse before the round-trip. */
-export function playlistNameTaken(playlists: Playlist[], name: string, excludingId?: number): boolean {
+ * checked here first so the dialog can refuse before the round-trip.
+ * `reserved` carries names taken by something that is not a row's stored name:
+ * the favorites' *localized* label, which the list wears on screen while the
+ * store keeps "Favorites" — two lists reading identically would be worse than
+ * one refusal. */
+export function playlistNameTaken(
+  playlists: Playlist[],
+  name: string,
+  excludingId?: number,
+  reserved: string[] = [],
+): boolean {
   const wanted = name.trim().toLowerCase();
+  if (reserved.some((label) => label.toLowerCase() === wanted)) return true;
   return playlists.some((playlist) => playlist.id !== excludingId && playlist.name.toLowerCase() === wanted);
+}
+
+/** One row of a playlist table: the track plus the *stored* position every
+ * mutation must address — remove and reorder speak positions, not row numbers. */
+export interface PlaylistViewRow {
+  track: LibraryTrack;
+  position: number;
+}
+
+/**
+ * The playlist as displayed: its own order, or a column sort laid over it.
+ *
+ * The sort is a way of *reading* the list — the stored order stays what it is,
+ * so each row carries its original position for the mutations to address.
+ * Positions are recovered by id, which membership dedup guarantees unique.
+ */
+export function playlistView(tracks: LibraryTrack[], sort: TrackSort | null): PlaylistViewRow[] {
+  if (sort == null) return tracks.map((track, position) => ({ track, position }));
+  const positionById = new Map(tracks.map((track, position) => [track.id, position]));
+  return sortTracks(tracks, sort).map((track) => ({ track, position: positionById.get(track.id) ?? 0 }));
+}
+
+/** Favorites first, then the user's lists in the store's (name) order — the
+ * one built-in list is a fixture, not an entry in the alphabet. */
+export function orderedPlaylists(playlists: Playlist[]): Playlist[] {
+  return [...playlists].sort((a, b) => Number(b.kind === "favorites") - Number(a.kind === "favorites"));
 }

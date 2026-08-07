@@ -4,6 +4,7 @@ import { Outlet } from "react-router";
 import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
+import { FavoriteCurrentButton } from "@/features/library/playlists/FavoriteButton";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { readLaunchWelcome } from "@/features/settings/launchWelcome";
 import { useUpdatePrompt } from "@/features/update/useUpdatePrompt";
@@ -58,7 +59,7 @@ export function AppLayout() {
               </main>
             </div>
           </div>
-          <PlayerBar />
+          <PlayerBar accessory={<FavoriteCurrentButton />} />
           {/* Mounted beside the player bar, not above it in the tree: the
               viewport is positioned against the bar, and the two only ever
               appear together — the onboarding walkthrough replaces this whole

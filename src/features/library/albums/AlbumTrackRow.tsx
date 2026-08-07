@@ -142,9 +142,14 @@ export function AlbumTrackRow({
        * dropped them. The animation now lands on this div and the hidden layer
        * sits one level deeper, where nothing touches it. `pl-6` is the
        * breathing room — at `px-3` the icons sat against the duration. */}
-      <td className={`${CELL} w-28 pl-6`}>
+      <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions onInspect={onInspect} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />
+          <RowActions
+            onInspect={onInspect}
+            onDelete={onDelete}
+            onAddToPlaylist={onAddToPlaylist}
+            favoriteId={track.id}
+          />
         </div>
       </td>
     </tr>

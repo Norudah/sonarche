@@ -1,4 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+
+import type { CoverCrop } from "@/features/library/api";
 
 /** A user-curated playlist. `itemIds` are beets item ids in playing order —
  * titles, covers and durations are joined back from the library listing, so a
@@ -6,6 +8,12 @@ import { invoke } from "@tauri-apps/api/core";
 export interface Playlist {
   id: number;
   name: string;
+  /** `favorites` for the one built-in list (localized label, locked name);
+   * `user` for everything else. */
+  kind: "user" | "favorites";
+  /** The user-chosen tile, ready to draw — fresh random filename per write, so
+   * the URL itself is the cache buster. Null draws the cover mosaic. */
+  coverUrl: string | null;
   createdAt: number;
   updatedAt: number;
   itemIds: number[];
@@ -14,6 +22,8 @@ export interface Playlist {
 interface WirePlaylist {
   id: number;
   name: string;
+  kind: string;
+  cover_path: string | null;
   created_at: number;
   updated_at: number;
   item_ids: number[];
@@ -23,6 +33,8 @@ function toPlaylist(wire: WirePlaylist): Playlist {
   return {
     id: wire.id,
     name: wire.name,
+    kind: wire.kind === "favorites" ? "favorites" : "user",
+    coverUrl: wire.cover_path ? convertFileSrc(wire.cover_path) : null,
     createdAt: wire.created_at,
     updatedAt: wire.updated_at,
     itemIds: wire.item_ids,
@@ -60,4 +72,19 @@ export async function removePlaylistTracks(id: number, positions: number[]): Pro
 /** Moves the row at `from` so it lands at `to`, both in display order. */
 export async function movePlaylistTrack(id: number, from: number, to: number): Promise<void> {
   await invoke("move_playlist_track", { id, from, to });
+}
+
+/** Give the playlist a tile of its own — same pipeline as an artist image
+ * (500px square rendition in app data, optional crop). */
+export async function setPlaylistCover(
+  id: number,
+  sourcePath: string,
+  crop: CoverCrop | null,
+): Promise<{ id: number; filename: string }> {
+  return invoke("set_playlist_cover", { id, sourcePath, crop });
+}
+
+/** Back to the mosaic. */
+export async function removePlaylistCover(id: number): Promise<{ removed: boolean }> {
+  return invoke("remove_playlist_cover", { id });
 }

@@ -9,6 +9,7 @@ import type { Playlist } from "@/features/library/playlists/api";
 import { useAddToPlaylist, useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
 import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverMosaic";
 import {
+  orderedPlaylists,
   playlistCovers,
   playlistNameTaken,
   resolvePlaylistTracks,
@@ -23,6 +24,7 @@ interface AddToPlaylistDialogProps {
 
 function PlaylistRow({
   playlist,
+  displayName,
   covers,
   memberCount,
   alreadyHasAll,
@@ -30,6 +32,7 @@ function PlaylistRow({
   onPick,
 }: {
   playlist: Playlist;
+  displayName: string;
   covers: string[];
   memberCount: number;
   alreadyHasAll: boolean;
@@ -45,10 +48,15 @@ function PlaylistRow({
       onClick={onPick}
       className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:hover:bg-transparent"
     >
-      <PlaylistCoverMosaic covers={covers} className="size-10 shrink-0 overflow-hidden rounded-md" />
+      <PlaylistCoverMosaic
+        covers={covers}
+        customUrl={playlist.coverUrl}
+        favorites={playlist.kind === "favorites"}
+        className="size-10 shrink-0 overflow-hidden rounded-md"
+      />
       <span className="min-w-0 flex-1">
         <span className={"block truncate text-sm font-medium " + (alreadyHasAll ? "text-muted" : "text-foreground")}>
-          {playlist.name}
+          {displayName}
         </span>
         <span className="block truncate text-[0.75rem] text-muted">{t("trackCount", { count: memberCount })}</span>
       </span>
@@ -79,7 +87,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
 
   const itemIds = tracks.map((track) => track.id);
   const byId = tracksById(library.data ?? []);
-  const rows = playlists.data ?? [];
+  const rows = orderedPlaylists(playlists.data ?? []);
   const busy = add.isPending || create.isPending;
 
   const finish = (name: string, added: number, skipped: number) => {
@@ -102,7 +110,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   };
 
   const trimmed = draft.trim();
-  const draftTaken = trimmed !== "" && playlistNameTaken(rows, trimmed);
+  const draftTaken = trimmed !== "" && playlistNameTaken(rows, trimmed, undefined, [t("playlists.favorites")]);
   const createAndAdd = () => {
     if (trimmed === "" || draftTaken || busy) return;
     create.mutate(trimmed, {
@@ -173,6 +181,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
               <PlaylistRow
                 key={playlist.id}
                 playlist={playlist}
+                displayName={playlist.kind === "favorites" ? t("playlists.favorites") : playlist.name}
                 covers={playlistCovers(members)}
                 memberCount={members.length}
                 alreadyHasAll={itemIds.length > 0 && itemIds.every((id) => memberSet.has(id))}

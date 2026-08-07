@@ -1,4 +1,3 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +6,7 @@ import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import type { TrackSort, TrackSortKey } from "@/features/library/tracks/sort";
+import { SortableColumn } from "@/features/library/tracks/SortableColumn";
 import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTopOnFilterChange } from "@/features/library/tracks/useTopOnFilterChange";
@@ -33,54 +33,6 @@ interface TrackTableProps {
   onSort?: (key: TrackSortKey) => void;
   /** Album artist of the surrounding page, when it has one. */
   guestOwner?: string;
-}
-
-/**
- * A column header that orders the list.
- *
- * The control belongs to the thing it orders: a table has headers, so it sorts
- * from them, while the album and artist shelves — grids, with no headers to
- * click — keep their `SortSelect`. Two idioms, each where it is the obvious one.
- */
-function SortableColumn({
-  column,
-  label,
-  className,
-  sort,
-  onSort,
-}: {
-  column: TrackSortKey;
-  label: string;
-  className: string;
-  sort: TrackSort | null;
-  onSort: (key: TrackSortKey) => void;
-}) {
-  const { t } = useTranslation("library");
-  const isActive = sort?.key === column;
-  const Arrow = sort?.dir === "desc" ? ArrowDown : ArrowUp;
-
-  return (
-    <th
-      className={className}
-      // The live ordering for a screen reader, which cannot see the arrow.
-      aria-sort={isActive ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(column)}
-        aria-label={t("sort.byColumn", { column: label })}
-        className={
-          "inline-flex cursor-pointer items-center gap-1 rounded outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
-          (isActive ? "text-accent" : "hover:text-foreground")
-        }
-      >
-        {label}
-        {/* The slot is held empty so a column does not widen when it becomes the
-         * sorted one — which shifted every header to its right. */}
-        <span className="flex w-3 justify-center">{isActive && <Arrow className="size-3" />}</span>
-      </button>
-    </th>
-  );
 }
 
 export function TrackTable({ tracks, animationKey = "", sort = null, onSort, guestOwner }: TrackTableProps) {
@@ -119,7 +71,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
               {column("album", t("columns.album"), `${COLUMN} w-[18%] text-left`)}
               {column("genre", t("columns.genre"), `${COLUMN} w-32 text-left`)}
               {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
-              <th className={`${COLUMN} w-28`}>
+              <th className={`${COLUMN} w-36`}>
                 <span className="sr-only">{t("columns.actions")}</span>
               </th>
             </tr>

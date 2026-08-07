@@ -17,8 +17,12 @@ const CELL_LINK = "block truncate outline-none hover:text-foreground hover:under
 
 interface PlaylistTrackRowProps {
   track: LibraryTrack;
-  /** 0-based position in the playlist — the identity every mutation addresses. */
+  /** 0-based row number as displayed — the playlist's own order, or the sort
+   * laid over it. Mutations address stored positions; the list maps them. */
   position: number;
+  /** False while a column sort is active: display and stored order then
+   * disagree, so the handle would move a different row than the one held. */
+  canReorder: boolean;
   style?: CSSProperties;
   /** True for the row currently being dragged: it rides over its neighbours,
    * so it needs a floor under its cells. */
@@ -39,6 +43,7 @@ interface PlaylistTrackRowProps {
 export function PlaylistTrackRow({
   track,
   position,
+  canReorder,
   style,
   isDragging,
   dragHandleProps,
@@ -67,14 +72,16 @@ export function PlaylistTrackRow({
       }
     >
       <td className={`${CELL} w-8 px-1`}>
-        <button
-          type="button"
-          aria-label={t("playlists.dragToReorder")}
-          {...dragHandleProps}
-          className="flex size-6 cursor-grab touch-none items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-60 hover:opacity-100! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 active:cursor-grabbing"
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {canReorder && (
+          <button
+            type="button"
+            aria-label={t("playlists.dragToReorder")}
+            {...dragHandleProps}
+            className="flex size-6 cursor-grab touch-none items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-60 hover:opacity-100! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 active:cursor-grabbing"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
       </td>
 
       <td className={`${CELL} w-12`}>
@@ -127,13 +134,14 @@ export function PlaylistTrackRow({
       </td>
 
       {/* Same load-bearing wrapper as the other tables — see TrackRow. */}
-      <td className={`${CELL} w-28 pl-6`}>
+      <td className={`${CELL} w-36 pl-6`}>
         <div>
           <RowActions
             onInspect={onInspect}
             onDelete={onDelete}
             onAddToPlaylist={onAddToPlaylist}
             onRemoveFromPlaylist={onRemoveFromPlaylist}
+            favoriteId={track.id}
           />
         </div>
       </td>

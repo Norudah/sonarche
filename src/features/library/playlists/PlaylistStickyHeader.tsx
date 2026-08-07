@@ -9,6 +9,8 @@ interface PlaylistStickyHeaderProps {
   name: string;
   trackCount: number;
   covers: string[];
+  customUrl?: string | null;
+  favorites?: boolean;
   /** False while the hero is still on screen — the bar would only duplicate it. */
   isVisible: boolean;
   onPlay: () => void;
@@ -16,7 +18,15 @@ interface PlaylistStickyHeaderProps {
 
 /** The album sticky header's twin — same always-mounted fade, same reason:
  * "play this list" must not scroll out of reach on a long playlist. */
-export function PlaylistStickyHeader({ name, trackCount, covers, isVisible, onPlay }: PlaylistStickyHeaderProps) {
+export function PlaylistStickyHeader({
+  name,
+  trackCount,
+  covers,
+  customUrl,
+  favorites,
+  isVisible,
+  onPlay,
+}: PlaylistStickyHeaderProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
 
@@ -32,7 +42,12 @@ export function PlaylistStickyHeader({ name, trackCount, covers, isVisible, onPl
         (isVisible ? "" : "pointer-events-none")
       }
     >
-      <PlaylistCoverMosaic covers={covers} className="size-9 shrink-0 overflow-hidden rounded-md" />
+      <PlaylistCoverMosaic
+        covers={covers}
+        customUrl={customUrl}
+        favorites={favorites}
+        className="size-9 shrink-0 overflow-hidden rounded-md"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{name}</p>
         <p className="truncate text-[0.6875rem] text-muted">{t("trackCount", { count: trackCount })}</p>
