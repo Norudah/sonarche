@@ -47,9 +47,18 @@ interface AlbumTrackRowProps {
   onPlay: () => void;
   onInspect: () => void;
   onDelete: () => void;
+  onAddToPlaylist: () => void;
 }
 
-export function AlbumTrackRow({ track, position, style, onPlay, onInspect, onDelete }: AlbumTrackRowProps) {
+export function AlbumTrackRow({
+  track,
+  position,
+  style,
+  onPlay,
+  onInspect,
+  onDelete,
+  onAddToPlaylist,
+}: AlbumTrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying } = usePlayer();
@@ -135,7 +144,7 @@ export function AlbumTrackRow({ track, position, style, onPlay, onInspect, onDel
        * breathing room — at `px-3` the icons sat against the duration. */}
       <td className={`${CELL} w-28 pl-6`}>
         <div>
-          <RowActions onInspect={onInspect} onDelete={onDelete} />
+          <RowActions onInspect={onInspect} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />
         </div>
       </td>
     </tr>

@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
+import { FileText, ListMusic, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +18,7 @@ const ICON_PILL = HERO_BUTTON_ICON;
  * nobody performs twice, and buys back the row for the two things you actually
  * came here to do.
  */
-function OverflowMenu({ onDelete }: { onDelete: () => void }) {
+function OverflowMenu({ onDelete, onAddToPlaylist }: { onDelete: () => void; onAddToPlaylist: () => void }) {
   const { t } = useTranslation("library");
 
   return (
@@ -30,8 +30,12 @@ function OverflowMenu({ onDelete }: { onDelete: () => void }) {
         <MoreHorizontal className="size-4 shrink-0" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu onAction={onDelete}>
-          <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")}>
+        <Dropdown.Menu>
+          <Dropdown.Item id="add-to-playlist" textValue={t("playlists.addTo")} onAction={onAddToPlaylist}>
+            <ListMusic className="size-4" />
+            {t("playlists.addTo")}
+          </Dropdown.Item>
+          <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")} onAction={onDelete}>
             <span className="flex items-center gap-2 text-danger">
               <Trash2 className="size-4" />
               {t("deleteAlbum.action")}
@@ -48,9 +52,10 @@ interface AlbumActionsProps {
   onShuffle: () => void;
   onInspect: () => void;
   onDelete: () => void;
+  onAddToPlaylist: () => void;
 }
 
-export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumActionsProps) {
+export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete, onAddToPlaylist }: AlbumActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -77,7 +82,7 @@ export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumAc
           {t("albums.inspectAction")}
         </motion.button>
 
-        <OverflowMenu onDelete={onDelete} />
+        <OverflowMenu onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />
       </div>
     </div>
   );

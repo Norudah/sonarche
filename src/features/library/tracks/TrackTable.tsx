@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import type { TrackSort, TrackSortKey } from "@/features/library/tracks/sort";
 import { TrackRow } from "@/features/library/tracks/TrackRow";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
@@ -86,6 +87,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
   const { playFrom } = usePlayQueue();
   const rowWindow = useRowWindow(tracks);
   useTopOnFilterChange(animationKey);
@@ -146,6 +148,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
                 onPlay={() => playFrom(tracks, index)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
+                onAddToPlaylist={() => setAddingToPlaylist([track])}
               />
             ))}
 
@@ -156,6 +159,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
 
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
+      <AddToPlaylistDialog tracks={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />
     </>
   );
 }

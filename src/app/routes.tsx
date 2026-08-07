@@ -15,6 +15,8 @@ import { CategoryDetailView } from "@/features/library/views/CategoryDetailView"
 import { GenreDetailView } from "@/features/library/views/GenreDetailView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { MetadataPage } from "@/features/library/triage/MetadataPage";
+import { PlaylistDetailView } from "@/features/library/views/PlaylistDetailView";
+import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
@@ -28,7 +30,7 @@ import { UpdateSection } from "@/features/update/UpdateSection";
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
 // public import site for the many callers that already use it.
-export { albumPath, artistPath, categoryPath, genrePath, paths, triagePaths } from "@/app/paths";
+export { albumPath, artistPath, categoryPath, genrePath, paths, playlistPath, triagePaths } from "@/app/paths";
 
 // A memory router has no URL to deep-link, so in dev a `?route=` param seeds the
 // initial entry — the only way to land a browser (or an automated one) straight
@@ -84,6 +86,8 @@ export const router = createMemoryRouter(
             { path: paths.libraryGenre, element: <GenreDetailView /> },
             { path: paths.libraryCategories, element: <CategoriesView /> },
             { path: paths.libraryCategory, element: <CategoryDetailView /> },
+            { path: paths.libraryPlaylists, element: <PlaylistsView /> },
+            { path: paths.libraryPlaylist, element: <PlaylistDetailView /> },
           ],
         },
       ],

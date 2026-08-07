@@ -14,6 +14,7 @@ import {
   type CoverCrop,
   type CoverSource,
 } from "@/features/library/api";
+import { playlistsKey } from "@/features/library/playlists/hooks";
 
 export const libraryKey = ["library"] as const;
 export const artistImagesKey = ["artist-images"] as const;
@@ -48,6 +49,8 @@ export function useDeleteTrack() {
     mutationFn: deleteTrack,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
+      // The backend pruned the track out of every playlist alongside.
+      queryClient.invalidateQueries({ queryKey: playlistsKey });
     },
   });
 }
@@ -63,6 +66,7 @@ export function useDeleteTracks() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
+      queryClient.invalidateQueries({ queryKey: playlistsKey });
     },
   });
 }

@@ -12,6 +12,7 @@ import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { DeleteAlbumDialog, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
 import { useLibrary } from "@/features/library/hooks";
+import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -22,6 +23,7 @@ export function AlbumDetailView() {
   const { playOrdered, playShuffled } = usePlayQueue();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
+  const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   /** The last record this route resolved to — see the rename note below. */
   const [held, setHeld] = useState<Album | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
@@ -80,10 +82,12 @@ export function AlbumDetailView() {
         onShuffle={() => playShuffled(album.tracks)}
         onInspect={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
+        onAddToPlaylist={() => setAddingToPlaylist(true)}
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />
       <AlbumInspectModal album={inspecting ? album : null} onClose={() => setInspecting(false)} />
+      <AddToPlaylistDialog tracks={addingToPlaylist ? album.tracks : null} onClose={() => setAddingToPlaylist(false)} />
     </PageContainer>
   );
 }

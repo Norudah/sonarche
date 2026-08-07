@@ -578,6 +578,45 @@ function runMockSetup(): Promise<unknown> {
  * empty on purpose: the generated motif is the shipped default. */
 const artistImages = new Map<string, string>();
 
+/**
+ * The playlists store, mutated in place as the Rust commands would. Seeded
+ * with three shapes worth looking at: a mixed list long enough for the 2×2
+ * mosaic, a single-album list (one cover, not four copies of it), and one
+ * carrying a dead item id — the pruned-library case the views must absorb.
+ */
+const mockPlaylists = isEmpty
+  ? []
+  : [
+      {
+        id: 1,
+        name: "Sessions de nuit",
+        created_at: now - 86_400_000 * 9,
+        updated_at: now - 3_600_000,
+        item_ids: [110, 106, 112, 116, 100, 2, 118],
+      },
+      {
+        id: 2,
+        name: "French touch",
+        created_at: now - 86_400_000 * 4,
+        updated_at: now - 86_400_000,
+        item_ids: [103, 104, 105],
+      },
+      {
+        id: 3,
+        name: "Rétro console",
+        created_at: now - 86_400_000 * 2,
+        updated_at: now - 7_200_000,
+        item_ids: [200, 201, 9999, 203],
+      },
+    ];
+let nextPlaylistId = 4;
+
+function mockPlaylist(id: unknown) {
+  const playlist = mockPlaylists.find((row) => row.id === Number(id));
+  if (!playlist) throw "invalid input: playlist not found";
+  return playlist;
+}
+
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
   list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
@@ -757,6 +796,52 @@ export function installMockTauri() {
           missing: 0,
           folder: `${payload?.dest}/${payload?.folderName}`,
         };
+      }
+      if (cmd === "list_playlists") return { playlists: mockPlaylists.map((row) => ({ ...row })) };
+      if (cmd === "create_playlist") {
+        const name = String(payload?.name ?? "").trim();
+        if (name === "") throw "invalid input: empty playlist name";
+        if (mockPlaylists.some((row) => row.name.toLowerCase() === name.toLowerCase())) {
+          throw "invalid input: a playlist with this name already exists";
+        }
+        const row = { id: nextPlaylistId++, name, created_at: Date.now(), updated_at: Date.now(), item_ids: [] };
+        mockPlaylists.push(row);
+        mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+        return { playlist: { ...row } };
+      }
+      if (cmd === "rename_playlist") {
+        mockPlaylist(payload?.id).name = String(payload?.name ?? "").trim();
+        mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+        return { ok: true };
+      }
+      if (cmd === "delete_playlist") {
+        const index = mockPlaylists.findIndex((row) => row.id === Number(payload?.id));
+        if (index >= 0) mockPlaylists.splice(index, 1);
+        return { ok: true };
+      }
+      if (cmd === "add_playlist_tracks") {
+        const row = mockPlaylist(payload?.id);
+        const present = new Set(row.item_ids);
+        const incoming = (payload?.itemIds as number[]) ?? [];
+        const fresh = incoming.filter((id) => !present.has(id) && present.add(id));
+        row.item_ids.push(...fresh);
+        row.updated_at = Date.now();
+        return { added: fresh.length, skipped: incoming.length - fresh.length };
+      }
+      if (cmd === "remove_playlist_tracks") {
+        const row = mockPlaylist(payload?.id);
+        const doomed = new Set((payload?.positions as number[]) ?? []);
+        const before = row.item_ids.length;
+        row.item_ids = row.item_ids.filter((_, position) => !doomed.has(position));
+        row.updated_at = Date.now();
+        return { removed: before - row.item_ids.length };
+      }
+      if (cmd === "move_playlist_track") {
+        const row = mockPlaylist(payload?.id);
+        const [moved] = row.item_ids.splice(Number(payload?.from), 1);
+        if (moved != null) row.item_ids.splice(Number(payload?.to), 0, moved);
+        row.updated_at = Date.now();
+        return { ok: true };
       }
       // What the Settings pane shows as the installed version. A browser has no
       // bundle to read one from. Kept equal to the `currentVersion` the check

@@ -6,6 +6,7 @@ import { AlbumTrackRow } from "@/features/library/albums/AlbumTrackRow";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 // No alignment in the base: `${COLUMN} text-center` looks like it wins, but
@@ -26,6 +27,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
+  const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
   const { playFrom } = usePlayQueue();
 
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
@@ -58,6 +60,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 onPlay={() => playFrom(album.tracks, position)}
                 onInspect={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
+                onAddToPlaylist={() => setAddingToPlaylist([track])}
               />
             ))}
           </tbody>
@@ -66,6 +69,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
 
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
+      <AddToPlaylistDialog tracks={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />
     </>
   );
 }

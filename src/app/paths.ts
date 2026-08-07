@@ -30,6 +30,8 @@ export const paths = {
   libraryGenre: "/library/genres/:family",
   libraryCategories: "/library/categories",
   libraryCategory: "/library/categories/:category",
+  libraryPlaylists: "/library/playlists",
+  libraryPlaylist: "/library/playlists/:id",
   settings: "/settings",
   settingsAppearance: "/settings/appearance",
   settingsMetadata: "/settings/metadata",
@@ -111,4 +113,10 @@ export function genrePath(family: string, genre?: string): string {
 export function categoryPath(category: string, genre?: string): string {
   const base = `${paths.libraryCategories}/${encodeURIComponent(category)}`;
   return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
+}
+
+/** The store's numeric id, not the name: a playlist is freely renameable, and
+ * a URL built on the name would die with every rename. */
+export function playlistPath(id: number): string {
+  return `${paths.libraryPlaylists}/${id}`;
 }

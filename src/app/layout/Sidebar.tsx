@@ -1,4 +1,5 @@
 import { cn } from "@heroui/react";
+import type { LucideIcon } from "lucide-react";
 import {
   ChevronLeft,
   Disc,
@@ -7,12 +8,12 @@ import {
   FolderInput,
   History,
   Layers,
+  ListMusic,
   Mic2,
   Music,
   Settings,
   Tags,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
@@ -130,6 +131,9 @@ function MainNav() {
         <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
         <NavItem to={paths.libraryGenres} label={tLibrary("views.genres")} icon={Layers} />
         <NavItem to={paths.libraryCategories} label={tLibrary("views.categories")} icon={Tags} />
+        {/* Last: the shelves above catalogue what the library *is*; this one
+            holds what the user made out of it. */}
+        <NavItem to={paths.libraryPlaylists} label={tLibrary("views.playlists")} icon={ListMusic} />
       </NavSection>
     </div>
   );

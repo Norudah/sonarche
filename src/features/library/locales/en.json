@@ -5,7 +5,8 @@
     "albums": "Albums",
     "artists": "Artists",
     "genres": "Genres",
-    "categories": "Categories"
+    "categories": "Categories",
+    "playlists": "Playlists"
   },
   "categories": {
     "back": "Categories",
@@ -435,5 +436,45 @@
   },
   "breadcrumb": "Breadcrumb",
   "back": "Back",
-  "goToImport": "Import a folder"
+  "goToImport": "Import a folder",
+  "playlists": {
+    "eyebrow": "Playlist",
+    "back": "Playlists",
+    "count_one": "{{count}} playlist",
+    "count_other": "{{count}} playlists",
+    "create": "New playlist",
+    "createConfirm": "Create",
+    "createPlaceholder": "New playlist…",
+    "namePlaceholder": "Playlist name",
+    "duplicateName": "A playlist already has this name",
+    "cancel": "Cancel",
+    "renameAction": "Rename",
+    "renameConfirm": "Rename",
+    "delete": {
+      "action": "Delete playlist",
+      "title": "Delete “{{name}}”?",
+      "body_one": "The playlist and its order go; its {{count}} track stays in the library.",
+      "body_other": "The playlist and its order go; its {{count}} tracks stay in the library.",
+      "body_zero": "The playlist is empty; nothing else goes with it.",
+      "confirm": "Delete"
+    },
+    "addTo": "Add to a playlist",
+    "removeFrom": "Remove from playlist",
+    "alreadyThere": "Already there",
+    "pickerEmpty": "No playlist yet — name one above to start it.",
+    "addedToast_one": "Added to “{{name}}”",
+    "addedToast_other": "{{count}} tracks added to “{{name}}”",
+    "nothingAddedToast": "Already in “{{name}}”",
+    "skippedToast_one": "{{count}} track was already there",
+    "skippedToast_other": "{{count}} tracks were already there",
+    "dragToReorder": "Drag to reorder",
+    "empty": {
+      "title": "No playlist yet",
+      "body": "A playlist gathers tracks from anywhere in the ark, in the order you choose."
+    },
+    "emptyDetail": {
+      "title": "This playlist is empty",
+      "body": "Add tracks from any row's menu — in the library, an album or an artist page."
+    }
+  }
 }

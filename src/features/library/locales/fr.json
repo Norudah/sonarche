@@ -5,7 +5,8 @@
     "albums": "Albums",
     "artists": "Artistes",
     "genres": "Genres",
-    "categories": "Catégories"
+    "categories": "Catégories",
+    "playlists": "Playlists"
   },
   "categories": {
     "back": "Catégories",
@@ -435,5 +436,45 @@
   },
   "breadcrumb": "Fil d'ariane",
   "back": "Retour",
-  "goToImport": "Importer un dossier"
+  "goToImport": "Importer un dossier",
+  "playlists": {
+    "eyebrow": "Playlist",
+    "back": "Playlists",
+    "count_one": "{{count}} playlist",
+    "count_other": "{{count}} playlists",
+    "create": "Nouvelle playlist",
+    "createConfirm": "Créer",
+    "createPlaceholder": "Nouvelle playlist…",
+    "namePlaceholder": "Nom de la playlist",
+    "duplicateName": "Une playlist porte déjà ce nom",
+    "cancel": "Annuler",
+    "renameAction": "Renommer",
+    "renameConfirm": "Renommer",
+    "delete": {
+      "action": "Supprimer la playlist",
+      "title": "Supprimer « {{name}} » ?",
+      "body_one": "La playlist et son ordre disparaissent ; son {{count}} titre reste dans la bibliothèque.",
+      "body_other": "La playlist et son ordre disparaissent ; ses {{count}} titres restent dans la bibliothèque.",
+      "body_zero": "La playlist est vide ; rien d'autre ne part avec elle.",
+      "confirm": "Supprimer"
+    },
+    "addTo": "Ajouter à une playlist",
+    "removeFrom": "Retirer de la playlist",
+    "alreadyThere": "Déjà présent",
+    "pickerEmpty": "Aucune playlist pour l'instant — nommez-en une ci-dessus pour la créer.",
+    "addedToast_one": "Ajouté à « {{name}} »",
+    "addedToast_other": "{{count}} titres ajoutés à « {{name}} »",
+    "nothingAddedToast": "Déjà dans « {{name}} »",
+    "skippedToast_one": "{{count}} titre y était déjà",
+    "skippedToast_other": "{{count}} titres y étaient déjà",
+    "dragToReorder": "Glisser pour réordonner",
+    "empty": {
+      "title": "Aucune playlist",
+      "body": "Une playlist rassemble des titres de toute l'arche, dans l'ordre que vous choisissez."
+    },
+    "emptyDetail": {
+      "title": "Cette playlist est vide",
+      "body": "Ajoutez des titres depuis le menu d'une ligne — dans la bibliothèque, un album ou une page d'artiste."
+    }
+  }
 }

@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
+import { FileText, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 // Round, like every other icon-only control in the app: the hero's play pill,
@@ -8,9 +8,19 @@ import { useTranslation } from "react-i18next";
 const ACTION =
   "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
+interface RowActionsProps {
+  onInspect: () => void;
+  onDelete: () => void;
+  /** Offers "add to a playlist" in the menu. Optional so the tables that
+   * cannot host the picker simply don't grow the item. */
+  onAddToPlaylist?: () => void;
+  /** Playlist rows only: take this row out of the list — the file stays. */
+  onRemoveFromPlaylist?: () => void;
+}
+
 /**
- * The end-of-row controls, shared by the album tracklist and the library-wide
- * table so both rows terminate the same way.
+ * The end-of-row controls, shared by the album tracklist, the library-wide
+ * table and the playlist so all three rows terminate the same way.
  *
  * Two controls, not four. Metadata keeps a button of its own because inspecting
  * tags is what this app is for — burying it in a menu would hide the one action
@@ -18,7 +28,7 @@ const ACTION =
  * menu, where a destructive click takes a deliberate second step instead of
  * sitting under the cursor on every row.
  */
-export function RowActions({ onInspect, onDelete }: { onInspect: () => void; onDelete: () => void }) {
+export function RowActions({ onInspect, onDelete, onAddToPlaylist, onRemoveFromPlaylist }: RowActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -45,8 +55,24 @@ export function RowActions({ onInspect, onDelete }: { onInspect: () => void; onD
           <MoreHorizontal className="size-4" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="bottom end">
-          <Dropdown.Menu onAction={onDelete}>
-            <Dropdown.Item id="delete" textValue={t("delete.action")}>
+          <Dropdown.Menu>
+            {onAddToPlaylist && (
+              <Dropdown.Item id="add-to-playlist" textValue={t("playlists.addTo")} onAction={onAddToPlaylist}>
+                <ListMusic className="size-4" />
+                {t("playlists.addTo")}
+              </Dropdown.Item>
+            )}
+            {onRemoveFromPlaylist && (
+              <Dropdown.Item
+                id="remove-from-playlist"
+                textValue={t("playlists.removeFrom")}
+                onAction={onRemoveFromPlaylist}
+              >
+                <ListX className="size-4" />
+                {t("playlists.removeFrom")}
+              </Dropdown.Item>
+            )}
+            <Dropdown.Item id="delete" textValue={t("delete.action")} onAction={onDelete}>
               <span className="flex items-center gap-2 text-danger">
                 <Trash2 className="size-4" />
                 {t("delete.action")}
