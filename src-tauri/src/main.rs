@@ -16,6 +16,7 @@ mod logs;
 mod lyrics;
 mod now_playing;
 mod onboarding;
+mod pasted_image;
 mod player;
 mod preferences;
 mod proc;
@@ -37,6 +38,8 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Read-only: the paste-an-image path in the cover/artist modals.
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(genres::RecomputeGenresState::default())
@@ -47,6 +50,9 @@ fn main() {
         .setup(|app| {
             // First, so anything that fails after this point leaves a trace.
             logs::init(app.handle());
+            // Image temp files a past session left behind (pastes, fetched
+            // links) — off-thread, launch must not wait on the temp dir.
+            tauri::async_runtime::spawn_blocking(pasted_image::sweep_stale);
             let state = jobs::init(app.handle())?;
             app.manage(state);
             // Before anything resolves a path: `AppPaths` reads this state, and
@@ -101,6 +107,7 @@ fn main() {
             artist_images::set_artist_image,
             artist_images::remove_artist_image,
             artist_images::fetch_artist_image_url,
+            pasted_image::save_pasted_image,
             artist_images::export_artist_images,
             commands::scan_import_folder,
             commands::start_library_import,

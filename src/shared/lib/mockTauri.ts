@@ -742,6 +742,14 @@ export function installMockTauri() {
         if (new URLSearchParams(window.location.search).has("urlfail")) throw new Error("not an image");
         return { path: "/tmp/mock-fetched.jpg", bytes: 2_400_000 };
       }
+      // The clipboard path: a browser cannot serve the OS pasteboard, so the
+      // image read refuses and the text read hands back a copied image address
+      // — which exercises the whole clipboard→link→adopt chain above.
+      if (cmd === "plugin:clipboard-manager|read_image") throw new Error("no image on the mock clipboard");
+      if (cmd === "plugin:clipboard-manager|read_text") return "https://example.com/mock-copied-cover.jpg";
+      if (cmd === "save_pasted_image") {
+        return { path: "/tmp/mock-pasted.png", bytes: 1_000_000 };
+      }
       if (cmd === "export_artist_images") {
         await new Promise((resolve) => window.setTimeout(resolve, 500));
         return {

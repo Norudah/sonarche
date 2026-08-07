@@ -58,6 +58,7 @@ tauri-plugin-updater = "2.10.1"
 # process is still the old one, and asking someone to quit and reopen is how an
 # update gets postponed forever.
 tauri-plugin-process = "2.3.1"
+tauri-plugin-clipboard-manager = "2.3.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # OS keychain for API keys: secrets never land in a config file. The backend is

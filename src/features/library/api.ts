@@ -202,6 +202,11 @@ export async function fetchImageUrl(url: string): Promise<{ path: string; bytes:
   return invoke("fetch_artist_image_url", { url });
 }
 
+/** Raw clipboard image bytes, landed as a temp file the picker can adopt. */
+export async function savePastedImage(bytes: Uint8Array): Promise<{ path: string; bytes: number }> {
+  return invoke("save_pasted_image", bytes);
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({

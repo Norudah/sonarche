@@ -154,7 +154,9 @@ pub async fn fetch_artist_image_url(
 ) -> AppResult<Value> {
     let url = url.trim().to_string();
     if !url.starts_with("https://") {
-        return Err(AppError::InvalidInput("only https links are accepted".into()));
+        return Err(AppError::InvalidInput(
+            "only https links are accepted".into(),
+        ));
     }
     if url.chars().count() > MAX_URL_CHARS {
         return Err(AppError::InvalidInput("link too long".into()));
@@ -344,9 +346,20 @@ mod tests {
     /// would silently overwrite each other without the numbering.
     #[test]
     fn colliding_stems_get_numbered() {
-        let rows = [row("AC/DC", "a.jpg"), row("AC:DC", "b.png"), row("IAM", "c.jpg"), row("iam", "d.jpg")];
-        let names: Vec<String> = export_names(&rows).into_iter().map(|(file, _)| file).collect();
-        assert_eq!(names, vec!["AC_DC.jpg", "AC_DC (2).png", "IAM.jpg", "iam (2).jpg"]);
+        let rows = [
+            row("AC/DC", "a.jpg"),
+            row("AC:DC", "b.png"),
+            row("IAM", "c.jpg"),
+            row("iam", "d.jpg"),
+        ];
+        let names: Vec<String> = export_names(&rows)
+            .into_iter()
+            .map(|(file, _)| file)
+            .collect();
+        assert_eq!(
+            names,
+            vec!["AC_DC.jpg", "AC_DC (2).png", "IAM.jpg", "iam (2).jpg"]
+        );
     }
 
     #[test]
