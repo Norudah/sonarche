@@ -336,20 +336,31 @@ def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]
     its 500px rendition (or the original when CAA has no rendition)."""
     import requests
 
-    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30)
+    import cover_set
+    import net
+
+    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30, stream=True)
     if hq_resp.status_code != 200:
         return None
-    hq_data = hq_resp.content
+    try:
+        hq_data = net.read_bounded(hq_resp, cover_set.MAX_CANDIDATE_BYTES)
+    except RuntimeError:
+        # An outsized upload degrades to "no cover", never to a failed enrich.
+        protocol.log(f"enrich: cover on {entity_path} over the size cap, skipped")
+        return None
+    if not hq_data:
+        return None
     hq = (hq_data, hq_data[:4] == b"\x89PNG")
 
-    thumb_resp = requests.get(
-        f"https://coverartarchive.org/{entity_path}/front-500", timeout=30
-    )
-    thumb = (
-        (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
-        if thumb_resp.status_code == 200
-        else hq
-    )
+    thumb_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front-500", timeout=30, stream=True)
+    thumb = hq
+    if thumb_resp.status_code == 200:
+        try:
+            thumb_data = net.read_bounded(thumb_resp, cover_set.MAX_CANDIDATE_BYTES)
+            if thumb_data:
+                thumb = (thumb_data, thumb_data[:4] == b"\x89PNG")
+        except RuntimeError:
+            protocol.log(f"enrich: 500px rendition on {entity_path} over the size cap, kept the original")
     return hq, thumb
 
 

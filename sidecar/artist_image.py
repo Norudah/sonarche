@@ -15,6 +15,7 @@ import os
 import tempfile
 
 import cover_set
+import net
 import protocol
 
 # A pasted link is a one-off personal fetch, not a service integration: the
@@ -46,20 +47,27 @@ def fetch(_request_id: str, params: dict) -> dict:
 
     import requests
 
-    resp = requests.get(url, timeout=30)
-    if resp.status_code != 200 or not resp.content:
+    resp = requests.get(url, timeout=30, stream=True)
+    if resp.status_code != 200:
         raise RuntimeError(f"image download failed ({resp.status_code})")
-    if len(resp.content) > MAX_FETCH_BYTES:
-        raise RuntimeError("image too large")
-    suffix = sniff_suffix(resp.content)
+    # requests follows redirects across schemes: the pasted https link must
+    # not have been walked down to plain http behind the user's back.
+    if not resp.url.startswith("https://"):
+        raise RuntimeError("the link redirected away from https")
+    data = net.read_bounded(resp, MAX_FETCH_BYTES)
+    if not data:
+        raise RuntimeError("image download failed (empty)")
+    suffix = sniff_suffix(data)
     if suffix is None:
         raise RuntimeError("the link did not return an image")
 
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(resp.content)
+    # The prefix marks the file as ours: a stale one (the modal was closed
+    # without confirming) is swept by the app at the next launch.
+    with tempfile.NamedTemporaryFile(prefix="sonarche-fetch-", suffix=suffix, delete=False) as tmp:
+        tmp.write(data)
         tmp_path = tmp.name
-    protocol.log(f"artist_image: fetched {len(resp.content)} bytes into {tmp_path}")
-    return {"path": tmp_path, "bytes": len(resp.content)}
+    protocol.log(f"artist_image: fetched {len(data)} bytes into {tmp_path}")
+    return {"path": tmp_path, "bytes": len(data)}
 
 
 def handle(_request_id: str, params: dict) -> dict:

@@ -22,6 +22,7 @@ import tempfile
 from PIL import Image, ImageOps
 
 import covers
+import net
 import protocol
 
 # The archive is a user file we copy, not a download we can retry: refuse
@@ -236,12 +237,13 @@ def _download_candidate(url: str) -> bytes:
 
     if not url.startswith(f"{CAA_ROOT}/"):
         raise RuntimeError("candidate URL outside the Cover Art Archive")
-    resp = requests.get(url, timeout=60)
-    if resp.status_code != 200 or not resp.content:
+    resp = requests.get(url, timeout=60, stream=True)
+    if resp.status_code != 200:
         raise RuntimeError(f"cover download failed ({resp.status_code})")
-    if len(resp.content) > MAX_CANDIDATE_BYTES:
-        raise RuntimeError("cover image too large")
-    return resp.content
+    data = net.read_bounded(resp, MAX_CANDIDATE_BYTES)
+    if not data:
+        raise RuntimeError("cover download failed (empty)")
+    return data
 
 
 def handle(_request_id: str, params: dict) -> dict:
