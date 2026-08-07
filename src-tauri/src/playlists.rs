@@ -10,12 +10,19 @@
 //! thousand rows, where a full rewrite is a hair slower than a gap scheme and
 //! immune to the drift those schemes invite.
 
+use std::time::Duration;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
-use tauri::State;
+use tauri::{AppHandle, State};
+use uuid::Uuid;
 
+use crate::artist_images::remove_orphan;
+use crate::commands::{checked_cover_source, CoverCrop};
 use crate::error::{AppError, AppResult};
 use crate::jobs::JobsState;
+use crate::python_env::AppPaths;
+use crate::sidecar::SidecarState;
 
 /// Longest name a playlist may wear. Anything past this is a pasted paragraph,
 /// not a title.
@@ -25,22 +32,33 @@ const MAX_NAME_CHARS: usize = 120;
 /// album" or a filtered view — thousands, not millions.
 const MAX_BATCH: usize = 10_000;
 
+/// The one built-in playlist. Stored under a stable English name (the front
+/// shows a localized label keyed on `kind`, never this string).
+const FAVORITES_KIND: &str = "favorites";
+const FAVORITES_NAME: &str = "Favorites";
+
 /// One playlist with its membership, in playing order. The item ids are all
 /// the front needs: covers, durations and titles come from the library listing
 /// it already holds, so nothing here can go stale against beets.
 pub struct PlaylistRow {
     pub id: i64,
     pub name: String,
+    /// `user`, or `favorites` for the seeded list rename/delete refuse.
+    pub kind: String,
+    /// User-chosen tile filename under app data's `playlists/`, if any.
+    pub cover: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
     pub item_ids: Vec<i64>,
 }
 
 impl PlaylistRow {
-    fn to_json(&self) -> Value {
+    fn to_json(&self, covers_dir: &std::path::Path) -> Value {
         json!({
             "id": self.id,
             "name": self.name,
+            "kind": self.kind,
+            "cover_path": self.cover.as_ref().map(|f| covers_dir.join(f).to_string_lossy().into_owned()),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "item_ids": self.item_ids,
@@ -155,23 +173,50 @@ fn playlist_exists(conn: &Connection, id: i64) -> AppResult<()> {
     }
 }
 
+/// Seed the built-in favorites list if this store has never had one. Runs at
+/// every startup (and after a clear) — idempotent by the kind check.
+pub fn ensure_favorites(conn: &Connection, now: u64) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO playlists (name, kind, created_at, updated_at)
+         SELECT ?1, ?2, ?3, ?3
+         WHERE NOT EXISTS (SELECT 1 FROM playlists WHERE kind = ?2)",
+        params![FAVORITES_NAME, FAVORITES_KIND, now as i64],
+    )?;
+    Ok(())
+}
+
+fn kind_of(conn: &Connection, id: i64) -> AppResult<String> {
+    conn.query_row(
+        "SELECT kind FROM playlists WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )
+    .optional()?
+    .ok_or_else(|| AppError::InvalidInput("playlist not found".into()))
+}
+
 pub fn list(conn: &Connection) -> AppResult<Vec<PlaylistRow>> {
-    let mut stmt =
-        conn.prepare("SELECT id, name, created_at, updated_at FROM playlists ORDER BY name ASC")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, kind, cover, created_at, updated_at FROM playlists ORDER BY name ASC",
+    )?;
     let rows = stmt.query_map([], |row| {
         Ok((
             row.get::<_, i64>(0)?,
             row.get::<_, String>(1)?,
-            row.get::<_, i64>(2)? as u64,
-            row.get::<_, i64>(3)? as u64,
+            row.get::<_, String>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, i64>(4)? as u64,
+            row.get::<_, i64>(5)? as u64,
         ))
     })?;
     let mut playlists = Vec::new();
     for row in rows {
-        let (id, name, created_at, updated_at) = row?;
+        let (id, name, kind, cover, created_at, updated_at) = row?;
         playlists.push(PlaylistRow {
             id,
             name,
+            kind,
+            cover,
             created_at,
             updated_at,
             item_ids: load_item_ids(conn, id)?,
@@ -188,13 +233,15 @@ pub fn create(conn: &Connection, name: &str, now: u64) -> AppResult<PlaylistRow>
         ));
     }
     conn.execute(
-        "INSERT INTO playlists (name, created_at, updated_at) VALUES (?1, ?2, ?2)",
+        "INSERT INTO playlists (name, kind, created_at, updated_at) VALUES (?1, 'user', ?2, ?2)",
         params![name, now as i64],
     )?;
     let id = conn.last_insert_rowid();
     Ok(PlaylistRow {
         id,
         name,
+        kind: "user".into(),
+        cover: None,
         created_at: now,
         updated_at: now,
         item_ids: Vec::new(),
@@ -203,7 +250,11 @@ pub fn create(conn: &Connection, name: &str, now: u64) -> AppResult<PlaylistRow>
 
 pub fn rename(conn: &Connection, id: i64, name: &str, now: u64) -> AppResult<()> {
     let name = checked_name(name)?;
-    playlist_exists(conn, id)?;
+    if kind_of(conn, id)? == FAVORITES_KIND {
+        return Err(AppError::InvalidInput(
+            "the favorites playlist cannot be renamed".into(),
+        ));
+    }
     if name_taken(conn, &name, Some(id))? {
         return Err(AppError::InvalidInput(
             "a playlist with this name already exists".into(),
@@ -216,11 +267,57 @@ pub fn rename(conn: &Connection, id: i64, name: &str, now: u64) -> AppResult<()>
     Ok(())
 }
 
-pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
-    playlist_exists(conn, id)?;
+/// Returns the cover filename left ownerless, if the playlist wore one — the
+/// caller removes the file, the row only knows names.
+pub fn delete(conn: &Connection, id: i64) -> AppResult<Option<String>> {
+    if kind_of(conn, id)? == FAVORITES_KIND {
+        return Err(AppError::InvalidInput(
+            "the favorites playlist cannot be deleted".into(),
+        ));
+    }
+    let cover: Option<String> = conn.query_row(
+        "SELECT cover FROM playlists WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
     // Membership rows go with the playlist: ON DELETE CASCADE.
     conn.execute("DELETE FROM playlists WHERE id = ?1", params![id])?;
-    Ok(())
+    Ok(cover)
+}
+
+/// Record the tile a playlist now wears; returns the filename it replaces.
+pub fn set_cover(
+    conn: &Connection,
+    id: i64,
+    filename: &str,
+    now: u64,
+) -> AppResult<Option<String>> {
+    playlist_exists(conn, id)?;
+    let previous: Option<String> = conn.query_row(
+        "SELECT cover FROM playlists WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+    conn.execute(
+        "UPDATE playlists SET cover = ?2, updated_at = ?3 WHERE id = ?1",
+        params![id, filename, now as i64],
+    )?;
+    Ok(previous.filter(|old| old != filename))
+}
+
+/// Back to the mosaic; returns the filename that just went ownerless.
+pub fn remove_cover(conn: &Connection, id: i64, now: u64) -> AppResult<Option<String>> {
+    playlist_exists(conn, id)?;
+    let previous: Option<String> = conn.query_row(
+        "SELECT cover FROM playlists WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+    conn.execute(
+        "UPDATE playlists SET cover = NULL, updated_at = ?2 WHERE id = ?1",
+        params![id, now as i64],
+    )?;
+    Ok(previous)
 }
 
 /// Append `item_ids` to the playlist, skipping ids already in it — adding an
@@ -340,15 +437,23 @@ pub fn clear(conn: &Connection) -> AppResult<()> {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn list_playlists(jobs: State<'_, JobsState>) -> AppResult<Value> {
+pub async fn list_playlists(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<Value> {
+    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir;
     let rows = jobs.list_playlists().await?;
-    Ok(json!({ "playlists": rows.iter().map(PlaylistRow::to_json).collect::<Vec<_>>() }))
+    Ok(json!({
+        "playlists": rows.iter().map(|row| row.to_json(&covers_dir)).collect::<Vec<_>>()
+    }))
 }
 
 #[tauri::command]
-pub async fn create_playlist(jobs: State<'_, JobsState>, name: String) -> AppResult<Value> {
+pub async fn create_playlist(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    name: String,
+) -> AppResult<Value> {
+    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir;
     let row = jobs.create_playlist(name).await?;
-    Ok(json!({ "playlist": row.to_json() }))
+    Ok(json!({ "playlist": row.to_json(&covers_dir) }))
 }
 
 #[tauri::command]
@@ -362,9 +467,71 @@ pub async fn rename_playlist(
 }
 
 #[tauri::command]
-pub async fn delete_playlist(jobs: State<'_, JobsState>, id: i64) -> AppResult<Value> {
-    jobs.delete_playlist(id).await?;
+pub async fn delete_playlist(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    id: i64,
+) -> AppResult<Value> {
+    let orphan = jobs.delete_playlist(id).await?;
+    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir, orphan);
     Ok(json!({ "ok": true }))
+}
+
+/// Give a playlist a tile of its own: same pipeline as an artist image — the
+/// sidecar writes the 500px square rendition under a fresh random name in app
+/// data's `playlists/`, the row points at it, the replaced file goes.
+#[tauri::command]
+pub async fn set_playlist_cover(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+    id: i64,
+    source_path: String,
+    crop: Option<CoverCrop>,
+) -> AppResult<Value> {
+    if let Some(CoverCrop { size, .. }) = crop {
+        if size == 0 {
+            return Err(AppError::InvalidInput("empty crop".into()));
+        }
+    }
+    let source = checked_cover_source(&source_path).await?;
+    let dir = AppPaths::resolve(&app)?.playlist_covers_dir;
+    let stem = Uuid::new_v4().simple().to_string();
+
+    let result = sidecar
+        .request(
+            &app,
+            "artist_image_set",
+            json!({
+                "source_path": source.to_string_lossy(),
+                "dest_dir": dir.to_string_lossy(),
+                "stem": stem,
+                "crop": crop.map(|c| json!({ "left": c.left, "top": c.top, "size": c.size })),
+            }),
+            Duration::from_secs(60),
+        )
+        .await?;
+    let filename = result
+        .get("filename")
+        .and_then(Value::as_str)
+        .ok_or_else(|| AppError::Sidecar("artist_image_set returned no filename".into()))?
+        .to_string();
+
+    let replaced = jobs.set_playlist_cover(id, filename.clone()).await?;
+    remove_orphan(&dir, replaced);
+    Ok(json!({ "id": id, "filename": filename }))
+}
+
+#[tauri::command]
+pub async fn remove_playlist_cover(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    id: i64,
+) -> AppResult<Value> {
+    let removed = jobs.remove_playlist_cover(id).await?;
+    let had_cover = removed.is_some();
+    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir, removed);
+    Ok(json!({ "removed": had_cover }))
 }
 
 #[tauri::command]
@@ -542,5 +709,68 @@ mod tests {
         add_tracks(&conn, row.id, &[1], 110).unwrap();
         clear(&conn).unwrap();
         assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_favorites_list_is_seeded_once_however_often_it_is_asked() {
+        let conn = open_in_memory_for_tests();
+        ensure_favorites(&conn, 100).unwrap();
+        ensure_favorites(&conn, 200).unwrap();
+
+        let rows = list(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, FAVORITES_KIND);
+        assert_eq!(rows[0].created_at, 100);
+    }
+
+    #[test]
+    fn favorites_refuse_rename_and_delete_but_accept_tracks() {
+        let conn = open_in_memory_for_tests();
+        ensure_favorites(&conn, 100).unwrap();
+        let favorites = &list(&conn).unwrap()[0];
+
+        assert!(rename(&conn, favorites.id, "Mes sons", 200).is_err());
+        assert!(delete(&conn, favorites.id).is_err());
+        add_tracks(&conn, favorites.id, &[7], 200).unwrap();
+        assert_eq!(ids(&conn, favorites.id), vec![7]);
+    }
+
+    /// The seeded row holds the stored name "Favorites", and the collision
+    /// check reads names whatever their kind — so a user list cannot take it.
+    /// Deliberate: in the English UI the label and the stored name coincide,
+    /// and two lists both reading "Favorites" would be worse than one refusal.
+    #[test]
+    fn the_favorites_stored_name_stays_taken() {
+        let conn = open_in_memory_for_tests();
+        ensure_favorites(&conn, 100).unwrap();
+        assert!(create(&conn, "Favorites", 200).is_err());
+        assert!(create(&conn, "favorites", 200).is_err());
+    }
+
+    #[test]
+    fn a_cover_round_trips_and_replacement_reports_the_orphan() {
+        let conn = open_in_memory_for_tests();
+        let row = create(&conn, "Mix", 100).unwrap();
+
+        assert_eq!(set_cover(&conn, row.id, "a.jpg", 110).unwrap(), None);
+        assert_eq!(
+            set_cover(&conn, row.id, "b.jpg", 120).unwrap(),
+            Some("a.jpg".to_string())
+        );
+        assert_eq!(list(&conn).unwrap()[0].cover.as_deref(), Some("b.jpg"));
+
+        assert_eq!(
+            remove_cover(&conn, row.id, 130).unwrap(),
+            Some("b.jpg".to_string())
+        );
+        assert_eq!(list(&conn).unwrap()[0].cover, None);
+    }
+
+    #[test]
+    fn deleting_a_playlist_hands_back_its_cover_file() {
+        let conn = open_in_memory_for_tests();
+        let row = create(&conn, "Mix", 100).unwrap();
+        set_cover(&conn, row.id, "tile.jpg", 110).unwrap();
+        assert_eq!(delete(&conn, row.id).unwrap(), Some("tile.jpg".to_string()));
     }
 }

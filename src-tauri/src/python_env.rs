@@ -76,6 +76,9 @@ pub struct AppPaths {
     /// artist has no folder of their own in a beets-clean library). Indexed by
     /// the `artist_images` table in sonarche.db.
     pub artist_images_dir: PathBuf,
+    /// Same story for playlist tiles: a playlist exists only in sonarche.db,
+    /// so its image lives in app data (`playlists/`), never in the library.
+    pub playlist_covers_dir: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
     pub genres_tree: PathBuf,
@@ -155,6 +158,7 @@ impl AppPaths {
             beets_db: data.join("beets").join("library.db"),
             library_dir,
             artist_images_dir: data.join("artists"),
+            playlist_covers_dir: data.join("playlists"),
             sidecar_main: sidecar_dir.join("main.py"),
             requirements: sidecar_dir.join("requirements.txt"),
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
@@ -629,6 +633,7 @@ mod tests {
             beets_db: data.join("beets").join("library.db"),
             library_dir: PathBuf::from("/music/Sonarche"),
             artist_images_dir: data.join("artists"),
+            playlist_covers_dir: data.join("playlists"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),

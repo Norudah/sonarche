@@ -26,7 +26,7 @@ use crate::library_import::{ImportRecord, ScanCounts};
 
 /// Schema version stamped into `PRAGMA user_version`. Informational: it records
 /// which build last touched the file. Nothing branches on it — see `open()`.
-const SCHEMA_VERSION: i64 = 6;
+const SCHEMA_VERSION: i64 = 7;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -119,6 +119,14 @@ CREATE TABLE IF NOT EXISTS artist_images (
 CREATE TABLE IF NOT EXISTS playlists (
     id         INTEGER PRIMARY KEY,
     name       TEXT NOT NULL,
+    -- 'user' for everything the user created; 'favorites' for the one built-in
+    -- list, seeded at startup, that rename and delete refuse to touch. The
+    -- front shows it under a localized label, so the stored name is not UI.
+    kind       TEXT NOT NULL DEFAULT 'user',
+    -- Filename of a user-chosen tile under app data's `playlists/` directory
+    -- (fresh random stem per write, like artist images). NULL draws the cover
+    -- mosaic instead.
+    cover      TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -185,6 +193,8 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     add_column(conn, "jobs", "category", "TEXT")?;
     add_column(conn, "jobs", "forced_album", "TEXT")?;
     add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
+    add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
+    add_column(conn, "playlists", "cover", "TEXT")?;
     Ok(())
 }
 
@@ -662,13 +672,21 @@ mod tests {
             .unwrap()
     }
 
+    /// The v1 fixtures replay `open()`'s real sequence: SCHEMA first (which
+    /// creates the tables a v1 file never had — playlists — and leaves the
+    /// existing ones untouched), then the migration under test.
+    fn migrate_v1(conn: &Connection) {
+        conn.execute_batch(SCHEMA).unwrap();
+        migrate(conn).unwrap();
+    }
+
     #[test]
     fn migrate_adds_the_attempts_columns_to_a_v1_file() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(SCHEMA_V1).unwrap();
         assert!(!column_names(&conn, "jobs").contains(&"download_attempts".to_string()));
 
-        migrate(&conn).unwrap();
+        migrate_v1(&conn);
 
         for table in ["jobs", "job_tracks"] {
             assert!(
@@ -684,7 +702,7 @@ mod tests {
         conn.execute_batch(SCHEMA_V1).unwrap();
         assert!(!column_names(&conn, "jobs").contains(&"category".to_string()));
 
-        migrate(&conn).unwrap();
+        migrate_v1(&conn);
 
         assert!(column_names(&conn, "jobs").contains(&"category".to_string()));
     }
@@ -733,7 +751,7 @@ mod tests {
         conn.execute_batch(SCHEMA_V1).unwrap();
         assert!(!column_names(&conn, "jobs").contains(&"forced_album".to_string()));
 
-        migrate(&conn).unwrap();
+        migrate_v1(&conn);
 
         assert!(column_names(&conn, "jobs").contains(&"forced_album".to_string()));
     }

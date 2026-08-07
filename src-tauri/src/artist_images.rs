@@ -47,7 +47,9 @@ fn checked_name(name: &str) -> AppResult<String> {
     Ok(name.to_string())
 }
 
-fn remove_orphan(dir: &Path, filename: Option<String>) {
+/// Shared with the playlist covers, which follow the same replace-then-sweep
+/// discipline in their own directory.
+pub(crate) fn remove_orphan(dir: &Path, filename: Option<String>) {
     if let Some(filename) = filename {
         let path = dir.join(&filename);
         if let Err(err) = std::fs::remove_file(&path) {

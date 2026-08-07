@@ -264,6 +264,11 @@ pub fn init(app: &AppHandle) -> AppResult<JobsState> {
 
     let conn = jobs_store::open(&db_path)?;
 
+    // The one playlist the app itself owns; idempotent, so every launch may ask.
+    if let Err(err) = playlists::ensure_favorites(&conn, now_ms()) {
+        eprintln!("[playlists] favorites seed failed: {err}");
+    }
+
     // One-time import of the pre-SQLite history, then retire the JSON file.
     // INSERT OR REPLACE keeps it idempotent if a prior attempt half-finished.
     if legacy_json.exists() {
@@ -1472,8 +1477,24 @@ impl JobsState {
         with_conn(&self.0, move |c| playlists::rename(c, id, &name, now)).await
     }
 
-    pub async fn delete_playlist(&self, id: i64) -> AppResult<()> {
+    /// Returns the cover filename left ownerless, if the playlist wore one.
+    pub async fn delete_playlist(&self, id: i64) -> AppResult<Option<String>> {
         with_conn(&self.0, move |c| playlists::delete(c, id)).await
+    }
+
+    /// Returns the replaced file's name, if the write orphaned one.
+    pub async fn set_playlist_cover(&self, id: i64, filename: String) -> AppResult<Option<String>> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::set_cover(c, id, &filename, now)
+        })
+        .await
+    }
+
+    /// Returns the removed file's name, if there was one.
+    pub async fn remove_playlist_cover(&self, id: i64) -> AppResult<Option<String>> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::remove_cover(c, id, now)).await
     }
 
     /// Returns (added, skipped-as-already-present).
@@ -1517,6 +1538,13 @@ impl JobsState {
     }
 
     pub async fn clear_playlists(&self) -> AppResult<()> {
-        with_conn(&self.0, playlists::clear).await
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::clear(c)?;
+            // The built-in list survives an erase as an *empty* list — it is
+            // part of the app, only its contents belonged to the user.
+            playlists::ensure_favorites(c, now)
+        })
+        .await
     }
 }

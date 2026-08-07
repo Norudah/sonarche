@@ -153,6 +153,9 @@ fn user_data_to_remove(paths: &AppPaths) -> Vec<PathBuf> {
         // and "forget everything I put in" includes them. The setup resets
         // never touch them — they are precious, not rebuildable.
         paths.artist_images_dir.clone(),
+        // Playlist tiles: same reasoning — they decorate lists of tracks that
+        // are about to stop existing.
+        paths.playlist_covers_dir.clone(),
     ]
 }
 
@@ -263,6 +266,7 @@ mod tests {
             beets_db: data.join("beets").join("library.db"),
             library_dir: PathBuf::from("/music/Sonarche"),
             artist_images_dir: data.join("artists"),
+            playlist_covers_dir: data.join("playlists"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
