@@ -204,6 +204,10 @@ pub async fn erase_data(
     if let Err(err) = jobs.clear_artist_images().await {
         eprintln!("[reset] artist image index not cleared: {err}");
     }
+    // Playlists are lists of item ids that just ceased to exist: rows only.
+    if let Err(err) = jobs.clear_playlists().await {
+        eprintln!("[reset] playlists not cleared: {err}");
+    }
     settings::set("acoustid".into(), String::new()).await?;
 
     // The preferences file last and wholesale, so the library location goes

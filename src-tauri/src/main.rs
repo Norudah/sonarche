@@ -18,6 +18,7 @@ mod now_playing;
 mod onboarding;
 mod pasted_image;
 mod player;
+mod playlists;
 mod preferences;
 mod proc;
 mod python_env;
@@ -109,6 +110,13 @@ fn main() {
             artist_images::fetch_artist_image_url,
             pasted_image::save_pasted_image,
             artist_images::export_artist_images,
+            playlists::list_playlists,
+            playlists::create_playlist,
+            playlists::rename_playlist,
+            playlists::delete_playlist,
+            playlists::add_playlist_tracks,
+            playlists::remove_playlist_tracks,
+            playlists::move_playlist_track,
             commands::scan_import_folder,
             commands::start_library_import,
             commands::list_imports,

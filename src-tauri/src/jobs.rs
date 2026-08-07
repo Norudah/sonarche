@@ -16,6 +16,7 @@ use uuid::Uuid;
 use crate::error::{AppError, AppResult};
 use crate::jobs_store;
 use crate::library_import;
+use crate::playlists;
 use crate::preferences;
 use crate::python_env::{self, AppPaths};
 use crate::settings;
@@ -1452,5 +1453,70 @@ impl JobsState {
 
     pub async fn clear_artist_images(&self) -> AppResult<()> {
         with_conn(&self.0, jobs_store::clear_artist_images).await
+    }
+
+    // Playlists: same store, same discipline as artist images. Timestamps are
+    // stamped here so the store functions stay pure over their inputs.
+
+    pub async fn list_playlists(&self) -> AppResult<Vec<playlists::PlaylistRow>> {
+        with_conn(&self.0, playlists::list).await
+    }
+
+    pub async fn create_playlist(&self, name: String) -> AppResult<playlists::PlaylistRow> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::create(c, &name, now)).await
+    }
+
+    pub async fn rename_playlist(&self, id: i64, name: String) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::rename(c, id, &name, now)).await
+    }
+
+    pub async fn delete_playlist(&self, id: i64) -> AppResult<()> {
+        with_conn(&self.0, move |c| playlists::delete(c, id)).await
+    }
+
+    /// Returns (added, skipped-as-already-present).
+    pub async fn add_playlist_tracks(
+        &self,
+        id: i64,
+        item_ids: Vec<i64>,
+    ) -> AppResult<(usize, usize)> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::add_tracks(c, id, &item_ids, now)
+        })
+        .await
+    }
+
+    /// Returns how many rows actually went.
+    pub async fn remove_playlist_tracks(&self, id: i64, positions: Vec<u32>) -> AppResult<usize> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::remove_positions(c, id, &positions, now)
+        })
+        .await
+    }
+
+    pub async fn move_playlist_track(&self, id: i64, from: u32, to: u32) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::move_track(c, id, from, to, now)
+        })
+        .await
+    }
+
+    /// Best-effort prune after a library delete — the caller logs, never fails
+    /// the user's action over it.
+    pub async fn remove_item_from_playlists(&self, item_id: i64) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::remove_item_everywhere(c, item_id, now)
+        })
+        .await
+    }
+
+    pub async fn clear_playlists(&self) -> AppResult<()> {
+        with_conn(&self.0, playlists::clear).await
     }
 }

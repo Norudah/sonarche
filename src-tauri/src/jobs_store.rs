@@ -26,7 +26,7 @@ use crate::library_import::{ImportRecord, ScanCounts};
 
 /// Schema version stamped into `PRAGMA user_version`. Informational: it records
 /// which build last touched the file. Nothing branches on it — see `open()`.
-const SCHEMA_VERSION: i64 = 5;
+const SCHEMA_VERSION: i64 = 6;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -112,8 +112,33 @@ CREATE TABLE IF NOT EXISTS artist_images (
     updated_at INTEGER NOT NULL
 );
 
+-- A user-curated playlist: the exact kind of \"user collection\" this store was
+-- opened for. Only the collection itself lives here — every member row points
+-- at a beets item id and carries none of its tags, so library truth stays in
+-- the library.
+CREATE TABLE IF NOT EXISTS playlists (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- Membership, ordered. `position` is dense (0..n-1, rewritten wholesale on any
+-- reorder/removal — a playlist is small enough that correctness beats clever
+-- gap schemes). `item_id` is a beets `items.id`; it cannot be a foreign key
+-- (other database file), so `delete_track` prunes memberships best-effort and
+-- the front drops any id the library no longer answers for.
+CREATE TABLE IF NOT EXISTS playlist_tracks (
+    playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    position    INTEGER NOT NULL,
+    item_id     INTEGER NOT NULL,
+    added_at    INTEGER NOT NULL,
+    PRIMARY KEY (playlist_id, position)
+);
+
 -- Read path ordering + the queryable columns future features (retry-all,
 -- URL/video dedup at enqueue, per-item lookup) will index against.
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_item ON playlist_tracks(item_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_imports_finished ON imports(finished_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status  ON jobs(status);
@@ -588,6 +613,17 @@ pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
     Ok(())
 }
 
+/// In-memory connection carrying the full schema — for this module's tests and
+/// any sibling whose store functions take a `&Connection` (playlists).
+#[cfg(test)]
+pub fn open_in_memory_for_tests() -> Connection {
+    let conn = Connection::open_in_memory().expect("in-memory db");
+    conn.pragma_update(None, "foreign_keys", "ON")
+        .expect("foreign_keys pragma");
+    conn.execute_batch(SCHEMA).expect("schema");
+    conn
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -596,10 +632,7 @@ mod tests {
     use serde_json::json;
 
     fn mem() -> Connection {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
-        conn.execute_batch(SCHEMA).unwrap();
-        conn
+        open_in_memory_for_tests()
     }
 
     /// The v1 tables, before `download_attempts` existed — what a file written

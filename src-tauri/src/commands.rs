@@ -549,10 +549,11 @@ pub async fn update_tracks(
 pub async fn delete_track(
     app: AppHandle,
     state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
     id: i64,
 ) -> AppResult<Value> {
     let paths = AppPaths::resolve(&app)?;
-    state
+    let result = state
         .request(
             &app,
             "library_remove",
@@ -563,7 +564,13 @@ pub async fn delete_track(
             }),
             QUERY_TIMEOUT,
         )
-        .await
+        .await?;
+    // No foreign key can span the two database files, so playlist memberships
+    // are pruned here — best-effort, the delete itself already succeeded.
+    if let Err(err) = jobs.remove_item_from_playlists(id).await {
+        eprintln!("[playlists] prune of item {id} failed: {err}");
+    }
+    Ok(result)
 }
 
 /// Image formats a replacement cover may arrive in: what Pillow decodes, the
