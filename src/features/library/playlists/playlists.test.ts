@@ -9,11 +9,12 @@ import {
   playlistNameTaken,
   playlistView,
   resolvePlaylistTracks,
+  sidebarPlaylists,
   tracksById,
 } from "@/features/library/playlists/playlists";
 
-function playlist(id: number, name: string, kind: Playlist["kind"] = "user"): Playlist {
-  return { id, name, kind, coverUrl: null, createdAt: 0, updatedAt: 0, itemIds: [] };
+function playlist(id: number, name: string, kind: Playlist["kind"] = "user", updatedAt = 0): Playlist {
+  return { id, name, kind, coverUrl: null, marker: null, createdAt: 0, updatedAt, itemIds: [] };
 }
 
 describe("resolvePlaylistTracks", () => {
@@ -105,5 +106,32 @@ describe("orderedPlaylists", () => {
   it("puts the favorites first and keeps the rest in incoming order", () => {
     const rows = [playlist(1, "Aube"), playlist(2, "Favorites", "favorites"), playlist(3, "Zénith")];
     expect(orderedPlaylists(rows).map((row) => row.id)).toEqual([2, 1, 3]);
+  });
+});
+
+describe("sidebarPlaylists", () => {
+  it("keeps everything when the list fits, favorites first then alphabetical", () => {
+    const rows = [
+      playlist(3, "Zénith", "user", 30),
+      playlist(1, "Aube", "user", 10),
+      playlist(2, "F", "favorites", 20),
+    ];
+    expect(sidebarPlaylists(rows, 8).map((row) => row.id)).toEqual([2, 1, 3]);
+  });
+
+  it("selects by recent activity but displays by name", () => {
+    const rows = [
+      playlist(1, "Aube", "user", 10),
+      playlist(2, "Bruit", "user", 50),
+      playlist(3, "Cendres", "user", 40),
+    ];
+    // Aube is the stalest, so it is the one left out — and the two that stay
+    // sit in name order rather than in the order they were touched.
+    expect(sidebarPlaylists(rows, 2).map((row) => row.name)).toEqual(["Bruit", "Cendres"]);
+  });
+
+  it("never spends the limit on the favorites, which always has a seat", () => {
+    const rows = [playlist(9, "F", "favorites", 0), playlist(1, "Aube", "user", 10), playlist(2, "Bruit", "user", 20)];
+    expect(sidebarPlaylists(rows, 2).map((row) => row.id)).toEqual([9, 1, 2]);
   });
 });

@@ -6,10 +6,9 @@ import {
   Download,
   FileText,
   FolderInput,
-  Heart,
   History,
   Layers,
-  ListMusic,
+  LayoutGrid,
   Mic2,
   Music,
   Plus,
@@ -24,8 +23,9 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { paths, playlistPath } from "@/app/routes";
 import { useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
+import { PlaylistMarkerGlyph } from "@/features/library/playlists/PlaylistGlyph";
 import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
-import { orderedPlaylists } from "@/features/library/playlists/playlists";
+import { sidebarPlaylists } from "@/features/library/playlists/playlists";
 import { useTriageCount } from "@/features/library/triage/useTriageCount";
 import { settingsCategories } from "@/features/settings/categories";
 import { useNotificationBadges } from "@/features/settings/notificationBadges";
@@ -37,16 +37,23 @@ function NavItem({
   to,
   label,
   icon: Icon,
+  glyph,
   end,
   badge = 0,
+  count,
   indicatorId = layoutIds.navIndicator,
 }: {
   to: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  /** Takes the icon's place when the entry has a face of its own — a playlist
+   * wearing its thumbnail or its colour. */
+  glyph?: ReactNode;
   end?: boolean;
   /** A count worth a glance (things to fix behind this entry). Zero hides it. */
   badge?: number;
+  /** A plain tally of what lies behind the entry — no alarm, just a size. */
+  count?: number;
   indicatorId?: string;
 }) {
   return (
@@ -71,7 +78,14 @@ function NavItem({
               className="absolute inset-0 rounded-lg bg-accent/15"
             />
           )}
-          <Icon className="relative size-4 shrink-0" />
+          {/* The wrapper carries the stacking and the 16px box, so a glyph only
+              has to fill it — an <img> and an <svg> would otherwise need two
+              different sets of classes at the call site. */}
+          {glyph ? (
+            <span className="relative flex size-4 shrink-0 items-center justify-center">{glyph}</span>
+          ) : (
+            Icon && <Icon className="relative size-4 shrink-0" />
+          )}
           {/* min-w-0 + truncate: playlist names are user text and must clip
               rather than bend the sidebar's column. */}
           <span className="relative min-w-0 truncate">{label}</span>
@@ -82,6 +96,11 @@ function NavItem({
             <span className="relative ml-auto rounded-full bg-warning-soft px-1.5 py-px text-[0.6875rem] font-semibold text-warning tabular-nums">
               {badge > 99 ? "99+" : badge}
             </span>
+          )}
+          {/* Unfilled and unalarmed: this one answers "how many", not "how many
+              are wrong", so it must not borrow the triage badge's plate. */}
+          {count != null && (
+            <span className="relative ml-auto text-[0.6875rem] text-muted/70 tabular-nums">{count}</span>
           )}
         </>
       )}
@@ -158,8 +177,12 @@ function MainNav() {
  *
  * The "+" lives in the section header rather than as a pseudo-item in the
  * list: an item that creates instead of navigating would be a button dressed
- * as a destination, and it would sink below the fold as the list grows. The
- * grid overview stays routed behind each playlist's breadcrumb.
+ * as a destination, and it would sink below the fold as the list grows.
+ *
+ * Bounded on purpose. A user with forty playlists would otherwise turn this
+ * column into a scrolling directory, and navigation that has to be searched is
+ * no longer navigation: the sidebar names the eight lists you last touched
+ * (see `sidebarPlaylists`) and the shelf below it holds every one of them.
  */
 function PlaylistsNav() {
   const { t: tLibrary } = useTranslation("library");
@@ -168,7 +191,8 @@ function PlaylistsNav() {
   const create = useCreatePlaylist();
   const [creating, setCreating] = useState(false);
 
-  const rows = orderedPlaylists(playlists.data ?? []);
+  const all = playlists.data ?? [];
+  const shown = sidebarPlaylists(all);
 
   return (
     <NavSection
@@ -185,21 +209,27 @@ function PlaylistsNav() {
         </button>
       }
     >
-      {rows.map((playlist) => (
+      {shown.map((playlist) => (
         <NavItem
           key={playlist.id}
           to={playlistPath(playlist.id)}
           label={playlist.kind === "favorites" ? tLibrary("playlists.favorites") : playlist.name}
-          icon={playlist.kind === "favorites" ? Heart : ListMusic}
+          glyph={<PlaylistMarkerGlyph playlist={playlist} className="size-4" />}
         />
       ))}
+
+      {/* The shelf, always — not only when the list overflows. It is where a
+          playlist is found when its name is not on screen, and a door that
+          appears and disappears with the count is a door nobody learns. The
+          tally is the whole overflow story: nine rows above, twenty-three here. */}
+      <NavItem to={paths.libraryPlaylists} label={tLibrary("playlists.all")} icon={LayoutGrid} count={all.length} end />
 
       <PlaylistNameDialog
         isOpen={creating}
         onClose={() => setCreating(false)}
         title={tLibrary("playlists.create")}
         confirmLabel={tLibrary("playlists.createConfirm")}
-        existing={playlists.data ?? []}
+        existing={all}
         reservedNames={[tLibrary("playlists.favorites")]}
         isPending={create.isPending}
         onSubmit={(name) =>

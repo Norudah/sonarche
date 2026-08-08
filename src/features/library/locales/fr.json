@@ -440,6 +440,7 @@
   "playlists": {
     "eyebrow": "Playlist",
     "back": "Playlists",
+    "all": "Toutes les playlists",
     "count_one": "{{count}} playlist",
     "count_other": "{{count}} playlists",
     "create": "Nouvelle playlist",
@@ -498,6 +499,46 @@
         "title": "Où vit cette image",
         "storage": "L'image est rangée avec les données de l'app, jamais dans votre dossier de musique — la bibliothèque reste propre pour les exports et sauvegardes.",
         "display": "Sans image à vous, la playlist porte une mosaïque de ses premières pochettes."
+      }
+    },
+    "marker": {
+      "action": "Icône de navigation",
+      "title": "Icône de navigation",
+      "subtitle": "Ce que cette playlist affiche dans la barre latérale.",
+      "icons": "Icônes",
+      "image": "Image",
+      "imageCell": "Miniature de l'image",
+      "noImage": "Donnez une image à la playlist pour l'utiliser ici",
+      "colors": "Couleurs",
+      "reset": "Icône par défaut",
+      "done": "Terminé",
+      "icon": {
+        "list-music": "Playlist",
+        "disc": "Disque",
+        "headphones": "Casque",
+        "guitar": "Guitare",
+        "mic": "Micro",
+        "radio": "Radio",
+        "waves": "Ondes",
+        "sparkles": "Étincelles",
+        "heart": "Cœur",
+        "star": "Étoile",
+        "flame": "Flamme",
+        "zap": "Éclair",
+        "sun": "Soleil",
+        "moon": "Lune",
+        "dumbbell": "Haltère",
+        "car": "Voiture"
+      },
+      "color": {
+        "indigo": "Indigo",
+        "violet": "Violet",
+        "rose": "Rose",
+        "amber": "Ambre",
+        "moss": "Mousse",
+        "teal": "Sarcelle",
+        "sky": "Ciel",
+        "blue": "Bleu"
       }
     }
   }

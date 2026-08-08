@@ -142,6 +142,24 @@
   --category-cartoon: oklch(0.55 0.1 40);
   --category-musical: oklch(0.55 0.1 316);
 
+  /* Playlist markers — the eight tones a playlist may wear in the navigation
+     when the user picks a colour rather than an icon or a thumbnail.
+     Same doctrine as the family tones above — one value, one chroma, the hue
+     alone carrying identity — but not the same numbers. Those are washes at
+     4–22%, where 0.1 of chroma is plenty; these are drawn *solid* at 16px, and
+     at 0.1 the rose chip read as a brown smudge rather than as a colour anyone
+     would pick on purpose. Up to 0.14, which is still under the accent's 0.185:
+     eight chips down the sidebar must not out-shout the active pill they sit
+     under. Consumed only through playlists/marker.ts. */
+  --playlist-indigo: oklch(0.58 0.14 277);
+  --playlist-violet: oklch(0.58 0.14 310);
+  --playlist-rose: oklch(0.58 0.14 350);
+  --playlist-amber: oklch(0.58 0.14 40);
+  --playlist-moss: oklch(0.58 0.14 130);
+  --playlist-teal: oklch(0.58 0.14 175);
+  --playlist-sky: oklch(0.58 0.14 215);
+  --playlist-blue: oklch(0.58 0.14 250);
+
   /* Metadata drawer header — a decorative gradient, same hue as the accent but
      starting darker so it resolves into it rather than sitting flat on it.
      Raised with the accent: against 0.505 a start at 0.30 is a 0.20 ramp, and
@@ -312,6 +330,15 @@
   --category-anime: oklch(0.74 0.095 350);
   --category-cartoon: oklch(0.74 0.095 40);
   --category-musical: oklch(0.74 0.095 316);
+
+  --playlist-indigo: oklch(0.7 0.13 277);
+  --playlist-violet: oklch(0.7 0.13 310);
+  --playlist-rose: oklch(0.7 0.13 350);
+  --playlist-amber: oklch(0.7 0.13 40);
+  --playlist-moss: oklch(0.7 0.13 130);
+  --playlist-teal: oklch(0.7 0.13 175);
+  --playlist-sky: oklch(0.7 0.13 215);
+  --playlist-blue: oklch(0.7 0.13 250);
 
   --metadata-header-from: oklch(0.26 0.12 277);
   --metadata-header-to: var(--accent);

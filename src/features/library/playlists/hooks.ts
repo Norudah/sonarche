@@ -11,6 +11,7 @@ import {
   removePlaylistTracks,
   renamePlaylist,
   setPlaylistCover,
+  setPlaylistMarker,
   type Playlist,
 } from "@/features/library/playlists/api";
 
@@ -107,6 +108,23 @@ export function useSetPlaylistCover() {
     mutationFn: ({ id, sourcePath, crop }: { id: number; sourcePath: string; crop: CoverCrop | null }) =>
       setPlaylistCover(id, sourcePath, crop),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: playlistsKey });
+    },
+  });
+}
+
+/** Optimistic: the picker's whole point is watching the sidebar row change, so
+ * the cache has to move on the click rather than after the round-trip. */
+export function useSetPlaylistMarker() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, marker }: { id: number; marker: string }) => setPlaylistMarker(id, marker),
+    onMutate: ({ id, marker }) => {
+      queryClient.setQueryData<Playlist[]>(playlistsKey, (playlists) =>
+        playlists?.map((playlist) => (playlist.id === id ? { ...playlist, marker: marker || null } : playlist)),
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: playlistsKey });
     },
   });

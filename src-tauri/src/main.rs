@@ -119,6 +119,7 @@ fn main() {
             playlists::move_playlist_track,
             playlists::set_playlist_cover,
             playlists::remove_playlist_cover,
+            playlists::set_playlist_marker,
             commands::scan_import_folder,
             commands::start_library_import,
             commands::list_imports,

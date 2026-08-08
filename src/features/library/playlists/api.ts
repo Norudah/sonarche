@@ -14,6 +14,9 @@ export interface Playlist {
   /** The user-chosen tile, ready to draw — fresh random filename per write, so
    * the URL itself is the cache buster. Null draws the cover mosaic. */
   coverUrl: string | null;
+  /** What the list wears in the navigation, as stored (`icon:<key>` / `cover` /
+   * `color:<key>`). Null means the default glyph — see `marker.ts`. */
+  marker: string | null;
   createdAt: number;
   updatedAt: number;
   itemIds: number[];
@@ -24,6 +27,7 @@ interface WirePlaylist {
   name: string;
   kind: string;
   cover_path: string | null;
+  marker: string | null;
   created_at: number;
   updated_at: number;
   item_ids: number[];
@@ -35,6 +39,7 @@ function toPlaylist(wire: WirePlaylist): Playlist {
     name: wire.name,
     kind: wire.kind === "favorites" ? "favorites" : "user",
     coverUrl: wire.cover_path ? convertFileSrc(wire.cover_path) : null,
+    marker: wire.marker ?? null,
     createdAt: wire.created_at,
     updatedAt: wire.updated_at,
     itemIds: wire.item_ids,
@@ -87,4 +92,10 @@ export async function setPlaylistCover(
 /** Back to the mosaic. */
 export async function removePlaylistCover(id: number): Promise<{ removed: boolean }> {
   return invoke("remove_playlist_cover", { id });
+}
+
+/** What the playlist wears in the navigation; an empty string restores the
+ * default glyph. */
+export async function setPlaylistMarker(id: number, marker: string): Promise<void> {
+  await invoke("set_playlist_marker", { id, marker });
 }

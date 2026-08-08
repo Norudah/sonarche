@@ -1497,6 +1497,12 @@ impl JobsState {
         with_conn(&self.0, move |c| playlists::remove_cover(c, id, now)).await
     }
 
+    /// What the playlist wears in the navigation; an empty string clears it.
+    pub async fn set_playlist_marker(&self, id: i64, marker: String) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::set_marker(c, id, &marker, now)).await
+    }
+
     /// Returns (added, skipped-as-already-present).
     pub async fn add_playlist_tracks(
         &self,

@@ -10,6 +10,7 @@ import { useLibrary } from "@/features/library/hooks";
 import { DeletePlaylistDialog, type PlaylistDeletion } from "@/features/library/playlists/DeletePlaylistDialog";
 import { PlaylistHero } from "@/features/library/playlists/PlaylistHero";
 import { PlaylistImageModal } from "@/features/library/playlists/PlaylistImageModal";
+import { PlaylistMarkerDialog } from "@/features/library/playlists/PlaylistMarkerDialog";
 import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
 import { PlaylistStickyHeader } from "@/features/library/playlists/PlaylistStickyHeader";
 import { PlaylistTrackList } from "@/features/library/playlists/PlaylistTrackList";
@@ -29,6 +30,7 @@ export function PlaylistDetailView() {
   const rename = useRenamePlaylist();
   const [renaming, setRenaming] = useState(false);
   const [editingImage, setEditingImage] = useState(false);
+  const [editingMarker, setEditingMarker] = useState(false);
   const [deleting, setDeleting] = useState<PlaylistDeletion | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
@@ -89,6 +91,7 @@ export function PlaylistDetailView() {
         onPlay={() => playOrdered(tracks)}
         onShuffle={() => playShuffled(tracks)}
         onEditImage={() => setEditingImage(true)}
+        onEditMarker={() => setEditingMarker(true)}
         onRename={() => setRenaming(true)}
         onDelete={() => setDeleting({ id: playlist.id, name: playlist.name, trackCount: tracks.length })}
       />
@@ -121,6 +124,18 @@ export function PlaylistDetailView() {
         tracks={tracks}
         isOpen={editingImage}
         onClose={() => setEditingImage(false)}
+      />
+      <PlaylistMarkerDialog
+        playlist={playlist}
+        displayName={displayName}
+        isOpen={editingMarker}
+        onClose={() => setEditingMarker(false)}
+        // Hands the user over to the image modal rather than leaving the
+        // thumbnail option as a dead cell with an explanation.
+        onAddImage={() => {
+          setEditingMarker(false);
+          setEditingImage(true);
+        }}
       />
       <DeletePlaylistDialog
         playlist={deleting}

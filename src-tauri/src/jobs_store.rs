@@ -127,6 +127,13 @@ CREATE TABLE IF NOT EXISTS playlists (
     -- (fresh random stem per write, like artist images). NULL draws the cover
     -- mosaic instead.
     cover      TEXT,
+    -- What the playlist wears in the navigation: 'icon:<key>' from the front's
+    -- curated set, 'cover' for a thumbnail of its own tile, or 'color:<key>'
+    -- from the theme palette. NULL means the front decides (its default glyph).
+    -- Stored as opaque text: the shape is validated, the keys are not, so a
+    -- front that adds an icon needs no migration and an older build simply
+    -- falls back to the default.
+    marker     TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -195,6 +202,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
     add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
     add_column(conn, "playlists", "cover", "TEXT")?;
+    add_column(conn, "playlists", "marker", "TEXT")?;
     Ok(())
 }
 

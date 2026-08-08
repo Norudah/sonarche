@@ -47,6 +47,8 @@ pub struct PlaylistRow {
     pub kind: String,
     /// User-chosen tile filename under app data's `playlists/`, if any.
     pub cover: Option<String>,
+    /// What the list wears in the navigation — see `checked_marker`.
+    pub marker: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
     pub item_ids: Vec<i64>,
@@ -59,6 +61,7 @@ impl PlaylistRow {
             "name": self.name,
             "kind": self.kind,
             "cover_path": self.cover.as_ref().map(|f| covers_dir.join(f).to_string_lossy().into_owned()),
+            "marker": self.marker,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "item_ids": self.item_ids,
@@ -75,6 +78,32 @@ fn checked_name(name: &str) -> AppResult<String> {
         return Err(AppError::InvalidInput("playlist name too long".into()));
     }
     Ok(name.to_string())
+}
+
+/// The navigation marker, validated by *shape* only: `cover`, `icon:<key>` or
+/// `color:<key>` with a short lowercase key. The keys themselves belong to the
+/// front's curated sets — checking them here would mean shipping a migration
+/// every time an icon is added, and the front already falls back to its default
+/// glyph for anything it does not know. An empty string clears it.
+fn checked_marker(marker: &str) -> AppResult<Option<String>> {
+    let marker = marker.trim();
+    if marker.is_empty() {
+        return Ok(None);
+    }
+    let key = match marker.split_once(':') {
+        None if marker == "cover" => return Ok(Some(marker.to_string())),
+        Some(("icon" | "color", key)) => key,
+        _ => return Err(AppError::InvalidInput("unknown playlist marker".into())),
+    };
+    let valid = !key.is_empty()
+        && key.len() <= 32
+        && key
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+    if !valid {
+        return Err(AppError::InvalidInput("invalid playlist marker key".into()));
+    }
+    Ok(Some(marker.to_string()))
 }
 
 /// Case-insensitive duplicate check, in Rust rather than SQL: SQLite's
@@ -197,7 +226,8 @@ fn kind_of(conn: &Connection, id: i64) -> AppResult<String> {
 
 pub fn list(conn: &Connection) -> AppResult<Vec<PlaylistRow>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, kind, cover, created_at, updated_at FROM playlists ORDER BY name ASC",
+        "SELECT id, name, kind, cover, marker, created_at, updated_at
+         FROM playlists ORDER BY name ASC",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok((
@@ -205,18 +235,20 @@ pub fn list(conn: &Connection) -> AppResult<Vec<PlaylistRow>> {
             row.get::<_, String>(1)?,
             row.get::<_, String>(2)?,
             row.get::<_, Option<String>>(3)?,
-            row.get::<_, i64>(4)? as u64,
+            row.get::<_, Option<String>>(4)?,
             row.get::<_, i64>(5)? as u64,
+            row.get::<_, i64>(6)? as u64,
         ))
     })?;
     let mut playlists = Vec::new();
     for row in rows {
-        let (id, name, kind, cover, created_at, updated_at) = row?;
+        let (id, name, kind, cover, marker, created_at, updated_at) = row?;
         playlists.push(PlaylistRow {
             id,
             name,
             kind,
             cover,
+            marker,
             created_at,
             updated_at,
             item_ids: load_item_ids(conn, id)?,
@@ -242,6 +274,7 @@ pub fn create(conn: &Connection, name: &str, now: u64) -> AppResult<PlaylistRow>
         name,
         kind: "user".into(),
         cover: None,
+        marker: None,
         created_at: now,
         updated_at: now,
         item_ids: Vec::new(),
@@ -318,6 +351,19 @@ pub fn remove_cover(conn: &Connection, id: i64, now: u64) -> AppResult<Option<St
         params![id, now as i64],
     )?;
     Ok(previous)
+}
+
+/// Set (or clear, on an empty string) what the playlist wears in the navigation.
+/// The favorites list picks like any other: its name is the app's, its face is
+/// the user's.
+pub fn set_marker(conn: &Connection, id: i64, marker: &str, now: u64) -> AppResult<()> {
+    playlist_exists(conn, id)?;
+    let marker = checked_marker(marker)?;
+    conn.execute(
+        "UPDATE playlists SET marker = ?2, updated_at = ?3 WHERE id = ?1",
+        params![id, marker, now as i64],
+    )?;
+    Ok(())
 }
 
 /// Append `item_ids` to the playlist, skipping ids already in it — adding an
@@ -532,6 +578,16 @@ pub async fn remove_playlist_cover(
     let had_cover = removed.is_some();
     remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir, removed);
     Ok(json!({ "removed": had_cover }))
+}
+
+#[tauri::command]
+pub async fn set_playlist_marker(
+    jobs: State<'_, JobsState>,
+    id: i64,
+    marker: String,
+) -> AppResult<Value> {
+    jobs.set_playlist_marker(id, marker).await?;
+    Ok(json!({ "ok": true }))
 }
 
 #[tauri::command]
@@ -764,6 +820,41 @@ mod tests {
             Some("b.jpg".to_string())
         );
         assert_eq!(list(&conn).unwrap()[0].cover, None);
+    }
+
+    #[test]
+    fn a_marker_round_trips_and_clears_on_an_empty_string() {
+        let conn = open_in_memory_for_tests();
+        let row = create(&conn, "Mix", 100).unwrap();
+        assert_eq!(list(&conn).unwrap()[0].marker, None);
+
+        set_marker(&conn, row.id, "icon:flame", 110).unwrap();
+        assert_eq!(
+            list(&conn).unwrap()[0].marker.as_deref(),
+            Some("icon:flame")
+        );
+        set_marker(&conn, row.id, "cover", 120).unwrap();
+        assert_eq!(list(&conn).unwrap()[0].marker.as_deref(), Some("cover"));
+        set_marker(&conn, row.id, "", 130).unwrap();
+        assert_eq!(list(&conn).unwrap()[0].marker, None);
+    }
+
+    /// Shape is checked, keys are not: a front that adds an icon must not need
+    /// a migration, and anything malformed must not reach the column.
+    #[test]
+    fn a_malformed_marker_is_refused() {
+        let conn = open_in_memory_for_tests();
+        let row = create(&conn, "Mix", 100).unwrap();
+
+        set_marker(&conn, row.id, "icon:not-shipped-yet", 110).unwrap();
+        set_marker(&conn, row.id, "color:indigo", 110).unwrap();
+
+        assert!(set_marker(&conn, row.id, "mosaic", 110).is_err());
+        assert!(set_marker(&conn, row.id, "icon:", 110).is_err());
+        assert!(set_marker(&conn, row.id, "icon:Flame", 110).is_err());
+        assert!(set_marker(&conn, row.id, "icon:a/b", 110).is_err());
+        assert!(set_marker(&conn, row.id, &format!("icon:{}", "x".repeat(40)), 110).is_err());
+        assert!(set_marker(&conn, 999, "cover", 110).is_err());
     }
 
     #[test]

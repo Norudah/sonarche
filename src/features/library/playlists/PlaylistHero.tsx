@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { ImagePlus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ImagePlus, MoreHorizontal, Pencil, Shapes, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +25,7 @@ interface PlaylistHeroProps {
   onPlay: () => void;
   onShuffle: () => void;
   onEditImage: () => void;
+  onEditMarker: () => void;
   onRename: () => void;
   onDelete: () => void;
   ref?: Ref<HTMLElement>;
@@ -42,6 +43,7 @@ export function PlaylistHero({
   onPlay,
   onShuffle,
   onEditImage,
+  onEditMarker,
   onRename,
   onDelete,
   ref,
@@ -98,8 +100,12 @@ export function PlaylistHero({
             <div className="flex flex-wrap items-center gap-3.5">
               {tracks.length > 0 && <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />}
 
-              {!locked && (
-                <div className="flex items-center gap-2">
+              {/* The menu stays for the favorites list too: its name and its
+                  existence are the app's, but the face it wears in the
+                  navigation is the user's like any other list. Only rename and
+                  delete are withheld. */}
+              <div className="flex items-center gap-2">
+                {!locked && (
                   <motion.button
                     type="button"
                     onClick={onRename}
@@ -111,27 +117,35 @@ export function PlaylistHero({
                     <Pencil className="size-4" />
                     {t("playlists.renameAction")}
                   </motion.button>
+                )}
 
-                  <Dropdown>
-                    <Dropdown.Trigger
-                      aria-label={t("albums.moreActions")}
-                      className={`${HERO_BUTTON_ICON} cursor-pointer data-[pressed]:bg-surface`}
-                    >
-                      <MoreHorizontal className="size-4 shrink-0" />
-                    </Dropdown.Trigger>
-                    <Dropdown.Popover placement="bottom start">
-                      <Dropdown.Menu onAction={onDelete}>
+                <Dropdown>
+                  <Dropdown.Trigger
+                    aria-label={t("albums.moreActions")}
+                    className={`${HERO_BUTTON_ICON} cursor-pointer data-[pressed]:bg-surface`}
+                  >
+                    <MoreHorizontal className="size-4 shrink-0" />
+                  </Dropdown.Trigger>
+                  <Dropdown.Popover placement="bottom start">
+                    <Dropdown.Menu onAction={(key) => (key === "delete" ? onDelete() : onEditMarker())}>
+                      <Dropdown.Item id="marker" textValue={t("playlists.marker.action")}>
+                        <span className="flex items-center gap-2">
+                          <Shapes className="size-4" />
+                          {t("playlists.marker.action")}
+                        </span>
+                      </Dropdown.Item>
+                      {locked ? null : (
                         <Dropdown.Item id="delete" textValue={t("playlists.delete.action")}>
                           <span className="flex items-center gap-2 text-danger">
                             <Trash2 className="size-4" />
                             {t("playlists.delete.action")}
                           </span>
                         </Dropdown.Item>
-                      </Dropdown.Menu>
-                    </Dropdown.Popover>
-                  </Dropdown>
-                </div>
-              )}
+                      )}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
+              </div>
             </div>
           </div>
         </div>

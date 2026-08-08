@@ -90,3 +90,35 @@ export function playlistView(tracks: LibraryTrack[], sort: TrackSort | null): Pl
 export function orderedPlaylists(playlists: Playlist[]): Playlist[] {
   return [...playlists].sort((a, b) => Number(b.kind === "favorites") - Number(a.kind === "favorites"));
 }
+
+/** How many user playlists the sidebar will name. Past this the section stops
+ * being navigation and becomes a list to read — which is what the index page
+ * is for. */
+export const SIDEBAR_PLAYLIST_LIMIT = 8;
+
+/**
+ * The bounded slice of playlists the sidebar names, favorites first then
+ * alphabetical.
+ *
+ * Selected by recent activity, displayed by name — the two orders answer two
+ * different questions and neither one does both. Recency picks *which* lists
+ * are worth a permanent seat, because the ones you touched last week are the
+ * ones you will open next; the alphabet decides *where* each one sits, because
+ * a nav row that moves every time you add a track is a row you have to hunt
+ * for. Favorites is outside the count: it is the app's own list and always has
+ * a seat.
+ */
+export function sidebarPlaylists(playlists: Playlist[], limit = SIDEBAR_PLAYLIST_LIMIT): Playlist[] {
+  const favorites = playlists.filter((playlist) => playlist.kind === "favorites");
+  const user = playlists.filter((playlist) => playlist.kind !== "favorites");
+
+  const keep = new Set(
+    [...user]
+      .sort((a, b) => b.updatedAt - a.updatedAt || a.name.localeCompare(b.name))
+      .slice(0, Math.max(0, limit))
+      .map((playlist) => playlist.id),
+  );
+  const shown = user.filter((playlist) => keep.has(playlist.id)).sort((a, b) => a.name.localeCompare(b.name));
+
+  return [...favorites, ...shown];
+}

@@ -590,6 +590,7 @@ interface MockPlaylist {
   name: string;
   kind: "user" | "favorites";
   cover_path: string | null;
+  marker: string | null;
   created_at: number;
   updated_at: number;
   item_ids: number[];
@@ -601,6 +602,7 @@ const mockPlaylists: MockPlaylist[] = [
     name: "Favorites",
     kind: "favorites",
     cover_path: null,
+    marker: null,
     created_at: now - 86_400_000 * 30,
     updated_at: now - 86_400_000,
     item_ids: isEmpty ? [] : [104, 112],
@@ -613,6 +615,9 @@ const mockPlaylists: MockPlaylist[] = [
           name: "Sessions de nuit",
           kind: "user",
           cover_path: null,
+          // The three nav faces, one per row: a picked icon, a colour chip and
+          // the default glyph — so the sidebar shows all of them at once.
+          marker: "icon:moon",
           created_at: now - 86_400_000 * 9,
           updated_at: now - 3_600_000,
           item_ids: [110, 106, 112, 116, 100, 2, 118],
@@ -622,22 +627,36 @@ const mockPlaylists: MockPlaylist[] = [
           name: "French touch",
           kind: "user",
           cover_path: null,
+          marker: "color:rose",
           created_at: now - 86_400_000 * 4,
           updated_at: now - 86_400_000,
           item_ids: [103, 104, 105],
+        },
+        {
+          id: 4,
+          name: "Sport",
+          kind: "user",
+          // The thumbnail mode: a playlist with an image of its own, wearing it
+          // in the navigation.
+          cover_path: thumb("#f97316", "#7c2d12"),
+          marker: "cover",
+          created_at: now - 86_400_000 * 6,
+          updated_at: now - 5_400_000,
+          item_ids: [107, 108],
         },
         {
           id: 3,
           name: "Rétro console",
           kind: "user",
           cover_path: null,
+          marker: null,
           created_at: now - 86_400_000 * 2,
           updated_at: now - 7_200_000,
           item_ids: [200, 201, 9999, 203],
         },
       ] as MockPlaylist[])),
 ];
-let nextPlaylistId = 4;
+let nextPlaylistId = 5;
 
 function mockPlaylist(id: unknown): MockPlaylist {
   const playlist = mockPlaylists.find((row) => row.id === Number(id));
@@ -837,6 +856,7 @@ export function installMockTauri() {
           name,
           kind: "user",
           cover_path: null,
+          marker: null,
           created_at: Date.now(),
           updated_at: Date.now(),
           item_ids: [],
@@ -866,6 +886,12 @@ export function installMockTauri() {
         row.cover_path = thumb("#0ea5e9", "#164e63");
         row.updated_at = Date.now();
         return { id: row.id, filename: "mock.jpg" };
+      }
+      if (cmd === "set_playlist_marker") {
+        const row = mockPlaylist(payload?.id);
+        row.marker = String(payload?.marker ?? "") || null;
+        row.updated_at = Date.now();
+        return { ok: true };
       }
       if (cmd === "remove_playlist_cover") {
         const row = mockPlaylist(payload?.id);

@@ -440,6 +440,7 @@
   "playlists": {
     "eyebrow": "Playlist",
     "back": "Playlists",
+    "all": "All playlists",
     "count_one": "{{count}} playlist",
     "count_other": "{{count}} playlists",
     "create": "New playlist",
@@ -498,6 +499,46 @@
         "title": "Where this image lives",
         "storage": "The image is stored with the app's own data, never in your music folder — the library stays clean for exports and backups.",
         "display": "Without an image of yours, the playlist wears a mosaic of its first covers."
+      }
+    },
+    "marker": {
+      "action": "Navigation icon",
+      "title": "Navigation icon",
+      "subtitle": "What this playlist shows in the sidebar.",
+      "icons": "Icons",
+      "image": "Image",
+      "imageCell": "Image thumbnail",
+      "noImage": "Give the playlist an image to use it here",
+      "colors": "Colors",
+      "reset": "Default icon",
+      "done": "Done",
+      "icon": {
+        "list-music": "Playlist",
+        "disc": "Disc",
+        "headphones": "Headphones",
+        "guitar": "Guitar",
+        "mic": "Mic",
+        "radio": "Radio",
+        "waves": "Waves",
+        "sparkles": "Sparkles",
+        "heart": "Heart",
+        "star": "Star",
+        "flame": "Flame",
+        "zap": "Bolt",
+        "sun": "Sun",
+        "moon": "Moon",
+        "dumbbell": "Dumbbell",
+        "car": "Car"
+      },
+      "color": {
+        "indigo": "Indigo",
+        "violet": "Violet",
+        "rose": "Rose",
+        "amber": "Amber",
+        "moss": "Moss",
+        "teal": "Teal",
+        "sky": "Sky",
+        "blue": "Blue"
       }
     }
   }
