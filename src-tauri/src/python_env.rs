@@ -202,6 +202,12 @@ impl AppPaths {
             .join(crate::library_layout::ARTWORK_PLAYLISTS)
     }
 
+    /// The M3U8 mirror of the playlists. Written from sonarche.db, never read
+    /// back — see `playlists_mirror`.
+    pub fn playlists_dir(&self) -> PathBuf {
+        self.library_root.join(crate::library_layout::PLAYLISTS_DIR)
+    }
+
     /// `venv/bin/python3` on Unix, `venv\Scripts\python.exe` on Windows — the
     /// layout is `venv`'s own, not ours, and there is no common spelling.
     pub fn venv_python(&self) -> PathBuf {

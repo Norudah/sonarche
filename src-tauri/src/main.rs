@@ -21,6 +21,7 @@ mod onboarding;
 mod pasted_image;
 mod player;
 mod playlists;
+mod playlists_mirror;
 mod preferences;
 mod proc;
 mod python_env;
@@ -77,6 +78,10 @@ fn main() {
             // else runs, which is what makes the migration silent and safe.
             let (state, worker) = jobs::init(app.handle())?;
             library_layout::run_launch_migration(app.handle(), &state);
+            // The mirror is a rendering, so launch is where it is repaired:
+            // tracks beets moved since last time, files deleted by hand, a
+            // library copied in from elsewhere.
+            playlists_mirror::sync_at_launch(app.handle(), &state);
             state.start(app.handle().clone(), worker);
             app.manage(state);
             // Pushes the playhead and end-of-track to the front; idle until

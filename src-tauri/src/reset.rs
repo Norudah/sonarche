@@ -136,6 +136,10 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     }
     tokio::fs::create_dir_all(&music_dir).await?;
     let _ = tokio::fs::remove_file(&paths.beets_db).await;
+    // The playlist rows survive — they are not the beets zone — but every id
+    // in them just stopped resolving, so the mirror empties out with the
+    // library rather than pointing at files that are gone.
+    crate::playlists_mirror::sync_after_library_change(app).await;
     eprintln!("[dev] library reset: files and beets DB wiped");
     Ok(())
 }

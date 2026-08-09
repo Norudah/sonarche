@@ -28,17 +28,17 @@ pub const FOLDER_NAME: &str = "Sonarche";
 pub const MUSIC_DIR: &str = "Music";
 /// Artist and playlist images, under human-readable names.
 pub const ARTWORK_DIR: &str = "Artwork";
+/// The M3U8 mirror — written by us, readable by anything else.
+pub const PLAYLISTS_DIR: &str = "Playlists";
 pub const ARTWORK_ARTISTS: &str = "Artists";
 pub const ARTWORK_PLAYLISTS: &str = "Playlists";
 /// Our hidden corner: marker, and whatever future state wants a home.
 pub const MARKER_DIR: &str = ".sonarche";
 pub const MARKER_FILE: &str = "library.json";
 
-/// Names the root reserves for itself. `Playlists` is claimed now, before the
-/// M3U mirror exists, so an artist of that name is filed under `Music/` today
-/// and no second migration is needed when the mirror lands. Compared without
-/// case: APFS and NTFS would happily collide "music" with `Music/`.
-pub const RESERVED: [&str; 4] = [MUSIC_DIR, ARTWORK_DIR, MARKER_DIR, "Playlists"];
+/// Names the root reserves for itself. Compared without case: APFS and NTFS
+/// would happily collide "music" with `Music/`.
+pub const RESERVED: [&str; 4] = [MUSIC_DIR, ARTWORK_DIR, MARKER_DIR, PLAYLISTS_DIR];
 
 pub fn is_reserved(name: &str) -> bool {
     RESERVED.iter().any(|r| r.eq_ignore_ascii_case(name))

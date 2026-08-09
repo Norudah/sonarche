@@ -220,7 +220,11 @@ pub async fn reenrich_track(
     state: State<'_, ReenrichState>,
     id: i64,
 ) -> AppResult<Value> {
-    state.run(&app, id).await
+    let result = state.run(&app, id).await?;
+    // Re-enriching rewrites the tags, and beets files by tags: the track may
+    // have just moved out from under every M3U line naming it.
+    crate::playlists_mirror::sync_after_library_change(&app).await;
+    Ok(result)
 }
 
 /// Repair pass over the library: remux fragmented DASH m4a files (downloads
@@ -352,7 +356,9 @@ pub async fn library_align_apply(
     state: State<'_, LibraryAlignState>,
     plan: Value,
 ) -> AppResult<Value> {
-    state.apply(&app, plan).await
+    let result = state.apply(&app, plan).await?;
+    crate::playlists_mirror::sync_after_library_change(&app).await;
+    Ok(result)
 }
 
 /// Check an AcoustID key, so a typo is caught while the user still has the key
@@ -551,6 +557,9 @@ pub async fn update_tracks(
     // rename it reported takes the artist's image (our asset, keyed by name)
     // along. Best-effort — the edit itself already succeeded.
     crate::artist_images::follow_renames(&app, &jobs, &result).await;
+    // An edit that changed artist or album moved the file, and every M3U line
+    // naming it is now a dead path.
+    crate::playlists_mirror::sync(&app, &jobs).await;
     Ok(result)
 }
 
@@ -579,6 +588,7 @@ pub async fn delete_track(
     if let Err(err) = jobs.remove_item_from_playlists(id).await {
         eprintln!("[playlists] prune of item {id} failed: {err}");
     }
+    crate::playlists_mirror::sync(&app, &jobs).await;
     Ok(result)
 }
 
