@@ -145,7 +145,7 @@ impl LibraryImportState {
         folder: &str,
     ) -> AppResult<ImportOutcome> {
         let paths = AppPaths::resolve(app)?;
-        library_scan::ensure_outside_library(Path::new(folder), &paths.library_dir)?;
+        library_scan::ensure_outside_library(Path::new(folder), &paths.library_root)?;
 
         {
             // Not because beets would corrupt anything — it takes the library's
@@ -215,7 +215,7 @@ async fn request(
                 // The cover pass that follows the copy needs the library
                 // itself, not just the config beets was driven with.
                 "beets_db": paths.beets_db,
-                "library_dir": paths.library_dir,
+                "library_dir": paths.music_dir(),
             }),
             IMPORT_TIMEOUT,
         )

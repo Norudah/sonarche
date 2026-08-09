@@ -15,9 +15,9 @@ use std::time::Duration;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
-use uuid::Uuid;
 
 use crate::artist_images::remove_orphan;
+use crate::artwork;
 use crate::commands::{checked_cover_source, CoverCrop};
 use crate::error::{AppError, AppResult};
 use crate::jobs::JobsState;
@@ -37,6 +37,9 @@ const MAX_BATCH: usize = 10_000;
 const FAVORITES_KIND: &str = "favorites";
 const FAVORITES_NAME: &str = "Favorites";
 
+/// What a playlist title that sanitizes to nothing files its cover under.
+pub(crate) const PLAYLIST_STEM_FALLBACK: &str = "Playlist";
+
 /// One playlist with its membership, in playing order. The item ids are all
 /// the front needs: covers, durations and titles come from the library listing
 /// it already holds, so nothing here can go stale against beets.
@@ -45,7 +48,7 @@ pub struct PlaylistRow {
     pub name: String,
     /// `user`, or `favorites` for the seeded list rename/delete refuse.
     pub kind: String,
-    /// User-chosen tile filename under app data's `playlists/`, if any.
+    /// User-chosen tile filename under the library's `Artwork/Playlists/`, if any.
     pub cover: Option<String>,
     /// What the list wears in the navigation — see `checked_marker`.
     pub marker: Option<String>,
@@ -338,6 +341,22 @@ pub fn set_cover(
     Ok(previous.filter(|old| old != filename))
 }
 
+/// Repoint the cover at a renamed file, everything else untouched — the
+/// rename-follow and the launch migration both end here once the disk agrees.
+pub fn update_cover_filename(
+    conn: &Connection,
+    id: i64,
+    filename: &str,
+    now: u64,
+) -> AppResult<()> {
+    playlist_exists(conn, id)?;
+    conn.execute(
+        "UPDATE playlists SET cover = ?2, updated_at = ?3 WHERE id = ?1",
+        params![id, filename, now as i64],
+    )?;
+    Ok(())
+}
+
 /// Back to the mosaic; returns the filename that just went ownerless.
 pub fn remove_cover(conn: &Connection, id: i64, now: u64) -> AppResult<Option<String>> {
     playlist_exists(conn, id)?;
@@ -484,7 +503,7 @@ pub fn clear(conn: &Connection) -> AppResult<()> {
 
 #[tauri::command]
 pub async fn list_playlists(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<Value> {
-    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir;
+    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir();
     let rows = jobs.list_playlists().await?;
     Ok(json!({
         "playlists": rows.iter().map(|row| row.to_json(&covers_dir)).collect::<Vec<_>>()
@@ -497,18 +516,54 @@ pub async fn create_playlist(
     jobs: State<'_, JobsState>,
     name: String,
 ) -> AppResult<Value> {
-    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir;
+    let covers_dir = AppPaths::resolve(&app)?.playlist_covers_dir();
     let row = jobs.create_playlist(name).await?;
     Ok(json!({ "playlist": row.to_json(&covers_dir) }))
 }
 
 #[tauri::command]
 pub async fn rename_playlist(
+    app: AppHandle,
     jobs: State<'_, JobsState>,
     id: i64,
     name: String,
 ) -> AppResult<Value> {
-    jobs.rename_playlist(id, name).await?;
+    let rows = jobs.list_playlists().await?;
+    jobs.rename_playlist(id, name.clone()).await?;
+    // The cover file is named after the playlist, so it follows the rename.
+    // Best-effort: a cover stuck under its old stem still displays — the row
+    // is only updated once the file has actually moved.
+    if let Some(cover) = rows
+        .iter()
+        .find(|row| row.id == id)
+        .and_then(|row| row.cover.clone())
+    {
+        let dir = AppPaths::resolve(&app)?.playlist_covers_dir();
+        let extension = std::path::Path::new(&cover)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("jpg");
+        let taken: Vec<String> = rows
+            .iter()
+            .filter(|row| row.id != id)
+            .filter_map(|row| row.cover.as_deref())
+            .map(|file| artwork::stem_of(file).to_string())
+            .collect();
+        let filename = format!(
+            "{}.{extension}",
+            artwork::unique_stem(name.trim(), PLAYLIST_STEM_FALLBACK, &taken)
+        );
+        if filename != cover {
+            match tokio::fs::rename(dir.join(&cover), dir.join(&filename)).await {
+                Ok(()) => {
+                    if let Err(err) = jobs.update_playlist_cover_filename(id, filename).await {
+                        eprintln!("[playlists] cover row not repointed: {err}");
+                    }
+                }
+                Err(err) => eprintln!("[playlists] cover rename failed, keeping name: {err}"),
+            }
+        }
+    }
     Ok(json!({ "ok": true }))
 }
 
@@ -519,13 +574,14 @@ pub async fn delete_playlist(
     id: i64,
 ) -> AppResult<Value> {
     let orphan = jobs.delete_playlist(id).await?;
-    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir, orphan);
+    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir(), orphan);
     Ok(json!({ "ok": true }))
 }
 
 /// Give a playlist a tile of its own: same pipeline as an artist image — the
-/// sidecar writes the 500px square rendition under a fresh random name in app
-/// data's `playlists/`, the row points at it, the replaced file goes.
+/// sidecar writes the 500px square rendition under the playlist's readable
+/// name in the library's `Artwork/Playlists/`, the row points at it, the
+/// replaced file goes.
 #[tauri::command]
 pub async fn set_playlist_cover(
     app: AppHandle,
@@ -541,8 +597,19 @@ pub async fn set_playlist_cover(
         }
     }
     let source = checked_cover_source(&source_path).await?;
-    let dir = AppPaths::resolve(&app)?.playlist_covers_dir;
-    let stem = Uuid::new_v4().simple().to_string();
+    let dir = AppPaths::resolve(&app)?.playlist_covers_dir();
+    tokio::fs::create_dir_all(&dir).await?;
+    let rows = jobs.list_playlists().await?;
+    let Some(row) = rows.iter().find(|row| row.id == id) else {
+        return Err(AppError::InvalidInput("no such playlist".into()));
+    };
+    let taken: Vec<String> = rows
+        .iter()
+        .filter(|other| other.id != id)
+        .filter_map(|other| other.cover.as_deref())
+        .map(|file| artwork::stem_of(file).to_string())
+        .collect();
+    let stem = artwork::unique_stem(&row.name, PLAYLIST_STEM_FALLBACK, &taken);
 
     let result = sidecar
         .request(
@@ -576,7 +643,7 @@ pub async fn remove_playlist_cover(
 ) -> AppResult<Value> {
     let removed = jobs.remove_playlist_cover(id).await?;
     let had_cover = removed.is_some();
-    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir, removed);
+    remove_orphan(&AppPaths::resolve(&app)?.playlist_covers_dir(), removed);
     Ok(json!({ "removed": had_cover }))
 }
 

@@ -150,7 +150,7 @@ pub async fn scan_import_folder(
     path: String,
 ) -> AppResult<ScanReport> {
     let root = PathBuf::from(&path);
-    library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_dir)?;
+    library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_root)?;
 
     let scanned = root.clone();
     let report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
@@ -207,7 +207,7 @@ pub async fn list_library(
             "library_list",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
             }),
             QUERY_TIMEOUT,
         )
@@ -239,7 +239,7 @@ pub async fn remux_library(app: AppHandle, state: State<'_, RemuxState>) -> AppR
 /// audio thread, and the runtime's threads are not the ones to wait on it.
 #[tauri::command]
 pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>> {
-    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
     player::off_runtime(app, move |player| player.load(&path)).await
 }
 
@@ -247,7 +247,7 @@ pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>>
 /// calls this once it knows what comes next.
 #[tauri::command]
 pub async fn player_enqueue(app: AppHandle, path: String) -> AppResult<()> {
-    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
     player::off_runtime(app, move |player| player.enqueue(&path)).await
 }
 
@@ -541,7 +541,7 @@ pub async fn update_tracks(
             "library_update",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "updates": wire,
             }),
             QUERY_TIMEOUT,
@@ -568,7 +568,7 @@ pub async fn delete_track(
             "library_remove",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "id": id,
             }),
             QUERY_TIMEOUT,
@@ -680,7 +680,7 @@ pub async fn set_album_cover(
             "cover_set",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "album_id": album_id,
                 "source_path": source.map(|p| p.to_string_lossy().into_owned()),
                 "image_url": candidate_url,
@@ -710,7 +710,7 @@ pub async fn list_cover_candidates(
             "cover_candidates",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "album_id": album_id,
             }),
             // The index plus up to eight thumbnail fetches.

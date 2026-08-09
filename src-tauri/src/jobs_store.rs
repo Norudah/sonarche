@@ -102,9 +102,9 @@ CREATE TABLE IF NOT EXISTS imports (
 -- The image an artist wears in the interface. An artist is an entity nowhere
 -- else — no beets table, no folder, no audio tag — so this row IS the artist's
 -- existence as far as images go. `name` is the exact albumartist string the
--- front groups on; `filename` lives under app data's `artists/` directory and
--- is a fresh random stem per write, so a replaced image never fights the
--- webview's cache. `source` says where the picture came from (today: local).
+-- front groups on; `filename` lives under the library's `Artwork/Artists/`
+-- and is the artist's readable name (the front cache-busts on `updated_at`).
+-- `source` says where the picture came from (today: local).
 CREATE TABLE IF NOT EXISTS artist_images (
     name       TEXT PRIMARY KEY,
     filename   TEXT NOT NULL,
@@ -123,8 +123,8 @@ CREATE TABLE IF NOT EXISTS playlists (
     -- list, seeded at startup, that rename and delete refuse to touch. The
     -- front shows it under a localized label, so the stored name is not UI.
     kind       TEXT NOT NULL DEFAULT 'user',
-    -- Filename of a user-chosen tile under app data's `playlists/` directory
-    -- (fresh random stem per write, like artist images). NULL draws the cover
+    -- Filename of a user-chosen tile under the library's `Artwork/Playlists/`
+    -- (named after the playlist, like artist images). NULL draws the cover
     -- mosaic instead.
     cover      TEXT,
     -- What the playlist wears in the navigation: 'icon:<key>' from the front's
@@ -568,12 +568,19 @@ pub fn remove_artist_image(conn: &Connection, name: &str) -> AppResult<Option<St
     Ok(filename)
 }
 
-/// Follow an albumartist rename: the image goes with the name. When the new
-/// name already wears an image of its own, that one wins — the rename usually
-/// merges a misspelling into an artist that already exists, and their chosen
-/// picture should not be overwritten by the stray's. Returns the filename left
-/// ownerless (the loser's), if any, for the caller to delete.
-pub fn rename_artist_image(conn: &Connection, old: &str, new: &str) -> AppResult<Option<String>> {
+/// Follow an albumartist rename: the image goes with the name, and since the
+/// file on disk is named after the artist too, the caller renames it first
+/// and passes the resulting filename here. When the new name already wears an
+/// image of its own, that one wins — the rename usually merges a misspelling
+/// into an artist that already exists, and their chosen picture should not be
+/// overwritten by the stray's. Returns the filename left ownerless (the
+/// loser's), if any, for the caller to delete.
+pub fn rename_artist_image(
+    conn: &Connection,
+    old: &str,
+    new: &str,
+    filename: &str,
+) -> AppResult<Option<String>> {
     if old == new {
         return Ok(None);
     }
@@ -589,10 +596,24 @@ pub fn rename_artist_image(conn: &Connection, old: &str, new: &str) -> AppResult
         return remove_artist_image(conn, old);
     }
     conn.execute(
-        "UPDATE artist_images SET name = ?2 WHERE name = ?1",
-        params![old, new],
+        "UPDATE artist_images SET name = ?2, filename = ?3 WHERE name = ?1",
+        params![old, new, filename],
     )?;
     Ok(None)
+}
+
+/// Repoint one row at a renamed file, name untouched. The launch migration's
+/// tool, as it moves the app-data era's technical names to readable ones.
+pub fn update_artist_image_filename(
+    conn: &Connection,
+    name: &str,
+    filename: &str,
+) -> AppResult<()> {
+    conn.execute(
+        "UPDATE artist_images SET filename = ?2 WHERE name = ?1",
+        params![name, filename],
+    )?;
+    Ok(())
 }
 
 /// The erase-all sweep for artist images: every row at once. File removal is
@@ -1092,13 +1113,13 @@ mod tests {
         upsert_artist_image(&conn, "Hanz Zimmer", "a.jpg", "local", 100).unwrap();
 
         assert_eq!(
-            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer").unwrap(),
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer", "Hans Zimmer.jpg").unwrap(),
             None
         );
 
         let rows = list_artist_images(&conn).unwrap();
         assert_eq!(rows[0].name, "Hans Zimmer");
-        assert_eq!(rows[0].filename, "a.jpg");
+        assert_eq!(rows[0].filename, "Hans Zimmer.jpg");
     }
 
     /// Renaming usually merges a misspelling into an artist that already
@@ -1111,7 +1132,7 @@ mod tests {
         upsert_artist_image(&conn, "Hans Zimmer", "kept.jpg", "local", 100).unwrap();
 
         assert_eq!(
-            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer").unwrap(),
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer", "unused.jpg").unwrap(),
             Some("stray.jpg".to_string())
         );
 
@@ -1124,7 +1145,7 @@ mod tests {
     fn a_rename_with_no_image_is_a_no_op() {
         let conn = mem();
         assert_eq!(
-            rename_artist_image(&conn, "Nobody", "Somebody").unwrap(),
+            rename_artist_image(&conn, "Nobody", "Somebody", "Somebody.jpg").unwrap(),
             None
         );
         assert!(list_artist_images(&conn).unwrap().is_empty());

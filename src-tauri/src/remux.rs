@@ -43,7 +43,7 @@ impl RemuxState {
                 "library_remux",
                 json!({
                     "beets_db": paths.beets_db.to_string_lossy(),
-                    "library_dir": paths.library_dir.to_string_lossy(),
+                    "library_dir": paths.music_dir().to_string_lossy(),
                     "ffmpeg": paths.ffmpeg().to_string_lossy(),
                 }),
                 REMUX_TIMEOUT,

@@ -235,10 +235,14 @@ where
     .map_err(|err| AppError::Sidecar(format!("jobs db task panicked: {err}")))?
 }
 
-/// Open the history DB, migrate any legacy `jobs.json`, fail whatever the
-/// previous run left unfinished, and start the single worker task. Called once
-/// from Tauri setup.
-pub fn init(app: &AppHandle) -> AppResult<JobsState> {
+/// Open the history DB, migrate any legacy `jobs.json` and fail whatever the
+/// previous run left unfinished. Called once from Tauri setup.
+///
+/// Deliberately does NOT start the worker: the launch migration runs between
+/// this and [`JobsState::start`], and a worker resuming a queued download must
+/// only ever see the migrated layout. The receiver comes back to the caller so
+/// forgetting to start is a compile error, not a silent dead queue.
+pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
     let data_dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
     let db_path = data_dir.join("sonarche.db");
@@ -297,9 +301,11 @@ pub fn init(app: &AppHandle) -> AppResult<JobsState> {
         tx,
         cancels: StdMutex::new(HashSet::new()),
     });
-    spawn_worker(app.clone(), inner.clone(), rx);
-    Ok(JobsState(inner))
+    Ok((JobsState(inner), JobsWorker(rx)))
 }
+
+/// The queue's receiving end, waiting to be handed to [`JobsState::start`].
+pub struct JobsWorker(mpsc::UnboundedReceiver<String>);
 
 fn spawn_worker(app: AppHandle, inner: Arc<JobsInner>, mut rx: mpsc::UnboundedReceiver<String>) {
     tauri::async_runtime::spawn(async move {
@@ -694,7 +700,7 @@ pub async fn enrich_item(
             json!({
                 "item_id": item_id,
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "fpcalc": paths.fpcalc().to_string_lossy(),
                 "acoustid_key": acoustid_key,
                 "title": title,
@@ -735,7 +741,7 @@ async fn apply_category(app: &AppHandle, id: &str, category: &str, item_ids: &[i
             "library_update",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "updates": updates,
             }),
             LIBRARY_TIMEOUT,
@@ -764,7 +770,7 @@ async fn run_import(app: &AppHandle, path: &str, singleton: bool) -> AppResult<V
                 "path": path,
                 "beets_config": paths.beets_config.to_string_lossy(),
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "singleton": singleton,
             }),
             IMPORT_TIMEOUT,
@@ -1243,7 +1249,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
             json!({
                 "item_ids": item_ids,
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "fpcalc": paths.fpcalc().to_string_lossy(),
                 "acoustid_key": acoustid_key,
                 "album_title": job.title,
@@ -1259,6 +1265,27 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
 }
 
 impl JobsState {
+    /// Bring the worker to life. Its own step, after the launch migration —
+    /// see [`init`].
+    pub fn start(&self, app: AppHandle, worker: JobsWorker) {
+        spawn_worker(app, self.0.clone(), worker.0);
+    }
+
+    /// A blocking touch of the DB, for the setup hook only: the worker is not
+    /// born yet, the runtime is not being blocked, and `with_conn`'s
+    /// spawn_blocking would be ceremony with nothing to protect.
+    pub fn with_conn_blocking<T>(
+        &self,
+        f: impl FnOnce(&Connection) -> AppResult<T>,
+    ) -> AppResult<T> {
+        let guard = self
+            .0
+            .conn
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        f(&guard)
+    }
+
     pub async fn enqueue(
         &self,
         app: &AppHandle,
@@ -1453,10 +1480,16 @@ impl JobsState {
         with_conn(&self.0, move |c| jobs_store::remove_artist_image(c, &name)).await
     }
 
-    /// Returns the filename left ownerless by the rename, if any.
-    pub async fn rename_artist_image(&self, old: String, new: String) -> AppResult<Option<String>> {
+    /// Returns the filename left ownerless by the rename, if any. `filename`
+    /// is the file's post-rename name — the caller renames it on disk first.
+    pub async fn rename_artist_image(
+        &self,
+        old: String,
+        new: String,
+        filename: String,
+    ) -> AppResult<Option<String>> {
         with_conn(&self.0, move |c| {
-            jobs_store::rename_artist_image(c, &old, &new)
+            jobs_store::rename_artist_image(c, &old, &new, &filename)
         })
         .await
     }
@@ -1492,6 +1525,15 @@ impl JobsState {
         let now = now_ms();
         with_conn(&self.0, move |c| {
             playlists::set_cover(c, id, &filename, now)
+        })
+        .await
+    }
+
+    /// Repoint a cover row at its renamed file.
+    pub async fn update_playlist_cover_filename(&self, id: i64, filename: String) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| {
+            playlists::update_cover_filename(c, id, &filename, now)
         })
         .await
     }

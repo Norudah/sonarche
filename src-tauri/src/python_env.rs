@@ -81,14 +81,11 @@ pub struct AppPaths {
     /// be one file.
     pub beets_import_config: PathBuf,
     pub beets_db: PathBuf,
-    pub library_dir: PathBuf,
-    /// Where user-chosen artist images land (app data, not the library: an
-    /// artist has no folder of their own in a beets-clean library). Indexed by
-    /// the `artist_images` table in sonarche.db.
-    pub artist_images_dir: PathBuf,
-    /// Same story for playlist tiles: a playlist exists only in sonarche.db,
-    /// so its image lives in app data (`playlists/`), never in the library.
-    pub playlist_covers_dir: PathBuf,
+    /// The folder the user picks — the zones live under it, and the derived
+    /// paths below are methods so no copy can drift from it. Beets only ever
+    /// sees `music_dir()`; the root is what settings shows and what a move
+    /// moves.
+    pub library_root: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
     pub genres_tree: PathBuf,
@@ -137,7 +134,7 @@ impl LibraryRoot {
 pub fn default_library_dir(app: &AppHandle) -> PathBuf {
     app.path()
         .audio_dir()
-        .map(|dir| dir.join("Sonarche"))
+        .map(|dir| dir.join(crate::library_layout::FOLDER_NAME))
         .unwrap_or_else(|_| {
             app.path()
                 .app_data_dir()
@@ -158,7 +155,7 @@ impl AppPaths {
                 .unwrap_or_else(|_| data.join(name))
         };
         // The user's choice wins; the default is only what nobody overrode.
-        let library_dir = app
+        let library_root = app
             .try_state::<LibraryRoot>()
             .and_then(|root| root.get())
             .unwrap_or_else(|| default_library_dir(app));
@@ -168,9 +165,7 @@ impl AppPaths {
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
-            library_dir,
-            artist_images_dir: data.join("artists"),
-            playlist_covers_dir: data.join("playlists"),
+            library_root,
             sidecar_main: sidecar_dir.join("main.py"),
             requirements: sidecar_dir.join("requirements.txt"),
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
@@ -182,6 +177,29 @@ impl AppPaths {
             bundled_fpcalc: resource("tools").join(FPCALC_BIN),
             bundled_ffmpeg: resource("tools").join(FFMPEG_BIN),
         })
+    }
+
+    /// The beets zone — `directory:`, the only folder the sidecar organizes.
+    pub fn music_dir(&self) -> PathBuf {
+        self.library_root.join(crate::library_layout::MUSIC_DIR)
+    }
+
+    pub fn artwork_dir(&self) -> PathBuf {
+        self.library_root.join(crate::library_layout::ARTWORK_DIR)
+    }
+
+    /// Artist images, under readable names (an artist has no folder of their
+    /// own in the beets zone). Indexed by the `artist_images` table.
+    pub fn artist_images_dir(&self) -> PathBuf {
+        self.artwork_dir()
+            .join(crate::library_layout::ARTWORK_ARTISTS)
+    }
+
+    /// Playlist tiles, same story: a playlist exists only in sonarche.db, so
+    /// its image lives here, named after it.
+    pub fn playlist_covers_dir(&self) -> PathBuf {
+        self.artwork_dir()
+            .join(crate::library_layout::ARTWORK_PLAYLISTS)
     }
 
     /// `venv/bin/python3` on Unix, `venv\Scripts\python.exe` on Windows — the
@@ -401,7 +419,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         python_bundled,
         venv_ok,
         deps_ok,
-        library_dir: paths.library_dir.display().to_string(),
+        library_dir: paths.library_root.display().to_string(),
     })
 }
 
@@ -503,14 +521,24 @@ async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) ->
 /// build, is repaired on the next launch rather than staying half-pointed.
 pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
     let paths = AppPaths::resolve(app)?;
-    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    {
+        let root = paths.library_root.clone();
+        // Sync fs by design (it also runs from the setup hook); off the
+        // runtime here. Zones only — the marker is the migration's claim to
+        // make, not a repair pass's.
+        tauri::async_runtime::spawn_blocking(move || crate::library_layout::ensure_zones(&root))
+            .await
+            .map_err(|err| AppError::Setup(format!("layout task panicked: {err}")))??;
+    }
     if let Some(parent) = paths.beets_config.parent() {
         tokio::fs::create_dir_all(parent).await?;
     }
     write_beets_config(&paths).await?;
+    // The root, recursively — `Music/` for tracks and covers, `Artwork/` for
+    // artist and playlist images; both are served through the asset protocol.
     if let Err(err) = app
         .asset_protocol_scope()
-        .allow_directory(&paths.library_dir, true)
+        .allow_directory(&paths.library_root, true)
     {
         // Not fatal: the default folder is already in the manifest's scope, so
         // this only ever matters for a moved library — and a library the user
@@ -575,7 +603,7 @@ lastgenre:
 ui:
   color: no
 "#,
-        library = yaml_scalar(&paths.library_dir),
+        library = yaml_scalar(&paths.music_dir()),
         db = yaml_scalar(&paths.beets_db),
         tree = yaml_scalar(&paths.genres_tree),
         whitelist = yaml_scalar(&paths.genres_whitelist),
@@ -597,7 +625,7 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
 
     tokio::fs::create_dir_all(&paths.staging_dir).await?;
     tokio::fs::create_dir_all(paths.beets_config.parent().unwrap_or(&paths.staging_dir)).await?;
-    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    tokio::fs::create_dir_all(&paths.music_dir()).await?;
 
     emit_log(
         app,
@@ -667,9 +695,7 @@ mod tests {
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
-            library_dir: PathBuf::from("/music/Sonarche"),
-            artist_images_dir: data.join("artists"),
-            playlist_covers_dir: data.join("playlists"),
+            library_root: PathBuf::from("/music/Sonarche"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
@@ -691,15 +717,16 @@ mod tests {
     #[test]
     fn a_windows_path_is_not_read_as_a_yaml_escape() {
         let mut paths = paths();
-        paths.library_dir = PathBuf::from(r"C:\Users\pieru\Music\Sonarche");
+        paths.library_root = PathBuf::from(r"C:\Users\pieru\Music\Sonarche");
         paths.beets_db = PathBuf::from(r"C:\Users\pieru\AppData\Roaming\beets\library.db");
 
         let config = beets_config_yaml(&paths, Flavour::App);
 
-        assert!(
-            config.contains(r"directory: 'C:\Users\pieru\Music\Sonarche'"),
-            "{config}"
-        );
+        // The expected path is derived, not spelled out: `music_dir()` joins
+        // with the host separator, so the tail is `\Music` on Windows and
+        // `/Music` in this test run.
+        let expected = format!("directory: '{}'", paths.music_dir().display());
+        assert!(config.contains(&expected), "{config}");
         // The rule, stated once for the whole file rather than per key: a
         // backslash is a directive between double quotes and a plain character
         // between single ones, so no line may ever hold both. `clutter` keeps
@@ -717,14 +744,16 @@ mod tests {
     #[test]
     fn an_apostrophe_in_a_path_is_doubled_not_left_to_close_the_scalar() {
         let mut paths = paths();
-        paths.library_dir = PathBuf::from(r"C:\Users\O'Brien\Music");
+        paths.library_root = PathBuf::from(r"C:\Users\O'Brien\Music");
 
         let config = beets_config_yaml(&paths, Flavour::App);
 
-        assert!(
-            config.contains(r"directory: 'C:\Users\O''Brien\Music'"),
-            "{config}"
+        let expected = format!(
+            "directory: '{}'",
+            paths.music_dir().display().to_string().replace('\'', "''")
         );
+        assert!(expected.contains("O''Brien"), "{expected}");
+        assert!(config.contains(&expected), "{config}");
     }
 
     /// The reason the second file exists at all. A library import bakes the
@@ -783,7 +812,7 @@ mod tests {
     fn both_configs_target_the_one_library() {
         for flavour in [Flavour::App, Flavour::Import] {
             let config = beets_config_yaml(&paths(), flavour);
-            assert!(config.contains("directory: '/music/Sonarche'"));
+            assert!(config.contains(&format!("directory: '{}'", paths().music_dir().display())));
             assert!(config.contains("library: '/data/beets/library.db'"));
         }
     }

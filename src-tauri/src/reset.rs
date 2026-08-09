@@ -124,17 +124,17 @@ pub async fn reset_setup(
 }
 
 /// Wipe the whole music library (audio files + beets DB) so bug-fix scenarios
-/// restart from a clean slate.
+/// restart from a clean slate. The beets zone only: `Artwork/` and the marker
+/// are not what a "wipe the music" scenario is about, and the images are
+/// precious, not rebuildable.
 pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     ensure_dev("library reset")?;
     let paths = AppPaths::resolve(app)?;
-    if tokio::fs::try_exists(&paths.library_dir)
-        .await
-        .unwrap_or(false)
-    {
-        tokio::fs::remove_dir_all(&paths.library_dir).await?;
+    let music_dir = paths.music_dir();
+    if tokio::fs::try_exists(&music_dir).await.unwrap_or(false) {
+        tokio::fs::remove_dir_all(&music_dir).await?;
     }
-    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    tokio::fs::create_dir_all(&music_dir).await?;
     let _ = tokio::fs::remove_file(&paths.beets_db).await;
     eprintln!("[dev] library reset: files and beets DB wiped");
     Ok(())
@@ -148,15 +148,11 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
 /// forget their library has not asked to re-download a Python.
 fn user_data_to_remove(paths: &AppPaths) -> Vec<PathBuf> {
     vec![
-        paths.library_dir.clone(),
+        // The whole root: music, artwork and the marker go together — a new
+        // identity is minted when the folder is recreated, because an erased
+        // library is a different library.
+        paths.library_root.clone(),
         paths.beets_db.clone(),
-        // User-chosen artist images: they are about this library's artists,
-        // and "forget everything I put in" includes them. The setup resets
-        // never touch them — they are precious, not rebuildable.
-        paths.artist_images_dir.clone(),
-        // Playlist tiles: same reasoning — they decorate lists of tracks that
-        // are about to stop existing.
-        paths.playlist_covers_dir.clone(),
     ]
 }
 
@@ -222,9 +218,12 @@ pub async fn erase_data(
     app.state::<LibraryRoot>().set(None);
 
     // Recreate the (now default) library folder so the next launch has
-    // somewhere to import into.
+    // somewhere to import into — full layout, fresh marker.
     let paths = AppPaths::resolve(app)?;
-    tokio::fs::create_dir_all(&paths.library_dir).await?;
+    let root = paths.library_root.clone();
+    tauri::async_runtime::spawn_blocking(move || crate::library_layout::ensure_layout(&root))
+        .await
+        .map_err(|err| AppError::Setup(format!("layout task panicked: {err}")))??;
 
     crate::logs::write("[reset] user data erased");
     Ok(())
@@ -265,9 +264,7 @@ mod tests {
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
-            library_dir: PathBuf::from("/music/Sonarche"),
-            artist_images_dir: data.join("artists"),
-            playlist_covers_dir: data.join("playlists"),
+            library_root: PathBuf::from("/music/Sonarche"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
@@ -295,9 +292,9 @@ mod tests {
                 onboarding: bits & 16 != 0,
             };
             for dir in dirs_to_remove(&paths, &targets) {
-                assert!(!paths.library_dir.starts_with(&dir), "{targets:?}");
+                assert!(!paths.library_root.starts_with(&dir), "{targets:?}");
                 assert!(!paths.beets_db.starts_with(&dir), "{targets:?}");
-                assert!(!paths.artist_images_dir.starts_with(&dir), "{targets:?}");
+                assert!(!paths.artist_images_dir().starts_with(&dir), "{targets:?}");
             }
         }
     }
@@ -329,9 +326,12 @@ mod tests {
         let paths = paths();
         let removed = user_data_to_remove(&paths);
 
-        assert!(removed.contains(&paths.library_dir));
+        assert!(removed.contains(&paths.library_root));
         assert!(removed.contains(&paths.beets_db));
-        assert!(removed.contains(&paths.artist_images_dir));
+        // The images live under the root now; removing it takes them too.
+        assert!(removed
+            .iter()
+            .any(|path| paths.artist_images_dir().starts_with(path)));
     }
 
     #[test]

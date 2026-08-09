@@ -36,7 +36,7 @@ pub async fn fetch(
             "lyrics_fetch",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "item_id": item_id,
                 "allow_network": allow_network,
                 "force": force,

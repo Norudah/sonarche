@@ -28,15 +28,7 @@ use crate::preferences;
 use crate::python_env::{self, AppPaths, LibraryRoot};
 use crate::sidecar::SidecarState;
 
-/// The folder the library always lives in, inside whatever parent is chosen.
-///
-/// The picker asks for a parent and we append this, rather than taking the
-/// picked folder as the library itself. Two reasons, both about the folder the
-/// user did not mean to give us: a stray click on Home would spray an album
-/// tree over their home directory, and "remove the library" further down the
-/// settings screen would then have a folder full of unrelated things to
-/// remove. A named folder is one we can be sure we own.
-pub const FOLDER_NAME: &str = "Sonarche";
+pub use crate::library_layout::FOLDER_NAME;
 
 /// Why a move cannot go ahead. Machine-readable: the frontend turns each into
 /// its own sentence, and "invalid path" is not a sentence anyone can act on.
@@ -177,7 +169,7 @@ async fn any_work_in_flight(jobs: &JobsState) -> bool {
 pub async fn check(app: &AppHandle, jobs: &JobsState, parent: PathBuf) -> AppResult<MoveCheck> {
     let paths = AppPaths::resolve(app)?;
     let app_data = app.path().app_data_dir()?;
-    let current = paths.library_dir.clone();
+    let current = paths.library_root.clone();
     let busy = any_work_in_flight(jobs).await;
 
     tauri::async_runtime::spawn_blocking(move || {
@@ -257,7 +249,7 @@ pub async fn perform(
     }
 
     let paths = AppPaths::resolve(app)?;
-    let current = paths.library_dir.clone();
+    let current = paths.library_root.clone();
     let target = parent.join(FOLDER_NAME);
 
     // The player first: it holds an open file, and on Windows an open file is
@@ -318,8 +310,8 @@ pub fn location(app: &AppHandle) -> AppResult<LibraryLocation> {
     let paths = AppPaths::resolve(app)?;
     let default_path = python_env::default_library_dir(app);
     Ok(LibraryLocation {
-        is_default: paths.library_dir == default_path,
-        path: paths.library_dir.display().to_string(),
+        is_default: paths.library_root == default_path,
+        path: paths.library_root.display().to_string(),
         default_path: default_path.display().to_string(),
     })
 }

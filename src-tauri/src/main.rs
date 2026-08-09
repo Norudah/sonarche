@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod artist_images;
+mod artwork;
 mod audio_formats;
 mod commands;
 mod error;
@@ -10,6 +11,7 @@ mod jobs;
 mod jobs_store;
 mod library_align;
 mod library_import;
+mod library_layout;
 mod library_move;
 mod library_scan;
 mod logs;
@@ -56,8 +58,6 @@ fn main() {
             // Image temp files a past session left behind (pastes, fetched
             // links) — off-thread, launch must not wait on the temp dir.
             tauri::async_runtime::spawn_blocking(pasted_image::sweep_stale);
-            let state = jobs::init(app.handle())?;
-            app.manage(state);
             // Before anything resolves a path: `AppPaths` reads this state, and
             // an unseeded one resolves to the default library — which would
             // point a moved install back at an empty folder for the length of
@@ -71,6 +71,14 @@ fn main() {
                     Err(err) => eprintln!("[library] could not read the stored location: {err}"),
                 }
             });
+            // DB open but worker not started: the launch migration must finish
+            // before anything — a queued download resuming, the first render —
+            // can look at the library. Setup is the one moment where nothing
+            // else runs, which is what makes the migration silent and safe.
+            let (state, worker) = jobs::init(app.handle())?;
+            library_layout::run_launch_migration(app.handle(), &state);
+            state.start(app.handle().clone(), worker);
+            app.manage(state);
             // Pushes the playhead and end-of-track to the front; idle until
             // something actually plays.
             player::spawn_status_loop(app.handle().clone());
@@ -112,7 +120,6 @@ fn main() {
             artist_images::remove_artist_image,
             artist_images::fetch_artist_image_url,
             pasted_image::save_pasted_image,
-            artist_images::export_artist_images,
             playlists::list_playlists,
             playlists::create_playlist,
             playlists::rename_playlist,

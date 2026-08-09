@@ -110,6 +110,17 @@ keyring = { version = "3", features = ["windows-native"] }
 # equivalent, so it is this or a seam at the top of every Windows screen. The
 # raw bindings rather than the `windows` crate — two functions do not need COM,
 # and this version is already in the tree via tao.
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    # SetFileAttributesW — hiding `.sonarche` in the library root, where a
+    # leading dot means nothing to Explorer.
+    "Win32_Storage_FileSystem",
+] }
 # No media-session counterpart yet: `now_playing` no-ops off macOS, and a media
 # key that does nothing is not a reason to fail a play.
+
+[dev-dependencies]
+# Throwaway directories for the layout/migration tests — they exercise real
+# renames, which mocks cannot prove.
+tempfile = "3"
