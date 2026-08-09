@@ -22,6 +22,7 @@ use crate::player::{self, PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
+use crate::remux::RemuxState;
 use crate::reset::{self, ResetTargets};
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
@@ -220,6 +221,14 @@ pub async fn reenrich_track(
     id: i64,
 ) -> AppResult<Value> {
     state.run(&app, id).await
+}
+
+/// Repair pass over the library: remux fragmented DASH m4a files (downloads
+/// made before ffmpeg shipped) into classic MP4s. Fired by the shell once per
+/// launch; a library with nothing to repair answers in seconds.
+#[tauri::command]
+pub async fn remux_library(app: AppHandle, state: State<'_, RemuxState>) -> AppResult<Value> {
+    state.run(&app).await
 }
 
 /// Play a library file now, replacing whatever was queued. Returns the decoded

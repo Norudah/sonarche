@@ -4,6 +4,7 @@ import { Outlet } from "react-router";
 import { RouteTransition } from "@/app/layout/RouteTransition";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
+import { LibraryRepair } from "@/features/library/LibraryRepair";
 import { FavoriteCurrentButton } from "@/features/library/playlists/FavoriteButton";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { readLaunchWelcome } from "@/features/settings/launchWelcome";
@@ -38,6 +39,9 @@ export function AppLayout() {
           environment check is in flight no route can render, so a live sidebar
           would only let the user click nav items that appear to do nothing. */}
       <SetupGate welcome={welcome}>
+        {/* Inside the gate: the repair pass needs a healthy environment, and
+            the gate opening is exactly that signal. */}
+        <LibraryRepair />
         <div className="flex h-full flex-col">
           <div className="flex min-h-0 flex-1">
             <Sidebar />

@@ -35,6 +35,7 @@ def _handlers():
     import library_import
     import lyrics
     import probe
+    import remux
     import services
 
     return {
@@ -48,6 +49,7 @@ def _handlers():
         "enrich": enrich.handle,
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
+        "library_remux": remux.handle,
         "library_remove": library.remove,
         "library_update": library.update,
         "cover_set": cover_set.handle,

@@ -522,6 +522,10 @@ fn is_unavailable(message: &str) -> bool {
 /// Raw sidecar download of one URL into the staging dir.
 async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
+    // Without ffmpeg beside it, yt-dlp leaves YouTube's m4a as a fragmented
+    // DASH container — 0:00 durations and broken seeking on every player that
+    // reads classic sample tables (Music.app, iOS, CarPlay).
+    python_env::ensure_ffmpeg(&paths).await?;
     let sidecar = app.state::<SidecarState>();
     sidecar
         .request(
@@ -530,6 +534,7 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
             json!({
                 "url": url,
                 "staging_dir": paths.staging_dir.to_string_lossy(),
+                "ffmpeg": paths.ffmpeg().to_string_lossy(),
             }),
             DOWNLOAD_TIMEOUT,
         )

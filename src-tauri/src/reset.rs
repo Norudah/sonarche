@@ -39,7 +39,8 @@ use crate::{preferences, settings};
 pub struct ResetTargets {
     /// The Python virtualenv and everything pip put in it.
     pub venv: bool,
-    /// The working copy of fpcalc. Restored from the bundle on next use.
+    /// The working copies of fpcalc and ffmpeg. Restored from the bundle on
+    /// next use.
     pub tools: bool,
     /// The stored AcoustID key.
     pub api_keys: bool,
@@ -276,6 +277,7 @@ mod tests {
             runtime_dir: data.join("runtime"),
             wheels_dir: data.join("resources").join("wheels"),
             bundled_fpcalc: data.join("resources").join("tools").join("fpcalc"),
+            bundled_ffmpeg: data.join("resources").join("tools").join("ffmpeg"),
         }
     }
 

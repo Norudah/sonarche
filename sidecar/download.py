@@ -54,6 +54,28 @@ def scrub(message: str) -> str:
     return text.strip()
 
 
+class _Logger:
+    """Routes yt-dlp's output to stderr instead of swallowing it.
+
+    The one that mattered: without ffmpeg, yt-dlp warns "writing DASH m4a.
+    Only some players support this container" and leaves the file fragmented —
+    0:00 durations in Music.app, broken seeking on iOS. `no_warnings` hid that
+    message for months. Warnings are diagnostics, not noise; they belong in
+    the sidecar log."""
+
+    def debug(self, message):
+        pass
+
+    def info(self, message):
+        pass
+
+    def warning(self, message):
+        protocol.log(f"yt-dlp: {message}")
+
+    def error(self, message):
+        protocol.log(f"yt-dlp: {message}")
+
+
 def _progress_hook(request_id):
     def hook(d):
         status = d.get("status")
@@ -83,6 +105,7 @@ def handle(request_id: str, params: dict) -> dict:
 
     url = params["url"]
     staging_dir = params["staging_dir"]
+    ffmpeg = params.get("ffmpeg")
     os.makedirs(staging_dir, exist_ok=True)
 
     opts = {
@@ -90,11 +113,17 @@ def handle(request_id: str, params: dict) -> dict:
         "format": "bestaudio[ext=m4a]/bestaudio",
         "outtmpl": os.path.join(staging_dir, "%(title)s [%(id)s].%(ext)s"),
         "noplaylist": True,
-        "quiet": True,
-        "no_warnings": True,
+        "logger": _Logger(),
         "noprogress": True,
         "progress_hooks": [_progress_hook(request_id)],
     }
+    if ffmpeg:
+        # The bundled binary, by absolute path — PATH is never trusted. With it,
+        # yt-dlp's FixupM4a remuxes the DASH m4a into a classic MP4 (`-c copy`,
+        # no re-encode) as part of the download itself.
+        opts["ffmpeg_location"] = ffmpeg
+    else:
+        protocol.log("download: no ffmpeg passed — DASH m4a will stay fragmented")
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:

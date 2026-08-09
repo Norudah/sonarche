@@ -666,6 +666,7 @@ function mockPlaylist(id: unknown): MockPlaylist {
 
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
+  remux_library: { scanned: 0, fragmented: 0, remuxed: 0, failed: [] },
   list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
   list_api_keys: apiKeys,
   get_preferences: preferences,

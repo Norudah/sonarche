@@ -23,6 +23,7 @@ mod preferences;
 mod proc;
 mod python_env;
 mod reenrich;
+mod remux;
 mod reset;
 mod settings;
 mod sidecar;
@@ -43,6 +44,7 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
+        .manage(remux::RemuxState::default())
         .manage(genres::RecomputeGenresState::default())
         .manage(library_align::LibraryAlignState::default())
         .manage(library_import::LibraryImportState::default())
@@ -90,6 +92,7 @@ fn main() {
             commands::clear_job_history,
             commands::list_library,
             commands::reenrich_track,
+            commands::remux_library,
             commands::recompute_genres,
             commands::fetch_lyrics,
             commands::library_align_scan,

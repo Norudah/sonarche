@@ -19,6 +19,16 @@ const FPCALC_BIN: &str = if cfg!(windows) {
     "fpcalc"
 };
 
+/// Static ffmpeg, same provenance story as fpcalc. Used for exactly one thing:
+/// remuxing YouTube's fragmented DASH m4a into a classic MP4 (`-c copy`) so
+/// players that read the classic sample tables — Music.app, iOS, CarPlay —
+/// see real durations instead of 0:00.
+const FFMPEG_BIN: &str = if cfg!(windows) {
+    "ffmpeg.exe"
+} else {
+    "ffmpeg"
+};
+
 /// Fixed candidate locations, most specific first. Never rely on PATH.
 ///
 /// The fallback for a build made without `npm run prepare:runtime`, and for
@@ -95,6 +105,8 @@ pub struct AppPaths {
     /// The fpcalc the build shipped, before [`ensure_fpcalc`] copies it into
     /// `tools_dir`. Read-only: on macOS it lives inside a signed `.app`.
     pub bundled_fpcalc: PathBuf,
+    /// The ffmpeg the build shipped, same lifecycle as `bundled_fpcalc`.
+    pub bundled_ffmpeg: PathBuf,
 }
 
 /// Where the library lives, when the user has moved it off the default.
@@ -168,6 +180,7 @@ impl AppPaths {
             runtime_dir: data.join("runtime"),
             wheels_dir: resource("wheels"),
             bundled_fpcalc: resource("tools").join(FPCALC_BIN),
+            bundled_ffmpeg: resource("tools").join(FFMPEG_BIN),
         })
     }
 
@@ -199,6 +212,10 @@ impl AppPaths {
     pub fn fpcalc(&self) -> PathBuf {
         self.tools_dir.join(FPCALC_BIN)
     }
+
+    pub fn ffmpeg(&self) -> PathBuf {
+        self.tools_dir.join(FFMPEG_BIN)
+    }
 }
 
 /// Copy the shipped fpcalc into the app-owned tools dir on first use.
@@ -212,20 +229,39 @@ impl AppPaths {
 /// checksum is no worse off for it: verified on a machine we control, where a
 /// mismatch stops a release rather than an app already in someone's hands.
 pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
-    let dest = paths.fpcalc();
-    if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
+    ensure_tool(
+        "fpcalc",
+        &paths.bundled_fpcalc,
+        &paths.fpcalc(),
+        &paths.tools_dir,
+    )
+    .await
+}
+
+/// Same contract as [`ensure_fpcalc`], for the bundled ffmpeg.
+pub async fn ensure_ffmpeg(paths: &AppPaths) -> AppResult<()> {
+    ensure_tool(
+        "ffmpeg",
+        &paths.bundled_ffmpeg,
+        &paths.ffmpeg(),
+        &paths.tools_dir,
+    )
+    .await
+}
+
+async fn ensure_tool(name: &str, source: &Path, dest: &Path, tools_dir: &Path) -> AppResult<()> {
+    if tokio::fs::try_exists(dest).await.unwrap_or(false) {
         return Ok(());
     }
-    let source = &paths.bundled_fpcalc;
     if !tokio::fs::try_exists(source).await.unwrap_or(false) {
         return Err(AppError::Setup(format!(
-            "fpcalc is missing from this build (expected {}) — run `npm run prepare:runtime`",
+            "{name} is missing from this build (expected {}) — run `npm run prepare:runtime`",
             source.display()
         )));
     }
 
-    tokio::fs::create_dir_all(&paths.tools_dir).await?;
-    tokio::fs::copy(source, &dest).await?;
+    tokio::fs::create_dir_all(tools_dir).await?;
+    tokio::fs::copy(source, dest).await?;
 
     // `copy` carries the mode across, but only if the bundler kept it on the
     // resource in the first place — and a bundler copying files one by one is
@@ -233,10 +269,10 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        tokio::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755)).await?;
+        tokio::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o755)).await?;
     }
 
-    eprintln!("[tools] fpcalc ready at {}", dest.display());
+    eprintln!("[tools] {name} ready at {}", dest.display());
     Ok(())
 }
 
@@ -643,6 +679,7 @@ mod tests {
             runtime_dir: data.join("runtime"),
             wheels_dir: data.join("wheels"),
             bundled_fpcalc: data.join("tools").join(FPCALC_BIN),
+            bundled_ffmpeg: data.join("tools").join(FFMPEG_BIN),
         }
     }
 

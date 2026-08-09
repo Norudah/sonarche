@@ -207,6 +207,21 @@ export async function savePastedImage(bytes: Uint8Array): Promise<{ path: string
   return invoke("save_pasted_image", bytes);
 }
 
+export interface RemuxReport {
+  scanned: number;
+  fragmented: number;
+  remuxed: number;
+  /** Basenames of files the pass could not repair; retried on next launch. */
+  failed: string[];
+}
+
+/** One-shot repair pass: remux fragmented DASH m4a files (downloads made
+ * before the app bundled ffmpeg) into classic MP4s that Music.app, iOS and
+ * CarPlay can read. Idempotent — a healthy library answers in seconds. */
+export function remuxLibrary(): Promise<RemuxReport> {
+  return invoke<RemuxReport>("remux_library");
+}
+
 export async function listLibrary(): Promise<LibraryTrack[]> {
   const raw = await invoke<{ tracks: WireTrack[] }>("list_library");
   return raw.tracks.map((track) => ({
