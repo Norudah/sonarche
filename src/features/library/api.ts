@@ -1,5 +1,12 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
+/** Version a stable-named image URL so a replaced picture escapes the
+ * webview's cache. Left untouched for `data:` URIs — the mock preview inlines
+ * its images, and a query string would corrupt the document they carry. */
+export function withCacheBuster(url: string, version: number): string {
+  return url.startsWith("data:") ? url : `${url}?v=${version}`;
+}
+
 export interface LibraryTrack {
   id: number;
   title: string;
@@ -168,9 +175,9 @@ export async function listCoverCandidates(albumId: number): Promise<CoverCandida
 }
 
 /** The image an artist wears, keyed by the exact albumartist string the shelf
- * groups on. The file lives in app data (`artists/`), never in the library;
- * its name is a fresh random stem per write, so the URL itself is the cache
- * buster. */
+ * groups on. The file lives in the library's `Artwork/Artists/` under the
+ * artist's own name — stable across replacements, so `updated_at` rides the
+ * URL as the cache buster (same trick as album covers). */
 export interface ArtistImage {
   name: string;
   url: string;
@@ -178,7 +185,10 @@ export interface ArtistImage {
 
 export async function listArtistImages(): Promise<ArtistImage[]> {
   const raw = await invoke<{ images: { name: string; path: string; updated_at: number }[] }>("list_artist_images");
-  return raw.images.map((image) => ({ name: image.name, url: convertFileSrc(image.path) }));
+  return raw.images.map((image) => ({
+    name: image.name,
+    url: withCacheBuster(convertFileSrc(image.path), image.updated_at),
+  }));
 }
 
 export async function setArtistImage(

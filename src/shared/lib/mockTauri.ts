@@ -313,7 +313,7 @@ const libraryTracks = [
     length: 178,
     bitrate: 256000,
     format: "AAC",
-    path: "/Users/dev/Music/Sonarche/Skillet/Monster.m4a",
+    path: "/Users/dev/Music/Sonarche/Music/Skillet/Monster.m4a",
     // Square cover art: the queue swaps the 16:9 YouTube thumbnail for this
     // once the enrich step has filed the item.
     art_path: thumb("#334", "#112"),
@@ -387,7 +387,7 @@ const libraryTracks = [
     length,
     bitrate: 256000,
     format: title === UNPLAYABLE_TITLE ? "Opus" : "AAC",
-    path: `/Users/dev/Music/Sonarche/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
+    path: `/Users/dev/Music/Sonarche/Music/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
     mb_trackid: null,
@@ -423,7 +423,7 @@ const libraryTracks = [
     length,
     bitrate: 256000,
     format: "AAC",
-    path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
+    path: `/Users/dev/Music/Sonarche/Music/Various Artists/${title}.m4a`,
     art_path: thumb("#f43f5e", "#7c2d12"),
     bonus_source: null,
     mb_trackid: null,
@@ -459,7 +459,7 @@ const libraryTracks = [
     length: 265,
     bitrate: 256000,
     format: "AAC",
-    path: `/Users/dev/Music/Sonarche/Bryan Adams/${title}.m4a`,
+    path: `/Users/dev/Music/Sonarche/Music/Bryan Adams/${title}.m4a`,
     art_path: thumb("#d97706", "#78350f"),
     bonus_source: null,
     mb_trackid: "rec-yctm",
@@ -836,14 +836,6 @@ export function installMockTauri() {
       if (cmd === "plugin:clipboard-manager|read_text") return "https://example.com/mock-copied-cover.jpg";
       if (cmd === "save_pasted_image") {
         return { path: "/tmp/mock-pasted.png", bytes: 1_000_000 };
-      }
-      if (cmd === "export_artist_images") {
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        return {
-          exported: artistImages.size,
-          missing: 0,
-          folder: `${payload?.dest}/${payload?.folderName}`,
-        };
       }
       if (cmd === "list_playlists") return { playlists: mockPlaylists.map((row) => ({ ...row })) };
       if (cmd === "create_playlist") {

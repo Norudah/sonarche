@@ -1,5 +1,6 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
+import { withCacheBuster } from "@/features/library/api";
 import type { CoverCrop } from "@/features/library/api";
 
 /** A user-curated playlist. `itemIds` are beets item ids in playing order —
@@ -38,7 +39,9 @@ function toPlaylist(wire: WirePlaylist): Playlist {
     id: wire.id,
     name: wire.name,
     kind: wire.kind === "favorites" ? "favorites" : "user",
-    coverUrl: wire.cover_path ? convertFileSrc(wire.cover_path) : null,
+    // The file is named after the playlist and keeps its name when the image
+    // is replaced; `updated_at` busts the webview's cache in its place.
+    coverUrl: wire.cover_path ? withCacheBuster(convertFileSrc(wire.cover_path), wire.updated_at) : null,
     marker: wire.marker ?? null,
     createdAt: wire.created_at,
     updatedAt: wire.updated_at,

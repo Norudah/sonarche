@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-import { ArtistImageExportCard } from "@/features/settings/ArtistImageExportCard";
 import { DangerZone } from "@/features/settings/DangerZone";
 import { LibraryLocationCard } from "@/features/settings/LibraryLocationCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
@@ -15,7 +14,6 @@ export function LibrarySection() {
     <>
       <SettingsHero eyebrow={t("title")} title={t("library.title")} description={t("library.description")} />
       <LibraryLocationCard />
-      <ArtistImageExportCard />
       <DangerZone />
     </>
   );
