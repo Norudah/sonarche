@@ -15,11 +15,11 @@
  *   ships 24 MB instead of the 66 MB it becomes.
  * - `wheels/` is a plain directory. Wheels are inert files with nothing to
  *   preserve, and pip wants a directory to point `--find-links` at.
- * - `tools/fpcalc` is unpacked here rather than fetched at first use. The app
- *   used to download it itself, which is the one behaviour an unsigned binary
- *   cannot afford: a program nobody signed pulling an executable off the
- *   network and running it is what a dropper looks like, and Defender
- *   quarantined the installer on that basis alone.
+ * - `tools/` (fpcalc, ffmpeg) is unpacked here rather than fetched at first
+ *   use. The app used to download fpcalc itself, which is the one behaviour an
+ *   unsigned binary cannot afford: a program nobody signed pulling an
+ *   executable off the network and running it is what a dropper looks like,
+ *   and Defender quarantined the installer on that basis alone.
  *
  * The wheels are optional: without them the app installs from PyPI as before.
  * They are what makes the first run offline-capable and quick.
@@ -31,6 +31,7 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,6 +84,42 @@ const FPCALC_ASSETS = {
   },
 };
 FPCALC_ASSETS["x86_64-apple-darwin"] = FPCALC_ASSETS["aarch64-apple-darwin"];
+
+/**
+ * Static ffmpeg, pinned by triple and by digest, from eugeneware/ffmpeg-static
+ * (evermeet/osxexperts/gyan builds republished as bare per-arch binaries).
+ *
+ * ffmpeg exists in the bundle for exactly one job: remuxing YouTube's DASH
+ * m4a into a classic MP4 (`-c copy`, no re-encode) — yt-dlp's own FixupM4a
+ * does it at download time, and the library repair pass does it for files
+ * downloaded before ffmpeg shipped. Without that remux, every player that
+ * reads the classic sample tables (Music.app, iOS, CarPlay) sees an empty
+ * `stbl`: 0:00 durations, broken seeking, silent tracks.
+ *
+ * The binaries are GPL builds; the matching licence text ships beside the
+ * binary (`ffmpeg.LICENSE`), which is what redistribution asks of us.
+ */
+const FFMPEG = { release: "b6.1.1" };
+const FFMPEG_ASSETS = {
+  "aarch64-apple-darwin": {
+    asset: "ffmpeg-darwin-arm64.gz",
+    licence: "darwin-arm64.LICENSE",
+    sha256: "8923876afa8db5585022d7860ec7e589af192f441c56793971276d450ed3bbfa",
+    licenceSha256: "cb48bf09a11f5fb576cddb0431c8f5ed0a60157a9ec942adffc13907cbe083f2",
+  },
+  "x86_64-apple-darwin": {
+    asset: "ffmpeg-darwin-x64.gz",
+    licence: "darwin-x64.LICENSE",
+    sha256: "929b375c1182d956c51f7ac25e0b2b0411fb01f6f407aa15c9758efeb4242106",
+    licenceSha256: "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af",
+  },
+  "x86_64-pc-windows-msvc": {
+    asset: "ffmpeg-win32-x64.gz",
+    licence: "win32-x64.LICENSE",
+    sha256: "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77",
+    licenceSha256: "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+  },
+};
 
 /** System tar, by absolute path. Windows has shipped bsdtar in System32 since
  * 10 1803, and it reads the same gzipped tarball — and the same zip, which is
@@ -199,36 +236,28 @@ async function fetchWheels(triple) {
   await stampAs(wheels, stamp);
 }
 
-/**
- * Unpacks fpcalc into `resources/tools/`, ready to be copied into place on
- * first use. Statically linked upstream, so it needs no ffmpeg beside it.
- */
-async function fetchFpcalc(triple) {
-  const asset = FPCALC_ASSETS[triple];
-  if (!asset) throw new Error(`no fpcalc asset pinned for ${triple} — see FPCALC_ASSETS in this file`);
-
-  const stamp = `${FPCALC.version}-${triple}`;
-  const tools = path.join(resources, "tools");
-  const binary = path.join(tools, path.basename(asset.member));
-  if ((await isCurrent(tools, stamp)) && (await exists(binary))) {
-    console.log(`[runtime] fpcalc already at ${stamp}`);
-    return;
-  }
-
-  const url = `https://github.com/acoustid/chromaprint/releases/download/v${FPCALC.version}/${asset.archive}`;
-  console.log(`[runtime] fetching ${asset.archive}`);
-
+/** Fetch one release asset, verified against its pinned digest. */
+async function fetchVerified(url, sha256, label) {
+  console.log(`[runtime] fetching ${label}`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`download failed: ${response.status} ${url}`);
   const bytes = Buffer.from(await response.arrayBuffer());
-
   const digest = createHash("sha256").update(bytes).digest("hex");
-  if (digest !== asset.sha256) {
-    throw new Error(`fpcalc checksum mismatch\n  expected ${asset.sha256}\n  got      ${digest}`);
+  if (digest !== sha256) {
+    throw new Error(`${label} checksum mismatch\n  expected ${sha256}\n  got      ${digest}`);
   }
+  return bytes;
+}
 
-  await fs.rm(tools, { recursive: true, force: true });
-  await fs.mkdir(tools, { recursive: true });
+/** Unpacks fpcalc into `tools`. Statically linked upstream, so it needs no
+ * ffmpeg beside it. */
+async function fetchFpcalc(triple, tools) {
+  const asset = FPCALC_ASSETS[triple];
+  if (!asset) throw new Error(`no fpcalc asset pinned for ${triple} — see FPCALC_ASSETS in this file`);
+
+  const url = `https://github.com/acoustid/chromaprint/releases/download/v${FPCALC.version}/${asset.archive}`;
+  const bytes = await fetchVerified(url, asset.sha256, asset.archive);
+
   // Extension-free on purpose: the asset is a tarball on macOS and a zip on
   // Windows, and bsdtar sniffs the format rather than trusting the name.
   const archive = path.join(tools, "fpcalc-archive");
@@ -238,9 +267,48 @@ async function fetchFpcalc(triple) {
   run(TAR, ["-xf", archive, "-C", tools, "--strip-components=1", asset.member]);
   await fs.rm(archive, { force: true });
 
+  const binary = path.join(tools, path.basename(asset.member));
   if (!(await exists(binary))) throw new Error(`fpcalc missing after extraction (expected ${binary})`);
   const { size } = await fs.stat(binary);
   console.log(`[runtime] fpcalc ${FPCALC.version}, ${(size / 1e6).toFixed(1)} MB`);
+}
+
+/** Unpacks ffmpeg (a bare gzipped binary) and its licence into `tools`. */
+async function fetchFfmpeg(triple, tools) {
+  const asset = FFMPEG_ASSETS[triple];
+  if (!asset) throw new Error(`no ffmpeg asset pinned for ${triple} — see FFMPEG_ASSETS in this file`);
+
+  const base = `https://github.com/eugeneware/ffmpeg-static/releases/download/${FFMPEG.release}`;
+  const bytes = await fetchVerified(`${base}/${asset.asset}`, asset.sha256, asset.asset);
+  const licence = await fetchVerified(`${base}/${asset.licence}`, asset.licenceSha256, asset.licence);
+
+  const binary = path.join(tools, triple.includes("windows") ? "ffmpeg.exe" : "ffmpeg");
+  await fs.writeFile(binary, gunzipSync(bytes));
+  await fs.writeFile(path.join(tools, "ffmpeg.LICENSE"), licence);
+  if (process.platform !== "win32") await fs.chmod(binary, 0o755);
+
+  const { size } = await fs.stat(binary);
+  console.log(`[runtime] ffmpeg ${FFMPEG.release}, ${(size / 1e6).toFixed(1)} MB`);
+}
+
+/**
+ * Populates `resources/tools/` (fpcalc + ffmpeg), ready to be copied into
+ * place on first use. One joint stamp for the directory: the two fetchers
+ * share it, so bumping either pin rebuilds both — cheaper than teaching each
+ * to clean up around the other.
+ */
+async function fetchTools(triple) {
+  const stamp = `fpcalc-${FPCALC.version}+ffmpeg-${FFMPEG.release}-${triple}`;
+  const tools = path.join(resources, "tools");
+  if (await isCurrent(tools, stamp)) {
+    console.log(`[runtime] tools already at ${stamp}`);
+    return;
+  }
+
+  await fs.rm(tools, { recursive: true, force: true });
+  await fs.mkdir(tools, { recursive: true });
+  await fetchFpcalc(triple, tools);
+  await fetchFfmpeg(triple, tools);
   await stampAs(tools, stamp);
 }
 
@@ -253,5 +321,5 @@ if (!triple) {
 
 await fetchInterpreter(triple);
 await fetchWheels(triple);
-await fetchFpcalc(triple);
+await fetchTools(triple);
 console.log("[runtime] ready");
