@@ -2,14 +2,15 @@
  * Whether the sidebar wears notification badges (today: the to-fix count on
  * the Metadata tab).
  *
- * Stored beside `theme.ts` and `launchWelcome.ts` for the same reason: the
- * answer is needed by the shell, before anything asks the sidecar for the
- * preferences it keeps on disk.
+ * In `shared` for the same reason as `rematchConfirm`: three surfaces genuinely
+ * consume it — the sidebar wears the badge, the metadata hero switches it off
+ * where the annoyance is felt, and the settings page lists it with the rest.
+ * localStorage rather than the sidecar's preferences file because the answer is
+ * needed by the shell, before anything asks for what is kept on disk.
  *
- * On by default — the badge is the page's reason to be visited. Unlike the
- * welcome word, this one is read *live*: the sidebar must drop its badge the
- * moment the switch flips, so the module keeps a subscriber list and exposes
- * the value through `useSyncExternalStore`.
+ * On by default — the badge is the page's reason to be visited. It is read
+ * *live*: every surface must agree the moment the switch flips, so the module
+ * keeps a subscriber list and exposes the value through `useSyncExternalStore`.
  */
 
 import { useSyncExternalStore } from "react";

@@ -172,7 +172,7 @@
     "genreMissing": "Genre manquant",
     "genreOffTree": "Genre hors arbre",
     "missingArtwork": "Pochette absente",
-    "tracklistGaps": "Tracklist à trous",
+    "tracklistGaps": "Pistes manquantes dans l’album",
     "clearFilter": "Retirer le filtre « {{filter}} »",
     "noResults": "Rien ne correspond au filtre actif.",
     "suspectMatch": "Correspondance à vérifier",

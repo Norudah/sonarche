@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { triagePaths } from "@/app/paths";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { track } from "@/features/library/testFixtures";
-import { buildTriageQueue, countToFix, type TriageLine } from "@/features/library/triage/queue";
+import { buildTriageQueue, tallyToFix, type TriageLine } from "@/features/library/triage/queue";
 
 function lineOf(queue: TriageLine[], key: TriageLine["key"]): TriageLine {
   const line = queue.find((entry) => entry.key === key);
@@ -137,9 +137,26 @@ describe("buildTriageQueue", () => {
   });
 });
 
-describe("countToFix", () => {
-  it("adds tracks and albums together — N things, not N tracks", () => {
-    expect(countToFix(queue)).toBe(8);
+describe("tallyToFix", () => {
+  /**
+   * The regression the headline was built on: track 2 is on the year line *and*
+   * the genre line, track 6 is suspect *and* duplicated, and "Holes" is both
+   * artless and gapped. Summing the lines owned those three twice — 8 for what
+   * is really 4 tracks and 1 album.
+   */
+  it("counts each thing once, however many lines name it", () => {
+    expect(queue.reduce((sum, line) => sum + line.count, 0)).toBe(8);
+    expect(tallyToFix(queue)).toEqual({ tracks: 4, albums: 1, total: 5 });
+  });
+
+  /** Tracks and albums are counted apart, so the hero can name both kinds
+   * rather than hand over one figure made of two different things. */
+  it("keeps the two kinds separate", () => {
+    const artless = buildTriageQueue(
+      [],
+      albums.map((album) => ({ ...album, artUrl: null })),
+    );
+    expect(tallyToFix(artless)).toEqual({ tracks: 0, albums: 2, total: 2 });
   });
 
   it("is zero on a clean library", () => {
@@ -155,6 +172,6 @@ describe("countToFix", () => {
         artUrl: "asset://a.jpg",
       }),
     ];
-    expect(countToFix(buildTriageQueue(clean, groupAlbums(clean)))).toBe(0);
+    expect(tallyToFix(buildTriageQueue(clean, groupAlbums(clean))).total).toBe(0);
   });
 });

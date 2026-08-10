@@ -1,10 +1,16 @@
 {
   "title": "Metadata",
   "eyebrow": "Upkeep",
-  "toFix_one": "{{count}} thing to fix",
-  "toFix_other": "{{count}} things to fix",
-  "allClear": "Nothing to fix",
-  "allClearHint": "Every track and album passes the checks.",
+  "toFill": {
+    "tracks_one": "{{count}} track to complete",
+    "tracks_other": "{{count}} tracks to complete",
+    "albums_one": "{{count}} album to complete",
+    "albums_other": "{{count}} albums to complete",
+    "both": "{{tracks}} and {{albums}} to complete"
+  },
+  "allClear": "Nothing to complete",
+  "allClearHint": "Your tracks and albums aren't missing anything.",
+  "badgeSwitch": "Badge in the menu",
   "align": {
     "heading": "Alignment",
     "idle_one": "{{count}} album without a MusicBrainz identity",
@@ -40,7 +46,7 @@
     "year": "Missing year",
     "genre": "Missing or off-tree genre",
     "artwork": "Missing artwork",
-    "tracklist": "Gapped tracklist",
+    "tracklist": "Tracks missing from the album",
     "genreMissing_one": "{{count}} missing",
     "genreMissing_other": "{{count}} missing",
     "genreOffTree_one": "{{count}} off-tree",

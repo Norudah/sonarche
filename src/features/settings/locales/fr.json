@@ -30,10 +30,10 @@
   "metadata": {
     "category": "Métadonnées",
     "title": "Métadonnées",
-    "description": "Comment l'app te signale ce qu'il reste à corriger, et la prudence avec laquelle l'identification automatique réécrit tes tags.",
+    "description": "Comment l'app te signale ce qu'elle pourrait encore compléter, et la prudence avec laquelle l'identification automatique réécrit tes tags.",
     "badges": {
       "name": "Pastille sur l'onglet Métadonnées",
-      "why": "Affiche dans la barre latérale le nombre de choses à corriger, le même que celui de la page Métadonnées. Désactive-la si tu préfères consulter la page à ton rythme."
+      "why": "Affiche dans la barre latérale le nombre de titres et d'albums à compléter, le même que celui de la page Métadonnées — qui porte le même interrupteur. Désactive-la si tu préfères consulter la page à ton rythme."
     },
     "rematchConfirm": {
       "name": "Confirmation avant un re-match",

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
-import { storeNotificationBadges, useNotificationBadges } from "@/features/settings/notificationBadges";
+import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { storeRematchConfirm, useRematchConfirm } from "@/shared/lib/rematchConfirm";
 
 /**

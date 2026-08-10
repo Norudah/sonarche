@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseNotificationBadges } from "@/features/settings/notificationBadges";
+import { parseNotificationBadges } from "@/shared/lib/notificationBadges";
 
 describe("parseNotificationBadges", () => {
   it("is on until somebody turns it off", () => {

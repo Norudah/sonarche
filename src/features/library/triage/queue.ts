@@ -36,9 +36,35 @@ export interface TriageLine {
   doors: TriageDoor[];
   /** A few concrete names (track or album titles), untranslated data. */
   examples: string[];
+  /** Every thing this line points at, by `subject` identity — what the
+   * headline counts once even when several lines name the same track. */
+  subjects: string[];
+}
+
+/** What the page and the sidebar badge announce: things, counted once each.
+ *
+ * Adding the lines up was inflating the number badly. A track with neither year
+ * nor genre landed on two lines and was owned twice, and album lines were
+ * summed into the same total as track lines — a real 48-track import scored 64,
+ * so the app claimed more defects than the user had music. */
+export interface TriageTally {
+  tracks: number;
+  albums: number;
+  total: number;
 }
 
 const EXAMPLE_COUNT = 3;
+
+/** Prefixed so the two namespaces can never collide inside the union: a track
+ * id and an album key are both strings, and counting a coincidence as one
+ * object would understate the total. */
+function trackSubject(track: LibraryTrack): string {
+  return `t:${track.id}`;
+}
+
+function albumSubject(album: Album): string {
+  return `a:${album.key}`;
+}
 
 /** Untitled items would surface as blank fragments, so they drop out of the
  * examples — they are still in the count and behind the door. */
@@ -70,16 +96,19 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
       key: "suspect",
       ...doorsOf([{ key: "suspectMatch", count: suspect.length, to: triagePaths.suspectMatch }]),
       examples: examplesOf(suspect.map((track) => track.title)),
+      subjects: suspect.map(trackSubject),
     },
     {
       key: "duplicates",
       ...doorsOf([{ key: "duplicateRecording", count: duplicated.length, to: triagePaths.duplicateRecording }]),
       examples: examplesOf(duplicated.map((track) => track.title)),
+      subjects: duplicated.map(trackSubject),
     },
     {
       key: "year",
       ...doorsOf([{ key: "missingYear", count: missingYear.length, to: triagePaths.missingYear }]),
       examples: examplesOf(missingYear.map((track) => track.title)),
+      subjects: missingYear.map(trackSubject),
     },
     {
       key: "genre",
@@ -88,22 +117,32 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
         { key: "genreOffTree", count: genreOffTree.length, to: triagePaths.genreOffTree },
       ]),
       examples: examplesOf([...genreMissing, ...genreOffTree].map((track) => track.title)),
+      subjects: [...genreMissing, ...genreOffTree].map(trackSubject),
     },
     {
       key: "artwork",
       ...doorsOf([{ key: "missingArtwork", count: missingArtwork.length, to: triagePaths.missingArtwork }]),
       examples: examplesOf(missingArtwork.map((album) => album.title)),
+      subjects: missingArtwork.map(albumSubject),
     },
     {
       key: "tracklist",
       ...doorsOf([{ key: "tracklistGaps", count: gapped.length, to: triagePaths.tracklistGaps }]),
       examples: examplesOf(gapped.map((album) => album.title)),
+      subjects: gapped.map(albumSubject),
     },
   ];
 }
 
-/** The headline number — tracks and albums added together, owned as "N things
- * to fix" rather than a track count. Zero is the win state. */
-export function countToFix(queue: TriageLine[]): number {
-  return queue.reduce((sum, line) => sum + line.count, 0);
+/** How many distinct things the queue is about, split by kind so the headline
+ * can name them ("14 titres et 2 albums") instead of handing over one opaque
+ * figure. Zero total is the win state. */
+export function tallyToFix(queue: TriageLine[]): TriageTally {
+  const subjects = new Set<string>();
+  for (const line of queue) for (const subject of line.subjects) subjects.add(subject);
+
+  let tracks = 0;
+  for (const subject of subjects) if (subject.startsWith("t:")) tracks += 1;
+
+  return { tracks, albums: subjects.size - tracks, total: subjects.size };
 }

@@ -1,10 +1,16 @@
 {
   "title": "Métadonnées",
   "eyebrow": "Entretien",
-  "toFix_one": "{{count}} chose à corriger",
-  "toFix_other": "{{count}} choses à corriger",
-  "allClear": "Rien à corriger",
-  "allClearHint": "Tous les morceaux et albums passent les contrôles.",
+  "toFill": {
+    "tracks_one": "{{count}} titre à compléter",
+    "tracks_other": "{{count}} titres à compléter",
+    "albums_one": "{{count}} album à compléter",
+    "albums_other": "{{count}} albums à compléter",
+    "both": "{{tracks}} et {{albums}} à compléter"
+  },
+  "allClear": "Rien à compléter",
+  "allClearHint": "Il ne manque rien à tes titres ni à tes albums.",
+  "badgeSwitch": "Pastille dans le menu",
   "align": {
     "heading": "Alignement",
     "idle_one": "{{count}} album sans identité MusicBrainz",
@@ -40,7 +46,7 @@
     "year": "Année manquante",
     "genre": "Genre manquant ou hors arbre",
     "artwork": "Pochette absente",
-    "tracklist": "Tracklist à trous",
+    "tracklist": "Pistes manquantes dans l’album",
     "genreMissing_one": "{{count}} manquant",
     "genreMissing_other": "{{count}} manquants",
     "genreOffTree_one": "{{count}} hors arbre",

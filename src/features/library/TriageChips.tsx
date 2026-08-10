@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 export interface TriageChip {
   key: string;
   label: string;
-  /** "fix" (default) is a correction filter; "browse" is plain navigation
-   * arriving from a genre or family page — same chip, different colour. */
-  tone?: "fix" | "browse";
+  /** "filter" (default) is any narrowed list; "review" is the one filter that
+   * means the app may have written something wrong. */
+  tone?: "filter" | "review";
   onRemove: () => void;
 }
 
@@ -24,14 +24,15 @@ interface TriageChipsProps {
  * remove button: the filter has no other state to toggle, and a separate ×
  * hit-zone at this size is a misclick trap.
  *
- * Amber for a correction filter: it means "something to fix" — the same warning
- * wash the Metadata queue's doors wear — where indigo is the colour of plain
- * navigation. Arriving from a genre or family page is navigation, so that chip
- * keeps the accent: the colour states which of the two errands the list is on.
+ * The accent is the default, amber the exception. Every correction filter used
+ * to arrive in amber, so landing on "tracks with no year" looked like landing
+ * on an incident — for a list of files whose only sin is an empty tag. A
+ * filtered list is a filtered list, whichever door opened it; only "match to
+ * review" warns, because only there might the app have written the wrong thing.
  */
 const CHIP_TONE = {
-  fix: "bg-warning-soft text-warning",
-  browse: "bg-accent-soft text-accent",
+  filter: "bg-accent-soft text-accent",
+  review: "bg-warning-soft text-warning",
 } as const;
 
 export function TriageChips({ chips, countLabel }: TriageChipsProps) {
@@ -47,7 +48,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("triage.clearFilter", { filter: chip.label })}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "fix"]}`}
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "filter"]}`}
         >
           {chip.label}
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />

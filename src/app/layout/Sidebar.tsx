@@ -28,7 +28,7 @@ import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDia
 import { sidebarPlaylists } from "@/features/library/playlists/playlists";
 import { useTriageCount } from "@/features/library/triage/useTriageCount";
 import { settingsCategories } from "@/features/settings/categories";
-import { useNotificationBadges } from "@/features/settings/notificationBadges";
+import { useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { isMacOS } from "@/shared/lib/platform";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { SonarcheMark } from "@/shared/ui/SonarcheMark";

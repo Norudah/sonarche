@@ -19,9 +19,7 @@ const ROW = "flex items-center gap-4 rounded-xl border border-separator/60 bg-su
  * The five rows used to be typographically identical, so "10 tracklists with
  * holes" and "1 missing cover" arrived as the same object and the eye had to
  * read every line to find its way. A glyph is what makes a row recognisable
- * before it is read — and it is also where the page finally says out loud that
- * these are all the same tone of problem: amber, the colour this app already
- * uses for metadata that is merely incomplete rather than broken.
+ * before it is read.
  */
 const ICONS: Record<TriageLine["key"], LucideIcon> = {
   suspect: ScanSearch,
@@ -31,6 +29,19 @@ const ICONS: Record<TriageLine["key"], LucideIcon> = {
   artwork: ImageOff,
   tracklist: ListX,
 };
+
+/**
+ * Amber is spent on one row only.
+ *
+ * Every glyph used to wear it, which put a warning colour on "missing year" —
+ * an absence in someone's own files, not an alarm — and made the page read as
+ * six accusations. A suspect match is different in kind: it is the one line
+ * where *we* may have written the wrong thing into a track, so it keeps the
+ * warning tone and now owns it alone. The rest are neutral: still a queue,
+ * still doors, no longer a scolding.
+ */
+const SUSPECT_TONE = "bg-warning-soft text-warning";
+const NEUTRAL_TONE = "bg-surface-secondary text-muted";
 
 /** "Neon Slumber, Half Light +19" — what the count is made of, in plain
  * muted text (not individually clickable in v1; the door opens the list). */
@@ -50,10 +61,11 @@ function Examples({ line }: { line: TriageLine }) {
 
 function Glyph({ line }: { line: TriageLine }) {
   const Icon = ICONS[line.key];
+  const tone = line.key === "suspect" ? SUSPECT_TONE : NEUTRAL_TONE;
 
   return (
-    <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-soft">
-      <Icon className="size-[1.125rem] text-warning" />
+    <span aria-hidden className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+      <Icon className="size-[1.125rem]" />
     </span>
   );
 }

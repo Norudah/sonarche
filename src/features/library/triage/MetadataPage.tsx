@@ -7,7 +7,7 @@ import { groupAlbums } from "@/features/library/albums/albums";
 import { groupArtists } from "@/features/library/artists/artists";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { useLibrary } from "@/features/library/hooks";
-import { buildTriageQueue, countToFix } from "@/features/library/triage/queue";
+import { buildTriageQueue, tallyToFix } from "@/features/library/triage/queue";
 import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -37,7 +37,7 @@ export function MetadataPage() {
   return (
     <PageContainer>
       <TriageHero
-        toFix={tracks.length > 0 ? countToFix(queue) : null}
+        tally={tracks.length > 0 ? tallyToFix(queue) : null}
         trackCount={tracks.length}
         albumCount={albums.length}
         artistCount={artistCount}

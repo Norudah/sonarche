@@ -43,7 +43,6 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
     chips.push({
       key: "decade",
       label: t("filters.decadeValue", { decade: triage.decade }),
-      tone: "browse",
       onRemove: () => setParam("decade", null),
     });
   if (triage.missingYear)
@@ -54,12 +53,17 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
       label: t(triage.genre === GENRE_MISSING ? "triage.genreMissing" : "triage.genreOffTree"),
       onRemove: () => setParam("genre", null),
     });
-  // A plain genre name keeps the browsing tone: it is a place someone navigated
-  // to, not something to correct.
   else if (triage.genre != null)
-    chips.push({ key: "genre", label: triage.genre, tone: "browse", onRemove: () => setParam("genre", null) });
+    chips.push({ key: "genre", label: triage.genre, onRemove: () => setParam("genre", null) });
+  // The one chip that warns: everything else narrows a list, this one says the
+  // app may have filed these tracks under the wrong recording.
   if (triage.suspectMatch)
-    chips.push({ key: "suspect", label: t("triage.suspectMatch"), onRemove: () => setParam("suspect", null) });
+    chips.push({
+      key: "suspect",
+      label: t("triage.suspectMatch"),
+      tone: "review",
+      onRemove: () => setParam("suspect", null),
+    });
   if (triage.duplicateRecording)
     chips.push({
       key: "duplicates",

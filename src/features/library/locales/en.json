@@ -172,7 +172,7 @@
     "genreMissing": "Missing genre",
     "genreOffTree": "Genre outside the tree",
     "missingArtwork": "Missing artwork",
-    "tracklistGaps": "Gapped tracklist",
+    "tracklistGaps": "Tracks missing from the album",
     "clearFilter": "Remove the “{{filter}}” filter",
     "noResults": "Nothing matches the active filter.",
     "suspectMatch": "Match to review",
