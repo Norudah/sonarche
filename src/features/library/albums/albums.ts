@@ -1,4 +1,4 @@
-import type { AlbumKind, LibraryTrack } from "@/features/library/api";
+import type { AcceptedCheck, AlbumKind, LibraryTrack } from "@/features/library/api";
 import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
 import { createTextFilter } from "@/shared/lib/search";
 
@@ -26,6 +26,9 @@ export interface Album {
   /** The beets album rows behind the card, ascending. What a kind change has
    * to be applied to; empty for a group made only of singletons. */
   albumIds: number[];
+  /** Album-level checks the owner has answered. Same all-must-agree rule as
+   * `kind`, and for the same reason. */
+  accepted: AcceptedCheck[];
   /** Share of tracked metadata fields that are filled, 0…1. */
   completeness: number;
   /** Tracks whose every tracked field is filled. Counted here rather than in
@@ -87,13 +90,21 @@ function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged
   return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
 }
 
-/** The rows behind a card, and the kind they agree on. */
-function recordOf(tracks: LibraryTrack[]): { kind: AlbumKind; albumIds: number[] } {
+/** The rows behind a card, and what they agree on. */
+function recordOf(tracks: LibraryTrack[]): { kind: AlbumKind; albumIds: number[]; accepted: AcceptedCheck[] } {
   const albumIds = Array.from(new Set(tracks.map((track) => track.albumId).filter((id) => id != null))).sort(
     (a, b) => a - b,
   );
   const collection = albumIds.length > 0 && tracks.every((track) => track.albumKind === "collection");
-  return { kind: collection ? "collection" : "album", albumIds };
+  // Intersection, not union: a card standing for two beets albums is only
+  // done with a check once both of them are.
+  const accepted =
+    albumIds.length === 0
+      ? []
+      : tracks
+          .map((track) => track.albumAccepted)
+          .reduce((common, carried) => common.filter((check) => carried.includes(check)));
+  return { kind: collection ? "collection" : "album", albumIds, accepted };
 }
 
 function computeAlbums(tracks: LibraryTrack[]): Album[] {

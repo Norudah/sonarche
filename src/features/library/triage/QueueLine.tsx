@@ -1,4 +1,4 @@
-import { CalendarOff, ChevronRight, Copy, ImageOff, Layers, ListX, ScanSearch } from "lucide-react";
+import { CalendarOff, Check, ChevronRight, Copy, ImageOff, Layers, ListX, ScanSearch } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
@@ -71,11 +71,54 @@ function Glyph({ line }: { line: TriageLine }) {
 }
 
 /**
+ * "Seen, and wanted as it is."
+ *
+ * The answer that was missing. Every other action on this page changes the
+ * library until the check passes; this one changes nothing and closes the line
+ * anyway, which is what makes zero reachable on a collection of rips whose tags
+ * are simply never going to be complete. Nothing is destroyed — the page keeps
+ * a line at the bottom that takes it all back.
+ *
+ * Quiet by design, and revealed on hover: it is the second thing to do with a
+ * line, after looking at what is in it.
+ */
+function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending: boolean }) {
+  const { t } = useTranslation("metadata");
+
+  return (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={(event) => {
+        // The row is a link; answering it is not navigating into it.
+        event.preventDefault();
+        event.stopPropagation();
+        onAccept();
+      }}
+      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted opacity-0 transition group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <Check className="size-3.5" />
+      {t("accept.action")}
+    </button>
+  );
+}
+
+/**
  * One row of the correction queue. With a single door the whole row is the
  * link; the fused genre row instead carries one pill per door, because
  * "missing" and "off-tree" open two different filtered lists.
  */
-export function QueueLine({ line, style }: { line: TriageLine; style?: CSSProperties }) {
+export function QueueLine({
+  line,
+  isPending,
+  onAccept,
+  style,
+}: {
+  line: TriageLine;
+  isPending: boolean;
+  onAccept: (target: NonNullable<TriageLine["accept"]>) => void;
+  style?: CSSProperties;
+}) {
   const { t } = useTranslation("metadata");
 
   const label = (
@@ -83,6 +126,10 @@ export function QueueLine({ line, style }: { line: TriageLine; style?: CSSProper
       <p className="text-sm font-medium">{t(`queue.${line.key}`)}</p>
       <Examples line={line} />
     </div>
+  );
+
+  const accept = line.accept && (
+    <AcceptButton isPending={isPending} onAccept={() => line.accept && onAccept(line.accept)} />
   );
 
   if (line.doors.length === 1) {
@@ -94,6 +141,7 @@ export function QueueLine({ line, style }: { line: TriageLine; style?: CSSProper
       >
         <Glyph line={line} />
         {label}
+        {accept}
         <span className="flex shrink-0 items-center gap-2">
           <span className="text-lg font-semibold tabular-nums">{line.count}</span>
           <ChevronRight className="size-4 text-muted transition-transform group-hover/line:translate-x-0.5" />
@@ -103,9 +151,10 @@ export function QueueLine({ line, style }: { line: TriageLine; style?: CSSProper
   }
 
   return (
-    <div style={style} className={`${ROW} cascade-item`}>
+    <div style={style} className={`${ROW} group/line cascade-item`}>
       <Glyph line={line} />
       {label}
+      {accept}
       <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         {line.doors.map((door) => (
           <Link

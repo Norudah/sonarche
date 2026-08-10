@@ -15,6 +15,8 @@ write it directly.
 import os
 import sqlite3
 
+import accepted
+
 from genre_tree import bucket_for
 
 # beets joins multi-valued tags with this in the DB, and formats them with "; "
@@ -155,6 +157,8 @@ def track_row(
     suspect_by_item,
     provisional_cover_by_item,
     kind_by_album,
+    accepted_by_item,
+    accepted_by_album,
     library_dir: str,
 ) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
@@ -198,6 +202,10 @@ def track_row(
         "provisional_cover": row["id"] in provisional_cover_by_item,
         # What the record this track sits on *is* — null for a plain album.
         "album_kind": kind_by_album.get(row["album_id"]),
+        # Checks whose verdict the owner has already answered (see accepted.py):
+        # the track's own, and the ones its album carries for the whole record.
+        "accepted": sorted(accepted.parse(accepted_by_item.get(row["id"]))),
+        "album_accepted": sorted(accepted.parse(accepted_by_album.get(row["album_id"]))),
         "added": row["added"],
     }
 
@@ -228,6 +236,8 @@ def handle(_request_id: str, params: dict) -> dict:
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
         provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
         kind_by_album = flex_attrs_by_album(conn, ALBUM_KIND_KEY)
+        accepted_by_item = flex_attrs_by_item(conn, accepted.KEY)
+        accepted_by_album = flex_attrs_by_album(conn, accepted.KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
         # `added` at the bottom instead of letting NULL sort unpredictably.
         rows = conn.execute(
@@ -242,6 +252,8 @@ def handle(_request_id: str, params: dict) -> dict:
                 suspect_by_item,
                 provisional_cover_by_item,
                 kind_by_album,
+                accepted_by_item,
+                accepted_by_album,
                 library_dir,
             )
             for r in rows

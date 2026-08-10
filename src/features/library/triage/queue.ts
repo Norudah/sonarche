@@ -1,7 +1,7 @@
 import { triagePaths } from "@/app/paths";
 import type { Album } from "@/features/library/albums/albums";
 import { hasTracklistGaps } from "@/features/library/albums/triage";
-import type { LibraryTrack } from "@/features/library/api";
+import type { AcceptedCheck, LibraryTrack } from "@/features/library/api";
 import {
   applyTrackTriage,
   duplicateRecordingTracks,
@@ -39,6 +39,18 @@ export interface TriageLine {
   /** Every thing this line points at, by `subject` identity — what the
    * headline counts once even when several lines name the same track. */
   subjects: string[];
+  /** What "c'est voulu" would answer here, or null for a line that cannot be
+   * answered that way (see `AcceptedCheck`). */
+  accept: AcceptTarget | null;
+}
+
+/** One batch the accept command can be handed: a scope, a check, and the ids
+ * it applies to. Ids are beets' own — item ids for a track check, album row
+ * ids for an album one, which is why a card contributes all of its rows. */
+export interface AcceptTarget {
+  scope: "track" | "album";
+  check: AcceptedCheck;
+  ids: number[];
 }
 
 /** What the page and the sidebar badge announce: things, counted once each.
@@ -77,6 +89,16 @@ function doorsOf(doors: TriageDoor[]): { count: number; doors: TriageDoor[] } {
   return { count: open.reduce((sum, door) => sum + door.count, 0), doors: open };
 }
 
+function trackTarget(check: AcceptedCheck, tracks: LibraryTrack[]): AcceptTarget {
+  return { scope: "track", check, ids: tracks.map((track) => track.id) };
+}
+
+/** A card can stand for several beets albums, so every row behind it goes in —
+ * answering for the record has to answer for the whole record. */
+function albumTarget(check: AcceptedCheck, albums: Album[]): AcceptTarget {
+  return { scope: "album", check, ids: albums.flatMap((album) => album.albumIds) };
+}
+
 /**
  * The whole correction queue, derived from the already-loaded library the same
  * way the explorers filter it — counts here and rows there come from the very
@@ -87,8 +109,11 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
   const genreMissing = applyTrackTriage(tracks, { ...NO_TRIAGE, genre: GENRE_MISSING });
   const genreOffTree = applyTrackTriage(tracks, { ...NO_TRIAGE, genre: GENRE_OFF_TREE });
   const suspect = tracks.filter((track) => track.suspectMatch);
-  const duplicated = duplicateRecordingTracks(tracks);
-  const missingArtwork = albums.filter((album) => album.artUrl == null);
+  // Accepted here rather than inside `duplicateRecordingTracks`: a track is a
+  // duplicate only relative to its twin, so dropping one first would clear the
+  // other of being one — and answering for one copy would quietly unflag both.
+  const duplicated = duplicateRecordingTracks(tracks).filter((track) => !track.accepted.includes("duplicates"));
+  const missingArtwork = albums.filter((album) => album.artUrl == null && !album.accepted.includes("artwork"));
   const gapped = albums.filter(hasTracklistGaps);
 
   return [
@@ -97,18 +122,23 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
       ...doorsOf([{ key: "suspectMatch", count: suspect.length, to: triagePaths.suspectMatch }]),
       examples: examplesOf(suspect.map((track) => track.title)),
       subjects: suspect.map(trackSubject),
+      // Not answerable: a flagged match asks what the audio *is*, and the
+      // answer is to look at it.
+      accept: null,
     },
     {
       key: "duplicates",
       ...doorsOf([{ key: "duplicateRecording", count: duplicated.length, to: triagePaths.duplicateRecording }]),
       examples: examplesOf(duplicated.map((track) => track.title)),
       subjects: duplicated.map(trackSubject),
+      accept: trackTarget("duplicates", duplicated),
     },
     {
       key: "year",
       ...doorsOf([{ key: "missingYear", count: missingYear.length, to: triagePaths.missingYear }]),
       examples: examplesOf(missingYear.map((track) => track.title)),
       subjects: missingYear.map(trackSubject),
+      accept: trackTarget("year", missingYear),
     },
     {
       key: "genre",
@@ -118,20 +148,39 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
       ]),
       examples: examplesOf([...genreMissing, ...genreOffTree].map((track) => track.title)),
       subjects: [...genreMissing, ...genreOffTree].map(trackSubject),
+      accept: trackTarget("genre", [...genreMissing, ...genreOffTree]),
     },
     {
       key: "artwork",
       ...doorsOf([{ key: "missingArtwork", count: missingArtwork.length, to: triagePaths.missingArtwork }]),
       examples: examplesOf(missingArtwork.map((album) => album.title)),
       subjects: missingArtwork.map(albumSubject),
+      accept: albumTarget("artwork", missingArtwork),
     },
     {
       key: "tracklist",
       ...doorsOf([{ key: "tracklistGaps", count: gapped.length, to: triagePaths.tracklistGaps }]),
       examples: examplesOf(gapped.map((album) => album.title)),
       subjects: gapped.map(albumSubject),
+      // Not answerable either, and for a happier reason: a record with no
+      // tracklist is a collection, which says so once for the whole record.
+      accept: null,
     },
   ];
+}
+
+/** What has already been answered, per check — the page's way of showing that
+ * nothing was thrown away and every answer can be taken back. Only checks with
+ * something behind them appear. */
+export function acceptedTargets(tracks: LibraryTrack[], albums: Album[]): AcceptTarget[] {
+  const targets: AcceptTarget[] = [];
+  for (const check of ["year", "genre", "duplicates"] as const) {
+    const answered = tracks.filter((track) => track.accepted.includes(check));
+    if (answered.length > 0) targets.push(trackTarget(check, answered));
+  }
+  const artwork = albums.filter((album) => album.accepted.includes("artwork"));
+  if (artwork.length > 0) targets.push(albumTarget("artwork", artwork));
+  return targets;
 }
 
 /** How many distinct things the queue is about, split by kind so the headline

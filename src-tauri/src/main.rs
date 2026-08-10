@@ -118,6 +118,7 @@ fn main() {
             commands::delete_track,
             commands::update_tracks,
             commands::set_album_kind,
+            commands::set_check_accepted,
             commands::allow_cover_preview,
             commands::set_album_cover,
             commands::list_cover_candidates,

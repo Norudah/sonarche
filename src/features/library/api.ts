@@ -57,7 +57,18 @@ export interface LibraryTrack {
   /** What the record this track sits on is, as its owner declared it. Null
    * until someone says otherwise, which reads as an album. */
   albumKind: AlbumKind | null;
+  /** Checks the owner has answered on this track: seen, and wanted as it is.
+   * They stop counting on the metadata page — see `AcceptedCheck`. */
+  accepted: AcceptedCheck[];
+  /** The same, carried by the track's album for the whole record. */
+  albumAccepted: AcceptedCheck[];
 }
+
+/** A verdict someone can legitimately mean to leave standing. "Match to review"
+ * is not one of them (it asks what the audio is, and the answer is to look),
+ * and neither is a gapped tracklist (a record with no tracklist is a
+ * collection, which says so once — see `AlbumKind`). */
+export type AcceptedCheck = "year" | "genre" | "duplicates" | "artwork";
 
 /** A release with a tracklist, or somebody's own gathering of tracks. The
  * distinction is not cosmetic: only the first can be missing a track. */
@@ -88,6 +99,8 @@ interface WireTrack {
   category: string | null;
   soundtrack: boolean;
   album_kind?: AlbumKind | null;
+  accepted?: AcceptedCheck[];
+  album_accepted?: AcceptedCheck[];
 }
 
 export async function deleteTrack(id: number): Promise<void> {
@@ -122,6 +135,16 @@ export async function updateTracks(updates: TrackUpdate[]): Promise<{ updated: n
  * card on screen is a (artist, title) group and can stand for several rows. */
 export async function setAlbumKind(albumIds: number[], kind: AlbumKind): Promise<{ updated: number }> {
   return invoke<{ updated: number }>("set_album_kind", { albumIds, kind });
+}
+
+/** Answer a check on a batch of objects, or take the answer back. */
+export async function setCheckAccepted(
+  scope: "track" | "album",
+  ids: number[],
+  check: AcceptedCheck,
+  accepted: boolean,
+): Promise<{ updated: number }> {
+  return invoke<{ updated: number }>("set_check_accepted", { scope, ids, check, accepted });
 }
 
 export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
@@ -282,5 +305,7 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     // Absent from a library read by a build that predates the distinction —
     // and absent, on any build, for every album nobody has re-declared.
     albumKind: track.album_kind ?? null,
+    accepted: track.accepted ?? [],
+    albumAccepted: track.album_accepted ?? [],
   }));
 }

@@ -10,8 +10,10 @@ import {
   removeArtistImage,
   setAlbumCover,
   setAlbumKind,
+  setCheckAccepted,
   setArtistImage,
   updateTracks,
+  type AcceptedCheck,
   type AlbumKind,
   type CoverCrop,
   type CoverSource,
@@ -101,6 +103,27 @@ export function useSetAlbumKind() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ albumIds, kind }: { albumIds: number[]; kind: AlbumKind }) => setAlbumKind(albumIds, kind),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
+  });
+}
+
+/** Answer a check — "seen, and wanted as it is" — or take the answer back. */
+export function useSetCheckAccepted() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      scope,
+      ids,
+      check,
+      accepted,
+    }: {
+      scope: "track" | "album";
+      ids: number[];
+      check: AcceptedCheck;
+      accepted: boolean;
+    }) => setCheckAccepted(scope, ids, check, accepted),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
     },

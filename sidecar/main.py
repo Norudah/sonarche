@@ -22,6 +22,7 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 
 
 def _handlers():
+    import accepted
     import acoustid_key
     import album_kind
     import artist_image
@@ -54,6 +55,7 @@ def _handlers():
         "library_remove": library.remove,
         "library_update": library.update,
         "album_kind_set": album_kind.handle,
+        "accepted_set": accepted.handle,
         "cover_set": cover_set.handle,
         "cover_candidates": cover_set.candidates,
         "artist_image_set": artist_image.handle,

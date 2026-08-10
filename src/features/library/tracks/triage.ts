@@ -88,7 +88,11 @@ type Predicate = (track: LibraryTrack) => boolean;
 function predicatesOf(triage: TrackTriage): Predicate[] {
   const tests: Predicate[] = [];
 
-  if (triage.missingYear) tests.push((track) => track.year == null);
+  // The triage sentinels skip what their owner has answered, so a door opens on
+  // exactly what its line counted. Only these: the browsing axes below (family,
+  // category, decade, an exact genre) are navigation, and hiding tracks from a
+  // genre page because of a metadata verdict would be a different app.
+  if (triage.missingYear) tests.push((track) => track.year == null && !track.accepted.includes("year"));
   if (triage.decade != null) {
     const decade = triage.decade;
     tests.push((track) => track.year != null && decadeOf(track.year) === decade);
@@ -101,8 +105,10 @@ function predicatesOf(triage: TrackTriage): Predicate[] {
   // The two sentinels go through `familyKeyOf`, so a track counts as
   // unclassified or off-tree here exactly when the genres page files it that
   // way. Anything else is an exact genre name.
-  if (triage.genre === GENRE_MISSING) tests.push((track) => familyKeyOf(track) === FAMILY_NONE);
-  else if (triage.genre === GENRE_OFF_TREE) tests.push((track) => familyKeyOf(track) === FAMILY_OTHER);
+  if (triage.genre === GENRE_MISSING)
+    tests.push((track) => familyKeyOf(track) === FAMILY_NONE && !track.accepted.includes("genre"));
+  else if (triage.genre === GENRE_OFF_TREE)
+    tests.push((track) => familyKeyOf(track) === FAMILY_OTHER && !track.accepted.includes("genre"));
   else if (triage.genre != null) {
     const genre = triage.genre;
     tests.push((track) => track.genre === genre);

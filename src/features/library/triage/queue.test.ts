@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { triagePaths } from "@/app/paths";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { track } from "@/features/library/testFixtures";
-import { buildTriageQueue, tallyToFix, type TriageLine } from "@/features/library/triage/queue";
+import { acceptedTargets, buildTriageQueue, tallyToFix, type TriageLine } from "@/features/library/triage/queue";
 
 function lineOf(queue: TriageLine[], key: TriageLine["key"]): TriageLine {
   const line = queue.find((entry) => entry.key === key);
@@ -134,6 +134,42 @@ describe("buildTriageQueue", () => {
   it("uses album titles on the album lines", () => {
     expect(lineOf(queue, "artwork").examples).toEqual(["Holes"]);
     expect(lineOf(queue, "tracklist").examples).toEqual(["Holes"]);
+  });
+});
+
+describe("accepting a check", () => {
+  /** The point of the whole mechanism: the count comes down without a single
+   * tag having been rewritten. */
+  it("takes an answered track out of its line and out of the tally", () => {
+    const answered = tracks.map((item) => (item.id === 2 ? { ...item, accepted: ["year" as const] } : item));
+    const queue = buildTriageQueue(answered, groupAlbums(answered));
+
+    expect(lineOf(queue, "year").count).toBe(0);
+    // Still on the genre line: the answer was about its year, and nothing else.
+    expect(lineOf(queue, "genre").count).toBe(2);
+    expect(tallyToFix(queue).total).toBe(5);
+  });
+
+  it("answers a cover on the album, for every beets row behind the card", () => {
+    const answered = tracks.map((item) => ({ ...item, albumAccepted: ["artwork" as const] }));
+    const queue = buildTriageQueue(answered, groupAlbums(answered));
+
+    expect(lineOf(queue, "artwork").count).toBe(0);
+  });
+
+  /** Two lines cannot be answered away: a flagged match is a question about
+   * what the audio is, and a gapped tracklist is answered by declaring the
+   * record a collection. */
+  it("offers no answer where accepting would be the wrong verb", () => {
+    expect(lineOf(queue, "suspect").accept).toBeNull();
+    expect(lineOf(queue, "tracklist").accept).toBeNull();
+    expect(lineOf(queue, "year").accept).toEqual({ scope: "track", check: "year", ids: [2] });
+  });
+
+  it("lists what has been answered, so it can be taken back", () => {
+    const answered = tracks.map((item) => (item.id === 2 ? { ...item, accepted: ["year" as const] } : item));
+
+    expect(acceptedTargets(answered, groupAlbums(answered))).toEqual([{ scope: "track", check: "year", ids: [2] }]);
   });
 });
 

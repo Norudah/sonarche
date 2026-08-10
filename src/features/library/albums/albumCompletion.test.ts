@@ -30,6 +30,8 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     category: null,
     soundtrack: false,
     albumKind: null,
+    accepted: [],
+    albumAccepted: [],
     ...over,
   };
 }

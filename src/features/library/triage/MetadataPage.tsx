@@ -6,8 +6,9 @@ import { useTranslation } from "react-i18next";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { groupArtists } from "@/features/library/artists/artists";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
-import { useLibrary } from "@/features/library/hooks";
-import { buildTriageQueue, tallyToFix } from "@/features/library/triage/queue";
+import { useLibrary, useSetCheckAccepted } from "@/features/library/hooks";
+import { AcceptedNotice } from "@/features/library/triage/AcceptedNotice";
+import { acceptedTargets, buildTriageQueue, tallyToFix, type AcceptTarget } from "@/features/library/triage/queue";
 import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -30,6 +31,10 @@ export function MetadataPage() {
   const tracks = useMemo(() => library.data ?? [], [library.data]);
   const albums = useMemo(() => groupAlbums(tracks), [tracks]);
   const queue = useMemo(() => buildTriageQueue(tracks, albums), [tracks, albums]);
+  const answered = useMemo(() => acceptedTargets(tracks, albums), [tracks, albums]);
+  const accept = useSetCheckAccepted();
+  const answer = (target: AcceptTarget, accepted: boolean) =>
+    accept.mutate({ scope: target.scope, ids: target.ids, check: target.check, accepted });
   const artistCount = useMemo(() => groupArtists(albums).length, [albums]);
 
   const lines = queue.filter((line) => line.count > 0);
@@ -80,10 +85,14 @@ export function MetadataPage() {
               <QueueLine
                 key={line.key}
                 line={line}
+                isPending={accept.isPending}
+                onAccept={(target) => answer(target, true)}
                 style={{ "--row-stagger": `${position * 0.04}s` } as CSSProperties}
               />
             ))
           )}
+
+          <AcceptedNotice targets={answered} isPending={accept.isPending} onUndo={(target) => answer(target, false)} />
         </section>
       )}
     </PageContainer>

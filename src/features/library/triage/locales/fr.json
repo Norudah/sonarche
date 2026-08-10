@@ -53,5 +53,9 @@
     "genreOffTree_other": "{{count}} hors arbre",
     "more_one": "+{{count}} autre",
     "more_other": "+{{count}} autres"
+  },
+  "accept": {
+    "action": "C'est voulu",
+    "answered": "Constats acceptés :"
   }
 }

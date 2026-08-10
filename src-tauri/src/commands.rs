@@ -611,6 +611,55 @@ pub async fn set_album_kind(
         .await
 }
 
+/// Checks a person may legitimately mean to leave as they are, per scope. The
+/// sidecar validates the same pair; both sides say it so neither has to trust
+/// the other. `suspect` and `tracklist` are deliberately absent — see
+/// `accepted.py` for why.
+const TRACK_CHECKS: &[&str] = &["year", "genre", "duplicates"];
+const ALBUM_CHECKS: &[&str] = &["artwork"];
+
+/// Answer a check: "I have seen it, it is what I want" — or take that back.
+#[tauri::command]
+pub async fn set_check_accepted(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    scope: String,
+    ids: Vec<i64>,
+    check: String,
+    accepted: bool,
+) -> AppResult<Value> {
+    let valid = match scope.as_str() {
+        "track" => TRACK_CHECKS,
+        "album" => ALBUM_CHECKS,
+        other => return Err(AppError::InvalidInput(format!("unknown scope: {other}"))),
+    };
+    if !valid.contains(&check.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unknown {scope} check: {check}"
+        )));
+    }
+    if ids.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "accepted_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "scope": scope,
+                "ids": ids,
+                "check": check,
+                "accepted": accepted,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
 #[tauri::command]
 pub async fn delete_track(
     app: AppHandle,

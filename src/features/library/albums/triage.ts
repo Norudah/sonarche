@@ -47,7 +47,8 @@ export function hasTracklistGaps(album: Album): boolean {
 /** Same composition rule as `applyTrackTriage`: every active filter narrows. */
 export function applyAlbumTriage(albums: Album[], triage: AlbumTriage): Album[] {
   let result = albums;
-  if (triage.missingArtwork) result = result.filter((album) => album.artUrl == null);
+  if (triage.missingArtwork)
+    result = result.filter((album) => album.artUrl == null && !album.accepted.includes("artwork"));
   if (triage.tracklistGaps) result = result.filter(hasTracklistGaps);
   return result;
 }

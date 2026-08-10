@@ -53,5 +53,9 @@
     "genreOffTree_other": "{{count}} off-tree",
     "more_one": "+{{count}} more",
     "more_other": "+{{count}} more"
+  },
+  "accept": {
+    "action": "That's on purpose",
+    "answered": "Answered:"
   }
 }

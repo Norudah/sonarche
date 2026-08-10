@@ -1074,6 +1074,27 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // Answered checks, on the same built listing as `set_album_kind`: the
+      // point of the mock here is that accepting really does close the line.
+      if (cmd === "set_check_accepted") {
+        const ids = new Set((payload?.ids as number[]) ?? []);
+        const check = String(payload?.check);
+        const on = Boolean(payload?.accepted);
+        const isAlbum = payload?.scope === "album";
+        const scope = isAlbum ? "album_accepted" : "accepted";
+        const { tracks } = responses.list_library as { tracks: Record<string, unknown>[] };
+        let updated = 0;
+        for (const track of tracks) {
+          const key = isAlbum ? (track.album_id as number) : (track.id as number);
+          if (!ids.has(key)) continue;
+          const current = new Set((track[scope] as string[]) ?? []);
+          if (on) current.add(check);
+          else current.delete(check);
+          track[scope] = [...current].sort();
+          updated += 1;
+        }
+        return { updated };
+      }
       // Re-match: a slow yes, so the album loop's progress bar and its Stop
       // button are observable here (the real call is a network round-trip).
       if (cmd === "reenrich_track") {
