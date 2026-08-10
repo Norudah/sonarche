@@ -68,3 +68,21 @@ pub fn write(line: &str) {
         }
     }
 }
+
+/// Forget what the log already holds, keeping the sink usable.
+///
+/// For the data erase: log lines name tracks, folders and URLs, which is user
+/// data in the sense that matters there. The live file is truncated through
+/// the open handle rather than deleted — the sink stays valid for the very
+/// next line, starting with the erase's own receipt — and the rotated
+/// previous run is removed outright. Same silence-on-failure rule as `write`.
+pub fn clear(app: &AppHandle) {
+    if let Some(sink) = SINK.get() {
+        if let Ok(file) = sink.lock() {
+            let _ = file.set_len(0);
+        }
+    }
+    if let Some(target) = path(app) {
+        let _ = fs::remove_file(target.with_extension("log.1"));
+    }
+}

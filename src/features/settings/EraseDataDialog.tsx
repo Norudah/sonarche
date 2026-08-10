@@ -65,6 +65,7 @@ export function EraseDataDialog({
               <ul className="mt-3 list-disc space-y-1 pl-5">
                 <li>{t("library.danger.erase.itemFiles")}</li>
                 <li>{t("library.danger.erase.itemIndex")}</li>
+                <li>{t("library.danger.erase.itemPlaylists")}</li>
                 <li>{t("library.danger.erase.itemHistory")}</li>
                 <li>{t("library.danger.erase.itemKeys")}</li>
               </ul>

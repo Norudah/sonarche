@@ -211,6 +211,13 @@ impl LibraryImportState {
         result
     }
 
+    /// Whether an import is running right now. For the operations that must
+    /// refuse while one is — an erase or a move deleting the very folder
+    /// beets is copying into would race it file by file.
+    pub async fn is_running(&self) -> bool {
+        *self.running.lock().await
+    }
+
     /// Stop the import in flight, if any.
     ///
     /// Writing the file is the whole act: the sidecar's watch thread sees it
