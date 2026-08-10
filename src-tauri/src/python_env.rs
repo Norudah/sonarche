@@ -577,6 +577,10 @@ import:
   move: yes
   write: yes
   quiet_fallback: asis
+  # Never offer to resume an interrupted import: the prompt reads stdin, and
+  # our beets runs headless on the sidecar's protocol pipe. An interrupted
+  # run is retried from the top instead.
+  resume: no
   # Staged files are imported untagged by design, so beets' duplicate check
   # can only ever collide blank-vs-blank (enriched items have real tags).
   # `skip` (the quiet default) silently drops every album-batch track after
@@ -586,7 +590,7 @@ import:
 # cover.jpg); declaring it clutter lets beets prune a folder that only has
 # it left after an album is moved or merged away.
 clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
-plugins: musicbrainz fetchart embedart lastgenre
+{pluginpath}plugins: musicbrainz fetchart embedart lastgenre{repair_plugin}
 musicbrainz:
   genres: yes
 fetchart:
@@ -618,6 +622,34 @@ ui:
             "  sources: filesystem\n"
         } else {
             ""
+        },
+        // `sonarche_import` (sidecar/beetsplug/) fills title/artist/track from
+        // the filename when the tag is empty and unpacks YYYYMMDD years —
+        // repairs for someone's own rips. The download path must not load it:
+        // a staged file's name is the YouTube title, and enrich owns those
+        // fields there.
+        repair_plugin = if flavour == Flavour::Import {
+            " sonarche_import"
+        } else {
+            ""
+        },
+        // The entries of `pluginpath` join the `beetsplug` namespace package's
+        // own search path, so the directory named here must hold the plugin
+        // *files* — pointing at the sidecar root would have beets look for
+        // `sidecar/sonarche_import.py`, which is not where it lives.
+        pluginpath = if flavour == Flavour::Import {
+            format!(
+                "pluginpath: [{}]\n",
+                yaml_scalar(
+                    &paths
+                        .sidecar_main
+                        .parent()
+                        .unwrap_or(&paths.sidecar_main)
+                        .join("beetsplug")
+                )
+            )
+        } else {
+            String::new()
         },
     )
 }
@@ -799,7 +831,7 @@ mod tests {
     /// writes into the same library, with the same paths, the same genre tree
     /// and the same clutter rules.
     #[test]
-    fn the_two_configs_differ_on_nothing_but_art() {
+    fn the_two_configs_differ_on_nothing_but_art_and_the_repair_plugin() {
         let app = beets_config_yaml(&paths(), Flavour::App);
         let import = beets_config_yaml(&paths(), Flavour::Import);
 
@@ -807,9 +839,31 @@ mod tests {
             config
                 .replace("  sources: filesystem\n", "")
                 .replace("embedart:\n  auto: yes", "embedart:\n  auto: no")
+                .replace(" sonarche_import", "")
+                .lines()
+                .filter(|line| !line.starts_with("pluginpath:"))
+                .collect::<Vec<_>>()
+                .join("\n")
         };
 
         assert_eq!(strip(&app), strip(&import));
+    }
+
+    /// The filename/year repairs are for someone's own rips. On the download
+    /// path the filename *is* the YouTube title and enrich owns those fields,
+    /// so only the import flavour may load the plugin.
+    #[test]
+    fn only_the_import_config_loads_the_repair_plugin() {
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+        assert!(import.contains("lastgenre sonarche_import"), "{import}");
+        assert!(
+            import.contains("pluginpath: ['/data/sidecar/beetsplug']"),
+            "{import}"
+        );
+
+        let app = beets_config_yaml(&paths(), Flavour::App);
+        assert!(!app.contains("sonarche_import"), "{app}");
+        assert!(!app.contains("pluginpath"), "{app}");
     }
 
     /// Both point at the same library and the same database — the import is a
