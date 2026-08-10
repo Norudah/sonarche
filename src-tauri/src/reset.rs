@@ -139,6 +139,9 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     }
     tokio::fs::create_dir_all(&music_dir).await?;
     let _ = tokio::fs::remove_file(&paths.beets_db).await;
+    // With it, always: it lists the source folders beets has taken on, and a
+    // library that no longer holds them must not keep skipping them.
+    let _ = tokio::fs::remove_file(&paths.beets_import_state).await;
     // The playlist rows survive — they are not the beets zone — but every id
     // in them just stopped resolving, so the mirror empties out with the
     // library rather than pointing at files that are gone.
@@ -166,6 +169,10 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // because an erased library is a different library.
         paths.library_root.clone(),
         paths.beets_db.clone(),
+        // The incremental guard's memory. It travels with the database it is
+        // about — kept, it would make the next import of a once-seen folder do
+        // nothing at all, on an app with an empty library.
+        paths.beets_import_state.clone(),
         // Staged downloads: audio that never finished its import is still the
         // user's data, and an erase that left it would keep actual music.
         paths.staging_dir.clone(),
@@ -319,6 +326,7 @@ mod tests {
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
             beets_db: data.join("beets").join("library.db"),
+            beets_import_state: data.join("beets").join("import-state.pickle"),
             library_root: PathBuf::from("/music/Sonarche"),
             sidecar_main: data.join("sidecar").join("main.py"),
             requirements: data.join("sidecar").join("requirements.txt"),

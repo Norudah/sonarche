@@ -80,6 +80,14 @@ pub struct AppPaths {
     /// no remote art sources. See `write_beets_config` for why the two cannot
     /// be one file.
     pub beets_import_config: PathBuf,
+    /// Where beets remembers the directories it has already taken on.
+    ///
+    /// Named explicitly rather than left to beets' own default, which resolves
+    /// beside the config file: this file has to be *deletable by us*, because it
+    /// only makes sense next to the library it describes. Wiping the library and
+    /// leaving this behind makes beets skip every folder it has ever seen — the
+    /// user re-imports and lands "0 dossier · Importé" on an empty app.
+    pub beets_import_state: PathBuf,
     pub beets_db: PathBuf,
     /// The folder the user picks — the zones live under it, and the derived
     /// paths below are methods so no copy can drift from it. Beets only ever
@@ -164,6 +172,7 @@ impl AppPaths {
             staging_dir: data.join("staging"),
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
+            beets_import_state: data.join("beets").join("import-state.pickle"),
             beets_db: data.join("beets").join("library.db"),
             library_root,
             sidecar_main: sidecar_dir.join("main.py"),
@@ -614,7 +623,7 @@ import:
   # `skip` (the quiet default) silently drops every album-batch track after
   # the first one; real re-download duplicates never collide anyway.
   duplicate_action: keep
-{incremental}# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
+{incremental}{statefile}# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
 # cover.jpg); declaring it clutter lets beets prune a folder that only has
 # it left after an album is moved or merged away.
 clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
@@ -655,6 +664,14 @@ ui:
             INCREMENTAL
         } else {
             ""
+        },
+        // Spelled out so the erase can find it. beets would otherwise put it
+        // beside the config under a name of its own choosing, where nothing
+        // that deletes the library would ever think to look.
+        statefile = if flavour == Flavour::Import {
+            format!("statefile: {}\n", yaml_scalar(&paths.beets_import_state))
+        } else {
+            String::new()
         },
         path_format = if flavour == Flavour::Import {
             IMPORT_PATHS
@@ -775,6 +792,7 @@ mod tests {
             staging_dir: data.join("staging"),
             beets_config: data.join("beets").join("config.yaml"),
             beets_import_config: data.join("beets").join("config-import.yaml"),
+            beets_import_state: data.join("beets").join("import-state.pickle"),
             beets_db: data.join("beets").join("library.db"),
             library_root: PathBuf::from("/music/Sonarche"),
             sidecar_main: data.join("sidecar").join("main.py"),
@@ -888,7 +906,7 @@ mod tests {
                 .replace(INCREMENTAL, "")
                 .replace(IMPORT_PATHS, "")
                 .lines()
-                .filter(|line| !line.starts_with("pluginpath:"))
+                .filter(|line| !line.starts_with("pluginpath:") && !line.starts_with("statefile:"))
                 .collect::<Vec<_>>()
                 .join("\n")
         };
@@ -907,7 +925,14 @@ mod tests {
 
         assert!(import.contains("incremental: yes"));
         assert!(import.contains("Unknown Artist"));
+        // The guard's memory must be somewhere the erase can reach. beets'
+        // default puts it beside the config under a name of its own, where
+        // nothing that wipes the library would think to look — and a library
+        // wiped while that file survives makes the next import of a once-seen
+        // folder do nothing at all.
+        assert!(import.contains("statefile: '/data/beets/import-state.pickle'"));
         assert!(!app.contains("incremental"));
+        assert!(!app.contains("statefile"));
         assert!(!app.contains("paths:"));
     }
 

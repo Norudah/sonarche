@@ -132,7 +132,7 @@ export function ImportCard({ folder, phase, progress, onStart, onCancel, isCance
                 type="button"
                 variant="primary"
                 onPress={onStart}
-                className="rounded-full px-4 transition-transform active:scale-[0.97]"
+                className="rounded-xl px-5 transition-transform active:scale-[0.97]"
               >
                 {phase.kind === "importFailed" ? t("retry") : t("start")}
               </Button>

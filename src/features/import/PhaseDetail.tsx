@@ -68,16 +68,22 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
     case "scanFailed":
       return <Failure title={t("scanFailed")} message={phase.message} />;
 
-    // One body for both, and the copying line is rendered in each — empty
-    // before the run starts. The summary stays up through the copy because it
-    // is what the user agreed to, and reserving the line's height means the
-    // card does not grow by a row the instant Import is pressed: between "ready"
-    // and "running" it now does not move at all.
+    // One body for both. The summary stays up through the copy — it is what the
+    // user agreed to, and a card that shrank to one line the moment work
+    // started would read as having thrown the answer away.
+    //
+    // The copying line is only rendered while there is a copy. Reserving its
+    // height from the ready state did keep the card perfectly still across the
+    // press, at the cost of an empty row sitting under the rail the whole time
+    // somebody reads the summary — a permanent hole to spare a 20px step. The
+    // step is back; the hole is gone.
     case "scanned":
+      return <ScanSummary report={phase.report} />;
+
     case "importing":
       return (
-        <div className="flex flex-col gap-4">
-          <CopyingLine progress={phase.kind === "importing" ? progress : null} />
+        <div className="flex flex-col gap-3">
+          <CopyingLine progress={progress} />
           <ScanSummary report={phase.report} />
         </div>
       );

@@ -33,13 +33,12 @@ export function LastImportSection() {
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("history.last")}</h2>
-        {/* Only once there is more than the one shown — an archive page holding
-            exactly what is already on screen is a dead end. */}
-        {records.length > 1 && (
-          <ActionLink to={paths.history} trailingIcon={ArrowRight}>
-            {t("history.seeAll")}
-          </ActionLink>
-        )}
+        {/* Always, not only when there is more than one: the archive holds the
+            recap panels, the folder paths and the failures, so it is somewhere
+            to go even when it holds exactly this one record. */}
+        <ActionLink to={paths.history} trailingIcon={ArrowRight}>
+          {t("history.seeAll")}
+        </ActionLink>
       </div>
       <div className="rounded-2xl bg-tray p-1.5">
         <ImportHistoryCard record={records[0]} />
