@@ -5,6 +5,7 @@ import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
 import { HistoryRoute } from "@/app/HistoryRoute";
 import { ImportPage } from "@/features/import/ImportPage";
+import { AlignSection } from "@/features/library/triage/AlignSection";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
@@ -49,7 +50,17 @@ export const router = createMemoryRouter(
       element: <AppLayout />,
       children: [
         { path: paths.download, element: <DownloadPage /> },
-        { path: paths.import, element: <ImportPage /> },
+        {
+          path: paths.import,
+          // Composed here because the two features must not import each other:
+          // the alignment belongs to the library's metadata domain, but the
+          // place a user reaches for it is right after an import lands.
+          element: (
+            <ImportPage>
+              <AlignSection />
+            </ImportPage>
+          ),
+        },
         // Composed in its own shell component: the history is the archive of
         // both ways music enters the ark, and neither feature may import the other.
         { path: paths.history, element: <HistoryRoute /> },

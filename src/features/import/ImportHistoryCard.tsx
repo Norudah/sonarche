@@ -123,7 +123,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
               {failed ? (
                 <p className="text-[0.8125rem] break-words text-danger">{record.error}</p>
               ) : (
-                <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} />
+                <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} alignDoor />
               )}
             </div>
           </motion.div>

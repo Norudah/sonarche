@@ -60,6 +60,25 @@
   "history": {
     "heading": "Imports"
   },
+  "how": {
+    "toggle": "Ce qui va se passer",
+    "scan": {
+      "name": "Analyse",
+      "body": "Ton dossier est lu, jamais modifié. Sonarche compte ce qu'il sait lire et te montre le bilan avant de commencer — rien ne part sans ton accord."
+    },
+    "copy": {
+      "name": "Copie",
+      "body": "Chaque piste est copiée dans l'arche et rangée par artiste et album, d'après ses tags. Quand un titre manque dans les tags, Sonarche le reprend du nom du fichier plutôt que de le perdre."
+    },
+    "covers": {
+      "name": "Pochettes",
+      "body": "La pochette vient du dossier, ou de l'image embarquée dans les fichiers eux-mêmes. Les images trop grandes reçoivent une version d'affichage, l'originale est conservée à côté."
+    },
+    "after": {
+      "name": "Et ensuite",
+      "body": "L'import n'invente rien : tes tags existants sont gardés tels quels, sans recherche en ligne. Pour identifier les albums et combler année, genre ou pochette manquants, lance l'alignement — proposé en bas de cette page."
+    }
+  },
   "recap": {
     "albums_one": "{{count, number}} album",
     "albums_other": "{{count, number}} albums",
@@ -74,8 +93,8 @@
     "offTree": "Genre hors arbre",
     "albumsWithoutArt": "Albums sans pochette",
     "albumsWithGaps": "Tracklists à trous",
-    "alignHint": "Ces albums arrivent sans identité MusicBrainz. Dans Métadonnées, l'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",
-    "openMetadata": "Ouvrir Métadonnées",
+    "alignHint": "Ces albums arrivent sans identité MusicBrainz. L'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",
+    "openAlign": "Aller à l'alignement",
     "expand": "Voir le détail de l'import",
     "collapse": "Replier le détail de l'import"
   }

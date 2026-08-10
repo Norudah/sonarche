@@ -12,6 +12,10 @@ interface ImportRecapPanelProps {
    * then says what came in and stays quiet about what was on disk. */
   scan: ImportScanCounts | null;
   recap: ImportRecap | null;
+  /** Show the door to the alignment. On the import page the section itself
+   * sits right under this panel, so the door would open onto where the reader
+   * already stands — only the archive, a page away, needs one. */
+  alignDoor?: boolean;
 }
 
 /**
@@ -34,7 +38,7 @@ interface ImportRecapPanelProps {
  * import — a door here would open on the whole library's missing years and
  * disagree with the number beside it. One honest link at the bottom instead.
  */
-export function ImportRecapPanel({ renditions, scan, recap }: ImportRecapPanelProps) {
+export function ImportRecapPanel({ renditions, scan, recap, alignDoor = false }: ImportRecapPanelProps) {
   const { t } = useTranslation("import");
   const caveats = [
     renditions > 0 ? t("doneRenditions", { count: renditions }) : null,
@@ -55,7 +59,7 @@ export function ImportRecapPanel({ renditions, scan, recap }: ImportRecapPanelPr
         </div>
       )}
 
-      {recap != null && <TagState recap={recap} />}
+      {recap != null && <TagState recap={recap} alignDoor={alignDoor} />}
     </div>
   );
 }
@@ -63,7 +67,7 @@ export function ImportRecapPanel({ renditions, scan, recap }: ImportRecapPanelPr
 /** One line per defect, in the order the Metadata queue lists them. Zero is
  * shown rather than hidden: "no album is missing its cover" is a result, and a
  * list that drops its clean lines makes the user wonder what was checked. */
-function TagState({ recap }: { recap: ImportRecap }) {
+function TagState({ recap, alignDoor }: { recap: ImportRecap; alignDoor: boolean }) {
   const { t } = useTranslation("import");
 
   const rows = [
@@ -97,13 +101,15 @@ function TagState({ recap }: { recap: ImportRecap }) {
         </dl>
       )}
 
-      {/* An as-is import never carries a MusicBrainz identity, so the remedy is
-          named here — but the door stays single and claims no count: the align
-          card on the Metadata page answers for the whole library. */}
+      {/* An as-is import never carries a MusicBrainz identity, so the remedy
+          is named here. It claims no count on purpose: the align card answers
+          for the whole library, not for this one run. */}
       <p className="text-xs text-muted">{t("recap.alignHint")}</p>
-      <ActionLink to={paths.metadata} trailingIcon={ArrowRight}>
-        {t("recap.openMetadata")}
-      </ActionLink>
+      {alignDoor && (
+        <ActionLink to={paths.import} trailingIcon={ArrowRight}>
+          {t("recap.openAlign")}
+        </ActionLink>
+      )}
     </div>
   );
 }

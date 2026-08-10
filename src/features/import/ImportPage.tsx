@@ -1,15 +1,22 @@
 import { useMutation } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { pickFolder, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderPicker } from "@/features/import/FolderPicker";
+import { HowItWorks } from "@/features/import/HowItWorks";
 import { useCancelImport, useImportProgress, useLibraryImport } from "@/features/import/hooks";
 import { ImportCard } from "@/features/import/ImportCard";
 import { importPhase } from "@/features/import/phase";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-export function ImportPage() {
+/**
+ * `children` is the page's tail slot. The app layer slides the alignment
+ * section in there — a library-feature module this feature must not import
+ * itself, and exactly the remedy the recap above it keeps naming.
+ */
+export function ImportPage({ children }: { children?: ReactNode }) {
   const { t } = useTranslation("import");
   const [folder, setFolder] = useState<string | null>(null);
 
@@ -53,6 +60,9 @@ export function ImportPage() {
             <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
             <p className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("lead")}</p>
+            <div className="mt-3">
+              <HowItWorks />
+            </div>
           </div>
 
           <FolderPicker
@@ -79,6 +89,8 @@ export function ImportPage() {
           />
         </div>
       </section>
+
+      {children}
     </PageContainer>
   );
 }
