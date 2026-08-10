@@ -1,4 +1,4 @@
-import { ChevronDown, FolderInput, FolderX } from "lucide-react";
+import { ChevronDown, FolderInput, FolderX, Square } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const failed = record.status === "failed";
+  const cancelled = record.status === "cancelled";
   const headline = useImportHeadline(record.folders, record.scan, record.recap);
   const subtitle = failed ? record.error : headline;
 
@@ -47,10 +48,20 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         <div
           className={
             "flex size-9 shrink-0 items-center justify-center rounded-lg " +
-            (failed ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent")
+            (failed
+              ? "bg-danger-soft text-danger"
+              : cancelled
+                ? "bg-warning-soft text-warning"
+                : "bg-accent-soft text-accent")
           }
         >
-          {failed ? <FolderX className="size-4" /> : <FolderInput className="size-4" />}
+          {failed ? (
+            <FolderX className="size-4" />
+          ) : cancelled ? (
+            <Square className="size-4" />
+          ) : (
+            <FolderInput className="size-4" />
+          )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -61,7 +72,9 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         </div>
 
         <div className="flex w-28 shrink-0 justify-end">
-          <Verdict tone={failed ? "danger" : "success"}>{t(failed ? "verdict.failed" : "verdict.done")}</Verdict>
+          <Verdict tone={failed ? "danger" : cancelled ? "warning" : "success"}>
+            {t(failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
+          </Verdict>
         </div>
 
         <div className="w-32 shrink-0" />

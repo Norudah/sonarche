@@ -932,6 +932,10 @@ export function installMockTauri() {
       if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
       if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
+      if (cmd === "cancel_library_import") {
+        mockImportCancelRequested = true;
+        return null;
+      }
       if (cmd === "list_imports") return [...mockImports];
       if (cmd === "library_align_scan") return mockAlignScan();
       if (cmd === "library_align_apply") return mockAlignApply(payload);
@@ -1191,61 +1195,76 @@ const mockImports: unknown[] = [
   },
 ];
 
+/** Armed by `cancel_library_import`, consumed by the next copy tick — the
+ * same file-on-disk handshake the real sidecar uses, minus the disk. */
+let mockImportCancelRequested = false;
+
 /**
  * An import that takes visible time.
  *
  * Instant would hide the one state worth previewing. `?failImport` stops it
  * partway instead — the failure has to be drawable too, and it is the state
- * nobody thinks to look at.
+ * nobody thinks to look at. The stop button works for real: it arms the flag
+ * above, and the copy loop breaks on the next tick, exactly one album late,
+ * like the real watchdog's half-second.
  */
 async function mockLibraryImport(folder: string): Promise<unknown> {
   const failAt = new URLSearchParams(window.location.search).has("failImport") ? 3 : Infinity;
+  mockImportCancelRequested = false;
 
+  let copied = 0;
   for (const [index, album] of MOCK_IMPORT_FOLDERS.entries()) {
     await new Promise((resolve) => window.setTimeout(resolve, 700));
+    if (mockImportCancelRequested) break;
     if (index + 1 === failAt) {
       throw `beet import failed (exit 1): could not read ${folder}/${album}`;
     }
+    copied = index + 1;
     emitMockEvent("sidecar:event", {
       event: "library_import_progress",
-      data: { folders: index + 1, folder: `${folder}/${album}` },
+      data: { folders: copied, folder: `${folder}/${album}` },
     });
   }
+  const cancelled = mockImportCancelRequested;
 
   // The cover pass that follows the copy: a second count of different things,
-  // which the bar has to restart for rather than crawl the last inch.
-  for (let done = 1; done <= MOCK_IMPORT_FOLDERS.length; done += 1) {
+  // which the bar has to restart for rather than crawl the last inch. On a
+  // cancel it still runs — over what landed, like the real pass.
+  for (let done = 1; done <= copied; done += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     emitMockEvent("sidecar:event", {
       event: "library_covers_progress",
-      data: { done, total: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(done / 2) },
+      data: { done, total: copied, renditions: Math.ceil(done / 2) },
     });
   }
 
   const record = {
     id: `import-${Date.now()}`,
     folder,
-    status: "done" as const,
+    status: cancelled ? ("cancelled" as const) : ("done" as const),
     error: null,
     scan: mockScanCounts(),
-    folders: MOCK_IMPORT_FOLDERS.length,
-    renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2),
-    recap: {
-      tracks: 118,
-      albums: MOCK_IMPORT_FOLDERS.length,
-      withoutYear: 12,
-      withoutGenre: 41,
-      offTree: 3,
-      albumsWithoutArt: 2,
-      albumsWithGaps: 1,
-    },
+    folders: copied,
+    renditions: Math.ceil(copied / 2),
+    recap:
+      copied === 0
+        ? null
+        : {
+            tracks: Math.round((118 * copied) / MOCK_IMPORT_FOLDERS.length),
+            albums: copied,
+            withoutYear: 12,
+            withoutGenre: 41,
+            offTree: 3,
+            albumsWithoutArt: 2,
+            albumsWithGaps: 1,
+          },
     finishedAt: Date.now(),
   };
   // The archive gains a row the moment an import ends, exactly as the backend
   // does it — so the History page has something to show after a preview import.
   mockImports.unshift(record);
 
-  return { folders: record.folders, renditions: record.renditions, recap: record.recap };
+  return { folders: record.folders, renditions: record.renditions, recap: record.recap, cancelled };
 }
 
 /** The align pass, at preview pace: a few progress ticks, then a small plan

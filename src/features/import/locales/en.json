@@ -20,7 +20,8 @@
   "verdict": {
     "ready": "Ready",
     "done": "Imported",
-    "failed": "Failed"
+    "failed": "Failed",
+    "cancelled": "Stopped"
   },
   "scanning": "Reading the folder…",
   "scanFailed": "Can't read that folder",
@@ -44,6 +45,10 @@
   "progress": "Folder {{done, number}} of {{total, number}}",
   "importFailed": "The import stopped",
   "retry": "Try again",
+  "stop": "Stop",
+  "cancelled": "Import stopped",
+  "cancelledDetail": "Stopped mid-copy. Already in the ark: {{landed}}.",
+  "cancelledNothing": "Stopped before anything came in. The library is unchanged.",
   "done": "Import finished",
   "doneDetail_one": "{{count, number}} folder added to the ark.",
   "doneDetail_other": "{{count, number}} folders added to the ark.",

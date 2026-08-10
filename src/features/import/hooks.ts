@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
-import { type ImportOutcome, type ImportRecord, listImports, startLibraryImport } from "@/features/import/api";
+import {
+  cancelLibraryImport,
+  type ImportOutcome,
+  type ImportRecord,
+  listImports,
+  startLibraryImport,
+} from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
 
 /**
@@ -79,4 +85,13 @@ export function useLibraryImport() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),
   });
+}
+
+/**
+ * Ask the running import to stop. The signal is the whole call: the import's
+ * own mutation is what resolves — with `cancelled` set — once beets has
+ * actually stopped, so there is nothing to invalidate here.
+ */
+export function useCancelImport() {
+  return useMutation<void, unknown, void>({ mutationFn: cancelLibraryImport });
 }

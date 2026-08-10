@@ -47,6 +47,8 @@ export function useImportLabel(phase: ImportPhase, progress: ImportProgress | nu
       return still("phase.ready");
     case "importFailed":
       return still("importFailed");
+    case "importCancelled":
+      return still("cancelled");
     case "imported":
       return still("done");
     case "importing": {

@@ -77,9 +77,11 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
       );
 
     case "imported":
+    case "importCancelled":
       // The same panel the archive shows, not a shorter version of it: what an
       // import brought in is one set of facts, and the page that just ran it is
-      // exactly where they matter most.
+      // exactly where they matter most. A cancelled run shares it — what
+      // landed before the stop is in the library and deserves the same recap.
       return <Landed phase={phase} />;
   }
 }
@@ -89,12 +91,20 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
  * component because the headline is a hook, and the switch above is a plain
  * function that cannot call one.
  */
-function Landed({ phase }: { phase: Extract<ImportPhase, { kind: "imported" }> }) {
+function Landed({ phase }: { phase: Extract<ImportPhase, { kind: "imported" | "importCancelled" }> }) {
+  const { t } = useTranslation("import");
   const headline = useImportHeadline(phase.outcome.folders, phase.report, phase.outcome.recap);
+  const cancelled = phase.kind === "importCancelled";
+
+  // Stopped before anything was taken on: there is nothing to recap, and a
+  // panel of zeroes would dress an empty act as a result.
+  if (cancelled && phase.outcome.folders === 0 && phase.outcome.recap == null) {
+    return <p className="text-[0.8125rem] text-muted">{t("cancelledNothing")}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[0.8125rem]">{headline}</p>
+      <p className="text-[0.8125rem]">{cancelled ? t("cancelledDetail", { landed: headline }) : headline}</p>
       <ImportRecapPanel renditions={phase.outcome.renditions} scan={phase.report} recap={phase.outcome.recap} />
     </div>
   );

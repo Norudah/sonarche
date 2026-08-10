@@ -183,6 +183,13 @@ pub async fn list_imports(jobs: State<'_, JobsState>) -> AppResult<Vec<ImportRec
     Ok(jobs.list_imports().await)
 }
 
+/// Stop the import in flight. The import itself resolves as cancelled through
+/// its own call — this only plants the signal.
+#[tauri::command]
+pub async fn cancel_library_import(state: State<'_, LibraryImportState>) -> AppResult<()> {
+    state.cancel().await
+}
+
 #[tauri::command]
 pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
     settings::list().await

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { pickFolder, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderPicker } from "@/features/import/FolderPicker";
-import { useImportProgress, useLibraryImport } from "@/features/import/hooks";
+import { useCancelImport, useImportProgress, useLibraryImport } from "@/features/import/hooks";
 import { ImportCard } from "@/features/import/ImportCard";
 import { importPhase } from "@/features/import/phase";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -18,6 +18,7 @@ export function ImportPage() {
   // under, and nothing should re-fetch it in the background.
   const scan = useMutation<ScanReport, unknown, string>({ mutationFn: scanImportFolder });
   const run = useLibraryImport();
+  const cancel = useCancelImport();
   const progress = useImportProgress(run.isPending);
 
   const choose = async () => {
@@ -69,7 +70,13 @@ export function ImportPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("activity")}</h2>
         <div className="rounded-2xl bg-tray p-1.5">
-          <ImportCard folder={folder} phase={phase} progress={progress} />
+          <ImportCard
+            folder={folder}
+            phase={phase}
+            progress={progress}
+            onCancel={() => cancel.mutate()}
+            isCancelling={cancel.isPending}
+          />
         </div>
       </section>
     </PageContainer>

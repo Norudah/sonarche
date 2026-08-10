@@ -1,4 +1,4 @@
-import { Check, FolderCheck, FolderInput, FolderOpen, FolderSearch, FolderX } from "lucide-react";
+import { Check, FolderCheck, FolderInput, FolderOpen, FolderSearch, FolderX, Square } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +17,8 @@ interface ImportCardProps {
   folder: string | null;
   phase: ImportPhase;
   progress: ImportProgress | null;
+  onCancel: () => void;
+  isCancelling: boolean;
 }
 
 /** The face of the folder as it goes through the pipeline: which glyph, and on
@@ -29,12 +31,15 @@ const FACE: Record<ImportPhase["kind"], { icon: LucideIcon; tile: string }> = {
   scanned: { icon: FolderCheck, tile: "bg-accent-soft text-accent" },
   importing: { icon: FolderInput, tile: "bg-accent-soft text-accent" },
   importFailed: { icon: FolderX, tile: "bg-danger-soft text-danger" },
+  // Amber, not red: a stop is the user's own act, and what landed is in.
+  importCancelled: { icon: Square, tile: "bg-warning-soft text-warning" },
   imported: { icon: Check, tile: "bg-success-soft text-success" },
 };
 
 const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: string }>> = {
   scanned: { tone: "accent", key: "verdict.ready" },
   imported: { tone: "success", key: "verdict.done" },
+  importCancelled: { tone: "warning", key: "verdict.cancelled" },
   scanFailed: { tone: "danger", key: "verdict.failed" },
   importFailed: { tone: "danger", key: "verdict.failed" },
 };
@@ -48,7 +53,7 @@ const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: str
  * and someone landing on it had no idea what pressing it would set off. An empty
  * rail is a promise; a blank page is a shrug.
  */
-export function ImportCard({ folder, phase, progress }: ImportCardProps) {
+export function ImportCard({ folder, phase, progress, onCancel, isCancelling }: ImportCardProps) {
   const { t } = useTranslation("import");
   const rail = importRail(phase, progress);
   const label = useImportLabel(phase, progress);
@@ -103,7 +108,24 @@ export function ImportCard({ folder, phase, progress }: ImportCardProps) {
         </div>
 
         <div className="flex w-24 shrink-0 justify-end">
-          {verdict && <Verdict tone={verdict.tone}>{t(verdict.key)}</Verdict>}
+          {/* While the copy runs the verdict slot holds the one verb left:
+              stopping. Inline rather than behind a menu, same reasoning as the
+              job card's stop — a stop is reached for while something happens.
+              Gone once the cover pass starts: the watchdog only guards beets,
+              and a button that stops nothing is worse than none. */}
+          {phase.kind === "importing" && progress?.stage !== "covers" ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isCancelling}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Square className="size-3.5" />
+              {t("stop")}
+            </button>
+          ) : (
+            verdict && <Verdict tone={verdict.tone}>{t(verdict.key)}</Verdict>
+          )}
         </div>
       </div>
 

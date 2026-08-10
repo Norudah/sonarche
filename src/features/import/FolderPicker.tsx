@@ -90,7 +90,9 @@ export function FolderPicker({ folder, phase, onChoose, onStart }: FolderPickerP
           originals are not touched — and, once the copy has landed, the way on. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-separator/60 bg-panel px-4 py-2.5">
         <p className="text-xs text-muted">{t("hint")}</p>
-        {phase.kind === "imported" && (
+        {/* A cancelled run keeps the door too: whatever landed before the stop
+            is browsable, and this link is how the user goes and sees it. */}
+        {(phase.kind === "imported" || (phase.kind === "importCancelled" && phase.outcome.folders > 0)) && (
           <ActionLink to={paths.libraryTracks} trailingIcon={ArrowRight}>
             {t("seeLibrary")}
           </ActionLink>

@@ -43,6 +43,9 @@ pub struct ImportOutcome {
     /// The state of the tags that came in, straight from the sidecar. See
     /// `ImportRecord::recap` for why it stays untyped here.
     pub recap: Option<Value>,
+    /// The user stopped the copy. Not a failure: everything beets had taken
+    /// on by then is in the library, and the counts above describe it.
+    pub cancelled: bool,
 }
 
 /// What the scan promised, carried into the archive so a row can say what was
@@ -77,6 +80,10 @@ impl From<&ScanReport> for ScanCounts {
 pub enum ImportStatus {
     Done,
     Failed,
+    /// Stopped by the user mid-copy. Its own state rather than a flavour of
+    /// `Failed`: what landed before the stop is in the library and the row's
+    /// counts are real — an archive must not call that an error.
+    Cancelled,
 }
 
 /// One finished import, as the archive keeps it.
@@ -106,6 +113,13 @@ pub struct ImportRecord {
 #[derive(Default)]
 pub struct LibraryImportState {
     running: Mutex<bool>,
+    /// Where a cancel request lands while an import runs, `None` otherwise.
+    ///
+    /// A file rather than a protocol message because the sidecar reads one
+    /// request at a time — a "stop" sent down the pipe would wait in line
+    /// behind the very import it is meant to stop. The sidecar polls for the
+    /// file and terminates beets when it appears.
+    cancel_file: Mutex<Option<PathBuf>>,
     /// The last folder scanned, and what was found in it.
     ///
     /// Held here rather than sent back down from the page: the numbers are the
@@ -164,19 +178,26 @@ impl LibraryImportState {
         // this run *and* the mark stamped on every item beets takes on, so the
         // two have to be the same string and this is the side that keeps records.
         let id = uuid::Uuid::new_v4().to_string();
-        let result = request(app, sidecar, folder, &id, &paths).await;
+        let cancel_file = paths.staging_dir.join(format!("import-cancel-{id}"));
+        *self.cancel_file.lock().await = Some(cancel_file.clone());
+
+        let result = request(app, sidecar, folder, &id, &cancel_file, &paths).await;
 
         // Awaited rather than a Drop guard, so a failure cannot leave the flag
-        // stuck and the page refusing every later attempt.
+        // stuck and the page refusing every later attempt. The cancel slot is
+        // cleared the same way — and its file removed, so a stop that landed
+        // in the run's last instants cannot arm itself against the next one.
         *self.running.lock().await = false;
+        *self.cancel_file.lock().await = None;
+        let _ = tokio::fs::remove_file(&cancel_file).await;
 
         jobs.record_import(ImportRecord {
             id,
             folder: folder.to_string(),
-            status: if result.is_ok() {
-                ImportStatus::Done
-            } else {
-                ImportStatus::Failed
+            status: match &result {
+                Ok(outcome) if outcome.cancelled => ImportStatus::Cancelled,
+                Ok(_) => ImportStatus::Done,
+                Err(_) => ImportStatus::Failed,
             },
             error: result.as_ref().err().map(|err| err.to_string()),
             scan: self.scan_counts(Path::new(folder)).await,
@@ -189,6 +210,23 @@ impl LibraryImportState {
 
         result
     }
+
+    /// Stop the import in flight, if any.
+    ///
+    /// Writing the file is the whole act: the sidecar's watch thread sees it
+    /// within half a second and terminates beets. The call does not wait for
+    /// that — the page is already watching the import's own resolution, and
+    /// that is where the stop's outcome will arrive.
+    pub async fn cancel(&self) -> AppResult<()> {
+        let target = self.cancel_file.lock().await.clone();
+        match target {
+            Some(path) => {
+                tokio::fs::write(&path, b"cancel").await?;
+                Ok(())
+            }
+            None => Err(AppError::InvalidInput("no import is running".into())),
+        }
+    }
 }
 
 async fn request(
@@ -196,6 +234,7 @@ async fn request(
     sidecar: &SidecarState,
     folder: &str,
     id: &str,
+    cancel_file: &Path,
     paths: &AppPaths,
 ) -> AppResult<ImportOutcome> {
     let reply = sidecar
@@ -216,6 +255,8 @@ async fn request(
                 // itself, not just the config beets was driven with.
                 "beets_db": paths.beets_db,
                 "library_dir": paths.music_dir(),
+                // Watched by the sidecar while beets runs; see `cancel`.
+                "cancel_file": cancel_file,
             }),
             IMPORT_TIMEOUT,
         )
@@ -225,5 +266,9 @@ async fn request(
         folders: reply.get("folders").and_then(Value::as_u64).unwrap_or(0),
         renditions: reply.get("renditions").and_then(Value::as_u64).unwrap_or(0),
         recap: reply.get("recap").filter(|recap| !recap.is_null()).cloned(),
+        cancelled: reply
+            .get("cancelled")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
     })
 }

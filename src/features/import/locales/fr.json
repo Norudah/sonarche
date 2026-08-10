@@ -20,7 +20,8 @@
   "verdict": {
     "ready": "Prêt",
     "done": "Importé",
-    "failed": "Échec"
+    "failed": "Échec",
+    "cancelled": "Arrêté"
   },
   "scanning": "Lecture du dossier…",
   "scanFailed": "Impossible de lire ce dossier",
@@ -44,6 +45,10 @@
   "progress": "Dossier {{done, number}} sur {{total, number}}",
   "importFailed": "L'import s'est arrêté",
   "retry": "Réessayer",
+  "stop": "Arrêter",
+  "cancelled": "Import arrêté",
+  "cancelledDetail": "Arrêté en cours de copie. Déjà dans l'arche : {{landed}}.",
+  "cancelledNothing": "Arrêté avant que quoi que ce soit n'entre. La bibliothèque n'a pas changé.",
   "done": "Import terminé",
   "doneDetail_one": "{{count, number}} dossier ajouté à l'arche.",
   "doneDetail_other": "{{count, number}} dossiers ajoutés à l'arche.",

@@ -55,6 +55,9 @@ export interface ImportOutcome {
    * kept beside them as `cover-hq.*`. */
   renditions: number;
   recap: ImportRecap | null;
+  /** The user stopped the copy. Not a failure: everything taken on by then is
+   * in the library, and the counts above describe it. */
+  cancelled: boolean;
 }
 
 /** The scan's counts as the archive keeps them — the report itself is not
@@ -77,7 +80,7 @@ export interface ImportScanCounts {
 export interface ImportRecord {
   id: string;
   folder: string;
-  status: "done" | "failed";
+  status: "done" | "failed" | "cancelled";
   error: string | null;
   scan: ImportScanCounts;
   folders: number;
@@ -95,6 +98,12 @@ export function listImports(): Promise<ImportRecord[]> {
  * on a real collection is minutes away. */
 export function startLibraryImport(folder: string): Promise<ImportOutcome> {
   return invoke<ImportOutcome>("start_library_import", { folder });
+}
+
+/** Stop the import in flight. Fire-and-forget: the import's own call is what
+ * resolves — as cancelled — once beets has actually stopped. */
+export function cancelLibraryImport(): Promise<void> {
+  return invoke<void>("cancel_library_import");
 }
 
 /**

@@ -18,10 +18,17 @@ Two flags carry the whole doctrine:
 
 import os
 import subprocess
+import threading
+import time
 
 import import_recap
 import protocol
 from importer import beet_bin
+
+# How long a terminated beets gets to die on its own before being killed
+# outright. SIGTERM lets it finish the SQLite transaction it is in; a process
+# that ignores it for this long is not going to honour it at all.
+_CANCEL_GRACE_SECONDS = 5.0
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -71,6 +78,21 @@ def handle(request_id: str, params: dict) -> dict:
         bufsize=1,
     )
 
+    # The sidecar reads one request at a time, so a cancel can never arrive as
+    # a protocol message while this one runs. It arrives as a file instead: the
+    # app writes `cancel_file` and this thread, the only part of the process
+    # with nothing else to do, notices and terminates beets. beets commits
+    # album by album, so a SIGTERM between commits leaves a consistent library
+    # holding everything imported so far — at worst one file copied but not
+    # yet recorded, which a later import of the same folder re-copies.
+    cancelled = threading.Event()
+    cancel_file = params.get("cancel_file")
+    if cancel_file:
+        _forget_cancel(cancel_file)
+        threading.Thread(
+            target=_watch_cancel, args=(proc, cancel_file, cancelled), daemon=True
+        ).start()
+
     folders = 0
     tail: list[str] = []
     assert proc.stdout is not None
@@ -94,9 +116,16 @@ def handle(request_id: str, params: dict) -> dict:
         protocol.send_event(request_id, "library_import_progress", {"folders": folders, "folder": line})
 
     code = proc.wait()
-    if code != 0:
+    if cancel_file:
+        _forget_cancel(cancel_file)
+    if code != 0 and not cancelled.is_set():
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
 
+    # On a cancel everything below still runs: the albums that landed are in
+    # the library for good, and they deserve their repaired tags, their covers
+    # and an honest recap just as much as a full run's. All three passes are
+    # bounded by what is already on disk — the open-ended part, the copy, is
+    # what the cancel stopped.
     _write_repaired_tags(params, batch)
 
     # The cover pass runs first, sequentially, and the recap reads after it —
@@ -110,7 +139,38 @@ def handle(request_id: str, params: dict) -> dict:
         "folders": folders,
         "renditions": renditions,
         "recap": recap,
+        "cancelled": cancelled.is_set(),
     }
+
+
+def _watch_cancel(proc, cancel_file: str, cancelled: threading.Event) -> None:
+    """Poll for the cancel file while beets runs; terminate it on sight.
+
+    A poll rather than a watcher: half a second of latency on a deliberate
+    stop is imperceptible, and polling has no platform-specific failure
+    modes. Sets the event *before* terminating, so the reader loop knows the
+    non-zero exit it is about to see was asked for.
+    """
+    while proc.poll() is None:
+        if os.path.exists(cancel_file):
+            cancelled.set()
+            protocol.log("library_import: cancel requested, stopping beets")
+            proc.terminate()
+            try:
+                proc.wait(timeout=_CANCEL_GRACE_SECONDS)
+            except subprocess.TimeoutExpired:
+                protocol.log("library_import: beets ignored the term, killing it")
+                proc.kill()
+            return
+        time.sleep(0.5)
+
+
+def _forget_cancel(cancel_file: str) -> None:
+    """Remove the cancel file, so a stale one cannot stop the next run."""
+    try:
+        os.remove(cancel_file)
+    except OSError:
+        pass
 
 
 def _write_repaired_tags(params: dict, batch: str) -> None:
