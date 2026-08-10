@@ -33,6 +33,7 @@ describe("ImportCard stop button", () => {
       folder="/Music/Rips"
       phase={{ kind: "importing", report }}
       progress={progress}
+      onStart={() => {}}
       onCancel={onCancel}
       isCancelling={false}
     />
@@ -67,6 +68,7 @@ describe("ImportCard stop button", () => {
           report,
         }}
         progress={null}
+        onStart={() => {}}
         onCancel={() => {}}
         isCancelling={false}
       />,

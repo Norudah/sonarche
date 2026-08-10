@@ -9,6 +9,7 @@ import { GroupingChoice } from "@/features/import/GroupingChoice";
 import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { suggestGrouping } from "@/features/import/grouping";
 import { HowItWorks } from "@/features/import/HowItWorks";
+import { LastImportSection } from "@/features/import/LastImportSection";
 import { useCancelImport, useImportProgress, useLibraryImport } from "@/features/import/hooks";
 import { ImportCard } from "@/features/import/ImportCard";
 import { importPhase } from "@/features/import/phase";
@@ -83,12 +84,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
             </div>
           </div>
 
-          <FolderPicker
-            folder={folder}
-            phase={phase}
-            onChoose={() => void choose()}
-            onStart={() => folder != null && run.mutate({ folder, grouping, category })}
-          />
+          <FolderPicker folder={folder} phase={phase} onChoose={() => void choose()} />
 
           {/* Under the picker and only once there is a folder: the question is
               about this folder, and its shape is what preselects the answer. */}
@@ -107,6 +103,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
               label={t("category.label")}
               hint={t("category.hint")}
               noneLabel={t("category.none")}
+              isDisabled={phase.kind === "importing"}
               onChange={setCategory}
             />
           )}
@@ -123,11 +120,16 @@ export function ImportPage({ children }: { children?: ReactNode }) {
             folder={folder}
             phase={phase}
             progress={progress}
+            onStart={() => folder != null && run.mutate({ folder, grouping, category })}
             onCancel={() => cancel.mutate()}
             isCancelling={cancel.isPending}
           />
         </div>
       </section>
+
+      {/* Between the run and the alignment offer: what just happened, then what
+          could happen to it next. */}
+      <LastImportSection />
 
       {children}
     </PageContainer>

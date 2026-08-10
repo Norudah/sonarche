@@ -23,18 +23,22 @@ export function CategoryChoice({
   label,
   hint,
   noneLabel,
+  isDisabled = false,
   onChange,
 }: {
   value: string | null;
   label: string;
   hint: string;
   noneLabel: string;
+  /** Locked once the answer can no longer change anything — the import is
+   * already running, and a chip that still highlights would promise otherwise. */
+  isDisabled?: boolean;
   onChange: (next: string | null) => void;
 }) {
   const labelOf = useCategoryLabel();
 
   return (
-    <fieldset className="flex flex-col gap-1.5">
+    <fieldset disabled={isDisabled} className="flex flex-col gap-1.5 disabled:opacity-50">
       <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{label}</legend>
       <p className="text-xs text-muted">{hint}</p>
       <div className="flex flex-wrap gap-1.5">
@@ -44,7 +48,7 @@ export function CategoryChoice({
             type="button"
             aria-pressed={value === canonical}
             onClick={() => onChange(canonical)}
-            className={`${CHIP} ${value === canonical ? CHIP_ON : CHIP_OFF}`}
+            className={`${CHIP} ${value === canonical ? CHIP_ON : CHIP_OFF} disabled:cursor-not-allowed`}
           >
             {labelOf(canonical)}
           </button>
@@ -53,7 +57,7 @@ export function CategoryChoice({
           type="button"
           aria-pressed={value === null}
           onClick={() => onChange(null)}
-          className={`${CHIP} ${value === null ? CHIP_ON : CHIP_OFF}`}
+          className={`${CHIP} ${value === null ? CHIP_ON : CHIP_OFF} disabled:cursor-not-allowed`}
         >
           {noneLabel}
         </button>

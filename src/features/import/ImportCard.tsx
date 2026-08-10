@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { Check, FolderCheck, FolderInput, FolderOpen, FolderSearch, FolderX, Square } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import { importRail, STAGE_WEIGHTS } from "@/features/import/stages";
 import { StageLabels } from "@/features/import/StageLabels";
 import { useImportLabel } from "@/features/import/useImportLabel";
 import { Swap } from "@/shared/motion/Swap";
+import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
 import { springs } from "@/shared/motion/tokens";
 import { PipelineRail } from "@/shared/ui/PipelineRail";
 import { Verdict, type VerdictTone } from "@/shared/ui/Verdict";
@@ -17,6 +19,7 @@ interface ImportCardProps {
   folder: string | null;
   phase: ImportPhase;
   progress: ImportProgress | null;
+  onStart: () => void;
   onCancel: () => void;
   isCancelling: boolean;
 }
@@ -36,8 +39,10 @@ const FACE: Record<ImportPhase["kind"], { icon: LucideIcon; tile: string }> = {
   imported: { icon: Check, tile: "bg-success-soft text-success" },
 };
 
+/* `scanned` has no verdict any more: the slot holds the Import button there, and
+ * a pill reading "Prêt" beside a button that says so by existing was the same
+ * sentence twice. */
 const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: string }>> = {
-  scanned: { tone: "accent", key: "verdict.ready" },
   imported: { tone: "success", key: "verdict.done" },
   importCancelled: { tone: "warning", key: "verdict.cancelled" },
   scanFailed: { tone: "danger", key: "verdict.failed" },
@@ -53,10 +58,15 @@ const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: str
  * and someone landing on it had no idea what pressing it would set off. An empty
  * rail is a promise; a blank page is a shrug.
  */
-export function ImportCard({ folder, phase, progress, onCancel, isCancelling }: ImportCardProps) {
+export function ImportCard({ folder, phase, progress, onStart, onCancel, isCancelling }: ImportCardProps) {
   const { t } = useTranslation("import");
   const rail = importRail(phase, progress);
   const label = useImportLabel(phase, progress);
+  const canStart = phase.kind === "scanned" || phase.kind === "importFailed";
+  // Same treatment as the composer's Download button: it swells the moment the
+  // form becomes submittable. On the wrapper rather than the Button, because
+  // `usePopOnActivate` writes a transform and HeroUI's Button owns its own.
+  const startRef = usePopOnActivate<HTMLDivElement>(canStart);
 
   const face = FACE[phase.kind];
   const verdict = VERDICT[phase.kind];
@@ -107,13 +117,27 @@ export function ImportCard({ folder, phase, progress, onCancel, isCancelling }: 
           </div>
         </div>
 
-        <div className="flex w-24 shrink-0 justify-end">
-          {/* While the copy runs the verdict slot holds the one verb left:
-              stopping. Inline rather than behind a menu, same reasoning as the
-              job card's stop — a stop is reached for while something happens.
-              Gone once the cover pass starts: the watchdog only guards beets,
-              and a button that stops nothing is worse than none. */}
-          {phase.kind === "importing" && progress?.stage !== "covers" ? (
+        {/* One slot, three states, in the order they happen: start it, stop it,
+            read what it did. The button lives here and not in the picker above
+            because this card *is* the run — a commit point one panel away from
+            the thing it commits made the user hunt for what they had started,
+            and left the card that owns the import with no way to begin one.
+
+            Fixed width so the card's right edge does not step sideways as the
+            slot's contents change. */}
+        <div className="flex w-32 shrink-0 justify-end">
+          {canStart ? (
+            <div ref={startRef} className="flex">
+              <Button
+                type="button"
+                variant="primary"
+                onPress={onStart}
+                className="rounded-full px-4 transition-transform active:scale-[0.97]"
+              >
+                {phase.kind === "importFailed" ? t("retry") : t("start")}
+              </Button>
+            </div>
+          ) : phase.kind === "importing" && progress?.stage !== "covers" ? (
             <button
               type="button"
               onClick={onCancel}

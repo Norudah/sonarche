@@ -58,7 +58,9 @@
   "doneRenditions_one": "{{count, number}} pochette a reçu une version d'affichage.",
   "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage.",
   "history": {
-    "heading": "Imports"
+    "heading": "Imports",
+    "last": "Dernier import",
+    "seeAll": "Tout l'historique"
   },
   "how": {
     "label": "Ce qui va se passer",

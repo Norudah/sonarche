@@ -11,6 +11,25 @@ import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 
 /**
+ * Which phases show the *same* thing, so the card stops collapsing between them.
+ *
+ * `mode="wait"` plays a key change as collapse-then-expand, which is right when
+ * the content is genuinely different and absurd when it is not: pressing Import
+ * took the card from "scanned" to "importing" — the same summary either side,
+ * plus one line — and the whole panel folded shut and reopened for it. Every
+ * pair that shares a body now shares a key, so only the phases that really swap
+ * their content animate the swap.
+ */
+export const DETAIL_KEY: Partial<Record<ImportPhase["kind"], string>> = {
+  scanned: "summary",
+  importing: "summary",
+  imported: "landed",
+  importCancelled: "landed",
+  scanFailed: "failure",
+  importFailed: "failure",
+};
+
+/**
  * What is known about the folder right now, under the card's own rail.
  *
  * Height, not opacity: the card has to grow into its content rather than have a
@@ -21,13 +40,10 @@ export function PhaseDetail({ phase, progress }: { phase: ImportPhase; progress:
   const body = <Body phase={phase} progress={progress} />;
 
   return (
-    // `mode="wait"` and a key per phase: one phase's detail collapses before the
-    // next expands, so the card resizes once instead of jumping to the new
-    // content's height mid-transition.
     <AnimatePresence initial={false} mode="wait">
       {phase.kind !== "empty" && phase.kind !== "scanning" && (
         <motion.div
-          key={phase.kind}
+          key={DETAIL_KEY[phase.kind] ?? phase.kind}
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
@@ -52,16 +68,16 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
     case "scanFailed":
       return <Failure title={t("scanFailed")} message={phase.message} />;
 
+    // One body for both, and the copying line is rendered in each — empty
+    // before the run starts. The summary stays up through the copy because it
+    // is what the user agreed to, and reserving the line's height means the
+    // card does not grow by a row the instant Import is pressed: between "ready"
+    // and "running" it now does not move at all.
     case "scanned":
-      return <ScanSummary report={phase.report} />;
-
     case "importing":
-      // The summary stays up through the copy. It is what the user agreed to,
-      // and a card that shrinks to one line the moment work starts reads as
-      // having thrown the answer away.
       return (
         <div className="flex flex-col gap-4">
-          <CopyingLine progress={progress} />
+          <CopyingLine progress={phase.kind === "importing" ? progress : null} />
           <ScanSummary report={phase.report} />
         </div>
       );

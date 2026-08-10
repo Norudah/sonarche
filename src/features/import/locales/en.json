@@ -58,7 +58,9 @@
   "doneRenditions_one": "{{count, number}} cover got a display version.",
   "doneRenditions_other": "{{count, number}} covers got a display version.",
   "history": {
-    "heading": "Imports"
+    "heading": "Imports",
+    "last": "Last import",
+    "seeAll": "Full history"
   },
   "how": {
     "label": "What will happen",
