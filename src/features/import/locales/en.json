@@ -132,5 +132,29 @@
   },
   "options": {
     "title": "Options"
+  },
+  "undo": {
+    "action": "Take this import back out",
+    "title": "Take “{{name}}” back out of the ark?",
+    "counting": "Counting what this import still has in the ark…",
+    "countFailed": "Could not count what this import still has in the ark. Try again in a moment.",
+    "tracks_one": "{{count, number}} track will be removed from the ark, file included.",
+    "tracks_other": "{{count, number}} tracks will be removed from the ark, files included.",
+    "albumsRemoved_one": "{{count, number}} album disappears entirely, artwork with it.",
+    "albumsRemoved_other": "{{count, number}} albums disappear entirely, artwork with them.",
+    "albumsKept_one": "{{count, number}} album loses some of its tracks and stays on the shelf.",
+    "albumsKept_other": "{{count, number}} albums lose some of their tracks and stay on the shelf.",
+    "playlistEntries_one": "{{count, number}} playlist entry goes with them.",
+    "playlistEntries_other": "{{count, number}} playlist entries go with them.",
+    "edits": "Anything done to these tracks since — fixed tags, replaced artwork, genres, a place in a playlist — does not come back.",
+    "originals": "Your original files are untouched: the import only ever copied them. You can import this folder again whenever you like.",
+    "nothingLeft": "This import has nothing left in the ark. Taking it back out removes nothing — the folder is simply forgotten.",
+    "keep": "Keep",
+    "confirm": "Take out of the ark",
+    "doneToast_one": "{{count, number}} track taken out of the ark ({{name}}).",
+    "doneToast_other": "{{count, number}} tracks taken out of the ark ({{name}}).",
+    "failedToast": "The removal did not go through",
+    "verdict": "Taken out",
+    "subtitle": "Taken back out: nothing from this import is in the library any more."
   }
 }

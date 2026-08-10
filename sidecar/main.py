@@ -33,6 +33,7 @@ def _handlers():
     import genres
     import importer
     import library
+    import import_undo
     import library_align
     import library_import
     import lyrics
@@ -46,6 +47,8 @@ def _handlers():
         "download": download.handle,
         "import": importer.handle,
         "library_import": library_import.handle,
+        "library_import_undo_preview": import_undo.preview,
+        "library_import_undo": import_undo.handle,
         "library_align_scan": library_align.scan,
         "library_align_apply": library_align.apply,
         "enrich": enrich.handle,

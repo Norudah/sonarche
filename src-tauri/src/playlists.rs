@@ -10,6 +10,7 @@
 //! thousand rows, where a full rewrite is a hair slower than a gap scheme and
 //! immune to the drift those schemes invite.
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -491,6 +492,71 @@ pub fn remove_item_everywhere(conn: &Connection, item_id: i64, now: u64) -> AppR
     Ok(())
 }
 
+/// How many memberships point at any of these items.
+///
+/// Asked before an undo, so the confirmation can say that removing a run's
+/// tracks also empties them out of playlists — the one consequence that
+/// reaches a place the user did not think they were acting on.
+///
+/// Scanned rather than queried with an `IN`: an import runs to thousands of
+/// ids, well past SQLite's parameter ceiling, and the membership table is the
+/// small one here.
+pub fn count_memberships(conn: &Connection, item_ids: &HashSet<i64>) -> AppResult<usize> {
+    if item_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut stmt = conn.prepare("SELECT item_id FROM playlist_tracks")?;
+    let rows = stmt.query_map([], |row| row.get::<_, i64>(0))?;
+    let mut count = 0;
+    for row in rows {
+        if item_ids.contains(&row?) {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+/// A whole import left the library: every membership pointing at one of its
+/// tracks goes, gaps closed, in one transaction.
+///
+/// The batch twin of `remove_item_everywhere`, and not a loop over it: that one
+/// opens a transaction and rewrites a playlist per item, which on a four
+/// thousand track undo is four thousand rewrites of the same lists.
+pub fn remove_items_everywhere(
+    conn: &Connection,
+    item_ids: &HashSet<i64>,
+    now: u64,
+) -> AppResult<usize> {
+    if item_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut stmt = conn.prepare("SELECT DISTINCT playlist_id FROM playlist_tracks")?;
+    let rows = stmt.query_map([], |row| row.get::<_, i64>(0))?;
+    let mut lists = Vec::new();
+    for row in rows {
+        lists.push(row?);
+    }
+
+    let tx = conn.unchecked_transaction()?;
+    let mut removed = 0;
+    for playlist_id in lists {
+        let ids = load_item_ids(&tx, playlist_id)?;
+        let kept: Vec<i64> = ids
+            .iter()
+            .copied()
+            .filter(|item| !item_ids.contains(item))
+            .collect();
+        if kept.len() == ids.len() {
+            continue;
+        }
+        removed += ids.len() - kept.len();
+        rewrite_membership(&tx, playlist_id, &kept, now)?;
+        touch(&tx, playlist_id, now)?;
+    }
+    tx.commit()?;
+    Ok(removed)
+}
+
 /// The erase-all sweep: every playlist at once, memberships cascading.
 pub fn clear(conn: &Connection) -> AppResult<()> {
     conn.execute("DELETE FROM playlists", [])?;
@@ -720,6 +786,29 @@ mod tests {
         assert_eq!(listed[0].item_ids, vec![7, 3, 11]);
         assert_eq!(listed[0].created_at, 100);
         assert_eq!(listed[0].updated_at, 150);
+    }
+
+    /// An undo takes a whole run's tracks out at once. Every list it touches
+    /// has to close its gaps, and the lists it does not touch must not be
+    /// rewritten (their `updated_at` is what the navigation sorts on).
+    #[test]
+    fn undoing_an_import_empties_its_tracks_out_of_every_playlist() {
+        let conn = open_in_memory_for_tests();
+        let mixed = create(&conn, "Mélange", 100).unwrap();
+        let untouched = create(&conn, "Intacte", 100).unwrap();
+        add_tracks(&conn, mixed.id, &[1, 2, 3, 4], 150).unwrap();
+        add_tracks(&conn, untouched.id, &[9], 150).unwrap();
+        let doomed: HashSet<i64> = [2, 4, 42].into();
+
+        assert_eq!(count_memberships(&conn, &doomed).unwrap(), 2);
+        let removed = remove_items_everywhere(&conn, &doomed, 300).unwrap();
+
+        assert_eq!(removed, 2);
+        assert_eq!(ids(&conn, mixed.id), vec![1, 3]);
+        assert_eq!(ids(&conn, untouched.id), vec![9]);
+        let listed = list(&conn).unwrap();
+        let intact = listed.iter().find(|row| row.id == untouched.id).unwrap();
+        assert_eq!(intact.updated_at, 150);
     }
 
     #[test]

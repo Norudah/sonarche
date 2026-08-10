@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS imports (
     -- picked.
     grouping      TEXT,
     category      TEXT,
+    -- When the import was taken back out of the library, NULL while it stands.
+    -- The row is kept rather than deleted: the archive says what happened, and
+    -- an import that was undone happened twice.
+    undone_at     INTEGER,
     finished_at   INTEGER NOT NULL
 );
 
@@ -220,6 +224,9 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     // made under the one behaviour beets has by default.
     add_column(conn, "imports", "grouping", "TEXT")?;
     add_column(conn, "imports", "category", "TEXT")?;
+    // When the run was taken back out. NULL for every row that still stands,
+    // which is what an older file's rows are.
+    add_column(conn, "imports", "undone_at", "INTEGER")?;
     Ok(())
 }
 
@@ -454,8 +461,8 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
             id, folder, status, error, playable, unplayable,
             unplayable_by_extension, bytes, album_folders, folders, renditions,
             grouping, category,
-            recap, finished_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            recap, undone_at, finished_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             record.id,
             record.folder,
@@ -471,8 +478,30 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
             record.grouping,
             record.category,
             report_to_text(&record.recap)?,
+            record.undone_at.map(|at| at as i64),
             record.finished_at as i64,
         ],
+    )?;
+    Ok(())
+}
+
+/// One archived import, or None when the id names nothing. The undo needs the
+/// folder it read — the sidecar has to forget it from beets' incremental
+/// memory, and only this row remembers which folder the run was about.
+pub fn get_import(conn: &Connection, id: &str) -> AppResult<Option<ImportRecord>> {
+    let mut stmt = conn.prepare("SELECT * FROM imports WHERE id = ?1")?;
+    let mut rows = stmt.query_map(params![id], |row| Ok(row_to_import(row)))?;
+    match rows.next() {
+        Some(row) => Ok(Some(row??)),
+        None => Ok(None),
+    }
+}
+
+/// Mark a run as taken back out. The row stays, and the history says so.
+pub fn mark_import_undone(conn: &Connection, id: &str, when: u64) -> AppResult<()> {
+    conn.execute(
+        "UPDATE imports SET undone_at = ?2 WHERE id = ?1",
+        params![id, when as i64],
     )?;
     Ok(())
 }
@@ -508,6 +537,7 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
         grouping: row.get("grouping")?,
         category: row.get("category")?,
         recap: report_from_text(row.get("recap")?)?,
+        undone_at: row.get::<_, Option<i64>>("undone_at")?.map(|at| at as u64),
         finished_at: row.get::<_, i64>("finished_at")? as u64,
     })
 }
@@ -1055,6 +1085,7 @@ mod tests {
             grouping: Some("tracks".to_string()),
             category: Some("Video Games".to_string()),
             recap: Some(json!({ "tracks": 4312, "withoutGenre": 96 })),
+            undone_at: None,
             finished_at,
         }
     }
@@ -1077,6 +1108,22 @@ mod tests {
             Some(&json!(96))
         );
         assert!(matches!(record.status, ImportStatus::Done));
+    }
+
+    /// The undo keeps the row and stamps it. An archive that deleted the row
+    /// would say the import never happened, which is the one thing it knows to
+    /// be false.
+    #[test]
+    fn undoing_an_import_stamps_the_row_instead_of_dropping_it() {
+        let conn = mem();
+        insert_import(&conn, &import("i", 100)).unwrap();
+
+        mark_import_undone(&conn, "i", 500).unwrap();
+
+        let record = get_import(&conn, "i").unwrap().unwrap();
+        assert_eq!(record.undone_at, Some(500));
+        assert_eq!(list_imports(&conn).unwrap().len(), 1);
+        assert!(get_import(&conn, "nobody").unwrap().is_none());
     }
 
     #[test]

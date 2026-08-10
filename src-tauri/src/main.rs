@@ -7,6 +7,7 @@ mod commands;
 mod error;
 mod genres;
 mod identity;
+mod import_undo;
 mod jobs;
 mod jobs_store;
 mod library_align;
@@ -142,6 +143,8 @@ fn main() {
             commands::start_library_import,
             commands::cancel_library_import,
             commands::list_imports,
+            commands::preview_import_undo,
+            commands::undo_import,
             commands::list_api_keys,
             commands::set_api_key,
             commands::erase_all_data,

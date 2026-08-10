@@ -132,5 +132,29 @@
   },
   "options": {
     "title": "Options"
+  },
+  "undo": {
+    "action": "Retirer cet import de l'arche",
+    "title": "Retirer « {{name}} » de l'arche ?",
+    "counting": "Décompte de ce que cet import a encore dans l'arche…",
+    "countFailed": "Impossible de compter ce que cet import a encore dans l'arche. Réessaie dans un instant.",
+    "tracks_one": "{{count, number}} morceau sera supprimé de l'arche, fichier compris.",
+    "tracks_other": "{{count, number}} morceaux seront supprimés de l'arche, fichiers compris.",
+    "albumsRemoved_one": "{{count, number}} album disparaît entièrement, avec sa pochette.",
+    "albumsRemoved_other": "{{count, number}} albums disparaissent entièrement, avec leurs pochettes.",
+    "albumsKept_one": "{{count, number}} album perd une partie de ses morceaux et reste sur l'étagère.",
+    "albumsKept_other": "{{count, number}} albums perdent une partie de leurs morceaux et restent sur l'étagère.",
+    "playlistEntries_one": "{{count, number}} entrée de playlist part avec eux.",
+    "playlistEntries_other": "{{count, number}} entrées de playlist partent avec eux.",
+    "edits": "Ce qui a été fait sur ces morceaux depuis — tags corrigés, pochettes remplacées, genres, place dans une playlist — ne revient pas.",
+    "originals": "Tes fichiers d'origine ne sont pas touchés : l'import n'a fait qu'en copier. Tu pourras réimporter ce dossier quand tu veux.",
+    "nothingLeft": "Cet import n'a plus rien dans l'arche. Le retirer ne supprimera donc rien — le dossier sera simplement oublié.",
+    "keep": "Garder",
+    "confirm": "Retirer de l'arche",
+    "doneToast_one": "{{count, number}} morceau retiré de l'arche ({{name}}).",
+    "doneToast_other": "{{count, number}} morceaux retirés de l'arche ({{name}}).",
+    "failedToast": "Le retrait n'a pas abouti",
+    "verdict": "Retiré",
+    "subtitle": "Retiré de l'arche : plus rien de cet import n'est dans la bibliothèque."
   }
 }

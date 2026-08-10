@@ -117,6 +117,10 @@ pub struct ImportRecord {
     /// reason to know its fields, and the interface reads it directly. None
     /// when the sidecar could not account for the run.
     pub recap: Option<Value>,
+    /// When the run was taken back out of the library (`import_undo`), None
+    /// while it stands. The row survives the undo: the archive answers what
+    /// happened, and a run that was undone is two things that happened.
+    pub undone_at: Option<u64>,
     pub finished_at: u64,
 }
 
@@ -235,6 +239,7 @@ impl LibraryImportState {
             folders: result.as_ref().map(|out| out.folders).unwrap_or(0),
             renditions: result.as_ref().map(|out| out.renditions).unwrap_or(0),
             recap: result.as_ref().ok().and_then(|out| out.recap.clone()),
+            undone_at: None,
             finished_at: now_ms(),
         })
         .await;

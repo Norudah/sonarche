@@ -110,12 +110,54 @@ export interface ImportRecord {
   grouping?: Grouping;
   category?: string | null;
   recap: ImportRecap | null;
+  /** When the run was taken back out of the library, epoch milliseconds. Null
+   * while it stands — which is every row until someone undoes one. */
+  undoneAt?: number | null;
   /** Epoch milliseconds. */
   finishedAt: number;
 }
 
 export function listImports(): Promise<ImportRecord[]> {
   return invoke<ImportRecord[]>("list_imports");
+}
+
+/**
+ * What undoing a run would take away.
+ *
+ * Counted from the library as it stands now, not from what the run reported
+ * when it ended: tracks may have been deleted by hand since, and an album the
+ * import merely added to may have grown.
+ */
+export interface ImportUndoPreview {
+  tracks: number;
+  /** Albums that disappear with their tracks. */
+  albumsRemoved: number;
+  /** Albums that only lose some — the import had added to a record that was
+   * already there. Its own number because it is the consequence nobody
+   * expects. */
+  albumsKept: number;
+  /** Playlist entries that go with the tracks. */
+  playlistEntries: number;
+}
+
+export interface ImportUndoOutcome {
+  removed: number;
+  /** Rows dropped whose file sat outside the library, left on disk. Nothing an
+   * import created can be there, so this is only ever a sign something else
+   * went wrong earlier. */
+  foreign: number;
+  playlistEntries: number;
+}
+
+export function previewImportUndo(id: string): Promise<ImportUndoPreview> {
+  return invoke<ImportUndoPreview>("preview_import_undo", { id });
+}
+
+/** Remove everything one import brought in: the tracks, their files, the
+ * albums that empty, their covers, the playlist entries, and beets' memory of
+ * the folder — so the same folder can be imported again. */
+export function undoImport(id: string): Promise<ImportUndoOutcome> {
+  return invoke<ImportUndoOutcome>("undo_import", { id });
 }
 
 /** How the import decides what an album is.

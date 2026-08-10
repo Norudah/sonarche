@@ -6,8 +6,12 @@ import {
   cancelLibraryImport,
   type ImportOutcome,
   type ImportRecord,
+  type ImportUndoOutcome,
+  type ImportUndoPreview,
   listImports,
+  previewImportUndo,
   startLibraryImport,
+  undoImport,
   type Grouping,
 } from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
@@ -85,6 +89,43 @@ export function useLibraryImport() {
     mutationFn: ({ folder, grouping, category }) => startLibraryImport(folder, grouping, category),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),
+  });
+}
+
+/**
+ * What undoing this run would take away, asked only while the question is on
+ * screen.
+ *
+ * A query rather than a call made before opening the dialog: the count comes
+ * from a sidecar round-trip over the whole library, and the confirmation should
+ * appear at once and fill in, not wait to be shown. Never cached — between two
+ * openings the library can have changed, and a stale count under a destructive
+ * button is worse than no count.
+ */
+export function useImportUndoPreview(id: string, enabled: boolean) {
+  return useQuery<ImportUndoPreview>({
+    queryKey: ["import-undo-preview", id],
+    queryFn: () => previewImportUndo(id),
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Take one import back out.
+ *
+ * Everything is invalidated, deliberately. The undo removes tracks, albums,
+ * covers and playlist entries in one go — naming the caches it touches would
+ * mean this feature reaching into three others, and it is rare enough that
+ * refetching the app's state costs nothing anyone will feel.
+ */
+export function useUndoImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ImportUndoOutcome, unknown, string>({
+    mutationFn: (id) => undoImport(id),
+    onSettled: () => queryClient.invalidateQueries(),
   });
 }
 

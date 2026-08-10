@@ -941,6 +941,8 @@ export function installMockTauri() {
         return null;
       }
       if (cmd === "list_imports") return [...mockImports];
+      if (cmd === "preview_import_undo") return mockUndoPreview(String(payload?.id ?? ""));
+      if (cmd === "undo_import") return mockUndo(String(payload?.id ?? ""));
       if (cmd === "library_align_scan") return mockAlignScan();
       if (cmd === "library_align_apply") return mockAlignApply(payload);
       if (cmd === "get_env_status") {
@@ -1323,6 +1325,33 @@ async function mockLibraryImport(folder: string, options: Record<string, unknown
   mockImports.unshift(record);
 
   return { folders: record.folders, renditions: record.renditions, recap: record.recap, cancelled };
+}
+
+/** What one archived run still has in the library, read off its own recap —
+ * the real preview counts the library, but the mock has no library to count. */
+function mockUndoPreview(id: string): unknown {
+  const record = mockImports.find((row) => (row as { id: string }).id === id) as
+    { recap: { tracks: number; albums: number } | null } | undefined;
+  const tracks = record?.recap?.tracks ?? 0;
+  const albums = record?.recap?.albums ?? 0;
+  return {
+    tracks,
+    // One album of the run kept, so the preview shows the sentence nobody
+    // expects — the import had added to a record already on the shelf.
+    albumsRemoved: Math.max(0, albums - 1),
+    albumsKept: albums > 0 ? 1 : 0,
+    playlistEntries: tracks > 0 ? 3 : 0,
+  };
+}
+
+/** Stamp the row undone, as the backend does. The archive keeps it: a run that
+ * was taken back out is two things that happened. */
+function mockUndo(id: string): unknown {
+  const record = mockImports.find((row) => (row as { id: string }).id === id) as
+    { undoneAt?: number; recap: { tracks: number } | null } | undefined;
+  if (!record) return { removed: 0, foreign: 0, playlistEntries: 0 };
+  record.undoneAt = Date.now();
+  return { removed: record.recap?.tracks ?? 0, foreign: 0, playlistEntries: 3 };
 }
 
 /** The align pass, at preview pace: a few progress ticks, then a small plan

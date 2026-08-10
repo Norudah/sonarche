@@ -10,6 +10,7 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::identity;
+use crate::import_undo;
 use crate::jobs::{ForcedAlbum, Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
@@ -227,6 +228,32 @@ pub async fn list_imports(jobs: State<'_, JobsState>) -> AppResult<Vec<ImportRec
 #[tauri::command]
 pub async fn cancel_library_import(state: State<'_, LibraryImportState>) -> AppResult<()> {
     state.cancel().await
+}
+
+/// What undoing this run would take away. Counted from the library as it
+/// stands, so the confirmation states a fact rather than repeating what the
+/// run reported months ago.
+#[tauri::command]
+pub async fn preview_import_undo(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    id: String,
+) -> AppResult<import_undo::UndoPreview> {
+    import_undo::preview(&app, &sidecar, &jobs, &id).await
+}
+
+/// Take one import back out: its tracks, their files, the albums that empty,
+/// their covers, the playlist entries, and beets' memory of the folder.
+#[tauri::command]
+pub async fn undo_import(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    imports: State<'_, LibraryImportState>,
+    id: String,
+) -> AppResult<import_undo::UndoOutcome> {
+    import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 
 #[tauri::command]

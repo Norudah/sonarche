@@ -1,10 +1,11 @@
-import { ChevronDown, FolderInput, FolderX, Square } from "lucide-react";
+import { ChevronDown, FolderInput, FolderX, Square, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ImportRecord } from "@/features/import/api";
 import { ImportRecapPanel } from "@/features/import/ImportRecapPanel";
+import { ImportUndoAction } from "@/features/import/ImportUndoAction";
 import { shortenPath } from "@/features/import/summary";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useImportHeadline } from "@/features/import/useImportHeadline";
@@ -37,8 +38,11 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
 
   const failed = record.status === "failed";
   const cancelled = record.status === "cancelled";
+  // Taken back out. It outranks the status on the closed row: what a run
+  // brought in stops being the point once none of it is in the library.
+  const undone = record.undoneAt != null;
   const headline = useImportHeadline(record.folders, record.scan, record.recap);
-  const subtitle = failed ? record.error : headline;
+  const subtitle = failed ? record.error : undone ? t("undo.subtitle") : headline;
 
   return (
     <article
@@ -50,14 +54,18 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         <div
           className={
             "flex size-9 shrink-0 items-center justify-center rounded-lg " +
-            (failed
-              ? "bg-danger-soft text-danger"
-              : cancelled
-                ? "bg-warning-soft text-warning"
-                : "bg-accent-soft text-accent")
+            (undone
+              ? "bg-default text-muted"
+              : failed
+                ? "bg-danger-soft text-danger"
+                : cancelled
+                  ? "bg-warning-soft text-warning"
+                  : "bg-accent-soft text-accent")
           }
         >
-          {failed ? (
+          {undone ? (
+            <Undo2 className="size-4" />
+          ) : failed ? (
             <FolderX className="size-4" />
           ) : cancelled ? (
             <Square className="size-4" />
@@ -88,8 +96,8 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
             download cards it no longer shares a page with, and left a hand's
             width of nothing between "Importé" and the edge. */}
         <div className="flex shrink-0 items-center gap-3">
-          <Verdict tone={failed ? "danger" : cancelled ? "warning" : "success"}>
-            {t(failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
+          <Verdict tone={undone ? "accent" : failed ? "danger" : cancelled ? "warning" : "success"}>
+            {t(undone ? "undo.verdict" : failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
           </Verdict>
         </div>
 
@@ -156,6 +164,11 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
               ) : (
                 <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} alignDoor />
               )}
+
+              {/* The way out lives here, where the panel has already said what
+                  the run brought in — and never on the closed row, one click
+                  from a feed of them. */}
+              {!undone && <ImportUndoAction id={record.id} name={nameOf(record.folder)} />}
             </div>
           </motion.div>
         )}

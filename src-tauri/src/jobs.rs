@@ -1434,6 +1434,52 @@ impl JobsState {
         }
     }
 
+    /// One archived import. Unlike `list_imports`, a failure is returned
+    /// rather than logged and flattened: everything asking for a single row is
+    /// about to act on it, and acting on "not found" and on "the archive is
+    /// unreadable" are not the same decision.
+    pub async fn get_import(&self, id: &str) -> AppResult<Option<library_import::ImportRecord>> {
+        let id = id.to_string();
+        with_conn(&self.0, move |conn| jobs_store::get_import(conn, &id)).await
+    }
+
+    /// Record that a run was taken back out. Logged rather than raised: the
+    /// tracks are already gone, and a lost archive flag must not turn a
+    /// completed undo into a reported failure.
+    pub async fn mark_import_undone(&self, id: &str, when: u64) {
+        let owned = id.to_string();
+        if let Err(err) = with_conn(&self.0, move |conn| {
+            jobs_store::mark_import_undone(conn, &owned, when)
+        })
+        .await
+        {
+            eprintln!("[imports] marking {id} undone failed: {err}");
+        }
+    }
+
+    pub async fn count_playlist_memberships(
+        &self,
+        item_ids: std::collections::HashSet<i64>,
+    ) -> AppResult<usize> {
+        with_conn(&self.0, move |conn| {
+            playlists::count_memberships(conn, &item_ids)
+        })
+        .await
+    }
+
+    /// Drop every membership pointing at one of these items — a whole import
+    /// left the library.
+    pub async fn prune_playlists(
+        &self,
+        item_ids: std::collections::HashSet<i64>,
+    ) -> AppResult<usize> {
+        let now = now_ms();
+        with_conn(&self.0, move |conn| {
+            playlists::remove_items_everywhere(conn, &item_ids, now)
+        })
+        .await
+    }
+
     pub async fn list_imports(&self) -> Vec<library_import::ImportRecord> {
         match with_conn(&self.0, jobs_store::list_imports).await {
             Ok(records) => records,
