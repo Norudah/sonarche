@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { ImportRecord } from "@/features/import/api";
 import { ImportRecapPanel } from "@/features/import/ImportRecapPanel";
 import { shortenPath } from "@/features/import/summary";
+import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 import { Verdict } from "@/shared/ui/Verdict";
@@ -31,6 +32,7 @@ function nameOf(folder: string): string {
  */
 export function ImportHistoryCard({ record }: { record: ImportRecord }) {
   const { t, i18n } = useTranslation("import");
+  const categoryLabel = useCategoryLabel();
   const [isOpen, setIsOpen] = useState(false);
 
   const failed = record.status === "failed";
@@ -65,19 +67,31 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="min-w-0 truncate text-sm font-semibold">{nameOf(record.folder)}</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="min-w-0 truncate text-sm font-semibold">{nameOf(record.folder)}</p>
+            {/* The answer, on the closed row. What an import produced only makes
+                sense next to what it was asked for, and "did I pick the wrong
+                one" should not need a click to answer. */}
+            {record.grouping && (
+              <span className="shrink-0 rounded-full bg-default/70 px-2 py-0.5 text-[0.625rem] font-medium text-muted">
+                {t(`grouping.${record.grouping}`)}
+              </span>
+            )}
+          </div>
           <p className={"min-w-0 truncate text-xs " + (failed ? "text-danger" : "text-muted")} title={subtitle ?? ""}>
             {subtitle}
           </p>
         </div>
 
-        <div className="flex w-28 shrink-0 justify-end">
+        {/* The verdict sits next to the chevron rather than in a fixed column
+            with an empty one beside it: that spacer aligned this row with the
+            download cards it no longer shares a page with, and left a hand's
+            width of nothing between "Importé" and the edge. */}
+        <div className="flex shrink-0 items-center gap-3">
           <Verdict tone={failed ? "danger" : cancelled ? "warning" : "success"}>
             {t(failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
           </Verdict>
         </div>
-
-        <div className="w-32 shrink-0" />
 
         <div className="flex shrink-0 items-center">
           <button
@@ -119,6 +133,23 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
                   )}
                 </p>
               </div>
+
+              {/* Spelled out where there is room for it: the short chip above
+                  names the answer, this says which question it answered. */}
+              {(record.grouping || record.category) && (
+                <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+                  {record.grouping && (
+                    <div className="flex gap-1.5">
+                      <dt className="text-muted">{t("grouping.label")}</dt>
+                      <dd>{t(`grouping.${record.grouping}Answer`)}</dd>
+                    </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <dt className="text-muted">{t("category.label")}</dt>
+                    <dd>{record.category ? categoryLabel(record.category) : t("category.none")}</dd>
+                  </div>
+                </dl>
+              )}
 
               {failed ? (
                 <p className="text-[0.8125rem] break-words text-danger">{record.error}</p>

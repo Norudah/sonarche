@@ -28,9 +28,14 @@ interface ImportOptionsProps {
  * composer's options strip, which is the shape this app already has for "here
  * is what is about to happen, adjust it".
  *
- * Closed by default and readable with no folder at all: someone wondering what
- * an import even does can open it and find out, which is the other half of what
- * the help mark on the lead does.
+ * Closed until a folder is in hand, then opened by the scan itself. An import
+ * is not the passive act a download is — something *is* being decided here, and
+ * a panel that stays shut lets the user press Import without ever learning
+ * that. It reopens on each new folder (the key), and closes again by hand.
+ *
+ * Readable with no folder at all, too: someone wondering what an import even
+ * does can open it and find out, which is the other half of what the help mark
+ * on the lead does.
  *
  * The trigger summarises both answers, for the same reason the composer's does:
  * a collapsed panel that hides what it is set to is a panel you have to open
@@ -48,7 +53,13 @@ export function ImportOptions({
   const labelOf = useCategoryLabel();
 
   return (
-    <Disclosure className="border-t border-separator/60 bg-panel px-3 py-2">
+    <Disclosure
+      // Remounted per folder so a new scan re-opens the panel: the decision is
+      // about *this* folder, and the last one's answer was reviewed already.
+      key={report?.largestFolder ?? "none"}
+      defaultExpanded={report != null}
+      className="border-t border-separator/60 bg-panel px-3 py-2"
+    >
       <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-1 py-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40">
         <span className="flex items-center gap-1">
           {t("options.title")}

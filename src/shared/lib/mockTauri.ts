@@ -934,7 +934,8 @@ export function installMockTauri() {
       if (cmd === "plugin:updater|download_and_install") return null;
       if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
-      if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
+      if (cmd === "start_library_import")
+        return mockLibraryImport(String(payload?.folder ?? ""), payload as Record<string, unknown>);
       if (cmd === "cancel_library_import") {
         mockImportCancelRequested = true;
         return null;
@@ -1212,6 +1213,8 @@ const mockImports: unknown[] = [
     id: "import-seed-2",
     folder: "/Volumes/Backup/archive/2019/Soundtracks",
     status: "done",
+    grouping: "folder",
+    category: "Video Games",
     error: null,
     scan: { playable: 312, unplayable: 0, unplayableByExtension: {}, bytes: 2_100_000_000, albumFolders: 14 },
     folders: 14,
@@ -1259,7 +1262,7 @@ let mockImportCancelRequested = false;
  * above, and the copy loop breaks on the next tick, exactly one album late,
  * like the real watchdog's half-second.
  */
-async function mockLibraryImport(folder: string): Promise<unknown> {
+async function mockLibraryImport(folder: string, options: Record<string, unknown>): Promise<unknown> {
   const failAt = new URLSearchParams(window.location.search).has("failImport") ? 3 : Infinity;
   mockImportCancelRequested = false;
 
@@ -1297,6 +1300,10 @@ async function mockLibraryImport(folder: string): Promise<unknown> {
     scan: mockScanCounts(),
     folders: copied,
     renditions: Math.ceil(copied / 2),
+    // Archived alongside the result, as the backend does: the row has to be
+    // able to say what it was asked for.
+    grouping: (options?.grouping as string) ?? "folder",
+    category: (options?.category as string | null) ?? null,
     recap:
       copied === 0
         ? null

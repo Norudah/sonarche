@@ -101,6 +101,10 @@ export interface ImportRecord {
   scan: ImportScanCounts;
   folders: number;
   renditions: number;
+  /** What the run was asked to do. Absent on runs archived before the import
+   * had options — those were all made under beets' one default behaviour. */
+  grouping?: Grouping;
+  category?: string | null;
   recap: ImportRecap | null;
   /** Epoch milliseconds. */
   finishedAt: number;

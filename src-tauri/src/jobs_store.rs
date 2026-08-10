@@ -96,6 +96,12 @@ CREATE TABLE IF NOT EXISTS imports (
     folders       INTEGER NOT NULL DEFAULT 0,
     renditions    INTEGER NOT NULL DEFAULT 0,
     recap         TEXT,
+    -- What the run was told to do. Kept because it is the first thing anyone
+    -- asks of a result they do not recognise: an archive that reports what
+    -- landed without what was asked cannot answer whether the wrong one was
+    -- picked.
+    grouping      TEXT,
+    category      TEXT,
     finished_at   INTEGER NOT NULL
 );
 
@@ -210,6 +216,10 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
     add_column(conn, "playlists", "cover", "TEXT")?;
     add_column(conn, "playlists", "marker", "TEXT")?;
+    // Runs archived before the import had options carry neither: they were all
+    // made under the one behaviour beets has by default.
+    add_column(conn, "imports", "grouping", "TEXT")?;
+    add_column(conn, "imports", "category", "TEXT")?;
     Ok(())
 }
 
@@ -443,8 +453,9 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
         "INSERT OR REPLACE INTO imports (
             id, folder, status, error, playable, unplayable,
             unplayable_by_extension, bytes, album_folders, folders, renditions,
+            grouping, category,
             recap, finished_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
         params![
             record.id,
             record.folder,
@@ -457,6 +468,8 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
             record.scan.album_folders as i64,
             record.folders as i64,
             record.renditions as i64,
+            record.grouping,
+            record.category,
             report_to_text(&record.recap)?,
             record.finished_at as i64,
         ],
@@ -492,6 +505,8 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
         },
         folders: row.get::<_, i64>("folders")? as u64,
         renditions: row.get::<_, i64>("renditions")? as u64,
+        grouping: row.get("grouping")?,
+        category: row.get("category")?,
         recap: report_from_text(row.get("recap")?)?,
         finished_at: row.get::<_, i64>("finished_at")? as u64,
     })
@@ -1037,6 +1052,8 @@ mod tests {
             },
             folders: 312,
             renditions: 40,
+            grouping: Some("tracks".to_string()),
+            category: Some("Video Games".to_string()),
             recap: Some(json!({ "tracks": 4312, "withoutGenre": 96 })),
             finished_at,
         }

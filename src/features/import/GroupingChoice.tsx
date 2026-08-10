@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Grouping, ScanReport } from "@/features/import/api";
 import { isSuggestionNotable } from "@/features/import/grouping";
+import { Swap } from "@/shared/motion/Swap";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
 const GROUPINGS: Grouping[] = ["folder", "tags", "tracks"];
@@ -52,11 +53,15 @@ function Segment({ value, selected, children }: { value: Grouping; selected: Gro
  * paragraphs described the *mechanism* without ever naming the *question*, so
  * they read as three ways of saying "it imports the music".
  *
- * So the question leads, in the heading, and each answer is one word: the
- * folder, the tags, nothing. The three are laid out together rather than one at
- * a time — a choice you cannot see the alternatives of is not a choice — and
- * each carries what it produces and who it is for, because "which one am I" is
- * the question actually being asked.
+ * So the question leads, in the heading, and each answer is one word on the
+ * switch: the folder, the tags, nothing.
+ *
+ * Under it, *one* panel showing what the selected answer does. Listing all
+ * three at once was the first fix and it went too far the other way — three
+ * blocks of prose under one control read as three things the import was about
+ * to do, and the highlight on the live one was not enough to say otherwise. The
+ * switch already shows the alternatives; this says what the chosen one means,
+ * in concrete terms, and who it is for.
  */
 export function GroupingChoice({
   value,
@@ -96,27 +101,14 @@ export function GroupingChoice({
         ))}
       </RadioGroup>
 
-      {/* Every answer, always — the selected one lit. Reading one description at
-          a time means holding the other two in your head to compare them, which
-          is exactly what nobody could do. */}
-      <dl className="flex flex-col gap-1.5">
-        {GROUPINGS.map((grouping) => (
-          <div
-            key={grouping}
-            className={
-              "flex flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-[0.8125rem] leading-relaxed transition-colors " +
-              (value === grouping ? "bg-accent-soft/60" : "")
-            }
-          >
-            <dt className={"font-medium " + (value === grouping ? "text-accent" : "text-muted")}>
-              {t(`grouping.${grouping}Answer`)}
-            </dt>
-            <dd className={value === grouping ? "" : "text-muted"}>
-              {t(`grouping.${grouping}Why`)} <span className="text-muted italic">{t(`grouping.${grouping}For`)}</span>
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {/* One panel, keyed on the answer so it swaps rather than mutates: the
+          text changing under a still cursor is easy to miss, and this is the
+          consequence of the click that just happened. */}
+      <Swap swapKey={value} mode="cross" className="flex flex-col gap-0.5 rounded-xl bg-default/40 px-3 py-2.5">
+        <p className="text-[0.8125rem] font-medium text-accent">{t(`grouping.${value}Answer`)}</p>
+        <p className="max-w-prose text-[0.8125rem] leading-relaxed">{t(`grouping.${value}Why`)}</p>
+        <p className="max-w-prose text-xs leading-relaxed text-muted italic">{t(`grouping.${value}For`)}</p>
+      </Swap>
 
       {suggested && (
         <p className="text-xs leading-relaxed text-accent">

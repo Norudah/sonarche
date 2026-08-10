@@ -107,6 +107,11 @@ pub struct ImportRecord {
     pub scan: ScanCounts,
     pub folders: u64,
     pub renditions: u64,
+    /// What the run was asked to do. Archived beside what it produced, because
+    /// "did I pick the wrong one" is the first question a surprising result
+    /// raises — and the answer used to be nowhere.
+    pub grouping: Option<String>,
+    pub category: Option<String>,
     /// The state of the tags that arrived, shaped by the sidecar
     /// (`sidecar/import_recap.py`) and passed through untyped: Rust has no
     /// reason to know its fields, and the interface reads it directly. None
@@ -225,6 +230,8 @@ impl LibraryImportState {
             },
             error: result.as_ref().err().map(|err| err.to_string()),
             scan: self.scan_counts(Path::new(folder)).await,
+            grouping: Some(grouping.to_string()),
+            category: category.map(str::to_string),
             folders: result.as_ref().map(|out| out.folders).unwrap_or(0),
             renditions: result.as_ref().map(|out| out.renditions).unwrap_or(0),
             recap: result.as_ref().ok().and_then(|out| out.recap.clone()),

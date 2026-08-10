@@ -38,9 +38,11 @@ export function CategoryChoice({
   const labelOf = useCategoryLabel();
 
   return (
-    <fieldset disabled={isDisabled} className="flex flex-col gap-1.5 disabled:opacity-50">
-      <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{label}</legend>
-      <p className="text-xs text-muted">{hint}</p>
+    <fieldset disabled={isDisabled} className="flex flex-col gap-2.5 disabled:opacity-50">
+      <div className="flex flex-col gap-0.5">
+        <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{label}</legend>
+        <p className="max-w-prose text-xs leading-relaxed text-muted">{hint}</p>
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {CATEGORY_TAXONOMY.map((canonical) => (
           <button
