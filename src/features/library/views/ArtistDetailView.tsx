@@ -107,7 +107,7 @@ export function ArtistDetailView() {
         imageUrl={imageUrl}
         onPlay={playAll}
         onShuffle={shuffleAll}
-        onEditImage={() => setIsImageOpen(true)}
+        onEdit={() => setIsImageOpen(true)}
         actions={<ViewModeSwitch overviewLabel={t("artists.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 

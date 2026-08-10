@@ -80,7 +80,7 @@ export function AlbumDetailView() {
         album={album}
         onPlay={() => playOrdered(album.tracks)}
         onShuffle={() => playShuffled(album.tracks)}
-        onInspect={() => setInspecting(true)}
+        onEdit={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
         onAddToPlaylist={() => setAddingToPlaylist(true)}
       />

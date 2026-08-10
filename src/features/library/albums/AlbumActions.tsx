@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FileText, ListMusic, MoreHorizontal, Trash2 } from "lucide-react";
+import { FilePen, ListMusic, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -50,12 +50,12 @@ function OverflowMenu({ onDelete, onAddToPlaylist }: { onDelete: () => void; onA
 interface AlbumActionsProps {
   onPlay: () => void;
   onShuffle: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
 }
 
-export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete, onAddToPlaylist }: AlbumActionsProps) {
+export function AlbumActions({ onPlay, onShuffle, onEdit, onDelete, onAddToPlaylist }: AlbumActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -67,19 +67,20 @@ export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete, onAddToPl
       <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
       <div className="flex items-center gap-2">
-        {/* Same FileText icon as the per-track inspect control in the tables,
-         * one scope up: this opens the album's own metadata drawer. Same press
-         * feedback as the play button beside it — the row moves as one family. */}
+        {/* "Modifier", not "Inspecter": what opens is a form you write in, and
+         * a page-with-a-pen says so where a bare page only promised reading.
+         * The same pair — this icon, this word — is the app's one door to
+         * editing anything, from a track row to an artist to a playlist. */}
         <motion.button
           type="button"
-          onClick={onInspect}
+          onClick={onEdit}
           whileTap={{ scale: 0.96 }}
           whileHover={{ scale: 1.03 }}
           transition={springs.snappy}
           className={`${SECONDARY} cursor-pointer`}
         >
-          <FileText className="size-4" />
-          {t("albums.inspectAction")}
+          <FilePen className="size-4" />
+          {t("edit")}
         </motion.button>
 
         <OverflowMenu onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />

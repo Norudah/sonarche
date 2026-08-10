@@ -29,7 +29,7 @@ interface PlaylistTrackRowProps {
   isDragging: boolean;
   dragHandleProps: { onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void };
   onPlay: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onRemoveFromPlaylist: () => void;
   onAddToPlaylist: () => void;
@@ -48,7 +48,7 @@ export function PlaylistTrackRow({
   isDragging,
   dragHandleProps,
   onPlay,
-  onInspect,
+  onEdit,
   onDelete,
   onRemoveFromPlaylist,
   onAddToPlaylist,
@@ -137,7 +137,7 @@ export function PlaylistTrackRow({
       <td className={`${CELL} w-36 pl-6`}>
         <div>
           <RowActions
-            onInspect={onInspect}
+            onEdit={onEdit}
             onDelete={onDelete}
             onAddToPlaylist={onAddToPlaylist}
             onRemoveFromPlaylist={onRemoveFromPlaylist}

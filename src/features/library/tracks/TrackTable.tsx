@@ -98,7 +98,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
                 // The visible list is the row's playback context: what plays
                 // next is what the user is looking at, filters included.
                 onPlay={() => playFrom(tracks, index)}
-                onInspect={() => setInspectedId(track.id)}
+                onEdit={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
                 onAddToPlaylist={() => setAddingToPlaylist([track])}
               />

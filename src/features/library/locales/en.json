@@ -69,7 +69,6 @@
   "albums": {
     "eyebrow": "Album",
     "back": "Albums",
-    "inspect": "Inspect album metadata",
     "empty": {
       "title": "No albums yet",
       "body": "Albums arrive with their cover and their tags as soon as a download or an import finishes."
@@ -86,10 +85,9 @@
     "rematch": "Re-match",
     "rematching": "Re-matching…",
     "rematchDone": "{{matched}}/{{total}} tracks identified",
-    "edit": "Edit",
-    "inspectAction": "Inspect",
     "moreActions": "More actions",
-    "tagScoreHint": "Metadata fields filled in on this track"
+    "tagScoreHint": "Metadata fields filled in on this track",
+    "editMetadata": "Edit album metadata"
   },
   "artists": {
     "eyebrow": "Artist",
@@ -189,7 +187,6 @@
   "metadata": {
     "title": "Metadata",
     "eyebrow": "Track",
-    "inspect": "Inspect metadata",
     "changeArtwork": "Change image",
     "reenrich": "Re-run auto-match",
     "reenriching": "Matching…",
@@ -232,7 +229,6 @@
       "rematch": "Re-runs the automatic identification: Sonarche queries MusicBrainz again from the files' acoustic fingerprint and rewrites the tags it recognises. Do this before your manual corrections, not after."
     },
     "close": "Close",
-    "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving…",
@@ -244,7 +240,8 @@
     "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category.",
     "missingFields_one": "{{fields}} missing",
     "missingFields_other": "{{fields}} missing",
-    "filedUnder": "album filed under {{artist}}"
+    "filedUnder": "album filed under {{artist}}",
+    "editMetadata": "Edit metadata"
   },
   "albumMetadata": {
     "eyebrow": "Album · metadata",
@@ -430,6 +427,7 @@
     "byColumn": "Sort by {{column}}"
   },
   "breadcrumb": "Breadcrumb",
+  "edit": "Edit",
   "back": "Back",
   "goToImport": "Import a folder",
   "playlists": {

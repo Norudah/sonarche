@@ -69,7 +69,6 @@
   "albums": {
     "eyebrow": "Album",
     "back": "Albums",
-    "inspect": "Inspecter les métadonnées de l'album",
     "empty": {
       "title": "Aucun album pour l'instant",
       "body": "Les albums arrivent avec leur pochette et leurs tags dès qu'un téléchargement ou un import se termine."
@@ -86,10 +85,9 @@
     "rematch": "Re-matcher",
     "rematching": "Re-matchage…",
     "rematchDone": "{{matched}}/{{total}} pistes identifiées",
-    "edit": "Modifier",
-    "inspectAction": "Inspecter",
     "moreActions": "Plus d'actions",
-    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste"
+    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
+    "editMetadata": "Modifier les métadonnées de l'album"
   },
   "artists": {
     "eyebrow": "Artiste",
@@ -189,7 +187,6 @@
   "metadata": {
     "title": "Métadonnées",
     "eyebrow": "Piste",
-    "inspect": "Inspecter les métadonnées",
     "changeArtwork": "Changer l'image",
     "reenrich": "Relancer l'auto-correspondance",
     "reenriching": "Correspondance en cours…",
@@ -232,7 +229,6 @@
       "rematch": "Relance l'identification automatique : Sonarche ré-interroge MusicBrainz à partir de l'empreinte acoustique des fichiers et réécrit les tags reconnus. À faire avant tes corrections manuelles, pas après."
     },
     "close": "Fermer",
-    "edit": "Modifier",
     "cancel": "Annuler",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
@@ -244,7 +240,8 @@
     "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie.",
     "missingFields_one": "il manque {{fields}}",
     "missingFields_other": "il manque {{fields}}",
-    "filedUnder": "album rangé sous {{artist}}"
+    "filedUnder": "album rangé sous {{artist}}",
+    "editMetadata": "Modifier les métadonnées"
   },
   "albumMetadata": {
     "eyebrow": "Album · métadonnées",
@@ -430,6 +427,7 @@
     "byColumn": "Trier par {{column}}"
   },
   "breadcrumb": "Fil d'ariane",
+  "edit": "Modifier",
   "back": "Retour",
   "goToImport": "Importer un dossier",
   "playlists": {

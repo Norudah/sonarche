@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { Ellipsis, FileText, Library, Link, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
+import { Ellipsis, FilePen, Library, Link, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -50,7 +50,7 @@ interface RowActionsProps {
   track: LibraryTrack | undefined;
   /** The video the row was downloaded from. */
   sourceUrl: string;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
   /** Offered in the menu when the job still has something to re-run. */
   onRetry?: () => void;
@@ -59,7 +59,7 @@ interface RowActionsProps {
   dense?: boolean;
 }
 
-export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isRetrying, dense }: RowActionsProps) {
+export function RowActions({ track, sourceUrl, onEdit, onDelete, onRetry, isRetrying, dense }: RowActionsProps) {
   const { t } = useTranslation("download");
   const { t: tPlayer } = useTranslation("player");
   const { current, isPlaying, play } = usePlayer();
@@ -105,9 +105,9 @@ export function RowActions({ track, sourceUrl, onInspect, onDelete, onRetry, isR
         <Dropdown.Popover placement="bottom end">
           <Dropdown.Menu>
             {track && (
-              <Dropdown.Item id="inspect" onAction={() => onInspect(track)}>
-                <FileText className="size-4" />
-                {t("queue.inspect")}
+              <Dropdown.Item id="inspect" onAction={() => onEdit(track)}>
+                <FilePen className="size-4" />
+                {t("queue.edit")}
               </Dropdown.Item>
             )}
             {onRetry && <RetryItem onRetry={onRetry} isRetrying={isRetrying} />}

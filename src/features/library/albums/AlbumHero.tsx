@@ -39,7 +39,7 @@ interface AlbumHeroProps {
   album: Album;
   onPlay: () => void;
   onShuffle: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
   ref?: Ref<HTMLElement>;
@@ -57,7 +57,7 @@ interface AlbumHeroProps {
  * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
-export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, onAddToPlaylist, ref }: AlbumHeroProps) {
+export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToPlaylist, ref }: AlbumHeroProps) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -102,7 +102,7 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, onAdd
             <AlbumActions
               onPlay={onPlay}
               onShuffle={onShuffle}
-              onInspect={onInspect}
+              onEdit={onEdit}
               onDelete={onDelete}
               onAddToPlaylist={onAddToPlaylist}
             />

@@ -77,7 +77,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 // The visible order is the playback context, sort included —
                 // same contract as the library-wide table.
                 onPlay={() => playFrom(visible, position)}
-                onInspect={() => setInspectedId(track.id)}
+                onEdit={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
                 onAddToPlaylist={() => setAddingToPlaylist([track])}
               />

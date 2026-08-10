@@ -114,7 +114,7 @@ export function AlbumsView() {
           albums={visible}
           animationKey={`${params.toString()}:${query}:${sort}`}
           onPlay={(album) => playOrdered(album.tracks)}
-          onInspect={(album) => setInspectedKey(album.key)}
+          onEdit={(album) => setInspectedKey(album.key)}
         />
       )}
 

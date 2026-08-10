@@ -115,7 +115,6 @@
     "partiallyInLibrary": "Partiel",
     "removedFromLibrary": "Retiré",
     "openInLibrary": "Ouvrir dans la bibliothèque",
-    "inspect": "Voir les métadonnées",
     "delete": "Supprimer le morceau",
     "moreActions": "Plus d'actions",
     "kindSingle": "Morceau",
@@ -145,6 +144,7 @@
     "clearHistoryConfirm": "Vider",
     "clearHistoryFailed": "La suppression de l'historique a échoué.",
     "trackUnavailable": "Cette vidéo n'est plus disponible.",
-    "unavailableChip": "Indisponible"
+    "unavailableChip": "Indisponible",
+    "edit": "Modifier les métadonnées"
   }
 }

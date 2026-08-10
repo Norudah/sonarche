@@ -38,7 +38,7 @@ export interface JobCardProps {
   library: LibraryLookup;
   /** Queued while the user was watching — it announces itself on arrival. */
   isNew: boolean;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
   onDeleteAlbum: (job: DownloadJob) => void;
   onRetry: (id: string) => void;
@@ -64,7 +64,7 @@ function JobCardImpl({
   enrichStages,
   library,
   isNew,
-  onInspect,
+  onEdit,
   onDelete,
   onDeleteAlbum,
   onRetry,
@@ -290,7 +290,7 @@ function JobCardImpl({
               dense
               track={landed}
               sourceUrl={job.url}
-              onInspect={onInspect}
+              onEdit={onEdit}
               onDelete={onDelete}
               onRetry={canRetry(job) ? () => onRetry(job.id) : undefined}
               isRetrying={isRetrying}
@@ -331,7 +331,7 @@ function JobCardImpl({
                 isInLibrary={library.has}
                 isLibraryLoaded={library.isLoaded}
                 enrichStages={enrichStages}
-                onInspect={onInspect}
+                onEdit={onEdit}
                 onDelete={onDelete}
               />
             </div>

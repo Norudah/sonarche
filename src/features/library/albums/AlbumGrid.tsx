@@ -9,10 +9,10 @@ interface AlbumGridProps {
    * A change re-keys the grid and replays the cascade. */
   animationKey?: string;
   onPlay: (album: Album) => void;
-  onInspect?: (album: Album) => void;
+  onEdit?: (album: Album) => void;
 }
 
-export function AlbumGrid({ albums, animationKey = "", onPlay, onInspect }: AlbumGridProps) {
+export function AlbumGrid({ albums, animationKey = "", onPlay, onEdit }: AlbumGridProps) {
   return (
     // auto-fill over a fixed column count: the shelf keeps its card size and
     // reflows, instead of stretching four covers to fill an ultrawide window.
@@ -25,7 +25,7 @@ export function AlbumGrid({ albums, animationKey = "", onPlay, onInspect }: Albu
           // worth making the user wait for.
           style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
           onPlay={() => onPlay(album)}
-          onInspect={onInspect && (() => onInspect(album))}
+          onEdit={onEdit && (() => onEdit(album))}
         />
       ))}
     </div>

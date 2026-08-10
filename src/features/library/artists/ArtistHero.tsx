@@ -1,4 +1,5 @@
-import { ImagePlus } from "lucide-react";
+import { FilePen } from "lucide-react";
+import { motion } from "motion/react";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,8 +9,10 @@ import type { Artist } from "@/features/library/artists/artists";
 import { GenreChips } from "@/features/library/GenreChips";
 import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
+import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
+import { springs } from "@/shared/motion/tokens";
 
 interface ArtistHeroProps {
   artist: Artist;
@@ -17,8 +20,8 @@ interface ArtistHeroProps {
   imageUrl: string | null;
   onPlay: () => void;
   onShuffle: () => void;
-  /** Opens the image replacement modal — the disc is the way to the disc. */
-  onEditImage: () => void;
+  /** Opens the artist's edit modal, from the "Modifier" button. */
+  onEdit: () => void;
   /** The view switcher, in the same spot as on the genre and category heroes. */
   actions?: ReactNode;
   ref?: Ref<HTMLElement>;
@@ -34,7 +37,7 @@ interface ArtistHeroProps {
  * play counter exists; a hero that states a number nothing measures is worse
  * than a hero that states less.
  */
-export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEditImage, actions, ref }: ArtistHeroProps) {
+export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEdit, actions, ref }: ArtistHeroProps) {
   const { t } = useTranslation("library");
 
   const span =
@@ -66,19 +69,17 @@ export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEditImage, a
         <div className="mt-5 flex items-end gap-6">
           {/* Matches the album hero's 192px cover box, as a circle: the two
            * heroes share one baseline, the shape is the only tell of which one
-           * you are on. Like the album's cover, the disc is the way to the
-           * disc: hover says so. */}
-          <button
-            type="button"
-            onClick={onEditImage}
-            aria-label={t("artists.image.title")}
-            className="group relative size-48 shrink-0 cursor-pointer overflow-hidden rounded-full outline-none glow-accent-deep focus-visible:ring-2 focus-visible:ring-accent/60"
-          >
+           * you are on.
+           *
+           * Not a button any more. This page is for finding something to play,
+           * and a portrait that swallowed a click into an editor was a trapdoor
+           * in a corridor — worse, it was the *only* door to that editor, so
+           * the one thing changeable here hid in the one place nobody presses.
+           * "Modifier", below, carries it now: the app has a single word for
+           * "this opens a form", and it is that one. */}
+          <div className="relative size-48 shrink-0 overflow-hidden rounded-full glow-accent-deep">
             <ArtistAvatar family={artist.family} imageUrl={imageUrl} className="size-full" />
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-              <ImagePlus className="size-6 text-white" />
-            </span>
-          </button>
+          </div>
 
           {/* Capped rather than stretched: the album's text column is bounded on
            * its right by the completeness ring, so it never looks empty. This
@@ -107,8 +108,20 @@ export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEditImage, a
              * No delete action, unlike the album page. "Delete this artist"
              * would wipe an unbounded number of albums behind one click, and
              * nothing here makes that scope visible before it happens. */}
-            <div className="mt-5">
+            <div className="mt-5 flex flex-wrap items-center gap-3.5">
               <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+
+              <motion.button
+                type="button"
+                onClick={onEdit}
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }}
+                transition={springs.snappy}
+                className={`${HERO_BUTTON_SECONDARY} cursor-pointer`}
+              >
+                <FilePen className="size-4" />
+                {t("edit")}
+              </motion.button>
             </div>
           </div>
         </div>

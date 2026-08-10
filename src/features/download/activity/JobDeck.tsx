@@ -101,7 +101,7 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
 
   const cardProps = {
     library,
-    onInspect: setInspected,
+    onEdit: setInspected,
     onDelete: setDeleting,
     onDeleteAlbum,
     onRetry,

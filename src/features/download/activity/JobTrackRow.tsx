@@ -25,7 +25,7 @@ interface JobTrackRowProps {
   libraryTrack: LibraryTrack | undefined;
   /** This track's enrich event has landed, for the job currently identifying. */
   isEnriched: boolean;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
@@ -37,7 +37,7 @@ interface JobTrackRowProps {
  * table, because a card cannot host a `<table>` without inheriting its column
  * widths from the rest of the feed.
  */
-export function JobTrackRow({ track, libraryTrack, isEnriched, onInspect, onDelete }: JobTrackRowProps) {
+export function JobTrackRow({ track, libraryTrack, isEnriched, onEdit, onDelete }: JobTrackRowProps) {
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   const isDropped = track.duplicateOf != null;
@@ -84,7 +84,7 @@ export function JobTrackRow({ track, libraryTrack, isEnriched, onInspect, onDele
         {track.duration != null ? formatDuration(track.duration) : ""}
       </span>
 
-      <RowActions track={libraryTrack} sourceUrl={track.url} onInspect={onInspect} onDelete={onDelete} />
+      <RowActions track={libraryTrack} sourceUrl={track.url} onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 }

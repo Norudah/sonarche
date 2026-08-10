@@ -115,7 +115,6 @@
     "partiallyInLibrary": "Partial",
     "removedFromLibrary": "Removed",
     "openInLibrary": "Open in library",
-    "inspect": "Inspect metadata",
     "delete": "Delete track",
     "moreActions": "More actions",
     "kindSingle": "Track",
@@ -145,6 +144,7 @@
     "clearHistoryConfirm": "Clear",
     "clearHistoryFailed": "Clearing the history failed.",
     "trackUnavailable": "This video is no longer available.",
-    "unavailableChip": "Unavailable"
+    "unavailableChip": "Unavailable",
+    "edit": "Edit metadata"
   }
 }

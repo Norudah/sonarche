@@ -34,7 +34,7 @@ interface TrackRowProps {
   /** Launch playback at this row, in the list's own context. The table owns
    * the list, so the table decides what the queue is. */
   onPlay: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
 }
@@ -46,7 +46,7 @@ export function TrackRow({
   style,
   guestOwner,
   onPlay,
-  onInspect,
+  onEdit,
   onDelete,
   onAddToPlaylist,
 }: TrackRowProps) {
@@ -170,12 +170,7 @@ export function TrackRow({
        * level deeper. `pl-6` is the breathing room from the duration column. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions
-            onInspect={onInspect}
-            onDelete={onDelete}
-            onAddToPlaylist={onAddToPlaylist}
-            favoriteId={track.id}
-          />
+          <RowActions onEdit={onEdit} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} favoriteId={track.id} />
         </div>
       </td>
     </tr>

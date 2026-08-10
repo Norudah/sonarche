@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FileText, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
+import { FilePen, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { FavoriteButton } from "@/features/library/playlists/FavoriteButton";
@@ -11,7 +11,7 @@ const ACTION =
   "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
 interface RowActionsProps {
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   /** The row's beets item id, when the row should carry the favorites heart. */
   favoriteId?: number;
@@ -32,13 +32,7 @@ interface RowActionsProps {
  * menu, where a destructive click takes a deliberate second step instead of
  * sitting under the cursor on every row.
  */
-export function RowActions({
-  onInspect,
-  onDelete,
-  favoriteId,
-  onAddToPlaylist,
-  onRemoveFromPlaylist,
-}: RowActionsProps) {
+export function RowActions({ onEdit, onDelete, favoriteId, onAddToPlaylist, onRemoveFromPlaylist }: RowActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -51,11 +45,11 @@ export function RowActions({
       {favoriteId != null && <FavoriteButton itemId={favoriteId} className={ACTION} />}
       <button
         type="button"
-        onClick={onInspect}
-        aria-label={t("metadata.inspect")}
+        onClick={onEdit}
+        aria-label={t("metadata.editMetadata")}
         className={`${ACTION} hover:text-foreground`}
       >
-        <FileText className="size-4" />
+        <FilePen className="size-4" />
       </button>
 
       <Dropdown>

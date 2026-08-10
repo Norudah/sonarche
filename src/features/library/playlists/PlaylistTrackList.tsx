@@ -97,7 +97,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
                 isDragging={drag?.from === index}
                 dragHandleProps={handleProps(index)}
                 onPlay={() => playFrom(visibleTracks, index)}
-                onInspect={() => setInspectedId(track.id)}
+                onEdit={() => setInspectedId(track.id)}
                 onDelete={() => setDeleting(track)}
                 onRemoveFromPlaylist={() => remove.mutate({ id: playlistId, positions: [view[index].position] })}
                 onAddToPlaylist={() => setAddingToPlaylist([track])}

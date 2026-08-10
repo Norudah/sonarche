@@ -36,7 +36,7 @@ interface JobDetailProps {
   isInLibrary: (itemId: number) => boolean;
   isLibraryLoaded: boolean;
   enrichStages: Record<number, EnrichStage>;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
@@ -55,7 +55,7 @@ export function JobDetail({
   isInLibrary,
   isLibraryLoaded,
   enrichStages,
-  onInspect,
+  onEdit,
   onDelete,
 }: JobDetailProps) {
   const { t } = useTranslation("download");
@@ -143,7 +143,7 @@ export function JobDetail({
               track={track}
               libraryTrack={libraryTrackFor(track.status === "done" ? track.itemId : null)}
               isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
-              onInspect={onInspect}
+              onEdit={onEdit}
               onDelete={onDelete}
             />
           ))}

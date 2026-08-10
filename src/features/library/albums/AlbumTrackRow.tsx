@@ -45,7 +45,7 @@ interface AlbumTrackRowProps {
   style?: CSSProperties;
   /** Launch playback at this row, with the album as the queue. */
   onPlay: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
 }
@@ -55,7 +55,7 @@ export function AlbumTrackRow({
   position,
   style,
   onPlay,
-  onInspect,
+  onEdit,
   onDelete,
   onAddToPlaylist,
 }: AlbumTrackRowProps) {
@@ -144,12 +144,7 @@ export function AlbumTrackRow({
        * breathing room — at `px-3` the icons sat against the duration. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions
-            onInspect={onInspect}
-            onDelete={onDelete}
-            onAddToPlaylist={onAddToPlaylist}
-            favoriteId={track.id}
-          />
+          <RowActions onEdit={onEdit} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} favoriteId={track.id} />
         </div>
       </td>
     </tr>
