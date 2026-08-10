@@ -668,6 +668,9 @@ const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
   remux_library: { scanned: 0, fragmented: 0, remuxed: 0, failed: [] },
   list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
+  // The compiled decoder's list. One track in the seed is a `.wma`, so the
+  // unplayable badge is reachable in the preview.
+  playable_extensions: ["mp3", "flac", "m4a", "m4b", "mp4", "aac", "ogg", "oga", "wav", "wave", "aiff", "aif", "aifc"],
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };

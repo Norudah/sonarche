@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { pickFolder, type Grouping, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderPicker } from "@/features/import/FolderPicker";
 import { GroupingChoice } from "@/features/import/GroupingChoice";
+import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { suggestGrouping } from "@/features/import/grouping";
 import { HowItWorks } from "@/features/import/HowItWorks";
 import { useCancelImport, useImportProgress, useLibraryImport } from "@/features/import/hooks";
@@ -25,6 +26,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
   // render from the report, so a fresh scan re-suggests without an effect to
   // keep the two in step.
   const [chosenGrouping, setChosenGrouping] = useState<Grouping | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
 
   // A mutation rather than a query: the scan is started by an act of the user's
   // and its result belongs to that one choice — there is no key to cache it
@@ -42,6 +44,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
     // A new folder is a new question: whatever was picked for the last one says
     // nothing about this one.
     setChosenGrouping(null);
+    setCategory(null);
     // A new folder makes the last import's verdict about someone else.
     run.reset();
     scan.mutate(chosen);
@@ -84,7 +87,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
             folder={folder}
             phase={phase}
             onChoose={() => void choose()}
-            onStart={() => folder != null && run.mutate({ folder, grouping })}
+            onStart={() => folder != null && run.mutate({ folder, grouping, category })}
           />
 
           {/* Under the picker and only once there is a folder: the question is
@@ -95,6 +98,16 @@ export function ImportPage({ children }: { children?: ReactNode }) {
               report={report}
               isDisabled={phase.kind === "importing"}
               onChange={setChosenGrouping}
+            />
+          )}
+
+          {report != null && (
+            <CategoryChoice
+              value={category}
+              label={t("category.label")}
+              hint={t("category.hint")}
+              noneLabel={t("category.none")}
+              onChange={setCategory}
             />
           )}
         </div>

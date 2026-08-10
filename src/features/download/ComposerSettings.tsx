@@ -9,56 +9,8 @@ import type { DetectedUrlKind } from "@/features/download/urlKind";
 // The taxonomy the composer offers is the library's own axis, and its canonical
 // values must not exist twice — a second list would drift out of step with the
 // one the Categories page groups by on the first addition.
-import { CATEGORY_TAXONOMY } from "@/features/library/categories/categories";
+import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
-
-const CHIP =
-  "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
-const CHIP_ON = "bg-accent text-accent-foreground";
-const CHIP_OFF = "bg-surface text-muted hover:bg-surface-tertiary hover:text-foreground";
-
-/**
- * The context axis, chosen before the download rather than corrected after it.
- *
- * "Aucune" is a chip of its own rather than un-picking the active one: leaving
- * the axis blank is a real answer here — it is what the app did until now — and
- * a choice you can only express by clicking the same thing twice is a choice
- * nobody finds.
- */
-function CategoryChoice({ value, onChange }: { value: string | null; onChange: (next: string | null) => void }) {
-  const { t } = useTranslation("download");
-  const labelOf = useCategoryLabel();
-
-  return (
-    <fieldset className="flex flex-col gap-1.5">
-      <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
-        {t("options.category")}
-      </legend>
-      <p className="text-xs text-muted">{t("options.categoryHint")}</p>
-      <div className="mt-0.5 flex flex-wrap gap-1.5">
-        {CATEGORY_TAXONOMY.map((canonical) => (
-          <button
-            key={canonical}
-            type="button"
-            aria-pressed={value === canonical}
-            onClick={() => onChange(canonical)}
-            className={`${CHIP} ${value === canonical ? CHIP_ON : CHIP_OFF}`}
-          >
-            {labelOf(canonical)}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={value === null}
-          onClick={() => onChange(null)}
-          className={`${CHIP} ${value === null ? CHIP_ON : CHIP_OFF}`}
-        >
-          {t("options.categoryNone")}
-        </button>
-      </div>
-    </fieldset>
-  );
-}
 
 interface ComposerSettingsProps {
   kind: JobKind;
@@ -127,7 +79,13 @@ export function ComposerSettings({
 
       <Disclosure.Content>
         <Disclosure.Body className="flex flex-col gap-4 px-1 pt-3">
-          <CategoryChoice value={category} onChange={onCategoryChange} />
+          <CategoryChoice
+            value={category}
+            label={t("options.category")}
+            hint={t("options.categoryHint")}
+            noneLabel={t("options.categoryNone")}
+            onChange={onCategoryChange}
+          />
           <hr className="border-separator/70" />
           <ForcedAlbumChoice value={forcedAlbum} isDisabled={!canForceAlbum} onChange={onForcedAlbumChange} />
         </Disclosure.Body>

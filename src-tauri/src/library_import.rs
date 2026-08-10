@@ -163,6 +163,7 @@ impl LibraryImportState {
         jobs: &JobsState,
         folder: &str,
         grouping: &str,
+        category: Option<&str>,
     ) -> AppResult<ImportOutcome> {
         if !GROUPINGS.contains(&grouping) {
             return Err(AppError::InvalidInput(format!(
@@ -192,7 +193,19 @@ impl LibraryImportState {
         let cancel_file = paths.staging_dir.join(format!("import-cancel-{id}"));
         *self.cancel_file.lock().await = Some(cancel_file.clone());
 
-        let result = request(app, sidecar, folder, grouping, &id, &cancel_file, &paths).await;
+        let result = request(
+            app,
+            sidecar,
+            Run {
+                folder,
+                grouping,
+                category,
+                id: &id,
+                cancel_file: &cancel_file,
+            },
+            &paths,
+        )
+        .await;
 
         // Awaited rather than a Drop guard, so a failure cannot leave the flag
         // stuck and the page refusing every later attempt. The cancel slot is
@@ -247,13 +260,21 @@ impl LibraryImportState {
     }
 }
 
+/// What one run is, as the sidecar needs to hear it. A struct because the
+/// arguments had grown past the point where their order was readable at the
+/// call site, which is the only place that could get it wrong.
+struct Run<'a> {
+    folder: &'a str,
+    grouping: &'a str,
+    category: Option<&'a str>,
+    id: &'a str,
+    cancel_file: &'a Path,
+}
+
 async fn request(
     app: &AppHandle,
     sidecar: &SidecarState,
-    folder: &str,
-    grouping: &str,
-    id: &str,
-    cancel_file: &Path,
+    run: Run<'_>,
     paths: &AppPaths,
 ) -> AppResult<ImportOutcome> {
     let reply = sidecar
@@ -261,13 +282,15 @@ async fn request(
             app,
             "library_import",
             json!({
-                "folder": folder,
+                "folder": run.folder,
                 // What counts as an album here. beets makes one per directory
                 // and has no opinion about whether that directory is one.
-                "grouping": grouping,
+                "grouping": run.grouping,
+                // The context axis, applied to every track the run takes on.
+                "category": run.category,
                 // Stamped on every item beets takes on, so the recap can ask
                 // afterwards what *this* run brought in.
-                "import_id": id,
+                "import_id": run.id,
                 // The import config, not the app's: this is the one path where
                 // the album's cover is already on disk beside the tracks, and
                 // baking a copy of it into every one of them is how a 1.17 GB
@@ -278,7 +301,7 @@ async fn request(
                 "beets_db": paths.beets_db,
                 "library_dir": paths.music_dir(),
                 // Watched by the sidecar while beets runs; see `cancel`.
-                "cancel_file": cancel_file,
+                "cancel_file": run.cancel_file,
             }),
             IMPORT_TIMEOUT,
         )

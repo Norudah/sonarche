@@ -81,8 +81,8 @@ export function useImports() {
 export function useLibraryImport() {
   const queryClient = useQueryClient();
 
-  return useMutation<ImportOutcome, unknown, { folder: string; grouping: Grouping }>({
-    mutationFn: ({ folder, grouping }) => startLibraryImport(folder, grouping),
+  return useMutation<ImportOutcome, unknown, { folder: string; grouping: Grouping; category: string | null }>({
+    mutationFn: ({ folder, grouping, category }) => startLibraryImport(folder, grouping, category),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),
   });

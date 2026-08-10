@@ -68,10 +68,18 @@ def handle(request_id: str, params: dict) -> dict:
     if grouping not in GROUPINGS:
         raise RuntimeError(f"unknown grouping: {grouping}")
 
+    # The context axis (Video Games, Film…), beets' `grouping` tag. Set on the
+    # way in rather than corrected afterwards: someone importing a folder of
+    # game soundtracks knows that before the copy starts, and the alternative is
+    # editing four hundred tracks by hand.
+    category = (params.get("category") or "").strip()
+    marks = [f"--set={import_recap.BATCH_FIELD}={batch}"]
+    if category:
+        marks.append(f"--set=grouping={category}")
+
     cmd = [beet_bin(), "--config", config_path, "import",
            "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
-           *GROUPINGS[grouping],
-           f"--set={import_recap.BATCH_FIELD}={batch}", folder]
+           *GROUPINGS[grouping], *marks, folder]
     protocol.log(f"library_import: grouping={grouping}")
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
@@ -161,7 +169,7 @@ def handle(request_id: str, params: dict) -> dict:
     # the pass can now *change* what the recap counts (an album whose cover it
     # recovered from the file tags is no longer "without art"), and counting
     # before it ran would report defects that were already repaired.
-    renditions = _shrink_covers(request_id, params)
+    renditions = _shrink_covers(request_id, params, batch)
     recap = import_recap.build(params["beets_db"], batch)
 
     return {
@@ -294,7 +302,7 @@ def _stage_singleton_covers(params: dict, batch: str) -> None:
         protocol.log(f"import: {staged} singleton cover(s) taken out of the files")
 
 
-def _shrink_covers(request_id: str, params: dict) -> int:
+def _shrink_covers(request_id: str, params: dict, batch: str) -> int:
     """Give every album a cover the interface can draw.
 
     Two repairs in one walk. An album with no art file gets the image its own
@@ -306,10 +314,14 @@ def _shrink_covers(request_id: str, params: dict) -> int:
     thumbnail. The download path never pays either cost because it writes its
     own 500 px file; imports had no such step, so this is it.
 
-    Over every album, not only the ones just imported: beets records nothing
-    about which those were, both checks are cheap on an album already served
-    (no artpath probe, one image-header read), and re-running is a no-op —
-    which is what makes the pass safe to repeat after each import.
+    Over the albums this run touched, and only those. It used to walk the whole
+    library on the theory that both checks are cheap and re-running is a no-op —
+    true per album, and false in aggregate: importing three tracks re-read five
+    thousand albums, and the progress rail's third segment counted the library
+    rather than the import, so it announced work nobody had asked for and moved
+    at a speed that meant nothing. beets records no batch of its own, but our
+    items carry the run's mark, and their albums are exactly the set that can
+    have changed — including an album the import merged new tracks into.
     """
     from beets.library import Library
 
@@ -318,7 +330,12 @@ def _shrink_covers(request_id: str, params: dict) -> int:
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
     try:
-        albums = list(lib.albums())
+        touched = {
+            item.album_id
+            for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}")
+            if item.album_id
+        }
+        albums = [album for album in (lib.get_album(album_id) for album_id in sorted(touched)) if album]
         total = len(albums)
         made = 0
         adopted = 0

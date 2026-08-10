@@ -122,8 +122,12 @@ export type Grouping = "folder" | "tags" | "tracks";
 
 /** Copy a folder's music into the library. Resolves when beets is done, which
  * on a real collection is minutes away. */
-export function startLibraryImport(folder: string, grouping: Grouping): Promise<ImportOutcome> {
-  return invoke<ImportOutcome>("start_library_import", { folder, grouping });
+export function startLibraryImport(
+  folder: string,
+  grouping: Grouping,
+  category: string | null,
+): Promise<ImportOutcome> {
+  return invoke<ImportOutcome>("start_library_import", { folder, grouping, category });
 }
 
 /** Stop the import in flight. Fire-and-forget: the import's own call is what

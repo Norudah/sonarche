@@ -83,6 +83,18 @@ pub struct PreviousImport {
     pub cancelled: bool,
 }
 
+/// Hidden, in the sense beets uses: a leading dot.
+///
+/// Counted as audio, once. beets ignores these outright (`ignore_hidden`), so
+/// every `._Track.m4a` a copy to a FAT volume left behind was one track the
+/// summary promised and the import never delivered — the whole of the gap
+/// between "4 287 pistes" on one screen and "4 270" on the next.
+fn is_hidden(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with('.'))
+}
+
 /// Everything that is not audio: covers, logs, `.DS_Store`, the PDF booklet.
 ///
 /// Judged by the same extension list the decoder uses, which means a file with
@@ -184,10 +196,14 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
             let path = entry.path();
 
             if file_type.is_dir() {
-                pending.push(path);
+                // A hidden directory is beets' blind spot too, and `.git` or
+                // `.Trashes` inside a music folder is not somebody's album.
+                if !is_hidden(&path) {
+                    pending.push(path);
+                }
                 continue;
             }
-            if !file_type.is_file() || !is_audio(&path) {
+            if !file_type.is_file() || is_hidden(&path) || !is_audio(&path) {
                 continue;
             }
 
@@ -239,6 +255,10 @@ mod tests {
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(&root).expect("temp tree");
             Tree(root)
+        }
+
+        fn root_ref(&self) -> &PathBuf {
+            &self.0
         }
 
         fn file(&self, relative: &str, bytes: usize) -> &Self {
@@ -327,6 +347,21 @@ mod tests {
 
     /// A music folder is full of things that are not music. Counting the cover
     /// art as a track would make every summary wrong by an album's worth.
+    /// The scan and beets have to agree on what is in the folder, or the
+    /// summary promises tracks the import will never mention again.
+    #[test]
+    fn skips_what_beets_skips() {
+        let tree = Tree::new("hidden");
+        tree.file("Album/01.m4a", 1)
+            .file("Album/._01.m4a", 1)
+            .file(".Trashes/deleted.mp3", 1);
+
+        let report = scan(tree.root_ref()).unwrap();
+
+        assert_eq!(report.playable, 1);
+        assert_eq!(report.album_folders, 1);
+    }
+
     #[test]
     fn ignores_everything_that_is_not_audio() {
         let tree = Tree::new("clutter");

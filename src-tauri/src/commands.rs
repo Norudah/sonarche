@@ -188,9 +188,31 @@ pub async fn start_library_import(
     state: State<'_, LibraryImportState>,
     folder: String,
     grouping: Option<String>,
+    category: Option<String>,
 ) -> AppResult<ImportOutcome> {
     let grouping = grouping.unwrap_or_else(|| "folder".into());
-    state.run(&app, &sidecar, &jobs, &folder, &grouping).await
+    // Same bound and same freedom as the download path: the taxonomy the UI
+    // offers is a starter set, not a fence, but this string lands in a tag on
+    // every file the run takes on.
+    let category = match category
+        .map(|c| c.trim().to_string())
+        .filter(|c| !c.is_empty())
+    {
+        Some(c) if c.chars().count() > MAX_CATEGORY_CHARS => {
+            return Err(AppError::InvalidInput("category is too long".into()))
+        }
+        other => other,
+    };
+    state
+        .run(
+            &app,
+            &sidecar,
+            &jobs,
+            &folder,
+            &grouping,
+            category.as_deref(),
+        )
+        .await
 }
 
 /// Every finished library import, newest first. The archive of the other way
@@ -215,6 +237,13 @@ pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
 #[tauri::command]
 pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus> {
     settings::set(name, value).await
+}
+
+/// Extensions the engine can decode, so the library can mark what it cannot.
+/// A constant for the life of the build — the caller caches it forever.
+#[tauri::command]
+pub fn playable_extensions() -> Vec<String> {
+    crate::audio_formats::playable_extensions()
 }
 
 #[tauri::command]

@@ -4,6 +4,8 @@ import { Link } from "react-router";
 
 import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { extensionOf, unplayableTest, usePlayableExtensions } from "@/features/library/playable";
+import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
@@ -63,6 +65,7 @@ export function TrackRow({
   const artistLink = owner === track.artist.trim() && owner !== "" ? artistPath(owner) : null;
   const albumLink = track.album.trim() !== "" ? albumPath(owner, track.album) : null;
   const isGuest = guestOwner != null && owner !== guestOwner;
+  const isUnplayable = unplayableTest(usePlayableExtensions().data)(track);
 
   return (
     <tr
@@ -100,6 +103,17 @@ export function TrackRow({
           >
             {track.title || t("unknownTitle")}
           </span>
+          {/* The import takes these in on purpose — an unplayable file still
+              has tags and still holds its place in its album — but nothing said
+              so afterwards, and the news arrived as an error the one time
+              somebody pressed play. */}
+          {isUnplayable && (
+            <ActionHelp text={t("unplayable.why", { format: extensionOf(track.path).toUpperCase() })}>
+              <span className="shrink-0 rounded bg-warning-soft px-1 text-[0.625rem] font-semibold text-warning uppercase">
+                {t("unplayable.badge")}
+              </span>
+            </ActionHelp>
+          )}
         </div>
       </td>
 

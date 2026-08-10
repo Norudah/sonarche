@@ -113,5 +113,10 @@
     "doneHint": "Directories already taken on are skipped: only what is new comes in. Nothing will be duplicated.",
     "stopped": "An import of this folder was stopped on {{when}}.",
     "stoppedHint": "Pick it up whenever: what already landed is kept, only the rest gets copied."
+  },
+  "category": {
+    "label": "Category",
+    "hint": "Applied to everything this import brings in. Context — game or film soundtrack — not musical style.",
+    "none": "None"
   }
 }

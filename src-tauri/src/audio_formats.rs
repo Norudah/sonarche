@@ -33,6 +33,16 @@ const PLAYABLE: &[&str] = &[
 /// first, and nothing in the name says which. An `.ogg` holding Opus passes
 /// here and fails at `decode`, which is why that failure has to stay a spoken
 /// error rather than an assertion.
+/// The list itself, for the webview.
+///
+/// The front has to mark a track it will not be able to play, and the only
+/// honest way to know is this list — copying it into TypeScript would be a
+/// second source of truth that drifts the first time a rodio feature changes.
+/// Handed over once and cached there.
+pub fn playable_extensions() -> Vec<String> {
+    PLAYABLE.iter().map(|ext| (*ext).to_string()).collect()
+}
+
 pub fn is_playable(path: &str) -> bool {
     extension_of(path).is_some_and(|ext| PLAYABLE.contains(&ext.as_str()))
 }

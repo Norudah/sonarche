@@ -536,5 +536,9 @@
         "blue": "Blue"
       }
     }
+  },
+  "unplayable": {
+    "badge": "no audio",
+    "why": "Sonarche cannot decode the {{format}} format. The file is in the ark with its tags and its place in the album — it just cannot be played here."
   }
 }

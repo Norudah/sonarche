@@ -104,6 +104,7 @@ fn main() {
             commands::cancel_job,
             commands::clear_job_history,
             commands::list_library,
+            commands::playable_extensions,
             commands::reenrich_track,
             commands::remux_library,
             commands::recompute_genres,

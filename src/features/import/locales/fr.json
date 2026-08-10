@@ -113,5 +113,10 @@
     "doneHint": "Les dossiers déjà pris ne seront pas repris : seuls les ajouts entreront. Rien ne sera dupliqué.",
     "stopped": "Un import de ce dossier a été arrêté le {{when}}.",
     "stoppedHint": "Reprends quand tu veux : ce qui était déjà entré est conservé, seul le reste sera copié."
+  },
+  "category": {
+    "label": "Catégorie",
+    "hint": "Appliquée à tout ce que cet import fait entrer. C'est le contexte — bande originale de jeu, de film — pas le style musical.",
+    "none": "Aucune"
   }
 }
