@@ -41,6 +41,9 @@ interface ImportRecapPanelProps {
 export function ImportRecapPanel({ renditions, scan, recap, alignDoor = false }: ImportRecapPanelProps) {
   const { t } = useTranslation("import");
   const caveats = [
+    // First, because it is the only line saying the import *decided*
+    // something rather than merely counted it.
+    recap != null && (recap.collections ?? 0) > 0 ? t("recap.collections", { count: recap.collections }) : null,
     renditions > 0 ? t("doneRenditions", { count: renditions }) : null,
     scan != null && scan.unplayable > 0
       ? t("recap.unplayable", { count: scan.unplayable, formats: unplayableFormats(scan).join(", ") })

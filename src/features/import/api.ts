@@ -61,6 +61,10 @@ export interface ImportRecap {
   offTree: number;
   albumsWithoutArt: number;
   albumsWithGaps: number;
+  /** Rows the import filed as collections rather than albums, because their
+   * tracks never agreed on being one release (`sidecar/auto_collection.py`).
+   * Absent on runs archived before the import made that call. */
+  collections?: number;
 }
 
 /** What the import did, once it is over. */

@@ -27,6 +27,7 @@ import subprocess
 import threading
 import time
 
+import auto_collection
 import import_recap
 import protocol
 from importer import beet_bin
@@ -165,12 +166,23 @@ def handle(request_id: str, params: dict) -> dict:
     _write_repaired_tags(params, batch)
     _stage_singleton_covers(params, batch)
 
+    # Before the recap, like the cover pass and for the same reason: a row this
+    # names a collection has no tracklist to have holes in, and counting it as
+    # a gapped album would report a defect the import has just decided is not
+    # one.
+    collections = auto_collection.mark(params["beets_db"], params["library_dir"], batch)
+
     # The cover pass runs first, sequentially, and the recap reads after it —
     # the pass can now *change* what the recap counts (an album whose cover it
     # recovered from the file tags is no longer "without art"), and counting
     # before it ran would report defects that were already repaired.
     renditions = _shrink_covers(request_id, params, batch)
     recap = import_recap.build(params["beets_db"], batch)
+    if recap is not None:
+        # Carried inside the recap rather than beside it: the recap is what the
+        # archive stores as one JSON blob and what both the live page and the
+        # history read, so a fact about this run's arrival belongs in it.
+        recap["collections"] = collections
 
     return {
         "folders": folders,
