@@ -86,8 +86,16 @@ class SonarcheImportPlugin(plugins.BeetsPlugin):
         # Sentinel and archive tasks carry no items; `getattr` keeps them from
         # crashing the walk. Returning None (implicitly) matters: a non-None
         # return from this event *replaces* the task list.
+        #
+        # `item` and not only `items`: a singleton import (`-s`, the grouping
+        # mode for a folder of one-shots) builds `SingletonImportTask`, which
+        # carries one `item` and no `items` at all — reading only the plural
+        # left exactly the libraries this plugin exists for unrepaired.
         for item in getattr(task, "items", None) or []:
             self.repair(item)
+        single = getattr(task, "item", None)
+        if single is not None:
+            self.repair(single)
 
     def repair(self, item):
         # The filename is only consulted when the title tag is empty: a file

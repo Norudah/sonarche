@@ -14,6 +14,12 @@ Two flags carry the whole doctrine:
 - ``-A`` (noautotag). The import is as-is: existing tags are kept, and no
   MusicBrainz call is made. Matching a whole library against MusicBrainz is a
   different job with a different cost, and it is not this one.
+
+The third flag is the caller's: how to group what it finds. beets makes one
+album per *directory* and has no opinion about whether that directory is an
+album — which is right for a ripped collection and wrong for a folder of
+one-shots, where it produced a single record named after the folder and filed
+fourteen unrelated artists under it. See `GROUPINGS`.
 """
 
 import os
@@ -30,6 +36,22 @@ from importer import beet_bin
 # that ignores it for this long is not going to honour it at all.
 _CANCEL_GRACE_SECONDS = 5.0
 
+# How to decide what an album is, and the beets flags each answer means.
+#
+# `folder` is beets' own behaviour and the right answer for a library that was
+# ripped or bought: one directory, one release. `tags` (`-g`) re-groups each
+# directory by the album tag its files carry, which rescues a folder holding
+# several albums at once. `tracks` (`-s`) says there are no albums here at all:
+# every file is imported on its own, which is what a folder of one-shot rips
+# actually is — and the only mode that does not invent a record named after the
+# folder to file unrelated artists under.
+GROUPINGS = {
+    "folder": [],
+    "tags": ["-g"],
+    "tracks": ["-s"],
+}
+DEFAULT_GROUPING = "folder"
+
 
 def handle(request_id: str, params: dict) -> dict:
     folder = params["folder"]
@@ -42,9 +64,15 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.isdir(folder):
         raise RuntimeError(f"folder not found: {folder}")
 
+    grouping = params.get("grouping") or DEFAULT_GROUPING
+    if grouping not in GROUPINGS:
+        raise RuntimeError(f"unknown grouping: {grouping}")
+
     cmd = [beet_bin(), "--config", config_path, "import",
            "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
+           *GROUPINGS[grouping],
            f"--set={import_recap.BATCH_FIELD}={batch}", folder]
+    protocol.log(f"library_import: grouping={grouping}")
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
 
@@ -127,6 +155,7 @@ def handle(request_id: str, params: dict) -> dict:
     # bounded by what is already on disk — the open-ended part, the copy, is
     # what the cancel stopped.
     _write_repaired_tags(params, batch)
+    _stage_singleton_covers(params, batch)
 
     # The cover pass runs first, sequentially, and the recap reads after it —
     # the pass can now *change* what the recap counts (an album whose cover it
@@ -209,6 +238,60 @@ def _write_repaired_tags(params: dict, batch: str) -> None:
         lib._close()
     if written:
         protocol.log(f"import: repaired tags written into {written} file(s)")
+
+
+def _stage_singleton_covers(params: dict, batch: str) -> None:
+    """Give an album-less track the picture it already carries.
+
+    Cover art is an album property everywhere else in this app: the listing
+    resolves `artpath` per album, and a singleton has no album row to hang one
+    on. Which would mean the one grouping mode meant for a folder of one-shots
+    — the mode whose whole point is *not* to invent an album — produced a
+    library of grey squares, while the picture sat inside every file.
+
+    So the embedded image is written out beside the track, and its path is
+    remembered on the item itself. Remembered rather than probed: the listing
+    reads flexible attributes in one indexed query, where checking the disk
+    would be one `stat` per singleton on every refresh.
+
+    Album tracks are skipped — `_shrink_covers` already serves them, at album
+    granularity, which is one file instead of twelve identical ones.
+    """
+    import mediafile
+    from beets.library import Library
+
+    import enrich
+    import library
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    staged = 0
+    try:
+        for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}"):
+            if item.album_id:
+                continue
+            path = enrich._decode(item.path)
+            try:
+                images = mediafile.MediaFile(path).images or []
+            except Exception:  # an unreadable copy simply keeps no cover
+                continue
+            if not images:
+                continue
+            image = images[0]
+            ext = ".png" if "png" in (image.mime_type or "") else ".jpg"
+            art = os.path.splitext(path)[0] + ext
+            try:
+                with open(art, "wb") as fh:
+                    fh.write(image.data)
+            except OSError as exc:  # a missing cover is a defect, not a failure
+                protocol.log(f"import: could not stage a cover for {path}: {exc}")
+                continue
+            item[library.ITEM_ART_KEY] = art
+            item.store()
+            staged += 1
+    finally:
+        lib._close()
+    if staged:
+        protocol.log(f"import: {staged} singleton cover(s) taken out of the files")
 
 
 def _shrink_covers(request_id: str, params: dict) -> int:

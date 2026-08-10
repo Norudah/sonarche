@@ -1151,6 +1151,8 @@ function mockScan(path: string): unknown {
       unplayable: 0,
       unplayableByExtension: {},
       unplayableExamples: [],
+      albumFolders: 0,
+      largestFolder: 0,
       bytes: 0,
       truncated: false,
     };
@@ -1162,6 +1164,8 @@ function mockScan(path: string): unknown {
     unplayableByExtension: { wma: 19, opus: 6 },
     unplayableExamples: [`${path}/Old Rips/track01.wma`, `${path}/Podcasts/ep-114.opus`],
     albumFolders: MOCK_IMPORT_FOLDERS.length,
+    // Past `CROWDED_FOLDER`, so the preview shows the suggestion doing its job.
+    largestFolder: 214,
     bytes: 31_400_000_000,
     truncated: false,
   };

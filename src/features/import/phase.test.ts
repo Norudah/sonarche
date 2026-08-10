@@ -9,6 +9,7 @@ const report: ScanReport = {
   unplayableByExtension: {},
   unplayableExamples: [],
   albumFolders: 2,
+  largestFolder: 0,
   bytes: 100,
   truncated: false,
 };

@@ -104,4 +104,6 @@ export const layoutIds = {
   lyricsFollow: "sonarche-lyrics-follow",
   /** The album/collection pill in the inspect panel's identity column. */
   recordKind: "sonarche-record-kind",
+  /** The grouping pill under the import page's folder picker. */
+  grouping: "sonarche-grouping",
 } as const;

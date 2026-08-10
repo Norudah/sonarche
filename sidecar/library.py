@@ -36,6 +36,10 @@ _PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
 # to be measured against and so cannot have holes in one. See `album_kind.py`.
 ALBUM_KIND_KEY = "sonarche_album_kind"
 COLLECTION = "collection"
+# On the *item*, and only ever on a singleton: where its own cover was written
+# out of its tags at import (see `_stage_singleton_covers`). Album tracks read
+# their album's `artpath` instead, which is one file for the whole record.
+ITEM_ART_KEY = "sonarche_item_art"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
@@ -149,18 +153,35 @@ def flex_attrs_by_album(conn, key: str) -> dict[int, str]:
     }
 
 
-def track_row(
-    row,
-    art_by_album,
-    art_mtime_by_album,
-    bonus_by_item,
-    suspect_by_item,
-    provisional_cover_by_item,
-    kind_by_album,
-    accepted_by_item,
-    accepted_by_album,
-    library_dir: str,
-) -> dict:
+class Lookups:
+    """Everything `track_row` needs that is not on the row itself.
+
+    One object rather than nine positional dicts: each surfaced attribute used
+    to add a parameter, so the signature grew to eleven and every call site —
+    tests included — became a row of anonymous braces nobody could read. Built
+    once per listing; the fields are plain dicts keyed by item or album id.
+    """
+
+    __slots__ = (
+        "art_by_album",
+        "art_mtime_by_album",
+        "bonus_by_item",
+        "suspect_by_item",
+        "provisional_cover_by_item",
+        "kind_by_album",
+        "art_by_item",
+        "accepted_by_item",
+        "accepted_by_album",
+    )
+
+    def __init__(self, **fields):
+        for name in self.__slots__:
+            setattr(self, name, fields.pop(name, None) or {})
+        if fields:
+            raise TypeError(f"unknown lookup: {', '.join(sorted(fields))}")
+
+
+def track_row(row, lookups: "Lookups", library_dir: str) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
     genre = first_genre(row["genres"])
     return {
@@ -181,12 +202,14 @@ def track_row(
         "path": expand_db_path(row["path"], library_dir),
         # Singletons carry no album_id and simply miss.
         "album_id": row["album_id"] or None,
-        "art_path": art_by_album.get(row["album_id"]),
+        # An album's own cover, or — for a singleton, which has no album row to
+        # hang one on — the picture taken out of its tags at import.
+        "art_path": lookups.art_by_album.get(row["album_id"]) or lookups.art_by_item.get(row["id"]),
         # Versions the cover URL: same artpath, new pixels -> new mtime.
-        "art_mtime": art_mtime_by_album.get(row["album_id"]),
+        "art_mtime": lookups.art_mtime_by_album.get(row["album_id"]),
         # Origin release of an adopted bonus track (deluxe/regional
         # edition filed with the main album), or None.
-        "bonus_source": bonus_by_item.get(row["id"]),
+        "bonus_source": lookups.bonus_by_item.get(row["id"]),
         # Empty string is beets' "no match" — surface it as null.
         "mb_trackid": row["mb_trackid"] or None,
         # The user's own axis (grouping tag): context, not musical style.
@@ -196,16 +219,16 @@ def track_row(
         "soundtrack": "soundtrack" in split_multi(row["albumtypes"]),
         # The match contradicts the download's own title (see suspect.py):
         # shown by the triage page as "to review".
-        "suspect_match": row["id"] in suspect_by_item,
+        "suspect_match": row["id"] in lookups.suspect_by_item,
         # A forced album whose cover is the video's thumbnail, not real art:
         # the right shape, the wrong picture, and worth replacing.
-        "provisional_cover": row["id"] in provisional_cover_by_item,
+        "provisional_cover": row["id"] in lookups.provisional_cover_by_item,
         # What the record this track sits on *is* — null for a plain album.
-        "album_kind": kind_by_album.get(row["album_id"]),
+        "album_kind": lookups.kind_by_album.get(row["album_id"]),
         # Checks whose verdict the owner has already answered (see accepted.py):
         # the track's own, and the ones its album carries for the whole record.
-        "accepted": sorted(accepted.parse(accepted_by_item.get(row["id"]))),
-        "album_accepted": sorted(accepted.parse(accepted_by_album.get(row["album_id"]))),
+        "accepted": sorted(accepted.parse(lookups.accepted_by_item.get(row["id"]))),
+        "album_accepted": sorted(accepted.parse(lookups.accepted_by_album.get(row["album_id"]))),
         "added": row["added"],
     }
 
@@ -236,6 +259,7 @@ def handle(_request_id: str, params: dict) -> dict:
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
         provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
         kind_by_album = flex_attrs_by_album(conn, ALBUM_KIND_KEY)
+        art_by_item = flex_attrs_by_item(conn, ITEM_ART_KEY)
         accepted_by_item = flex_attrs_by_item(conn, accepted.KEY)
         accepted_by_album = flex_attrs_by_album(conn, accepted.KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
@@ -243,21 +267,18 @@ def handle(_request_id: str, params: dict) -> dict:
         rows = conn.execute(
             f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC"
         )
-        tracks = [
-            track_row(
-                r,
-                art_by_album,
-                art_mtime_by_album,
-                bonus_by_item,
-                suspect_by_item,
-                provisional_cover_by_item,
-                kind_by_album,
-                accepted_by_item,
-                accepted_by_album,
-                library_dir,
-            )
-            for r in rows
-        ]
+        lookups = Lookups(
+            art_by_album=art_by_album,
+            art_mtime_by_album=art_mtime_by_album,
+            bonus_by_item=bonus_by_item,
+            suspect_by_item=suspect_by_item,
+            provisional_cover_by_item=provisional_cover_by_item,
+            kind_by_album=kind_by_album,
+            art_by_item=art_by_item,
+            accepted_by_item=accepted_by_item,
+            accepted_by_album=accepted_by_album,
+        )
+        tracks = [track_row(r, lookups, library_dir) for r in rows]
     finally:
         conn.close()
 

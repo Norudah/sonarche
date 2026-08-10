@@ -51,6 +51,13 @@ pub struct ScanReport {
     /// this is the denominator of the progress bar — the only count the import
     /// can be measured against without asking beets how far it has to go.
     pub album_folders: u64,
+    /// Audio files in the fullest single folder.
+    ///
+    /// The one structural hint available without reading a tag, and the page
+    /// uses it to suggest a grouping: a directory holding forty tracks is
+    /// unlikely to be one release, and beets would make it one anyway. A hint,
+    /// not a verdict — box sets exist, and the choice stays the user's.
+    pub largest_folder: u64,
     /// Total bytes of every audio file found — what the copy will cost.
     pub bytes: u64,
     /// The walk hit `MAX_ENTRIES` and stopped. Every count above is a floor.
@@ -125,6 +132,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         unplayable_by_extension: BTreeMap::new(),
         unplayable_examples: Vec::new(),
         album_folders: 0,
+        largest_folder: 0,
         bytes: 0,
         truncated: false,
     };
@@ -139,7 +147,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         let Ok(entries) = fs::read_dir(&dir) else {
             continue;
         };
-        let mut holds_audio = false;
+        let mut in_this_folder: u64 = 0;
 
         for entry in entries.flatten() {
             seen += 1;
@@ -163,15 +171,16 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
                 continue;
             }
 
-            holds_audio = true;
+            in_this_folder += 1;
             report.bytes += entry.metadata().map(|meta| meta.len()).unwrap_or(0);
             record(&mut report, &path);
         }
 
         // Counted per folder, not per file: an album spread over `Disc 1` and
         // `Disc 2` is two folders to beets, and both are named as it goes.
-        if holds_audio {
+        if in_this_folder > 0 {
             report.album_folders += 1;
+            report.largest_folder = report.largest_folder.max(in_this_folder);
         }
     }
 
@@ -260,6 +269,23 @@ mod tests {
         // Discovery, Homework, Disc 1, Disc 2 — not `Daft Punk`, not
         // `Radiohead`, and not `In Rainbows`, which holds only the cover.
         assert_eq!(report.album_folders, 4);
+    }
+
+    /// The hint the import page reads to suggest a grouping: the fullest
+    /// single folder, not the total and not an average.
+    #[test]
+    fn reports_the_fullest_single_folder() {
+        let tree = Tree::new("fullest");
+        tree.file("Artist/Album/01.m4a", 1)
+            .file("Artist/Album/02.m4a", 1)
+            .file("Rips/a.mp3", 1)
+            .file("Rips/b.mp3", 1)
+            .file("Rips/c.mp3", 1);
+
+        let report = scan(&tree.0).unwrap();
+
+        assert_eq!(report.largest_folder, 3);
+        assert_eq!(report.album_folders, 2);
     }
 
     #[test]

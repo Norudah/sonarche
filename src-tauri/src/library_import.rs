@@ -31,6 +31,11 @@ use crate::sidecar::SidecarState;
 /// process being waited on forever, not to bound honest work.
 const IMPORT_TIMEOUT: Duration = Duration::from_secs(3600 * 6);
 
+/// How the caller wants albums decided. Validated here as well as in the
+/// sidecar: this crosses the IPC boundary, and the flag it selects is a beets
+/// command-line argument. See `GROUPINGS` in `library_import.py`.
+const GROUPINGS: &[&str] = &["folder", "tags", "tracks"];
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportOutcome {
@@ -157,7 +162,13 @@ impl LibraryImportState {
         sidecar: &SidecarState,
         jobs: &JobsState,
         folder: &str,
+        grouping: &str,
     ) -> AppResult<ImportOutcome> {
+        if !GROUPINGS.contains(&grouping) {
+            return Err(AppError::InvalidInput(format!(
+                "unknown grouping: {grouping}"
+            )));
+        }
         let paths = AppPaths::resolve(app)?;
         library_scan::ensure_outside_library(Path::new(folder), &paths.library_root)?;
 
@@ -181,7 +192,7 @@ impl LibraryImportState {
         let cancel_file = paths.staging_dir.join(format!("import-cancel-{id}"));
         *self.cancel_file.lock().await = Some(cancel_file.clone());
 
-        let result = request(app, sidecar, folder, &id, &cancel_file, &paths).await;
+        let result = request(app, sidecar, folder, grouping, &id, &cancel_file, &paths).await;
 
         // Awaited rather than a Drop guard, so a failure cannot leave the flag
         // stuck and the page refusing every later attempt. The cancel slot is
@@ -240,6 +251,7 @@ async fn request(
     app: &AppHandle,
     sidecar: &SidecarState,
     folder: &str,
+    grouping: &str,
     id: &str,
     cancel_file: &Path,
     paths: &AppPaths,
@@ -250,6 +262,9 @@ async fn request(
             "library_import",
             json!({
                 "folder": folder,
+                // What counts as an album here. beets makes one per directory
+                // and has no opinion about whether that directory is one.
+                "grouping": grouping,
                 // Stamped on every item beets takes on, so the recap can ask
                 // afterwards what *this* run brought in.
                 "import_id": id,

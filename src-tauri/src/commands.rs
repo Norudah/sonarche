@@ -172,8 +172,10 @@ pub async fn start_library_import(
     jobs: State<'_, JobsState>,
     state: State<'_, LibraryImportState>,
     folder: String,
+    grouping: Option<String>,
 ) -> AppResult<ImportOutcome> {
-    state.run(&app, &sidecar, &jobs, &folder).await
+    let grouping = grouping.unwrap_or_else(|| "folder".into());
+    state.run(&app, &sidecar, &jobs, &folder, &grouping).await
 }
 
 /// Every finished library import, newest first. The archive of the other way

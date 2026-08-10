@@ -1,5 +1,6 @@
 import unittest
 
+from beetsplug import sonarche_import
 from beetsplug.sonarche_import import parse_stem, unpack_year
 
 
@@ -57,3 +58,58 @@ class UnpackYearTest(unittest.TestCase):
     def test_garbage_beyond_repair_is_refused(self):
         # First four digits do not make a year anyone tagged on purpose.
         self.assertIsNone(unpack_year(99999999))
+
+
+class FakeItem:
+    """Just enough of a beets item for the plugin: it only ever reads a path
+    and writes the fields it repairs."""
+
+    def __init__(self, path: str, title: str = "", artist: str = "", track=0, year=0):
+        self.path = path.encode()
+        self.title = title
+        self.artist = artist
+        self.track = track
+        self.year = year
+        self.month = 0
+        self.day = 0
+
+
+class AlbumTask:
+    def __init__(self, items):
+        self.items = items
+
+
+class SingletonTask:
+    """What beets builds in `-s` mode: one `item`, and no `items` at all."""
+
+    def __init__(self, item):
+        self.item = item
+
+
+class RepairTaskTest(unittest.TestCase):
+    def setUp(self):
+        self.plugin = sonarche_import.SonarcheImportPlugin()
+
+    def test_repairs_every_item_of_an_album_task(self):
+        items = [FakeItem("/rips/Sigrid - Strangers.mp3"), FakeItem("/rips/03 Mirror.mp3")]
+
+        self.plugin.repair_task(AlbumTask(items), None)
+
+        self.assertEqual(items[0].title, "Strangers")
+        self.assertEqual(items[0].artist, "Sigrid")
+        self.assertEqual(items[1].title, "Mirror")
+        self.assertEqual(items[1].track, 3)
+
+    def test_repairs_the_lone_item_of_a_singleton_task(self):
+        """The grouping mode for a folder of one-shots is exactly the case this
+        plugin exists for; reading only `items` left it untouched."""
+        item = FakeItem("/rips/Magdalena Bay - Airplane.mp3", year=20240927)
+
+        self.plugin.repair_task(SingletonTask(item), None)
+
+        self.assertEqual(item.title, "Airplane")
+        self.assertEqual(item.artist, "Magdalena Bay")
+        self.assertEqual(item.year, 2024)
+
+    def test_a_task_carrying_neither_is_left_alone(self):
+        self.plugin.repair_task(object(), None)

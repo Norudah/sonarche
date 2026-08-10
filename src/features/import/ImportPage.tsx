@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { pickFolder, type ScanReport, scanImportFolder } from "@/features/import/api";
+import { pickFolder, type Grouping, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderPicker } from "@/features/import/FolderPicker";
+import { GroupingChoice } from "@/features/import/GroupingChoice";
+import { suggestGrouping } from "@/features/import/grouping";
 import { HowItWorks } from "@/features/import/HowItWorks";
 import { useCancelImport, useImportProgress, useLibraryImport } from "@/features/import/hooks";
 import { ImportCard } from "@/features/import/ImportCard";
@@ -19,6 +21,10 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 export function ImportPage({ children }: { children?: ReactNode }) {
   const { t } = useTranslation("import");
   const [folder, setFolder] = useState<string | null>(null);
+  // Null until the user overrules the scan: the suggestion is derived during
+  // render from the report, so a fresh scan re-suggests without an effect to
+  // keep the two in step.
+  const [chosenGrouping, setChosenGrouping] = useState<Grouping | null>(null);
 
   // A mutation rather than a query: the scan is started by an act of the user's
   // and its result belongs to that one choice — there is no key to cache it
@@ -33,10 +39,16 @@ export function ImportPage({ children }: { children?: ReactNode }) {
     // Closing the panel is an answer: keep whatever was already on screen.
     if (chosen == null) return;
     setFolder(chosen);
+    // A new folder is a new question: whatever was picked for the last one says
+    // nothing about this one.
+    setChosenGrouping(null);
     // A new folder makes the last import's verdict about someone else.
     run.reset();
     scan.mutate(chosen);
   };
+
+  const report = scan.data ?? null;
+  const grouping = chosenGrouping ?? (report ? suggestGrouping(report) : "folder");
 
   const phase = importPhase({
     folder,
@@ -72,8 +84,19 @@ export function ImportPage({ children }: { children?: ReactNode }) {
             folder={folder}
             phase={phase}
             onChoose={() => void choose()}
-            onStart={() => folder != null && run.mutate(folder)}
+            onStart={() => folder != null && run.mutate({ folder, grouping })}
           />
+
+          {/* Under the picker and only once there is a folder: the question is
+              about this folder, and its shape is what preselects the answer. */}
+          {report != null && (
+            <GroupingChoice
+              value={grouping}
+              report={report}
+              isDisabled={phase.kind === "importing"}
+              onChange={setChosenGrouping}
+            />
+          )}
         </div>
       </div>
 

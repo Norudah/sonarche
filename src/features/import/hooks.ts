@@ -8,6 +8,7 @@ import {
   type ImportRecord,
   listImports,
   startLibraryImport,
+  type Grouping,
 } from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
 
@@ -80,8 +81,8 @@ export function useImports() {
 export function useLibraryImport() {
   const queryClient = useQueryClient();
 
-  return useMutation<ImportOutcome, unknown, string>({
-    mutationFn: startLibraryImport,
+  return useMutation<ImportOutcome, unknown, { folder: string; grouping: Grouping }>({
+    mutationFn: ({ folder, grouping }) => startLibraryImport(folder, grouping),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),
   });

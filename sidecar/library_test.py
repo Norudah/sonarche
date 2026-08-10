@@ -8,6 +8,7 @@ from library import (
     update,
     _coerce_int,
     art_paths_by_album,
+    Lookups,
     expand_db_path,
     first_genre,
     flex_attrs_by_item,
@@ -180,7 +181,7 @@ class TrackRowTest(unittest.TestCase):
     def test_maps_the_wire_shape(self):
         row = self._row(genres="Pop\\␀Teen Pop")
 
-        out = track_row(row, {1: "/music/cover.jpg"}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(row, Lookups(art_by_album={1: "/music/cover.jpg"}), "/music")
 
         self.assertEqual(out["id"], 1)
         self.assertEqual(out["album_artist"], "One Direction")
@@ -190,24 +191,41 @@ class TrackRowTest(unittest.TestCase):
             "/music/One Direction/Four/03 Night Changes.m4a"
         ))
 
+    def test_a_singleton_wears_the_cover_taken_out_of_its_own_tags(self):
+        """A track with no album has no `artpath` to read: the import writes its
+        embedded picture out beside it and records the path on the item."""
+        row = self._row(item_id=7, album_id=None)
+
+        out = track_row(row, Lookups(art_by_item={7: "/music/x.jpg"}), "/music")
+
+        self.assertEqual(out["art_path"], "/music/x.jpg")
+
+    def test_an_album_track_keeps_reading_its_album_cover(self):
+        """The album's one file, never a per-track copy of the same picture."""
+        row = self._row(item_id=7, album_id=3)
+
+        out = track_row(row, Lookups(art_by_album={3: "/music/cover.jpg"}, art_by_item={7: "/music/x.jpg"}), "/music")
+
+        self.assertEqual(out["art_path"], "/music/cover.jpg")
+
     def test_length_is_rounded_to_one_decimal(self):
-        out = track_row(self._row(length=200.05), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(self._row(length=200.05), Lookups(), "/music")
 
         self.assertEqual(out["length"], 200.1)
 
     def test_zero_length_yields_none_not_zero(self):
         """A track with no stored duration must read as unknown, so the front
         falls back to the audio element rather than showing 0:00."""
-        out = track_row(self._row(length=0), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(self._row(length=0), Lookups(), "/music")
 
         self.assertIsNone(out["length"])
 
     def test_zero_year_yields_none(self):
-        self.assertIsNone(track_row(self._row(year=0), {}, {}, {}, {}, {}, {}, {}, {}, "/music")["year"])
+        self.assertIsNone(track_row(self._row(year=0), Lookups(), "/music")["year"])
 
     def test_mb_trackid_surfaces_and_empty_reads_as_none(self):
-        matched = track_row(self._row(mb_trackid="rec-1"), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
-        unmatched = track_row(self._row(mb_trackid=""), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        matched = track_row(self._row(mb_trackid="rec-1"), Lookups(), "/music")
+        unmatched = track_row(self._row(mb_trackid=""), Lookups(), "/music")
 
         self.assertEqual(matched["mb_trackid"], "rec-1")
         self.assertIsNone(unmatched["mb_trackid"])
@@ -215,8 +233,8 @@ class TrackRowTest(unittest.TestCase):
     def test_suspect_match_is_attached_by_item_id(self):
         row = self._row(item_id=7)
 
-        flagged = track_row(row, {}, {}, {}, {7: "title-mismatch"}, {}, {}, {}, {}, "/music")
-        clean = track_row(row, {}, {}, {}, {8: "title-mismatch"}, {}, {}, {}, {}, "/music")
+        flagged = track_row(row, Lookups(suspect_by_item={7: "title-mismatch"}), "/music")
+        clean = track_row(row, Lookups(suspect_by_item={8: "title-mismatch"}), "/music")
 
         self.assertTrue(flagged["suspect_match"])
         self.assertFalse(clean["suspect_match"])
@@ -224,8 +242,8 @@ class TrackRowTest(unittest.TestCase):
     def test_provisional_cover_is_attached_by_item_id(self):
         row = self._row(item_id=7)
 
-        flagged = track_row(row, {}, {}, {}, {}, {7: "1"}, {}, {}, {}, "/music")
-        clean = track_row(row, {}, {}, {}, {}, {8: "1"}, {}, {}, {}, "/music")
+        flagged = track_row(row, Lookups(provisional_cover_by_item={7: "1"}), "/music")
+        clean = track_row(row, Lookups(provisional_cover_by_item={8: "1"}), "/music")
 
         self.assertTrue(flagged["provisional_cover"])
         self.assertFalse(clean["provisional_cover"])
@@ -235,8 +253,8 @@ class TrackRowTest(unittest.TestCase):
         to report it — the front derives one card from the whole group."""
         row = self._row(item_id=7, album_id=3)
 
-        declared = track_row(row, {}, {}, {}, {}, {}, {3: "collection"}, {}, {}, "/music")
-        plain = track_row(row, {}, {}, {}, {}, {}, {4: "collection"}, {}, {}, "/music")
+        declared = track_row(row, Lookups(kind_by_album={3: "collection"}), "/music")
+        plain = track_row(row, Lookups(kind_by_album={4: "collection"}), "/music")
 
         self.assertEqual(declared["album_kind"], "collection")
         self.assertIsNone(plain["album_kind"])
@@ -244,31 +262,31 @@ class TrackRowTest(unittest.TestCase):
     def test_bonus_source_is_attached_by_item_id(self):
         row = self._row(item_id=7)
 
-        out = track_row(row, {}, {}, {7: "Deluxe Edition"}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(row, Lookups(bonus_by_item={7: "Deluxe Edition"}), "/music")
 
         self.assertEqual(out["bonus_source"], "Deluxe Edition")
 
     def test_missing_bonus_source_is_none(self):
-        out = track_row(self._row(item_id=7), {}, {}, {8: "Other"}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(self._row(item_id=7), Lookups(bonus_by_item={8: "Other"}), "/music")
 
         self.assertIsNone(out["bonus_source"])
 
     def test_category_surfaces_and_empty_reads_as_none(self):
-        tagged = track_row(self._row(grouping="Video Games"), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
-        bare = track_row(self._row(grouping=""), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        tagged = track_row(self._row(grouping="Video Games"), Lookups(), "/music")
+        bare = track_row(self._row(grouping=""), Lookups(), "/music")
 
         self.assertEqual(tagged["category"], "Video Games")
         self.assertIsNone(bare["category"])
 
     def test_soundtrack_release_type_is_flagged(self):
-        ost = track_row(self._row(albumtypes="album; soundtrack"), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
-        plain = track_row(self._row(albumtypes="album"), {}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        ost = track_row(self._row(albumtypes="album; soundtrack"), Lookups(), "/music")
+        plain = track_row(self._row(albumtypes="album"), Lookups(), "/music")
 
         self.assertTrue(ost["soundtrack"])
         self.assertFalse(plain["soundtrack"])
 
     def test_track_without_album_gets_no_art(self):
-        out = track_row(self._row(album_id=None), {1: "/music/cover.jpg"}, {}, {}, {}, {}, {}, {}, {}, "/music")
+        out = track_row(self._row(album_id=None), Lookups(art_by_album={1: "/music/cover.jpg"}), "/music")
 
         self.assertIsNone(out["art_path"])
 

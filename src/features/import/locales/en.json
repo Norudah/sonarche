@@ -97,5 +97,15 @@
     "openAlign": "Go to the alignment",
     "expand": "Show the import's detail",
     "collapse": "Hide the import's detail"
+  },
+  "grouping": {
+    "label": "What counts as an album",
+    "folder": "One album per folder",
+    "tags": "Follow the tags",
+    "tracks": "Standalone tracks",
+    "folderWhy": "Every folder holding music becomes an album. The right choice for a ripped or bought collection, filed by record.",
+    "tagsWhy": "Tracks are grouped by their album tag, even when they share a folder. Useful when one folder holds several records.",
+    "tracksWhy": "No album is created: every file comes in on its own, with its cover. What a folder of one-by-one finds needs.",
+    "suggested": "Suggested here: one folder holds {{count}} tracks, more than a record has."
   }
 }

@@ -14,6 +14,9 @@ export interface ScanReport {
   /** Folders holding at least one audio file — the progress denominator, since
    * beets imports a tree folder by folder and names each one as it goes. */
   albumFolders: number;
+  /** Audio files in the fullest single folder — the hint behind the suggested
+   * grouping. See `suggestGrouping`. */
+  largestFolder: number;
   /** Total bytes of every audio file found. */
   bytes: number;
   /** The walk hit its ceiling: every count above is a floor. */
@@ -94,10 +97,20 @@ export function listImports(): Promise<ImportRecord[]> {
   return invoke<ImportRecord[]>("list_imports");
 }
 
+/** How the import decides what an album is.
+ *
+ * beets makes one album per *directory*, always. `folder` keeps that, which is
+ * right for a ripped or bought library. `tags` re-groups each directory by the
+ * album tag its files carry, for a folder holding several records at once.
+ * `tracks` says there are no albums here — every file lands on its own, which
+ * is what a folder of one-shot rips really is, and the only mode that does not
+ * invent a record named after the folder to file unrelated artists under. */
+export type Grouping = "folder" | "tags" | "tracks";
+
 /** Copy a folder's music into the library. Resolves when beets is done, which
  * on a real collection is minutes away. */
-export function startLibraryImport(folder: string): Promise<ImportOutcome> {
-  return invoke<ImportOutcome>("start_library_import", { folder });
+export function startLibraryImport(folder: string, grouping: Grouping): Promise<ImportOutcome> {
+  return invoke<ImportOutcome>("start_library_import", { folder, grouping });
 }
 
 /** Stop the import in flight. Fire-and-forget: the import's own call is what
