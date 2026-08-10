@@ -129,6 +129,12 @@ def _remux_file(ffmpeg: str, path: str) -> None:
 
 
 def _library_paths(db_path: str, library_dir: str) -> list[str]:
+    # No database, nothing to repair — the ordinary state of a launch right
+    # after a data erase, and of a first run. Same guard as every other reader
+    # here; without it the read-only connect raises and the launch pass leaves
+    # a traceback in the log for a library that simply has no files yet.
+    if not os.path.exists(db_path):
+        return []
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=20.0)
     try:
         rows = conn.execute("SELECT path FROM items").fetchall()

@@ -5,7 +5,7 @@ import struct
 import tempfile
 import unittest
 
-from remux import is_fragmented, top_level_boxes
+from remux import _library_paths, is_fragmented, top_level_boxes
 
 
 def _box(name: bytes, payload: bytes = b"") -> bytes:
@@ -63,6 +63,17 @@ class BoxScanTest(unittest.TestCase):
         path = self._write(b"")
         self.assertEqual(top_level_boxes(path), [])
         self.assertFalse(is_fragmented(path))
+
+
+class LibraryPathsTest(unittest.TestCase):
+    """The launch repair pass runs before anything guarantees a library
+    exists — right after a data erase, and on a first run. No database means
+    no files to repair, not a failure."""
+
+    def test_a_missing_database_yields_no_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = os.path.join(tmp, "library.db")
+            self.assertEqual(_library_paths(missing, tmp), [])
 
 
 if __name__ == "__main__":
