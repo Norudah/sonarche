@@ -165,6 +165,13 @@ CREATE INDEX IF NOT EXISTS idx_tracks_item  ON job_tracks(item_id);
 /// WAL keeps the worker's writes from blocking concurrent command reads.
 pub fn open(path: &Path) -> AppResult<Connection> {
     let conn = Connection::open(path)?;
+    // Before any pragma. The WAL switch below needs an exclusive lock, and
+    // there is one ordinary moment when another process holds the file: the
+    // relaunch after an erase, where the dying instance is still running its
+    // closing checkpoint. Without a timeout that open returned SQLITE_BUSY
+    // immediately, the setup hook failed, and tauri's "Failed to setup app"
+    // panic aborted the fresh instance before it drew a window.
+    conn.busy_timeout(std::time::Duration::from_secs(10))?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.execute_batch(SCHEMA)?;

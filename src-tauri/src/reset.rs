@@ -9,8 +9,9 @@
 //! * [`erase_data`] — the destructive one. The whole library root (audio
 //!   files, playlists' M3U8 mirror, artist and playlist images), the beets
 //!   index, staged downloads, the history and its dead predecessors, the
-//!   stored key, the log, every preference. Everything the user put in, and
-//!   nothing the app can put back.
+//!   log, every preference. Everything the user put in — except the setup:
+//!   the engine, the AcoustID key and the walkthrough flag survive, because
+//!   an erase asks for a factory-fresh *library*, not a torn-down app.
 //! * [`reinstall_environment`] — the harmless one. The Python environment and
 //!   the downloaded tools, which the app rebuilds on the next launch. Named
 //!   apart from the one above precisely so the two can never be confused at
@@ -182,8 +183,8 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
 }
 
 /// Wipe everything the user put in: the music, the index, the history, the
-/// key, the preferences. Keeps the engine, which is not theirs and costs a
-/// download to put back.
+/// preferences. Keeps the setup — the engine, the AcoustID key, the
+/// walkthrough flag — so the erased app is usable the moment it reopens.
 ///
 /// Refuses while work is in flight rather than deleting a folder something is
 /// writing into — the same rule as a library move, for the same reason.
@@ -247,14 +248,26 @@ pub async fn erase_data(
     if let Err(err) = jobs.clear_playlists().await {
         eprintln!("[reset] playlists not cleared: {err}");
     }
-    settings::set("acoustid".into(), String::new()).await?;
 
-    // The preferences file last and wholesale, so the library location goes
-    // with it: an erased app opens at its default folder, not at the external
-    // disk whose contents it just deleted.
+    // The AcoustID key is deliberately spared. It is not data *about* the
+    // library — it is the user's credential, tedious to obtain, and erasing it
+    // silently re-opened the walkthrough at the key step: an erase should
+    // yield a factory-fresh library in a still-set-up app.
+    //
+    // The preferences file goes wholesale, so the library location goes with
+    // it: an erased app opens at its default folder, not at the external disk
+    // whose contents it just deleted. The walkthrough flag is put back below —
+    // same reasoning as the key, the setup survives the erase.
+    let was_set_up = preferences::load(app)
+        .await
+        .map(|prefs| prefs.onboarding_completed)
+        .unwrap_or(false);
     let prefs_path = app.path().app_data_dir()?.join("preferences.json");
     let _ = tokio::fs::remove_file(&prefs_path).await;
     app.state::<LibraryRoot>().set(None);
+    if was_set_up {
+        preferences::set_onboarding_completed(app, true).await?;
+    }
 
     // Recreate the (now default) library folder so the next launch has
     // somewhere to import into — full layout, fresh marker.
