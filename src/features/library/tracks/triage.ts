@@ -19,6 +19,10 @@ export const GENRE_OFF_TREE = "off-tree";
 export interface TrackTriage {
   /** `?missing=year` */
   missingYear: boolean;
+  /** `?missing=track` — no position on its record. Shares the `missing` param
+   * with the year, which is why the two can never be on at once; nothing has
+   * ever needed them to be. */
+  missingTrackNumber: boolean;
   /** `?genre=` — a sentinel, a plain genre name, or null when absent. */
   genre: string | null;
   /** `?family=` — a genre family *key* (the genres page's own segment), the
@@ -40,6 +44,7 @@ export interface TrackTriage {
  * behind (which is exactly what the category and decade axes did). */
 export const NO_TRIAGE: TrackTriage = {
   missingYear: false,
+  missingTrackNumber: false,
   genre: null,
   family: null,
   category: null,
@@ -60,6 +65,7 @@ function parseDecade(raw: string | null): number | null {
 export function parseTrackTriage(params: URLSearchParams): TrackTriage {
   return {
     missingYear: params.get("missing") === "year",
+    missingTrackNumber: params.get("missing") === "track",
     genre: params.get("genre"),
     family: params.get("family"),
     category: params.get("category"),
@@ -93,6 +99,10 @@ function predicatesOf(triage: TrackTriage): Predicate[] {
   // category, decade, an exact genre) are navigation, and hiding tracks from a
   // genre page because of a metadata verdict would be a different app.
   if (triage.missingYear) tests.push((track) => track.year == null && !track.accepted.includes("year"));
+  // `> 0` and not just non-null: beets stores an absent track number as 0, so a
+  // null check alone would call an untagged file numbered.
+  if (triage.missingTrackNumber)
+    tests.push((track) => (track.track == null || track.track <= 0) && !track.accepted.includes("track"));
   if (triage.decade != null) {
     const decade = triage.decade;
     tests.push((track) => track.year != null && decadeOf(track.year) === decade);

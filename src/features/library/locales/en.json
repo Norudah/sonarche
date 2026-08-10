@@ -74,8 +74,6 @@
       "body": "Albums arrive with their cover and their tags as soon as a download or an import finishes."
     },
     "noResults": "No album matches “{{query}}”.",
-    "completeness": "{{percent}}%",
-    "completenessHint": "Incomplete metadata on this album",
     "bonusFrom": "Bonus — “{{source}}”",
     "sort": {
       "artist": "Artist",
@@ -86,8 +84,15 @@
     "rematching": "Re-matching…",
     "rematchDone": "{{matched}}/{{total}} tracks identified",
     "moreActions": "More actions",
-    "tagScoreHint": "Metadata fields filled in on this track",
-    "editMetadata": "Edit album metadata"
+    "editMetadata": "Edit album metadata",
+    "attention": {
+      "suspectMatch": "Match to review",
+      "duplicateRecording": "Duplicate",
+      "missingYear": "Missing year",
+      "missingTrackNumber": "Missing track number",
+      "genreMissing": "Missing genre",
+      "genreOffTree": "Genre off the tree"
+    }
   },
   "artists": {
     "eyebrow": "Artist",
@@ -144,7 +149,7 @@
     "genre": "Genre",
     "duration": "Duration",
     "actions": "Actions",
-    "tags": "Tags"
+    "attention": "Needs attention"
   },
   "search": {
     "placeholder": "Search…",
@@ -174,7 +179,8 @@
     "clearFilter": "Remove the “{{filter}}” filter",
     "noResults": "Nothing matches the active filter.",
     "suspectMatch": "Match to review",
-    "duplicateRecording": "Duplicate tracks"
+    "duplicateRecording": "Duplicate tracks",
+    "missingTrackNumber": "Missing track number"
   },
   "loadFailed": "Unable to load the library",
   "empty": {

@@ -1,5 +1,4 @@
 import type { AcceptedCheck, AlbumKind, LibraryTrack } from "@/features/library/api";
-import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
 import { createTextFilter } from "@/shared/lib/search";
 
 export interface Album {
@@ -29,11 +28,6 @@ export interface Album {
   /** Album-level checks the owner has answered. Same all-must-agree rule as
    * `kind`, and for the same reason. */
   accepted: AcceptedCheck[];
-  /** Share of tracked metadata fields that are filled, 0…1. */
-  completeness: number;
-  /** Tracks whose every tracked field is filled. Counted here rather than in
-   * the hero: it rides the pass `completeness` already makes over the tracks. */
-  fullyTagged: number;
 }
 
 /**
@@ -68,26 +62,6 @@ function distinctGenres(tracks: LibraryTrack[]): string[] {
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([genre]) => genre);
-}
-
-/**
- * Fraction of filled metadata cells across the whole album — every track
- * contributes every tracked field. An album where one track of twelve lacks a
- * genre should read as nearly complete, which a per-track "all or nothing"
- * count would not convey.
- */
-function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged: number } {
-  const total = tracks.length * COMPLETENESS_KEYS.length;
-  let filled = 0;
-  let fullyTagged = 0;
-
-  for (const track of tracks) {
-    const count = countFilled(toFieldValues(track));
-    filled += count;
-    if (count === COMPLETENESS_KEYS.length) fullyTagged += 1;
-  }
-
-  return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
 }
 
 /** The rows behind a card, and what they agree on. */
@@ -131,7 +105,6 @@ function computeAlbums(tracks: LibraryTrack[]): Album[] {
       artUrl: ordered.find((track) => track.artUrl)?.artUrl ?? null,
       formats: Array.from(new Set(ordered.map((track) => track.format).filter(Boolean))).sort(),
       ...recordOf(ordered),
-      ...tagStatsOf(ordered),
     };
   });
 }

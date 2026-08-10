@@ -44,6 +44,7 @@
     "suspect": "Match to review",
     "duplicates": "Duplicate tracks",
     "year": "Missing year",
+    "track": "Missing track number",
     "genre": "Missing or off-tree genre",
     "artwork": "Missing artwork",
     "tracklist": "Tracks missing from the album",

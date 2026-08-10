@@ -17,6 +17,19 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(accepted.parse(["year"]), set())
 
 
+class VocabularyTest(unittest.TestCase):
+    def test_the_two_scopes_answer_different_checks(self):
+        """The front, the Rust command and this module all spell the vocabulary
+        out; a word missing from one of the three is a silent refusal at the
+        far end of the chain."""
+        self.assertEqual(accepted.TRACK_CHECKS, ("year", "track", "genre", "duplicates"))
+        self.assertEqual(accepted.ALBUM_CHECKS, ("artwork",))
+
+    def test_a_track_check_is_never_an_album_one(self):
+        for check in accepted.TRACK_CHECKS:
+            self.assertNotIn(check, accepted.ALBUM_CHECKS)
+
+
 class NextValueTest(unittest.TestCase):
     def test_adds_and_removes_one_check_leaving_the_others(self):
         self.assertEqual(accepted.next_value("year", "genre", True), "genre,year")

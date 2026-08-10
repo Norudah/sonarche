@@ -93,16 +93,20 @@ describe("buildTriageQueue", () => {
   });
 
   it("points the review lines at their deep links, with track examples", () => {
-    expect(lineOf(queue, "suspect").doors).toEqual([{ key: "suspectMatch", count: 1, to: triagePaths.suspectMatch }]);
+    expect(lineOf(queue, "suspect").doors).toEqual([
+      { key: "suspectMatch", count: 1, subjects: ["t:6"], to: triagePaths.suspectMatch },
+    ]);
     expect(lineOf(queue, "suspect").examples).toEqual(["Sound the Bugle"]);
     expect(lineOf(queue, "duplicates").doors).toEqual([
-      { key: "duplicateRecording", count: 2, to: triagePaths.duplicateRecording },
+      { key: "duplicateRecording", count: 2, subjects: ["t:6", "t:7"], to: triagePaths.duplicateRecording },
     ]);
     expect(lineOf(queue, "duplicates").examples).toEqual(["Sound the Bugle", "You Can't Take Me"]);
   });
 
   it("points every door at its contract deep link", () => {
-    expect(lineOf(queue, "year").doors).toEqual([{ key: "missingYear", count: 1, to: triagePaths.missingYear }]);
+    expect(lineOf(queue, "year").doors).toEqual([
+      { key: "missingYear", count: 1, subjects: ["t:2"], to: triagePaths.missingYear },
+    ]);
     expect(lineOf(queue, "genre").doors.map((door) => door.to)).toEqual([
       triagePaths.genreMissing,
       triagePaths.genreOffTree,

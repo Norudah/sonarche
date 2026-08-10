@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
-import { tagCounts } from "@/features/library/metadata/fields";
+import type { DoorKey } from "@/features/library/triage/queue";
+import { ATTENTION_LABEL } from "@/features/library/albums/attentionLabels";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
@@ -12,29 +13,31 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
 
 /**
- * The track's tag score, as filled fields over total.
+ * The only thing an album says about its own metadata, and it says it per row.
  *
- * A ratio and not a percentage: this app's whole subject is filling tags in, so
- * "5/7" names two fields to go, where "71%" is a grade with nothing to act on.
- * The album's own card reads the same way for the same reason.
+ * A dot and nothing else. This column used to read "5/7", a score out of a
+ * denominator inflated by fields that are never empty (title, artist, album all
+ * come from the file), so "6/7" was really "the genre is missing" dressed as a
+ * grade. And a settled row was awarded a green dot, which turns a tracklist
+ * into a report card. Now a settled row shows nothing at all: absence is the
+ * good news, and only what asks for you is drawn.
  *
- * Per track and not only per album, because the album figure says how much is
- * missing without ever saying where — amber is the app's reserved "incomplete
- * metadata" hue, so a tracklist can be scanned for the row that needs you.
+ * Nothing summarises this at the record level any more — the hero carried a
+ * gauge and it read as a verdict on music you came to listen to. What is wrong
+ * with a record belongs where you went to fix it: the edit modals, which show
+ * every field at once because that is their job, and the Metadata page.
  */
-function TagScore({ track }: { track: LibraryTrack }) {
+function AttentionDot({ flags }: { flags: DoorKey[] }) {
   const { t } = useTranslation("library");
-  const { filled, total } = tagCounts(track);
-  const isComplete = filled === total;
+  if (flags.length === 0) return null;
+
+  const names = flags.map((flag) => ATTENTION_LABEL[flag]).filter((key) => key != null);
 
   return (
     <span
-      title={t("albums.tagScoreHint")}
-      className={"inline-flex items-center gap-1.5 tabular-nums " + (isComplete ? "text-muted" : "text-warning")}
-    >
-      <span className={"size-1.5 rounded-full " + (isComplete ? "bg-success" : "bg-warning")} />
-      {filled}/{total}
-    </span>
+      title={names.map((key) => t(key)).join(" · ")}
+      className="inline-block size-1.5 rounded-full bg-warning align-middle"
+    />
   );
 }
 
@@ -42,6 +45,8 @@ interface AlbumTrackRowProps {
   track: LibraryTrack;
   /** Position in the album, used when beets never tagged a track number. */
   position: number;
+  /** The checks still naming this track, from the album's own verdict. */
+  flags: DoorKey[];
   style?: CSSProperties;
   /** Launch playback at this row, with the album as the queue. */
   onPlay: () => void;
@@ -53,6 +58,7 @@ interface AlbumTrackRowProps {
 export function AlbumTrackRow({
   track,
   position,
+  flags,
   style,
   onPlay,
   onEdit,
@@ -127,8 +133,8 @@ export function AlbumTrackRow({
         </span>
       </td>
 
-      <td className={`${CELL} w-20`}>
-        <TagScore track={track} />
+      <td className={`${CELL} w-8 text-center`}>
+        <AttentionDot flags={flags} />
       </td>
 
       <td className={`${CELL} w-16 text-right tabular-nums`}>

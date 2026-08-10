@@ -7,7 +7,6 @@ import { Link } from "react-router";
 import { albumPath } from "@/app/routes";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
-import { CompletenessBadge } from "@/features/library/albums/CompletenessBadge";
 import { springs } from "@/shared/motion/tokens";
 
 interface AlbumCardProps {
@@ -44,12 +43,14 @@ export function AlbumCard({ album, style, onPlay, onEdit }: AlbumCardProps) {
         </p>
       </Link>
 
-      <CompletenessBadge value={album.completeness} />
-
       {/* Rises into place on hover, and stays put once focused so it stays
        * reachable by keyboard — an opacity-only reveal would be a focus trap
-       * for anyone not using a mouse. Info sits at the top of the cover
-       * (the completeness badge), actions at the bottom. */}
+       * for anyone not using a mouse.
+       *
+       * Nothing is stamped on the cover any more. A "62 %" badge sat here on
+       * every incomplete record, which on a shelf of two hundred is two hundred
+       * grades read at once, none of them saying what is missing. The album's
+       * own page carries the verdict; the wall is a wall of covers. */}
       <div className="absolute right-2.5 bottom-14 flex translate-y-1 items-center gap-1.5 opacity-0 transition-[opacity,translate] group-hover/card:translate-y-0 group-hover/card:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
         {onEdit && (
           <motion.button

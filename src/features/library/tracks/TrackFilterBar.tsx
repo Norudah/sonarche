@@ -47,6 +47,12 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
     });
   if (triage.missingYear)
     chips.push({ key: "missingYear", label: t("triage.missingYear"), onRemove: () => setParam("missing", null) });
+  if (triage.missingTrackNumber)
+    chips.push({
+      key: "missingTrackNumber",
+      label: t("triage.missingTrackNumber"),
+      onRemove: () => setParam("missing", null),
+    });
   if (triage.genre === GENRE_MISSING || triage.genre === GENRE_OFF_TREE)
     chips.push({
       key: "genre",

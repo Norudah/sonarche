@@ -8,6 +8,7 @@ import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import { nextSort, sortTracks, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
+import { useAlbumAttention } from "@/features/library/triage/attention";
 import { SortableColumn } from "@/features/library/tracks/SortableColumn";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 
@@ -19,7 +20,7 @@ const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wide
 /**
  * Deliberately not `TrackTable`: an album's tracklist drops the Album column
  * (album-level, already in the header), keeps its own fixed order, and carries
- * a per-track tag score the library-wide table has no room for. Genre used to
+ * a per-track attention dot the library-wide table has no room for. Genre used to
  * be dropped on the same "album-level" reasoning — until a record legitimately
  * mixed genres (the Spirit soundtrack), which is exactly what the album view
  * would then hide. Bending one table to cover both shapes would have meant a
@@ -34,6 +35,9 @@ export function AlbumTrackList({ album }: { album: Album }) {
   // order, and dropping the sort (third click) returns to it.
   const [sort, setSort] = useState<TrackSort | null>(null);
   const { playFrom } = usePlayQueue();
+  // The Metadata page's verdict, narrowed to this record: a row is dotted here
+  // exactly when that page would still name it.
+  const attention = useAlbumAttention(album);
 
   const visible = sortTracks(album.tracks, sort);
 
@@ -60,7 +64,12 @@ export function AlbumTrackList({ album }: { album: Album }) {
               {column("title", t("columns.title"), `${COLUMN} text-left`)}
               {column("artist", t("columns.artist"), `${COLUMN} w-[22%] text-left`)}
               {column("genre", t("columns.genre"), `${COLUMN} w-[16%] text-left`)}
-              <th className={`${COLUMN} w-20 text-left`}>{t("columns.tags")}</th>
+              {/* No visible label: the column holds a dot, and a header over an
+                  empty cell is a promise of content that settled rows do not
+                  owe. */}
+              <th className={`${COLUMN} w-8`}>
+                <span className="sr-only">{t("columns.attention")}</span>
+              </th>
               {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
               <th className={`${COLUMN} w-36`}>
                 <span className="sr-only">{t("columns.actions")}</span>
@@ -73,6 +82,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
                 key={track.id}
                 track={track}
                 position={position + 1}
+                flags={attention.get(track.id) ?? []}
                 style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
                 // The visible order is the playback context, sort included —
                 // same contract as the library-wide table.

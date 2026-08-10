@@ -11,20 +11,6 @@ import {
 } from "@/features/library/albums/albums";
 import { track } from "@/features/library/testFixtures";
 
-/** Every tracked metadata field filled — the completeness baseline. */
-function complete(over: Parameters<typeof track>[0] = {}) {
-  return track({
-    title: "T",
-    artist: "A",
-    albumArtist: "A",
-    album: "Album",
-    year: 2000,
-    track: 1,
-    genre: "Rock",
-    ...over,
-  });
-}
-
 describe("albumKey", () => {
   it("distinguishes two albums that share a title", () => {
     expect(albumKey("Queen", "Greatest Hits")).not.toBe(albumKey("ABBA", "Greatest Hits"));
@@ -181,16 +167,9 @@ describe("groupAlbums", () => {
     expect(album.formats).toEqual(["AAC", "FLAC"]);
   });
 
-  it("scores a fully-tagged album as complete", () => {
-    const [album] = groupAlbums([complete({ id: 1 }), complete({ id: 2 })]);
-    expect(album.completeness).toBe(1);
-  });
-
-  it("counts partial completeness per field, not per track", () => {
-    // 2 tracks × 7 fields = 14 cells; one missing genre = 13/14.
-    const [album] = groupAlbums([complete({ id: 1 }), complete({ id: 2, genre: null })]);
-    expect(album.completeness).toBeCloseTo(13 / 14);
-  });
+  // What used to be scored here — a ratio of filled cells — is gone: an album
+  // is now measured by the checks the owner actually asked for. See
+  // `triage/attention.test.ts`.
 });
 
 describe("sortAlbums", () => {

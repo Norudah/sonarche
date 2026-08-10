@@ -68,7 +68,7 @@ export interface LibraryTrack {
  * is not one of them (it asks what the audio is, and the answer is to look),
  * and neither is a gapped tracklist (a record with no tracklist is a
  * collection, which says so once — see `AlbumKind`). */
-export type AcceptedCheck = "year" | "genre" | "duplicates" | "artwork";
+export type AcceptedCheck = "year" | "track" | "genre" | "duplicates" | "artwork";
 
 /** A release with a tracklist, or somebody's own gathering of tracks. The
  * distinction is not cosmetic: only the first can be missing a track. */

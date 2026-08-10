@@ -74,8 +74,6 @@
       "body": "Les albums arrivent avec leur pochette et leurs tags dès qu'un téléchargement ou un import se termine."
     },
     "noResults": "Aucun album ne correspond à « {{query}} ».",
-    "completeness": "{{percent}} %",
-    "completenessHint": "Métadonnées incomplètes sur cet album",
     "bonusFrom": "Bonus — « {{source}} »",
     "sort": {
       "artist": "Artiste",
@@ -86,8 +84,15 @@
     "rematching": "Re-matchage…",
     "rematchDone": "{{matched}}/{{total}} pistes identifiées",
     "moreActions": "Plus d'actions",
-    "tagScoreHint": "Champs de métadonnées renseignés sur cette piste",
-    "editMetadata": "Modifier les métadonnées de l'album"
+    "editMetadata": "Modifier les métadonnées de l'album",
+    "attention": {
+      "suspectMatch": "Correspondance à vérifier",
+      "duplicateRecording": "Doublon",
+      "missingYear": "Année manquante",
+      "missingTrackNumber": "Numéro de piste manquant",
+      "genreMissing": "Genre manquant",
+      "genreOffTree": "Genre hors arbre"
+    }
   },
   "artists": {
     "eyebrow": "Artiste",
@@ -144,7 +149,7 @@
     "genre": "Genre",
     "duration": "Durée",
     "actions": "Actions",
-    "tags": "Tags"
+    "attention": "À compléter"
   },
   "search": {
     "placeholder": "Rechercher…",
@@ -174,7 +179,8 @@
     "clearFilter": "Retirer le filtre « {{filter}} »",
     "noResults": "Rien ne correspond au filtre actif.",
     "suspectMatch": "Correspondance à vérifier",
-    "duplicateRecording": "Morceaux en double"
+    "duplicateRecording": "Morceaux en double",
+    "missingTrackNumber": "Numéro de piste manquant"
   },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": {

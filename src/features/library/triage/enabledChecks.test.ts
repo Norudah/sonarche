@@ -42,6 +42,7 @@ describe("enabledLines", () => {
     expect(enabledLines(queue, ["year", "artwork"]).map((entry) => entry.key)).toEqual([
       "suspect",
       "duplicates",
+      "track",
       "genre",
       "tracklist",
     ]);

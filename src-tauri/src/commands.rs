@@ -688,7 +688,7 @@ pub async fn set_album_kind(
 /// sidecar validates the same pair; both sides say it so neither has to trust
 /// the other. `suspect` and `tracklist` are deliberately absent — see
 /// `accepted.py` for why.
-const TRACK_CHECKS: &[&str] = &["year", "genre", "duplicates"];
+const TRACK_CHECKS: &[&str] = &["year", "track", "genre", "duplicates"];
 const ALBUM_CHECKS: &[&str] = &["artwork"];
 
 /// Answer a check: "I have seen it, it is what I want" — or take that back.

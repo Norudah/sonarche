@@ -55,6 +55,7 @@ export const paths = {
  */
 export const triagePaths = {
   missingYear: `${paths.libraryTracks}?missing=year`,
+  missingTrackNumber: `${paths.libraryTracks}?missing=track`,
   genreMissing: `${paths.libraryTracks}?genre=missing`,
   genreOffTree: `${paths.libraryTracks}?genre=off-tree`,
   missingArtwork: `${paths.libraryAlbums}?missing=artwork`,

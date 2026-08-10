@@ -31,7 +31,7 @@ KEY = "sonarche_accepted"
 # question about what the audio *is*, and the answer is to look, not to accept.
 # `tracklist` is absent too: a record with no tracklist is a collection, which
 # says so once and for the whole record (see `album_kind.py`).
-TRACK_CHECKS = ("year", "genre", "duplicates")
+TRACK_CHECKS = ("year", "track", "genre", "duplicates")
 ALBUM_CHECKS = ("artwork",)
 
 
