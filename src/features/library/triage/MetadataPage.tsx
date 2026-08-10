@@ -8,6 +8,7 @@ import { groupArtists } from "@/features/library/artists/artists";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { useLibrary, useSetCheckAccepted } from "@/features/library/hooks";
 import { AcceptedNotice } from "@/features/library/triage/AcceptedNotice";
+import { enabledLines, useDisabledChecks } from "@/features/library/triage/enabledChecks";
 import { acceptedTargets, buildTriageQueue, tallyToFix, type AcceptTarget } from "@/features/library/triage/queue";
 import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
@@ -31,18 +32,25 @@ export function MetadataPage() {
   const tracks = useMemo(() => library.data ?? [], [library.data]);
   const albums = useMemo(() => groupAlbums(tracks), [tracks]);
   const queue = useMemo(() => buildTriageQueue(tracks, albums), [tracks, albums]);
+  // The queue minus the checks this person switched off: what the page counts,
+  // queues and badges. The full queue still goes to the menu, which lists every
+  // check with the count it would report.
+  const disabled = useDisabledChecks();
+  const watched = useMemo(() => enabledLines(queue, disabled), [queue, disabled]);
   const answered = useMemo(() => acceptedTargets(tracks, albums), [tracks, albums]);
   const accept = useSetCheckAccepted();
   const answer = (target: AcceptTarget, accepted: boolean) =>
     accept.mutate({ scope: target.scope, ids: target.ids, check: target.check, accepted });
   const artistCount = useMemo(() => groupArtists(albums).length, [albums]);
 
-  const lines = queue.filter((line) => line.count > 0);
+  const lines = watched.filter((line) => line.count > 0);
 
   return (
     <PageContainer>
       <TriageHero
-        tally={tracks.length > 0 ? tallyToFix(queue) : null}
+        tally={tracks.length > 0 ? tallyToFix(watched) : null}
+        queue={queue}
+        disabled={disabled}
         trackCount={tracks.length}
         albumCount={albums.length}
         artistCount={artistCount}

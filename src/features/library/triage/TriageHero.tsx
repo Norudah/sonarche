@@ -3,12 +3,17 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { HeroWash } from "@/features/library/HeroWash";
-import type { TriageTally } from "@/features/library/triage/queue";
+import { ChecksMenu } from "@/features/library/triage/ChecksMenu";
+import type { CheckKey } from "@/features/library/triage/enabledChecks";
+import type { TriageLine, TriageTally } from "@/features/library/triage/queue";
 import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 
 interface TriageHeroProps {
   /** Null while the library is still loading, or when there is none. */
   tally: TriageTally | null;
+  /** The full queue, disabled lines included — the menu lists them all. */
+  queue: TriageLine[];
+  disabled: CheckKey[];
   trackCount: number;
   albumCount: number;
   artistCount: number;
@@ -57,7 +62,7 @@ function BadgeSwitch() {
  * than scolds. The library's own size stays on the quiet line underneath: it is
  * context, not the message.
  */
-export function TriageHero({ tally, trackCount, albumCount, artistCount }: TriageHeroProps) {
+export function TriageHero({ tally, queue, disabled, trackCount, albumCount, artistCount }: TriageHeroProps) {
   const { t } = useTranslation(["metadata", "library"]);
 
   return (
@@ -76,7 +81,10 @@ export function TriageHero({ tally, trackCount, albumCount, artistCount }: Triag
           )}
         </div>
 
-        <BadgeSwitch />
+        <div className="flex shrink-0 items-center gap-1">
+          <ChecksMenu queue={queue} disabled={disabled} />
+          <BadgeSwitch />
+        </div>
       </div>
     </header>
   );

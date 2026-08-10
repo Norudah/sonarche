@@ -18,7 +18,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-const size = { trackCount: 48, albumCount: 4, artistCount: 4 };
+// The menu's inputs are inert here — these cases are about the headline.
+const size = { trackCount: 48, albumCount: 4, artistCount: 4, queue: [], disabled: [] };
 
 describe("TriageHero headline", () => {
   it("names both kinds when both are waiting", () => {

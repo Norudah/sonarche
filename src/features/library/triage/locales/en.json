@@ -57,5 +57,10 @@
   "accept": {
     "action": "That's on purpose",
     "answered": "Answered:"
+  },
+  "checks": {
+    "label": "Checks",
+    "heading": "What Sonarche watches",
+    "why": "A check that is off is no longer counted or queued. Nothing is lost: its number stays here, and switching it back on brings it back."
   }
 }

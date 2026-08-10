@@ -57,5 +57,10 @@
   "accept": {
     "action": "C'est voulu",
     "answered": "Constats acceptés :"
+  },
+  "checks": {
+    "label": "Contrôles",
+    "heading": "Ce que Sonarche surveille",
+    "why": "Un contrôle éteint n'est plus compté ni proposé. Rien n'est perdu : son nombre reste ici, et le rallumer le ramène."
   }
 }
