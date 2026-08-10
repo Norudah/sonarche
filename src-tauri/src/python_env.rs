@@ -569,6 +569,34 @@ fn yaml_scalar(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', "''"))
 }
 
+/// Where an imported track is filed.
+///
+/// Import flavour only, for the same reason the repair plugin is: a staged
+/// download has been enriched and has real tags, while someone's own folder may
+/// have none at all — and beets' stock template turns an empty artist and album
+/// into two empty path components, filing the whole library under `Music//`.
+/// Checked against beets' own renderer in `paths_test.py`, which is the side
+/// that can actually run it.
+///
+/// `%if{$track,…}` also drops the number prefix when there is none: beets reads
+/// an unset track as falsy, so an untagged rip lands on `Title.mp3` instead of
+/// the `00 Title.mp3` a bare `$track $title` produced.
+const IMPORT_PATHS: &str = r#"paths:
+  default: '%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  singleton: 'Singles/%if{$artist,$artist,Unknown Artist}/$title'
+  comp: 'Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+"#;
+
+/// beets remembers the source directories it has taken on and skips them on a
+/// later run. This is the guard behind a stopped import being safe to relaunch:
+/// without it a retry re-copies everything that landed before the stop, and
+/// `duplicate_action: keep` keeps both copies.
+///
+/// Import flavour only — every staged download folder is new by construction,
+/// and remembering them would grow a list forever.
+const INCREMENTAL: &str = r#"  incremental: yes
+"#;
+
 fn beets_config_yaml(paths: &AppPaths, flavour: Flavour) -> String {
     format!(
         r#"directory: {library}
@@ -586,11 +614,11 @@ import:
   # `skip` (the quiet default) silently drops every album-batch track after
   # the first one; real re-download duplicates never collide anyway.
   duplicate_action: keep
-# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
+{incremental}# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
 # cover.jpg); declaring it clutter lets beets prune a folder that only has
 # it left after an album is moved or merged away.
 clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
-{pluginpath}plugins: musicbrainz fetchart embedart lastgenre{repair_plugin}
+{path_format}{pluginpath}plugins: musicbrainz fetchart embedart lastgenre{repair_plugin}
 musicbrainz:
   genres: yes
 fetchart:
@@ -618,6 +646,21 @@ ui:
         tree = yaml_scalar(&paths.genres_tree),
         whitelist = yaml_scalar(&paths.genres_whitelist),
         embed_art = if flavour == Flavour::App { "yes" } else { "no" },
+        // Import flavour only. beets remembers the source directories it has
+        // taken on and skips them on a later run, which is what makes a
+        // re-import — and above all a *retry after a stop* — add nothing twice.
+        // Nothing for the download path: every staged folder is new by
+        // construction, and remembering them would grow a list forever.
+        incremental = if flavour == Flavour::Import {
+            INCREMENTAL
+        } else {
+            ""
+        },
+        path_format = if flavour == Flavour::Import {
+            IMPORT_PATHS
+        } else {
+            ""
+        },
         art_sources = if flavour == Flavour::Import {
             "  sources: filesystem\n"
         } else {
@@ -827,11 +870,13 @@ mod tests {
         );
     }
 
-    /// Everything except those two art lines has to stay identical: the import
-    /// writes into the same library, with the same paths, the same genre tree
-    /// and the same clutter rules.
+    /// The import flavour differs on art, the repair plugin, and the three
+    /// things it needs that the download path must not have: a filing template
+    /// with fallbacks, and the incremental guard. Everything else has to stay
+    /// identical — same library, same genre tree, same clutter rules — so this
+    /// strips the known differences and demands the rest match exactly.
     #[test]
-    fn the_two_configs_differ_on_nothing_but_art_and_the_repair_plugin() {
+    fn the_two_configs_differ_on_nothing_but_the_known_import_settings() {
         let app = beets_config_yaml(&paths(), Flavour::App);
         let import = beets_config_yaml(&paths(), Flavour::Import);
 
@@ -840,6 +885,8 @@ mod tests {
                 .replace("  sources: filesystem\n", "")
                 .replace("embedart:\n  auto: yes", "embedart:\n  auto: no")
                 .replace(" sonarche_import", "")
+                .replace(INCREMENTAL, "")
+                .replace(IMPORT_PATHS, "")
                 .lines()
                 .filter(|line| !line.starts_with("pluginpath:"))
                 .collect::<Vec<_>>()
@@ -847,6 +894,21 @@ mod tests {
         };
 
         assert_eq!(strip(&app), strip(&import));
+    }
+
+    /// The two guards a re-import depends on, named so a future edit to the
+    /// config cannot drop them silently. `incremental` is what makes relaunching
+    /// a stopped import safe; the paths are what keep an untagged rip out of
+    /// `Music//`.
+    #[test]
+    fn only_the_import_config_guards_against_re_importing_and_nameless_folders() {
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+        let app = beets_config_yaml(&paths(), Flavour::App);
+
+        assert!(import.contains("incremental: yes"));
+        assert!(import.contains("Unknown Artist"));
+        assert!(!app.contains("incremental"));
+        assert!(!app.contains("paths:"));
     }
 
     /// The filename/year repairs are for someone's own rips. On the download

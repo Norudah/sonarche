@@ -147,15 +147,30 @@ pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job
 pub async fn scan_import_folder(
     app: AppHandle,
     state: State<'_, LibraryImportState>,
+    jobs: State<'_, JobsState>,
     path: String,
 ) -> AppResult<ScanReport> {
     let root = PathBuf::from(&path);
     library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_root)?;
 
     let scanned = root.clone();
-    let report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
+    let mut report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
         .await
         .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))??;
+
+    // Read after the walk rather than in it: the archive is ours, the walk is
+    // the disk's, and only one of the two belongs on a blocking thread.
+    report.previously_imported =
+        crate::library_import::overlapping_import(&jobs.list_imports().await, &root).map(
+            |record| library_scan::PreviousImport {
+                cancelled: matches!(
+                    record.status,
+                    crate::library_import::ImportStatus::Cancelled
+                ),
+                folder: record.folder,
+                finished_at: record.finished_at,
+            },
+        );
 
     // Kept so the import that follows can be archived with the counts this
     // process measured, rather than with counts handed back by the page.

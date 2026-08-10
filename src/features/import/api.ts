@@ -21,6 +21,19 @@ export interface ScanReport {
   bytes: number;
   /** The walk hit its ceiling: every count above is a floor. */
   truncated: boolean;
+  /** An earlier import covering the same ground, if the archive knows of one.
+   * Not a refusal: beets skips the directories it has already taken on, and
+   * this is how the screen says so rather than letting a second run look like
+   * a failure. */
+  previouslyImported?: PreviousImport;
+}
+
+export interface PreviousImport {
+  folder: string;
+  finishedAt: number;
+  /** A stopped run — the case worth naming, since part of the folder is
+   * already in and finishing is the obvious next move. */
+  cancelled: boolean;
 }
 
 export function scanImportFolder(path: string): Promise<ScanReport> {

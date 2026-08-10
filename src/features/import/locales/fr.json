@@ -107,5 +107,11 @@
     "tagsWhy": "Les morceaux sont regroupés d'après leur tag « album », même s'ils partagent un dossier. Utile quand un dossier contient plusieurs disques.",
     "tracksWhy": "Aucun album n'est créé : chaque fichier entre pour lui-même, avec sa pochette. C'est ce qu'il faut pour un dossier de titres glanés un à un.",
     "suggested": "Suggéré ici : un dossier contient {{count}} morceaux, plus qu'un disque n'en compte."
+  },
+  "again": {
+    "done": "Ce dossier a déjà été importé le {{when}}.",
+    "doneHint": "Les dossiers déjà pris ne seront pas repris : seuls les ajouts entreront. Rien ne sera dupliqué.",
+    "stopped": "Un import de ce dossier a été arrêté le {{when}}.",
+    "stoppedHint": "Reprends quand tu veux : ce qui était déjà entré est conservé, seul le reste sera copié."
   }
 }

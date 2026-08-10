@@ -62,6 +62,25 @@ pub struct ScanReport {
     pub bytes: u64,
     /// The walk hit `MAX_ENTRIES` and stopped. Every count above is a floor.
     pub truncated: bool,
+    /// When this folder (or one overlapping it) was last imported, if ever.
+    ///
+    /// Not a refusal — re-importing is legitimate, and beets skips the
+    /// directories it has already taken on. It is here so the screen can say so
+    /// out loud, because a second import that silently adds almost nothing is
+    /// otherwise indistinguishable from one that failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previously_imported: Option<PreviousImport>,
+}
+
+/// An earlier run over the same ground, as the archive remembers it.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviousImport {
+    pub folder: String,
+    pub finished_at: u64,
+    /// A stopped run, which is the case worth naming: part of the folder is
+    /// already in the library and finishing the job is the obvious next move.
+    pub cancelled: bool,
 }
 
 /// Everything that is not audio: covers, logs, `.DS_Store`, the PDF booklet.
@@ -135,6 +154,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         largest_folder: 0,
         bytes: 0,
         truncated: false,
+        previously_imported: None,
     };
     let mut seen: u64 = 0;
     let mut pending = vec![root.to_path_buf()];

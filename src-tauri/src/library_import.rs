@@ -294,3 +294,26 @@ async fn request(
             .unwrap_or(false),
     })
 }
+
+/// Whether this folder — or a folder containing it, or one inside it — has
+/// already been through an import that landed something.
+///
+/// The archive is the only place that knows. beets' `incremental` guard is what
+/// actually stops the duplicate, but it works silently and per directory, so a
+/// re-import would otherwise look like it did nothing for no stated reason. And
+/// a folder that *overlaps* an earlier one is the case `incremental` handles
+/// least visibly: importing a parent after a child re-walks everything.
+///
+/// Cancelled runs count. They are the reason this exists: a stopped import
+/// leaves part of the folder in the library, and relaunching it is the ordinary
+/// thing to do next.
+pub fn overlapping_import(records: &[ImportRecord], folder: &Path) -> Option<ImportRecord> {
+    records
+        .iter()
+        .filter(|record| !matches!(record.status, ImportStatus::Failed))
+        .find(|record| {
+            let seen = Path::new(&record.folder);
+            seen == folder || seen.starts_with(folder) || folder.starts_with(seen)
+        })
+        .cloned()
+}

@@ -1166,6 +1166,10 @@ function mockScan(path: string): unknown {
     albumFolders: MOCK_IMPORT_FOLDERS.length,
     // Past `CROWDED_FOLDER`, so the preview shows the suggestion doing its job.
     largestFolder: 214,
+    // The archive knows this folder: the preview shows the re-import notice,
+    // in its stopped flavour — the one that matters now that imports can be
+    // stopped.
+    previouslyImported: { folder: path, finishedAt: now - 86_400_000, cancelled: true },
     bytes: 31_400_000_000,
     truncated: false,
   };
