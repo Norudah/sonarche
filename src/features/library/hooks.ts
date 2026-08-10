@@ -9,8 +9,10 @@ import {
   reenrichTrack,
   removeArtistImage,
   setAlbumCover,
+  setAlbumKind,
   setArtistImage,
   updateTracks,
+  type AlbumKind,
   type CoverCrop,
   type CoverSource,
 } from "@/features/library/api";
@@ -88,6 +90,19 @@ export function useUpdateTracks() {
       // An albumartist rename moves the artist's image with the name; the
       // name -> image map has to follow.
       queryClient.invalidateQueries({ queryKey: artistImagesKey });
+    },
+  });
+}
+
+/** Declare an album a collection, or take it back to being an album. Only the
+ * listing is invalidated: the kind lives on beets' album row and nothing else
+ * caches it. */
+export function useSetAlbumKind() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ albumIds, kind }: { albumIds: number[]; kind: AlbumKind }) => setAlbumKind(albumIds, kind),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
     },
   });
 }

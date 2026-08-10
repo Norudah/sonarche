@@ -1055,6 +1055,25 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // Same in-memory seed, so declaring a collection actually silences the
+      // missing-track line on the metadata page rather than only redrawing the
+      // switch. Written on every track of the album, which is where the real
+      // listing surfaces the album row's own attribute.
+      if (cmd === "set_album_kind") {
+        const ids = new Set((payload?.albumIds as number[]) ?? []);
+        const kind = payload?.kind === "collection" ? "collection" : null;
+        // The already-built listing, like `set_album_cover`: `list_library`'s
+        // rows are copies made once at module load, so writing to the seed
+        // behind them would change nothing anyone reads.
+        const { tracks } = responses.list_library as { tracks: { album_id: number; album_kind?: string | null }[] };
+        let updated = 0;
+        for (const track of tracks) {
+          if (!ids.has(track.album_id)) continue;
+          track.album_kind = kind;
+          updated += 1;
+        }
+        return { updated };
+      }
       // Re-match: a slow yes, so the album loop's progress bar and its Stop
       // button are observable here (the real call is a network round-trip).
       if (cmd === "reenrich_track") {

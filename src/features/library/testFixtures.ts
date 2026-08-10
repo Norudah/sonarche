@@ -27,6 +27,7 @@ export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     provisionalCover: false,
     category: null,
     soundtrack: false,
+    albumKind: null,
     ...over,
   };
 }

@@ -28,6 +28,12 @@ _GENRE_FMT_DELIMITER = "; "
 _BONUS_SOURCE_KEY = "sonarche_bonus_source"
 _SUSPECT_KEY = "sonarche_suspect_match"
 _PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
+# On the *album* row, not the item: what this record is. Absent means an album
+# — a release with a tracklist, which can therefore be missing tracks. Set to
+# COLLECTION it means someone's own gathering of tracks, which has no tracklist
+# to be measured against and so cannot have holes in one. See `album_kind.py`.
+ALBUM_KIND_KEY = "sonarche_album_kind"
+COLLECTION = "collection"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
@@ -128,6 +134,19 @@ def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
     }
 
 
+def flex_attrs_by_album(conn, key: str) -> dict[int, str]:
+    """The album-row twin of `flex_attrs_by_item`. Separate table, same shape:
+    beets keeps album flexattrs in `album_attributes`, keyed by album id."""
+    return {
+        row["entity_id"]: row["value"]
+        for row in conn.execute(
+            "SELECT entity_id, value FROM album_attributes WHERE key = ?",
+            (key,),
+        )
+        if row["value"]
+    }
+
+
 def track_row(
     row,
     art_by_album,
@@ -135,6 +154,7 @@ def track_row(
     bonus_by_item,
     suspect_by_item,
     provisional_cover_by_item,
+    kind_by_album,
     library_dir: str,
 ) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
@@ -176,6 +196,8 @@ def track_row(
         # A forced album whose cover is the video's thumbnail, not real art:
         # the right shape, the wrong picture, and worth replacing.
         "provisional_cover": row["id"] in provisional_cover_by_item,
+        # What the record this track sits on *is* — null for a plain album.
+        "album_kind": kind_by_album.get(row["album_id"]),
         "added": row["added"],
     }
 
@@ -205,6 +227,7 @@ def handle(_request_id: str, params: dict) -> dict:
         bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
         provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
+        kind_by_album = flex_attrs_by_album(conn, ALBUM_KIND_KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
         # `added` at the bottom instead of letting NULL sort unpredictably.
         rows = conn.execute(
@@ -218,6 +241,7 @@ def handle(_request_id: str, params: dict) -> dict:
                 bonus_by_item,
                 suspect_by_item,
                 provisional_cover_by_item,
+                kind_by_album,
                 library_dir,
             )
             for r in rows

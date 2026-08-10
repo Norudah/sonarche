@@ -570,6 +570,47 @@ pub async fn update_tracks(
     Ok(result)
 }
 
+/// The two things a record can be. Validated here rather than trusted from the
+/// webview: this crosses the IPC boundary, and the sidecar would otherwise be
+/// asked to write whatever string arrived.
+const ALBUM_KINDS: &[&str] = &["album", "collection"];
+
+/// Say whether these albums are releases or someone's own gatherings.
+///
+/// Takes a list of beets album ids because the front groups by (artist, title):
+/// one card can stand for two album rows, and both have to move together.
+#[tauri::command]
+pub async fn set_album_kind(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_ids: Vec<i64>,
+    kind: String,
+) -> AppResult<Value> {
+    if !ALBUM_KINDS.contains(&kind.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unknown album kind: {kind}"
+        )));
+    }
+    if album_ids.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "album_kind_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "album_ids": album_ids,
+                "kind": kind,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
 #[tauri::command]
 pub async fn delete_track(
     app: AppHandle,

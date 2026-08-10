@@ -1,4 +1,4 @@
-import type { LibraryTrack } from "@/features/library/api";
+import type { AlbumKind, LibraryTrack } from "@/features/library/api";
 import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
 import { createTextFilter } from "@/shared/lib/search";
 
@@ -18,6 +18,14 @@ export interface Album {
   artUrl: string | null;
   /** Distinct container formats — "AAC", "FLAC"… */
   formats: string[];
+  /** What this record is. A card is a (artist, title) group and can cover
+   * several beets albums, so it only reads as a collection when every one of
+   * them says so — a half-declared group stays an album, which is the reading
+   * that asks the fewest questions of the user. */
+  kind: AlbumKind;
+  /** The beets album rows behind the card, ascending. What a kind change has
+   * to be applied to; empty for a group made only of singletons. */
+  albumIds: number[];
   /** Share of tracked metadata fields that are filled, 0…1. */
   completeness: number;
   /** Tracks whose every tracked field is filled. Counted here rather than in
@@ -79,6 +87,15 @@ function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged
   return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
 }
 
+/** The rows behind a card, and the kind they agree on. */
+function recordOf(tracks: LibraryTrack[]): { kind: AlbumKind; albumIds: number[] } {
+  const albumIds = Array.from(new Set(tracks.map((track) => track.albumId).filter((id) => id != null))).sort(
+    (a, b) => a - b,
+  );
+  const collection = albumIds.length > 0 && tracks.every((track) => track.albumKind === "collection");
+  return { kind: collection ? "collection" : "album", albumIds };
+}
+
 function computeAlbums(tracks: LibraryTrack[]): Album[] {
   const groups = new Map<string, LibraryTrack[]>();
 
@@ -102,6 +119,7 @@ function computeAlbums(tracks: LibraryTrack[]): Album[] {
       length: ordered.reduce((sum, track) => sum + (track.length ?? 0), 0),
       artUrl: ordered.find((track) => track.artUrl)?.artUrl ?? null,
       formats: Array.from(new Set(ordered.map((track) => track.format).filter(Boolean))).sort(),
+      ...recordOf(ordered),
       ...tagStatsOf(ordered),
     };
   });

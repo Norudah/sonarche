@@ -102,4 +102,6 @@ export const layoutIds = {
   languageChoice: "sonarche-language-choice",
   /** The follow/manual pill in the lyrics panel's footer. */
   lyricsFollow: "sonarche-lyrics-follow",
+  /** The album/collection pill in the inspect panel's identity column. */
+  recordKind: "sonarche-record-kind",
 } as const;

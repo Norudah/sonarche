@@ -248,6 +248,13 @@
   },
   "albumMetadata": {
     "eyebrow": "Album · metadata",
+    "kind": {
+      "label": "What this record is",
+      "album": "Album",
+      "collection": "Collection",
+      "albumWhy": "A release, with its tracklist: Sonarche flags the tracks it is missing and offers to identify it on MusicBrainz.",
+      "collectionWhy": "Your own gathering of tracks. No tracklist to live up to: no more missing-track flags, and the alignment leaves it alone."
+    },
     "completion": {
       "heading_one": "{{count}} of {{total}} tracks is complete",
       "heading_other": "{{count}} of {{total}} tracks are complete",

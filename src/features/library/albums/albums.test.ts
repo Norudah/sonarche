@@ -96,6 +96,31 @@ describe("groupAlbums", () => {
     expect(groupAlbums([track({ album: "   ", artist: "A" })])).toEqual([]);
   });
 
+  describe("record kind", () => {
+    const of = (...tracks: Parameters<typeof track>[0][]) =>
+      groupAlbums(tracks.map((over, i) => track({ id: i + 1, album: "X", artist: "A", ...over })))[0];
+
+    it("reads as an album until every row behind the card says otherwise", () => {
+      expect(of({}, {}).kind).toBe("album");
+      expect(of({ albumKind: "collection" }, {}).kind).toBe("album");
+      expect(of({ albumKind: "collection" }, { albumKind: "collection" }).kind).toBe("collection");
+    });
+
+    /** What a kind change has to be applied to: one card can be two beets
+     * albums (same artist and title, filed twice), and both must move. */
+    it("carries the beets rows behind the card, deduped and ordered", () => {
+      expect(of({ albumId: 4 }, { albumId: 2 }, { albumId: 4 }).albumIds).toEqual([2, 4]);
+    });
+
+    /** A group of singletons has no album row to hang a kind on, so it can
+     * never be a collection — and the panel shows it no switch. */
+    it("stays an album with no rows at all", () => {
+      const album = of({ albumId: null }, { albumId: null });
+      expect(album.albumIds).toEqual([]);
+      expect(album.kind).toBe("album");
+    });
+  });
+
   it("hands the same array back the same grouping, so a second surface pays nothing", () => {
     const tracks = [track({ id: 1, album: "X" })];
 

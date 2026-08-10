@@ -23,6 +23,7 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 
 def _handlers():
     import acoustid_key
+    import album_kind
     import artist_image
     import cover_set
     import download
@@ -52,6 +53,7 @@ def _handlers():
         "library_remux": remux.handle,
         "library_remove": library.remove,
         "library_update": library.update,
+        "album_kind_set": album_kind.handle,
         "cover_set": cover_set.handle,
         "cover_candidates": cover_set.candidates,
         "artist_image_set": artist_image.handle,

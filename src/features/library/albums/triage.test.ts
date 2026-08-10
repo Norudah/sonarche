@@ -54,6 +54,14 @@ describe("hasTracklistGaps", () => {
   it("has no verdict on an album with no numbered track", () => {
     expect(hasTracklistGaps(albumOf([null, null]))).toBe(false);
   });
+
+  /** The whole point of the distinction: the same tracklist, judged or left
+   * alone depending on what its owner said the record is. */
+  it("never faults a collection for what it does not contain", () => {
+    expect(hasTracklistGaps(albumOf([1, 3]))).toBe(true);
+    expect(hasTracklistGaps(albumOf([1, 3], { albumKind: "collection" }))).toBe(false);
+    expect(hasTracklistGaps(albumOf([1, 2, 3], { trackTotal: 12, albumKind: "collection" }))).toBe(false);
+  });
 });
 
 describe("applyAlbumTriage", () => {

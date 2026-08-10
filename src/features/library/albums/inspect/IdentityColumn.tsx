@@ -3,7 +3,9 @@ import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@
 import { CommonFields } from "@/features/library/albums/inspect/CommonFields";
 import { CompletionCard } from "@/features/library/albums/inspect/CompletionCard";
 import { ProvisionalCoverNotice } from "@/features/library/albums/inspect/ProvisionalCoverNotice";
+import { RecordKindChoice } from "@/features/library/albums/inspect/RecordKindChoice";
 import type { TrackFilter } from "@/features/library/albums/inspect/trackFilter";
+import type { AlbumKind } from "@/features/library/api";
 
 /**
  * The record itself: how whole it is, and what it shares.
@@ -25,6 +27,9 @@ export function IdentityColumn({
   genreFamily,
   trackCount,
   soundtrack,
+  kind,
+  isKindPending,
+  onKindChange,
   hasProvisionalCover,
   filter,
   onFilter,
@@ -40,6 +45,11 @@ export function IdentityColumn({
   genreFamily: string;
   trackCount: number;
   soundtrack: boolean;
+  /** What the record is. Null for a group with no beets album behind it — a
+   * pile of singletons has no record to be a kind of, so no switch is shown. */
+  kind: AlbumKind | null;
+  isKindPending: boolean;
+  onKindChange: (kind: AlbumKind) => void;
   /** The cover is a stand-in the user should replace — see the notice. */
   hasProvisionalCover: boolean;
   filter: TrackFilter | null;
@@ -55,6 +65,13 @@ export function IdentityColumn({
       {hasProvisionalCover && <ProvisionalCoverNotice onReplace={onReplaceCover} />}
 
       <hr className="border-separator" />
+
+      {kind != null && (
+        <>
+          <RecordKindChoice kind={kind} isPending={isKindPending} onChange={onKindChange} />
+          <hr className="border-separator" />
+        </>
+      )}
 
       <CommonFields
         baseline={baseline}

@@ -117,6 +117,7 @@ fn main() {
             commands::move_library,
             commands::delete_track,
             commands::update_tracks,
+            commands::set_album_kind,
             commands::allow_cover_preview,
             commands::set_album_cover,
             commands::list_cover_candidates,

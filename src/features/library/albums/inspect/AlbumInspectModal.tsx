@@ -34,7 +34,13 @@ import { PendingBadge } from "@/features/library/metadata/PendingBadge";
 import { Tracklist } from "@/features/library/albums/inspect/Tracklist";
 import { applyTrackFilter, type TrackFilter } from "@/features/library/albums/inspect/trackFilter";
 import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
-import { useArtistImages, useLibrary, useReenrichAlbum, useUpdateTracks } from "@/features/library/hooks";
+import {
+  useArtistImages,
+  useLibrary,
+  useReenrichAlbum,
+  useSetAlbumKind,
+  useUpdateTracks,
+} from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 
 /**
@@ -63,6 +69,9 @@ function InspectBody({
 }) {
   const { t } = useTranslation("library");
   const update = useUpdateTracks();
+  // Its own mutation, not part of the draft: the kind is not a tag, so it does
+  // not belong in the batch the footer saves.
+  const setKind = useSetAlbumKind();
   const rematch = useReenrichAlbum();
 
   const baseline = useMemo(() => commonBaseline(album.tracks), [album.tracks]);
@@ -340,6 +349,9 @@ function InspectBody({
           genreFamily={genreFamily}
           trackCount={album.tracks.length}
           soundtrack={album.tracks.some((track) => track.soundtrack)}
+          kind={album.albumIds.length > 0 ? album.kind : null}
+          isKindPending={setKind.isPending}
+          onKindChange={(kind) => setKind.mutate({ albumIds: album.albumIds, kind })}
           hasProvisionalCover={album.tracks.some((track) => track.provisionalCover)}
           filter={filter}
           onFilter={setFilter}

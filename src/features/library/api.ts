@@ -54,7 +54,14 @@ export interface LibraryTrack {
   /** MusicBrainz typed the release a soundtrack: the drawer's cue to
    * pre-suggest a category (MB can't tell film from game). */
   soundtrack: boolean;
+  /** What the record this track sits on is, as its owner declared it. Null
+   * until someone says otherwise, which reads as an album. */
+  albumKind: AlbumKind | null;
 }
+
+/** A release with a tracklist, or somebody's own gathering of tracks. The
+ * distinction is not cosmetic: only the first can be missing a track. */
+export type AlbumKind = "album" | "collection";
 
 interface WireTrack {
   id: number;
@@ -80,6 +87,7 @@ interface WireTrack {
   provisional_cover?: boolean;
   category: string | null;
   soundtrack: boolean;
+  album_kind?: AlbumKind | null;
 }
 
 export async function deleteTrack(id: number): Promise<void> {
@@ -108,6 +116,12 @@ export interface TrackUpdate {
 
 export async function updateTracks(updates: TrackUpdate[]): Promise<{ updated: number }> {
   return invoke<{ updated: number }>("update_tracks", { updates });
+}
+
+/** Declare what these beets albums are. Ids rather than one album, because a
+ * card on screen is a (artist, title) group and can stand for several rows. */
+export async function setAlbumKind(albumIds: number[], kind: AlbumKind): Promise<{ updated: number }> {
+  return invoke<{ updated: number }>("set_album_kind", { albumIds, kind });
 }
 
 export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
@@ -265,5 +279,8 @@ export async function listLibrary(): Promise<LibraryTrack[]> {
     provisionalCover: track.provisional_cover ?? false,
     category: track.category,
     soundtrack: track.soundtrack,
+    // Absent from a library read by a build that predates the distinction —
+    // and absent, on any build, for every album nobody has re-declared.
+    albumKind: track.album_kind ?? null,
   }));
 }

@@ -248,6 +248,13 @@
   },
   "albumMetadata": {
     "eyebrow": "Album · métadonnées",
+    "kind": {
+      "label": "Nature de la fiche",
+      "album": "Album",
+      "collection": "Collection",
+      "albumWhy": "Un disque paru, avec sa tracklist : Sonarche signale les pistes qui manquent et propose de l'identifier sur MusicBrainz.",
+      "collectionWhy": "Ta propre sélection de morceaux. Aucune tracklist à respecter : plus de pistes manquantes signalées, et l'alignement la laisse tranquille."
+    },
     "completion": {
       "heading_one": "{{count}} des {{total}} morceaux est complet",
       "heading_other": "{{count}} des {{total}} morceaux sont complets",
