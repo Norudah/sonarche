@@ -40,7 +40,6 @@ function NavItem({
   glyph,
   end,
   badge = 0,
-  count,
   indicatorId = layoutIds.navIndicator,
 }: {
   to: string;
@@ -52,8 +51,6 @@ function NavItem({
   end?: boolean;
   /** A count worth a glance (things to fix behind this entry). Zero hides it. */
   badge?: number;
-  /** A plain tally of what lies behind the entry — no alarm, just a size. */
-  count?: number;
   indicatorId?: string;
 }) {
   return (
@@ -96,11 +93,6 @@ function NavItem({
             <span className="relative ml-auto rounded-full bg-warning-soft px-1.5 py-px text-[0.6875rem] font-semibold text-warning tabular-nums">
               {badge > 99 ? "99+" : badge}
             </span>
-          )}
-          {/* Unfilled and unalarmed: this one answers "how many", not "how many
-              are wrong", so it must not borrow the triage badge's plate. */}
-          {count != null && (
-            <span className="relative ml-auto text-[0.6875rem] text-muted/70 tabular-nums">{count}</span>
           )}
         </>
       )}
@@ -182,7 +174,7 @@ function MainNav() {
  * Bounded on purpose. A user with forty playlists would otherwise turn this
  * column into a scrolling directory, and navigation that has to be searched is
  * no longer navigation: the sidebar names the eight lists you last touched
- * (see `sidebarPlaylists`) and the shelf below it holds every one of them.
+ * (see `sidebarPlaylists`) and the shelf heading them holds every one of them.
  */
 function PlaylistsNav() {
   const { t: tLibrary } = useTranslation("library");
@@ -209,6 +201,15 @@ function PlaylistsNav() {
         </button>
       }
     >
+      {/* The shelf first, above the lists it holds — not below them as an
+          afterthought. It is where a playlist is found when its name is not on
+          screen, and a door at the bottom of a growing column is a door that
+          moves. No tally: the number of playlists is not a thing to keep in
+          your head, and the shelf is one click away from the exact answer.
+          Then favorites, always second — the app's own list, ahead of the
+          user's, in the seat it never leaves. */}
+      <NavItem to={paths.libraryPlaylists} label={tLibrary("playlists.all")} icon={LayoutGrid} end />
+
       {shown.map((playlist) => (
         <NavItem
           key={playlist.id}
@@ -217,12 +218,6 @@ function PlaylistsNav() {
           glyph={<PlaylistMarkerGlyph playlist={playlist} className="size-4" />}
         />
       ))}
-
-      {/* The shelf, always — not only when the list overflows. It is where a
-          playlist is found when its name is not on screen, and a door that
-          appears and disappears with the count is a door nobody learns. The
-          tally is the whole overflow story: nine rows above, twenty-three here. */}
-      <NavItem to={paths.libraryPlaylists} label={tLibrary("playlists.all")} icon={LayoutGrid} count={all.length} end />
 
       <PlaylistNameDialog
         isOpen={creating}

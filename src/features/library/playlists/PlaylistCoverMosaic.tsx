@@ -3,10 +3,11 @@ import { Heart, ListMusic } from "lucide-react";
 interface PlaylistCoverMosaicProps {
   /** Up to four distinct cover URLs, playing order — see `playlistCovers`. */
   covers: string[];
-  /** A user-chosen tile. Wins over everything: the user said so. */
+  /** A user-chosen tile. Wins over the mosaic: the user said so. */
   customUrl?: string | null;
-  /** Draws the heart tile when no custom image is set — the favorites list
-   * has an identity of its own, not whichever sleeve happens to sit first. */
+  /** Draws the heart tile, over any image — the favorites list is the app's
+   * own and wears the app's own face, which is also why nothing offers to
+   * change it. */
   favorites?: boolean;
   className: string;
 }
@@ -22,15 +23,15 @@ interface PlaylistCoverMosaicProps {
  * shelves stay tellable apart at a glance.
  */
 export function PlaylistCoverMosaic({ covers, customUrl, favorites, className }: PlaylistCoverMosaicProps) {
-  if (customUrl) {
-    return <img src={customUrl} alt="" loading="lazy" decoding="async" className={`${className} object-cover`} />;
-  }
   if (favorites) {
     return (
       <div className={`${className} flex items-center justify-center bg-accent-soft`}>
         <Heart className="size-1/3 fill-current text-accent" />
       </div>
     );
+  }
+  if (customUrl) {
+    return <img src={customUrl} alt="" loading="lazy" decoding="async" className={`${className} object-cover`} />;
   }
   if (covers.length >= 4) {
     return (

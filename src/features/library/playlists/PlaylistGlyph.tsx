@@ -21,7 +21,7 @@ interface PlaylistGlyphProps {
  */
 export function PlaylistGlyph({ marker, className }: PlaylistGlyphProps) {
   if (marker.mode === "icon") {
-    return <marker.icon className={cn("shrink-0", className)} />;
+    return <marker.icon className={cn("shrink-0", marker.filled && "fill-current", className)} />;
   }
   if (marker.mode === "cover") {
     return (

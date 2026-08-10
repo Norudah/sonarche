@@ -8,13 +8,11 @@ import { paths } from "@/app/routes";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { useLibrary } from "@/features/library/hooks";
 import { DeletePlaylistDialog, type PlaylistDeletion } from "@/features/library/playlists/DeletePlaylistDialog";
+import { PlaylistEditDialog } from "@/features/library/playlists/PlaylistEditDialog";
 import { PlaylistHero } from "@/features/library/playlists/PlaylistHero";
-import { PlaylistImageModal } from "@/features/library/playlists/PlaylistImageModal";
-import { PlaylistMarkerDialog } from "@/features/library/playlists/PlaylistMarkerDialog";
-import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
 import { PlaylistStickyHeader } from "@/features/library/playlists/PlaylistStickyHeader";
 import { PlaylistTrackList } from "@/features/library/playlists/PlaylistTrackList";
-import { usePlaylists, useRenamePlaylist } from "@/features/library/playlists/hooks";
+import { usePlaylists } from "@/features/library/playlists/hooks";
 import { playlistCovers, resolvePlaylistTracks, tracksById } from "@/features/library/playlists/playlists";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { EmptyState } from "@/shared/ui/EmptyState";
@@ -27,10 +25,7 @@ export function PlaylistDetailView() {
   const playlists = usePlaylists();
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
-  const rename = useRenamePlaylist();
-  const [renaming, setRenaming] = useState(false);
-  const [editingImage, setEditingImage] = useState(false);
-  const [editingMarker, setEditingMarker] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState<PlaylistDeletion | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
@@ -90,9 +85,7 @@ export function PlaylistDetailView() {
         tracks={tracks}
         onPlay={() => playOrdered(tracks)}
         onShuffle={() => playShuffled(tracks)}
-        onEditImage={() => setEditingImage(true)}
-        onEditMarker={() => setEditingMarker(true)}
-        onRename={() => setRenaming(true)}
+        onEdit={() => setEditing(true)}
         onDelete={() => setDeleting({ id: playlist.id, name: playlist.name, trackCount: tracks.length })}
       />
 
@@ -106,36 +99,13 @@ export function PlaylistDetailView() {
         <PlaylistTrackList playlistId={playlist.id} tracks={tracks} />
       )}
 
-      <PlaylistNameDialog
-        isOpen={renaming}
-        onClose={() => setRenaming(false)}
-        title={t("playlists.renameAction")}
-        confirmLabel={t("playlists.renameConfirm")}
-        initialName={playlist.name}
+      <PlaylistEditDialog
+        playlist={playlist}
+        tracks={tracks}
         existing={playlists.data ?? []}
         reservedNames={[t("playlists.favorites")]}
-        excludingId={playlist.id}
-        isPending={rename.isPending}
-        onSubmit={(name) => rename.mutate({ id: playlist.id, name }, { onSuccess: () => setRenaming(false) })}
-      />
-      <PlaylistImageModal
-        playlist={playlist}
-        displayName={displayName}
-        tracks={tracks}
-        isOpen={editingImage}
-        onClose={() => setEditingImage(false)}
-      />
-      <PlaylistMarkerDialog
-        playlist={playlist}
-        displayName={displayName}
-        isOpen={editingMarker}
-        onClose={() => setEditingMarker(false)}
-        // Hands the user over to the image modal rather than leaving the
-        // thumbnail option as a dead cell with an explanation.
-        onAddImage={() => {
-          setEditingMarker(false);
-          setEditingImage(true);
-        }}
+        isOpen={editing}
+        onClose={() => setEditing(false)}
       />
       <DeletePlaylistDialog
         playlist={deleting}

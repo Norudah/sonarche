@@ -19,9 +19,22 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
 }
 
 describe("resolveMarker", () => {
-  it("falls back to the playlist glyph, and to the heart for the favorites", () => {
+  it("falls back to the playlist glyph, and to the filled heart for the favorites", () => {
     expect(resolveMarker(playlist())).toMatchObject({ mode: "icon", icon: ListMusic });
-    expect(resolveMarker(playlist({ kind: "favorites" }))).toMatchObject({ mode: "icon", icon: Heart });
+    expect(resolveMarker(playlist({ kind: "favorites" }))).toMatchObject({
+      mode: "icon",
+      icon: Heart,
+      filled: true,
+    });
+  });
+
+  it("keeps the favorites on the heart whatever the row stored", () => {
+    // Nothing offers to redress that list any more, so a marker set before the
+    // picker was withheld would otherwise be unremovable.
+    expect(resolveMarker(playlist({ kind: "favorites", marker: "color:teal" }))).toMatchObject({ icon: Heart });
+    expect(resolveMarker(playlist({ kind: "favorites", marker: "cover", coverUrl: "tile.jpg" }))).toMatchObject({
+      icon: Heart,
+    });
   });
 
   it("reads the three stored shapes", () => {

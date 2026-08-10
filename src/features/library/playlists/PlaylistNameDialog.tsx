@@ -10,35 +10,29 @@ interface PlaylistNameDialogProps {
   onClose: () => void;
   title: string;
   confirmLabel: string;
-  /** Pre-filled on a rename; empty on a create. */
-  initialName?: string;
   /** Every playlist, for the duplicate check — the same rule the backend
    * enforces, applied before the round-trip so the dialog can say why. */
   existing: Playlist[];
   /** Names taken by something that is not a stored row name — the favorites'
    * localized label. See `playlistNameTaken`. */
   reservedNames?: string[];
-  /** On a rename, the playlist allowed to keep its own name. */
-  excludingId?: number;
   onSubmit: (name: string) => void;
   isPending: boolean;
 }
 
-/** The form proper, mounted per opening: its state starts fresh (or from the
- * current name) each time the dialog appears, with no effect to re-arm it. */
+/** The form proper, mounted per opening: its state starts fresh each time the
+ * dialog appears, with no effect to re-arm it. */
 function NameForm({
   onClose,
   title,
   confirmLabel,
-  initialName,
   existing,
   reservedNames,
-  excludingId,
   onSubmit,
   isPending,
 }: Omit<PlaylistNameDialogProps, "isOpen">) {
   const { t } = useTranslation("library");
-  const [name, setName] = useState(initialName ?? "");
+  const [name, setName] = useState("");
 
   // Select-on-mount, once the modal's own focus pass has settled. A callback
   // ref rather than an effect: the field exists exactly once per opening.
@@ -47,9 +41,8 @@ function NameForm({
   }, []);
 
   const trimmed = name.trim();
-  const unchanged = excludingId != null && trimmed === (initialName ?? "").trim();
-  const taken = trimmed !== "" && !unchanged && playlistNameTaken(existing, trimmed, excludingId, reservedNames);
-  const canSubmit = trimmed !== "" && !taken && !isPending && !unchanged;
+  const taken = trimmed !== "" && playlistNameTaken(existing, trimmed, undefined, reservedNames);
+  const canSubmit = trimmed !== "" && !taken && !isPending;
 
   return (
     <form
@@ -99,8 +92,10 @@ function NameForm({
 }
 
 /**
- * The one question a playlist ever asks in words: what is it called. Shared by
- * create and rename so the two can never phrase it differently.
+ * The one question asked when a playlist is born: what is it called. Renaming
+ * an existing one is not here — it is one field of the edit dialog, beside the
+ * tile and the sidebar glyph, so a playlist has exactly one place to be
+ * changed.
  */
 export function PlaylistNameDialog(props: PlaylistNameDialogProps) {
   const { isOpen, onClose, isPending } = props;

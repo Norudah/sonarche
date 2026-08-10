@@ -70,15 +70,20 @@ export function markerTone(color: MarkerColor): string {
 }
 
 export type PlaylistMarker =
-  | { mode: "icon"; key: string; icon: LucideIcon }
+  /** `filled` is the favorites' heart and nothing else: across the app a solid
+   * heart means "this is a favorite", so the outlined heart of the icon set
+   * must stay outlined or the sidebar would claim a user's list is the
+   * favorites list. */
+  | { mode: "icon"; key: string; icon: LucideIcon; filled?: boolean }
   | { mode: "cover"; url: string }
   | { mode: "color"; key: MarkerColor; tone: string };
 
-/** The glyph a playlist falls back to: the heart for the built-in favorites —
- * it is that list's whole identity — and the playlist glyph for the rest. */
+/** The glyph a playlist falls back to: the filled heart for the built-in
+ * favorites — it is that list's whole identity — and the playlist glyph for
+ * the rest. */
 function defaultMarker(playlist: Playlist): PlaylistMarker {
   return playlist.kind === "favorites"
-    ? { mode: "icon", key: "heart", icon: Heart }
+    ? { mode: "icon", key: "heart", icon: Heart, filled: true }
     : { mode: "icon", key: "list-music", icon: ListMusic };
 }
 
@@ -91,6 +96,12 @@ function defaultMarker(playlist: Playlist): PlaylistMarker {
  * and cannot see any more.
  */
 export function resolveMarker(playlist: Playlist): PlaylistMarker {
+  // Favorites wears the heart, whatever the row says. The list is the app's,
+  // not the user's: it is the one place a filled heart is a fact rather than a
+  // decoration, and it is no longer editable — a stored marker from before
+  // that rule would leave the sidebar saying something no screen can undo.
+  if (playlist.kind === "favorites") return defaultMarker(playlist);
+
   const stored = playlist.marker;
   if (stored == null) return defaultMarker(playlist);
 

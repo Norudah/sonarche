@@ -442,8 +442,6 @@
     "namePlaceholder": "Nom de la playlist",
     "duplicateName": "Une playlist porte déjà ce nom",
     "cancel": "Annuler",
-    "renameAction": "Renommer",
-    "renameConfirm": "Renommer",
     "delete": {
       "action": "Supprimer la playlist",
       "title": "Supprimer « {{name}} » ?",
@@ -495,7 +493,6 @@
       }
     },
     "marker": {
-      "action": "Icône de navigation",
       "title": "Icône de navigation",
       "subtitle": "Ce que cette playlist affiche dans la barre latérale.",
       "icons": "Icônes",
@@ -504,7 +501,6 @@
       "noImage": "Donnez une image à la playlist pour l'utiliser ici",
       "colors": "Couleurs",
       "reset": "Icône par défaut",
-      "done": "Terminé",
       "icon": {
         "list-music": "Playlist",
         "disc": "Disque",
@@ -533,6 +529,13 @@
         "sky": "Ciel",
         "blue": "Bleu"
       }
+    },
+    "edit": {
+      "title": "Modifier la playlist",
+      "name": "Nom",
+      "changeImage": "Changer l'image",
+      "save": "Enregistrer",
+      "failed": "Les modifications n'ont pas pu être enregistrées."
     }
   },
   "unplayable": {
