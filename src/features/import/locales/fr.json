@@ -61,7 +61,7 @@
     "heading": "Imports"
   },
   "how": {
-    "toggle": "Ce qui va se passer",
+    "label": "Ce qui va se passer",
     "scan": {
       "name": "Analyse",
       "body": "Ton dossier est lu, jamais modifié. Sonarche compte ce qu'il sait lire et te montre le bilan avant de commencer — rien ne part sans ton accord."

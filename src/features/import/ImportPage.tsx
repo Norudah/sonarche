@@ -59,9 +59,12 @@ export function ImportPage({ children }: { children?: ReactNode }) {
           <div>
             <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
-            <p className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("lead")}</p>
-            <div className="mt-3">
-              <HowItWorks />
+            {/* The help mark closes the lead rather than standing under it, so
+                it flows with the last word — hence a div holding text, not a
+                `<p>`: the tooltip trigger is an element, and an element inside a
+                paragraph would end the paragraph. */}
+            <div className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-muted">
+              {t("lead")} <HowItWorks />
             </div>
           </div>
 

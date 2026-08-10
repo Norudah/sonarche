@@ -6,10 +6,12 @@ import type { ReactNode } from "react";
  * The help affordance that sits on a field's label.
  *
  * Two shapes, one grammar. `FieldHelp` is a tooltip for a notion that fits in a
- * sentence; `FieldHelpPopover` is a click-to-open panel for the two or three
- * that need a paragraph and an example. Both hang off the label, never off a
- * block of their own — an explanation placed away from what it explains reads as
- * one more thing to fill in.
+ * sentence — or in a short list, which is why it takes a node rather than a
+ * string; `tooltip-ink` caps it at 18rem, so a tooltip cannot grow into a page.
+ * `FieldHelpPopover` is a click-to-open panel for the two or three that need a
+ * paragraph and an example. Both hang off the label, never off a block of their
+ * own — an explanation placed away from what it explains reads as one more thing
+ * to fill in.
  *
  * Deliberately not on every field: an icon carried by all of them stops being
  * seen. A field whose label already says everything ("Année") gets none.
@@ -19,10 +21,13 @@ import type { ReactNode } from "react";
  * own to maintain.
  */
 
+/* `inline-flex` and a baseline nudge so the mark can also close a sentence, not
+ * only sit on a label. Every other caller puts it in a flex row, where the two
+ * displays are identical and `align-*` is ignored — nothing there changes. */
 const TRIGGER =
-  "flex size-4 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
-export function FieldHelp({ label, text }: { label: string; text: string }) {
+export function FieldHelp({ label, text }: { label: string; text: ReactNode }) {
   return (
     <Tooltip delay={200}>
       <Tooltip.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer text-muted/70 hover:text-muted`}>

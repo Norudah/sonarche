@@ -61,7 +61,7 @@
     "heading": "Imports"
   },
   "how": {
-    "toggle": "What will happen",
+    "label": "What will happen",
     "scan": {
       "name": "Scan",
       "body": "Your folder is read, never changed. Sonarche counts what it can read and shows you the verdict before anything starts — nothing moves without your go."
