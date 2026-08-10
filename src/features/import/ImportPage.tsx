@@ -5,8 +5,6 @@ import { useTranslation } from "react-i18next";
 
 import { pickFolder, type Grouping, type ScanReport, scanImportFolder } from "@/features/import/api";
 import { FolderPicker } from "@/features/import/FolderPicker";
-import { GroupingChoice } from "@/features/import/GroupingChoice";
-import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { suggestGrouping } from "@/features/import/grouping";
 import { HowItWorks } from "@/features/import/HowItWorks";
 import { LastImportSection } from "@/features/import/LastImportSection";
@@ -85,28 +83,6 @@ export function ImportPage({ children }: { children?: ReactNode }) {
           </div>
 
           <FolderPicker folder={folder} phase={phase} onChoose={() => void choose()} />
-
-          {/* Under the picker and only once there is a folder: the question is
-              about this folder, and its shape is what preselects the answer. */}
-          {report != null && (
-            <GroupingChoice
-              value={grouping}
-              report={report}
-              isDisabled={phase.kind === "importing"}
-              onChange={setChosenGrouping}
-            />
-          )}
-
-          {report != null && (
-            <CategoryChoice
-              value={category}
-              label={t("category.label")}
-              hint={t("category.hint")}
-              noneLabel={t("category.none")}
-              isDisabled={phase.kind === "importing"}
-              onChange={setCategory}
-            />
-          )}
         </div>
       </div>
 
@@ -120,7 +96,11 @@ export function ImportPage({ children }: { children?: ReactNode }) {
             folder={folder}
             phase={phase}
             progress={progress}
+            grouping={grouping}
+            category={category}
             onStart={() => folder != null && run.mutate({ folder, grouping, category })}
+            onGroupingChange={setChosenGrouping}
+            onCategoryChange={setCategory}
             onCancel={() => cancel.mutate()}
             isCancelling={cancel.isPending}
           />

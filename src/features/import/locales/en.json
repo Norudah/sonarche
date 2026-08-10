@@ -101,14 +101,21 @@
     "collapse": "Hide the import's detail"
   },
   "grouping": {
-    "label": "What counts as an album",
-    "folder": "One album per folder",
-    "tags": "Follow the tags",
-    "tracks": "Standalone tracks",
-    "folderWhy": "Every folder holding music becomes an album. The right choice for a ripped or bought collection, filed by record.",
-    "tagsWhy": "Tracks are grouped by their album tag, even when they share a folder. Useful when one folder holds several records.",
-    "tracksWhy": "No album is created: every file comes in on its own, with its cover. What a folder of one-by-one finds needs.",
-    "suggested": "Suggested here: one folder holds {{count}} tracks, more than a record has."
+    "label": "What makes an album",
+    "intro": "Sonarche has to decide which tracks belong to the same record. You say what decides.",
+    "folder": "The folder",
+    "tags": "The tags",
+    "tracks": "Nothing",
+    "folderAnswer": "Every folder becomes an album",
+    "folderWhy": "Tags do not count: a folder of 40 tracks by 40 artists makes one album, named after the folder.",
+    "folderFor": "For a collection already filed record by record.",
+    "tagsAnswer": "The album tag decides",
+    "tagsWhy": "A folder holding two records makes two. But if the files carry no album tag they all group together anyway, and the result matches the first choice.",
+    "tagsFor": "For a catch-all folder whose files are properly tagged.",
+    "tracksAnswer": "No album is created",
+    "tracksWhy": "Every file comes in on its own, with its title, its artist and its cover. The only choice that invents no record.",
+    "tracksFor": "For tracks picked up one by one.",
+    "suggested": "Suggested here: one folder holds {{count}} tracks — more than a record has."
   },
   "again": {
     "done": "This folder was already imported on {{when}}.",
@@ -120,5 +127,8 @@
     "label": "Category",
     "hint": "Applied to everything this import brings in. Context — game or film soundtrack — not musical style.",
     "none": "None"
+  },
+  "options": {
+    "title": "Options"
   }
 }

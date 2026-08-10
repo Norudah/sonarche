@@ -50,7 +50,7 @@ export function PhaseDetail({ phase, progress }: { phase: ImportPhase; progress:
           transition={springs.soft}
           className="overflow-hidden"
         >
-          <div className="border-t border-separator/60 pt-4">{body}</div>
+          <div className="border-t border-separator/60 p-4">{body}</div>
         </motion.div>
       )}
     </AnimatePresence>

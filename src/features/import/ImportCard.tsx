@@ -3,7 +3,9 @@ import { Check, FolderCheck, FolderInput, FolderOpen, FolderSearch, FolderX, Squ
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import type { Grouping } from "@/features/import/api";
 import type { ImportProgress } from "@/features/import/hooks";
+import { ImportOptions } from "@/features/import/ImportOptions";
 import type { ImportPhase } from "@/features/import/phase";
 import { PhaseDetail } from "@/features/import/PhaseDetail";
 import { importRail, STAGE_WEIGHTS } from "@/features/import/stages";
@@ -19,7 +21,11 @@ interface ImportCardProps {
   folder: string | null;
   phase: ImportPhase;
   progress: ImportProgress | null;
+  grouping: Grouping;
+  category: string | null;
   onStart: () => void;
+  onGroupingChange: (grouping: Grouping) => void;
+  onCategoryChange: (category: string | null) => void;
   onCancel: () => void;
   isCancelling: boolean;
 }
@@ -58,7 +64,18 @@ const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: str
  * and someone landing on it had no idea what pressing it would set off. An empty
  * rail is a promise; a blank page is a shrug.
  */
-export function ImportCard({ folder, phase, progress, onStart, onCancel, isCancelling }: ImportCardProps) {
+export function ImportCard({
+  folder,
+  phase,
+  progress,
+  grouping,
+  category,
+  onStart,
+  onGroupingChange,
+  onCategoryChange,
+  onCancel,
+  isCancelling,
+}: ImportCardProps) {
   const { t } = useTranslation("import");
   const rail = importRail(phase, progress);
   const label = useImportLabel(phase, progress);
@@ -75,8 +92,8 @@ export function ImportCard({ folder, phase, progress, onStart, onCancel, isCance
   const name = folder?.split(/[/\\]/).filter(Boolean).at(-1);
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl bg-surface p-4 shadow-sm">
-      <div className="flex items-center gap-3">
+    <article className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm">
+      <div className="flex items-center gap-3 p-4">
         <div className={`flex size-16 shrink-0 items-center justify-center rounded-xl transition-colors ${face.tile}`}>
           <Swap
             swapKey={phase.kind}
@@ -152,6 +169,18 @@ export function ImportCard({ folder, phase, progress, onStart, onCancel, isCance
           )}
         </div>
       </div>
+
+      {/* Between the header and what the scan found: the order a decision is
+          made in — this is the folder, this is what will be done with it, this
+          is what is in it. */}
+      <ImportOptions
+        grouping={grouping}
+        category={category}
+        report={"report" in phase ? phase.report : null}
+        isDisabled={phase.kind === "importing"}
+        onGroupingChange={onGroupingChange}
+        onCategoryChange={onCategoryChange}
+      />
 
       <PhaseDetail phase={phase} progress={progress} />
     </article>
