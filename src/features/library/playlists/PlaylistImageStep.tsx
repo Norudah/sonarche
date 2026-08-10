@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
-import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
+import { BeforeAfter } from "@/features/library/covers/BeforeAfter";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect } from "@/features/library/covers/coverCrop";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
@@ -16,11 +16,14 @@ import {
   EDIT_DIALOG_BODY,
   EDIT_DIALOG_CONFIRM_BUTTON,
   EDIT_DIALOG_FOOTER,
-  EDIT_DIALOG_QUIET_BUTTON,
 } from "@/features/library/playlists/PlaylistEditChrome";
 import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverMosaic";
 import { playlistCovers } from "@/features/library/playlists/playlists";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
+
+/** Narrower than the album and artist stages: this pane stands beside the edit
+ * form rather than alone, and the pair must still fit the app's 1080px floor. */
+const STAGE_PX = 220;
 
 /**
  * Give a playlist a tile of its own. Left, what the shelf draws today: the
@@ -30,8 +33,12 @@ import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
  * playlist export can copy the file out from there.
  *
  * Writing here is immediate and local: replacing an image is not a draft the
- * way a name is, and the confirm button is its own commit. Done either way, it
- * closes and uncovers the form it was opened from.
+ * way a name is, and the confirm button is its own commit. Done either way, the
+ * pane folds away and leaves the form it was opened from standing.
+ *
+ * No "Annuler" in the footer: the form beside it has one, and two of them a
+ * hand's width apart would each look like the way out of the whole session.
+ * Backing out of this pane is the cross in its header.
  */
 export function PlaylistImageStep({
   playlist,
@@ -160,9 +167,6 @@ export function PlaylistImageStep({
           </button>
         )}
         <div className="flex-1" />
-        <button type="button" onClick={onClose} disabled={isPending} className={EDIT_DIALOG_QUIET_BUTTON}>
-          {t("playlists.cancel")}
-        </button>
         <button type="button" disabled={!canConfirm} onClick={confirm} className={EDIT_DIALOG_CONFIRM_BUTTON}>
           {replace.isPending && <Spinner size="sm" />}
           {t("playlists.image.replace")}

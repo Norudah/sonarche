@@ -1,5 +1,6 @@
 import { Modal, Spinner } from "@heroui/react";
 import { ImagePlus } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,9 +17,13 @@ import {
 } from "@/features/library/playlists/PlaylistEditChrome";
 import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverMosaic";
 import { PlaylistGlyph } from "@/features/library/playlists/PlaylistGlyph";
-import { PlaylistImageModal } from "@/features/library/playlists/PlaylistImageModal";
+import { PlaylistImageStep } from "@/features/library/playlists/PlaylistImageStep";
 import { PlaylistMarkerPicker } from "@/features/library/playlists/PlaylistMarkerPicker";
 import { playlistCovers, playlistNameTaken } from "@/features/library/playlists/playlists";
+
+/** 448 (form) + 12 + 544 = 1004, inside the 1032 a 1080px window leaves once the
+ * container's fence is paid. Widen one and the pair stops fitting. */
+const IMAGE_PANE_PX = 544;
 
 interface PlaylistEditDialogProps {
   playlist: Playlist;
@@ -42,7 +47,8 @@ function EditForm({
   reservedNames,
   onClose,
   onEditImage,
-}: Omit<PlaylistEditDialogProps, "isOpen"> & { onEditImage: () => void }) {
+  isPickingImage,
+}: Omit<PlaylistEditDialogProps, "isOpen"> & { onEditImage: () => void; isPickingImage: boolean }) {
   const { t } = useTranslation("library");
   const rename = useRenamePlaylist();
   const setMarker = useSetPlaylistMarker();
@@ -89,7 +95,8 @@ function EditForm({
         type="button"
         onClick={onEditImage}
         aria-label={t("playlists.edit.changeImage")}
-        className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        aria-expanded={isPickingImage}
+        className={`group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${isPickingImage ? "ring-2 ring-accent ring-offset-2 ring-offset-overlay" : ""}`}
       >
         <PlaylistCoverMosaic
           covers={playlistCovers(tracks)}
@@ -189,47 +196,85 @@ function EditForm({
  * edit a playlist". One "Modifier" button now opens all of it, which is the
  * same promise the album and the artist make.
  *
- * Picking an image is the one thing that stays a window of its own, laid over
- * this one. It needs a room — browse, drop, paste, reframe, two 280px stages —
- * that a form has no business hosting; and it is stacked rather than swapped
- * in because a window that leaves and comes back, or a frame that resizes
- * under the eye, reads as two errands. The form stays put and stays alive
- * underneath: the draft is still there on the way back, and a fresh image is
- * immediately offerable as the sidebar glyph.
+ * Picking an image is the one thing that keeps a panel of its own. It needs a
+ * room — browse, drop, paste, reframe, two stages — that a form has no business
+ * hosting. That panel unfolds *beside* the form rather than over it or in place
+ * of it: a window that leaves and comes back, and a single frame that resizes
+ * under the eye, both read as two errands. Side by side, the form never
+ * changes shape, stays live (the draft survives the trip, and a fresh image is
+ * immediately offerable as the sidebar glyph), and its tile keeps showing what
+ * the pane next door is about to replace.
  */
 export function PlaylistEditDialog({ isOpen, ...rest }: PlaylistEditDialogProps) {
   const [pickingImage, setPickingImage] = useState(false);
 
-  // Every way out passes here, so the next opening can never come back on top
-  // of the picker.
+  // Every way out passes here, so the next opening can never come back with the
+  // image pane already unfolded.
   const close = () => {
     setPickingImage(false);
     rest.onClose();
   };
 
   return (
-    <>
-      <Modal
-        isOpen={isOpen}
-        onOpenChange={(nowOpen) => {
-          if (!nowOpen) close();
-        }}
-      >
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="flex max-h-[92vh] w-[28rem] max-w-[95vw] flex-col rounded-2xl p-0!">
-              {isOpen && <EditForm {...rest} onClose={close} onEditImage={() => setPickingImage(true)} />}
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(nowOpen) => {
+        if (!nowOpen) close();
+      }}
+    >
+      <Modal.Backdrop>
+        {/* The dialog grows sideways, so the padding that fences it has to be
+            thin enough for both panes at the app's 1080px floor. */}
+        <Modal.Container className="sm:px-6!">
+          <Modal.Dialog className="w-auto! max-w-full overflow-visible! bg-transparent! p-0! shadow-none!">
+            <div
+              className="flex items-start"
+              // Escape belongs to the topmost thing that is open. With one modal
+              // holding both panes, that arbitration is ours to make.
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && pickingImage) {
+                  event.stopPropagation();
+                  setPickingImage(false);
+                }
+              }}
+            >
+              <div className="flex max-h-[92vh] w-[28rem] shrink-0 flex-col overflow-hidden rounded-2xl bg-overlay shadow-overlay">
+                {isOpen && (
+                  <EditForm
+                    {...rest}
+                    onClose={close}
+                    onEditImage={() => setPickingImage(true)}
+                    isPickingImage={pickingImage}
+                  />
+                )}
+              </div>
 
-      <PlaylistImageModal
-        playlist={rest.playlist}
-        tracks={rest.tracks}
-        isOpen={isOpen && pickingImage}
-        onClose={() => setPickingImage(false)}
-      />
-    </>
+              <AnimatePresence initial={false}>
+                {isOpen && pickingImage && (
+                  // Width and margin are animated on the pane itself, which also
+                  // carries the card: a box clipping its own children never
+                  // clips its own shadow, so the unfold stays clean-edged.
+                  <motion.div
+                    initial={{ width: 0, marginLeft: 0, opacity: 0 }}
+                    animate={{ width: IMAGE_PANE_PX, marginLeft: 12, opacity: 1 }}
+                    exit={{ width: 0, marginLeft: 0, opacity: 0 }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="max-h-[92vh] shrink-0 overflow-hidden rounded-2xl bg-overlay shadow-overlay"
+                  >
+                    <div className="flex h-full flex-col" style={{ width: IMAGE_PANE_PX }}>
+                      <PlaylistImageStep
+                        playlist={rest.playlist}
+                        tracks={rest.tracks}
+                        onClose={() => setPickingImage(false)}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   );
 }

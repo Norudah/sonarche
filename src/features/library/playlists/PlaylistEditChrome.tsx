@@ -2,8 +2,8 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 /**
- * The chrome the edit session's two windows share — the form and the image
- * picker stacked over it. One header, one footer bar, so the upper window
+ * The chrome the edit session's two panes share — the form and the image
+ * picker unfolded beside it. One header, one footer bar, so the pane next door
  * reads as the same session rather than as somewhere else.
  */
 export function EditDialogHeader({
