@@ -137,6 +137,44 @@ export async function setAlbumKind(albumIds: number[], kind: AlbumKind): Promise
   return invoke<{ updated: number }>("set_album_kind", { albumIds, kind });
 }
 
+/** One move request: what goes where, as what, numbered how. Exactly one of
+ * `targetAlbumId` / `newAlbum`; `itemIds` order is the numbering order when
+ * `renumber` is on. */
+export interface MoveSpec {
+  itemIds: number[];
+  targetAlbumId?: number;
+  newAlbum?: { album: string; albumartist: string };
+  /** Declares the target's nature in the same pass; omitted leaves it be. */
+  kind?: AlbumKind;
+  renumber?: boolean;
+}
+
+export interface MoveResult {
+  moved: number;
+  skipped: number;
+  created: boolean;
+  targetAlbumId: number;
+  sourcesRemoved: number;
+}
+
+/** Refile tracks onto another record — the files follow on disk. */
+export async function moveTracks(spec: MoveSpec): Promise<MoveResult> {
+  const raw = await invoke<{
+    moved: number;
+    skipped: number;
+    created: boolean;
+    target_album_id: number;
+    sources_removed: number;
+  }>("move_tracks", { spec });
+  return {
+    moved: raw.moved,
+    skipped: raw.skipped,
+    created: raw.created,
+    targetAlbumId: raw.target_album_id,
+    sourcesRemoved: raw.sources_removed,
+  };
+}
+
 /** Answer a check on a batch of objects, or take the answer back. */
 export async function setCheckAccepted(
   scope: "track" | "album",

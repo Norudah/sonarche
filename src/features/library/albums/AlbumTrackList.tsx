@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumTrackRow } from "@/features/library/albums/AlbumTrackRow";
+import { MoveToAlbumDialog } from "@/features/library/albums/MoveToAlbumDialog";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
@@ -38,6 +39,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
+  const [moving, setMoving] = useState<LibraryTrack[] | null>(null);
   // A way of reading the record, not a change to it: the album keeps its own
   // order, and dropping the sort (third click) returns to it.
   const [sort, setSort] = useState<TrackSort | null>(null);
@@ -80,6 +82,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
           onEdit={(track) => setInspectedId(track.id)}
           onDelete={setDeleting}
           onAddToPlaylist={(track) => setAddingToPlaylist([track])}
+          onMoveToAlbum={(track) => setMoving([track])}
         />
       ) : (
         <div className="overflow-x-auto">
@@ -116,6 +119,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
                   onEdit={() => setInspectedId(track.id)}
                   onDelete={() => setDeleting(track)}
                   onAddToPlaylist={() => setAddingToPlaylist([track])}
+                  onMoveToAlbum={() => setMoving([track])}
                 />
               ))}
             </tbody>
@@ -126,6 +130,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
       <AddToPlaylistDialog tracks={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />
+      <MoveToAlbumDialog tracks={moving} onClose={() => setMoving(null)} />
     </>
   );
 }

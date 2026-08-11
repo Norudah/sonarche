@@ -5,6 +5,7 @@ import {
   deleteTrack,
   listArtistImages,
   listLibrary,
+  moveTracks,
   recomputeGenres,
   reenrichTrack,
   removeArtistImage,
@@ -92,6 +93,18 @@ export function useUpdateTracks() {
       // An albumartist rename moves the artist's image with the name; the
       // name -> image map has to follow.
       queryClient.invalidateQueries({ queryKey: artistImagesKey });
+    },
+  });
+}
+
+/** Refile tracks onto another record. One invalidation for the whole batch —
+ * the move is a single sidecar round-trip whatever the count. */
+export function useMoveTracks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: moveTracks,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKey });
     },
   });
 }

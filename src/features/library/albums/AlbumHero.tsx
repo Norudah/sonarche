@@ -41,6 +41,8 @@ interface AlbumHeroProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
   ref?: Ref<HTMLElement>;
 }
 
@@ -56,7 +58,17 @@ interface AlbumHeroProps {
  * `-mx-8 -mt-5` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
-export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToPlaylist, ref }: AlbumHeroProps) {
+export function AlbumHero({
+  album,
+  onPlay,
+  onShuffle,
+  onEdit,
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+  ref,
+}: AlbumHeroProps) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -83,8 +95,10 @@ export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToP
 
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <div className="min-w-0">
+              {/* The record says what it is: a declared collection stops
+               * announcing itself as an album the moment its owner said so. */}
               <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
-                {t("albums.eyebrow")}
+                {t(album.kind === "collection" ? "albums.eyebrowCollection" : "albums.eyebrow")}
               </p>
               <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight">{album.title}</h1>
               <p className="mt-1.5 truncate text-[0.8125rem] text-muted">
@@ -104,6 +118,8 @@ export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToP
               onEdit={onEdit}
               onDelete={onDelete}
               onAddToPlaylist={onAddToPlaylist}
+              onMoveToAlbum={onMoveToAlbum}
+              onAddTracks={onAddTracks}
             />
           </div>
         </div>

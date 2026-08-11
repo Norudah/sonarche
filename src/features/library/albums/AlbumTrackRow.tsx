@@ -54,6 +54,7 @@ interface AlbumTrackRowProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
 }
 
 export function AlbumTrackRow({
@@ -65,6 +66,7 @@ export function AlbumTrackRow({
   onEdit,
   onDelete,
   onAddToPlaylist,
+  onMoveToAlbum,
 }: AlbumTrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
@@ -151,7 +153,13 @@ export function AlbumTrackRow({
        * breathing room — at `px-3` the icons sat against the duration. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions onEdit={onEdit} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} favoriteId={track.id} />
+          <RowActions
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddToPlaylist={onAddToPlaylist}
+            onMoveToAlbum={onMoveToAlbum}
+            favoriteId={track.id}
+          />
         </div>
       </td>
     </tr>

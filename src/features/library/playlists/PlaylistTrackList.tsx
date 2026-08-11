@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
+import { MoveToAlbumDialog } from "@/features/library/albums/MoveToAlbumDialog";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
@@ -43,6 +44,9 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
+  // Refiling, from here too: the playlist points at item ids, so a member can
+  // change records without falling out of the list.
+  const [movingToAlbum, setMovingToAlbum] = useState<LibraryTrack[] | null>(null);
   // A way of *reading* the list; the stored order is untouched, and every
   // mutation below addresses the row's original position through the view.
   const [sort, setSort] = useState<TrackSort | null>(null);
@@ -90,6 +94,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
           onEdit={(track) => setInspectedId(track.id)}
           onDelete={setDeleting}
           onAddToPlaylist={(track) => setAddingToPlaylist([track])}
+          onMoveToAlbum={(track) => setMovingToAlbum([track])}
         />
       ) : (
         <div className="overflow-x-auto">
@@ -128,6 +133,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
                   onDelete={() => setDeleting(track)}
                   onRemoveFromPlaylist={() => remove.mutate({ id: playlistId, positions: [view[index].position] })}
                   onAddToPlaylist={() => setAddingToPlaylist([track])}
+                  onMoveToAlbum={() => setMovingToAlbum([track])}
                 />
               ))}
 
@@ -140,6 +146,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
       <AddToPlaylistDialog tracks={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />
+      <MoveToAlbumDialog tracks={movingToAlbum} onClose={() => setMovingToAlbum(null)} />
     </>
   );
 }

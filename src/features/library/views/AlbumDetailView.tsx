@@ -7,6 +7,8 @@ import { albumPath, paths } from "@/app/routes";
 import { findAlbum, findAlbumLike, groupAlbums, type Album } from "@/features/library/albums/albums";
 import { AlbumHero } from "@/features/library/albums/AlbumHero";
 import { AlbumInspectModal } from "@/features/library/albums/inspect/AlbumInspectModal";
+import { AddTracksDialog } from "@/features/library/albums/AddTracksDialog";
+import { MoveToAlbumDialog } from "@/features/library/albums/MoveToAlbumDialog";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
@@ -24,6 +26,8 @@ export function AlbumDetailView() {
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
+  const [movingAlbum, setMovingAlbum] = useState(false);
+  const [addingTracks, setAddingTracks] = useState(false);
   /** The last record this route resolved to — see the rename note below. */
   const [held, setHeld] = useState<Album | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
@@ -83,11 +87,15 @@ export function AlbumDetailView() {
         onEdit={() => setInspecting(true)}
         onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
         onAddToPlaylist={() => setAddingToPlaylist(true)}
+        onMoveToAlbum={() => setMovingAlbum(true)}
+        onAddTracks={() => setAddingTracks(true)}
       />
       <AlbumTrackList album={album} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />
       <AlbumInspectModal album={inspecting ? album : null} onClose={() => setInspecting(false)} />
       <AddToPlaylistDialog tracks={addingToPlaylist ? album.tracks : null} onClose={() => setAddingToPlaylist(false)} />
+      <MoveToAlbumDialog tracks={movingAlbum ? album.tracks : null} onClose={() => setMovingAlbum(false)} />
+      <AddTracksDialog album={addingTracks ? album : null} onClose={() => setAddingTracks(false)} />
     </PageContainer>
   );
 }

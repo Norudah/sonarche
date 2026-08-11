@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FilePen, ListMusic, MoreHorizontal, Trash2 } from "lucide-react";
+import { FilePen, FolderInput, ListMusic, ListPlus, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +18,17 @@ const ICON_PILL = HERO_BUTTON_ICON;
  * nobody performs twice, and buys back the row for the two things you actually
  * came here to do.
  */
-function OverflowMenu({ onDelete, onAddToPlaylist }: { onDelete: () => void; onAddToPlaylist: () => void }) {
+function OverflowMenu({
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+}: {
+  onDelete: () => void;
+  onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
+}) {
   const { t } = useTranslation("library");
 
   return (
@@ -34,6 +44,18 @@ function OverflowMenu({ onDelete, onAddToPlaylist }: { onDelete: () => void; onA
           <Dropdown.Item id="add-to-playlist" textValue={t("playlists.addTo")} onAction={onAddToPlaylist}>
             <ListMusic className="size-4" />
             {t("playlists.addTo")}
+          </Dropdown.Item>
+          {/* The pull half of refiling: stand on your record, fetch the tracks
+           * you actually like from the rest of the shelf. */}
+          <Dropdown.Item id="add-tracks" textValue={t("move.addTracksAction")} onAction={onAddTracks}>
+            <ListPlus className="size-4" />
+            {t("move.addTracksAction")}
+          </Dropdown.Item>
+          {/* The whole record at once — how two albums become one, and how a
+           * hand-made collection absorbs a release it grew out of. */}
+          <Dropdown.Item id="move-to-album" textValue={t("move.menuAction")} onAction={onMoveToAlbum}>
+            <FolderInput className="size-4" />
+            {t("move.menuAction")}
           </Dropdown.Item>
           <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")} onAction={onDelete}>
             <span className="flex items-center gap-2 text-danger">
@@ -53,9 +75,19 @@ interface AlbumActionsProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
 }
 
-export function AlbumActions({ onPlay, onShuffle, onEdit, onDelete, onAddToPlaylist }: AlbumActionsProps) {
+export function AlbumActions({
+  onPlay,
+  onShuffle,
+  onEdit,
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+}: AlbumActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -83,7 +115,12 @@ export function AlbumActions({ onPlay, onShuffle, onEdit, onDelete, onAddToPlayl
           {t("edit")}
         </motion.button>
 
-        <OverflowMenu onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} />
+        <OverflowMenu
+          onDelete={onDelete}
+          onAddToPlaylist={onAddToPlaylist}
+          onMoveToAlbum={onMoveToAlbum}
+          onAddTracks={onAddTracks}
+        />
       </div>
     </div>
   );

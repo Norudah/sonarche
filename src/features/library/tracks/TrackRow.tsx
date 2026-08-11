@@ -38,6 +38,7 @@ interface TrackRowProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
 }
 
 export function TrackRow({
@@ -50,6 +51,7 @@ export function TrackRow({
   onEdit,
   onDelete,
   onAddToPlaylist,
+  onMoveToAlbum,
 }: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
@@ -171,7 +173,13 @@ export function TrackRow({
        * level deeper. `pl-6` is the breathing room from the duration column. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions onEdit={onEdit} onDelete={onDelete} onAddToPlaylist={onAddToPlaylist} favoriteId={track.id} />
+          <RowActions
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddToPlaylist={onAddToPlaylist}
+            onMoveToAlbum={onMoveToAlbum}
+            favoriteId={track.id}
+          />
         </div>
       </td>
     </tr>

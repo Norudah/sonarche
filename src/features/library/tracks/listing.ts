@@ -26,4 +26,5 @@ export interface TrackListingProps {
   onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
   onAddToPlaylist: (track: LibraryTrack) => void;
+  onMoveToAlbum: (track: LibraryTrack) => void;
 }

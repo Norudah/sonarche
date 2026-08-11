@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { MoveToAlbumDialog } from "@/features/library/albums/MoveToAlbumDialog";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLensHere } from "@/features/library/inspect/inspectMode";
@@ -42,6 +43,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
+  const [moving, setMoving] = useState<LibraryTrack[] | null>(null);
   const { playFrom } = usePlayQueue();
   const inspecting = useLensHere();
   useTopOnFilterChange(animationKey);
@@ -62,6 +64,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
     onEdit: (track) => setInspectedId(track.id),
     onDelete: setDeleting,
     onAddToPlaylist: (track) => setAddingToPlaylist([track]),
+    onMoveToAlbum: (track) => setMoving([track]),
   };
 
   return (
@@ -71,6 +74,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />
       <AddToPlaylistDialog tracks={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />
+      <MoveToAlbumDialog tracks={moving} onClose={() => setMoving(null)} />
     </>
   );
 }

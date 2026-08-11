@@ -34,6 +34,7 @@ interface PlaylistTrackRowProps {
   onDelete: () => void;
   onRemoveFromPlaylist: () => void;
   onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
 }
 
 /**
@@ -53,6 +54,7 @@ export function PlaylistTrackRow({
   onDelete,
   onRemoveFromPlaylist,
   onAddToPlaylist,
+  onMoveToAlbum,
 }: PlaylistTrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
@@ -141,6 +143,7 @@ export function PlaylistTrackRow({
             onEdit={onEdit}
             onDelete={onDelete}
             onAddToPlaylist={onAddToPlaylist}
+            onMoveToAlbum={onMoveToAlbum}
             onRemoveFromPlaylist={onRemoveFromPlaylist}
             favoriteId={track.id}
           />

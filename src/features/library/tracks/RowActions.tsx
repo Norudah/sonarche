@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FilePen, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
+import { FilePen, FolderInput, ListMusic, ListX, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { FavoriteButton } from "@/features/library/playlists/FavoriteButton";
@@ -18,6 +18,8 @@ interface RowActionsProps {
   /** Offers "add to a playlist" in the menu. Optional so the tables that
    * cannot host the picker simply don't grow the item. */
   onAddToPlaylist?: () => void;
+  /** Offers "move to an album" — refiling, not listing: the file follows. */
+  onMoveToAlbum?: () => void;
   /** Playlist rows only: take this row out of the list — the file stays. */
   onRemoveFromPlaylist?: () => void;
 }
@@ -32,7 +34,14 @@ interface RowActionsProps {
  * menu, where a destructive click takes a deliberate second step instead of
  * sitting under the cursor on every row.
  */
-export function RowActions({ onEdit, onDelete, favoriteId, onAddToPlaylist, onRemoveFromPlaylist }: RowActionsProps) {
+export function RowActions({
+  onEdit,
+  onDelete,
+  favoriteId,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onRemoveFromPlaylist,
+}: RowActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -65,6 +74,12 @@ export function RowActions({ onEdit, onDelete, favoriteId, onAddToPlaylist, onRe
               <Dropdown.Item id="add-to-playlist" textValue={t("playlists.addTo")} onAction={onAddToPlaylist}>
                 <ListMusic className="size-4" />
                 {t("playlists.addTo")}
+              </Dropdown.Item>
+            )}
+            {onMoveToAlbum && (
+              <Dropdown.Item id="move-to-album" textValue={t("move.menuAction")} onAction={onMoveToAlbum}>
+                <FolderInput className="size-4" />
+                {t("move.menuAction")}
               </Dropdown.Item>
             )}
             {onRemoveFromPlaylist && (

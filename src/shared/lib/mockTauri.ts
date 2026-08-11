@@ -1080,6 +1080,66 @@ export function installMockTauri() {
         }
         return { updated };
       }
+      // The move verb, on the same built listing: tracks re-filed onto the
+      // target row (or a fresh one), numbered onward when asked — so both
+      // pickers, the kind proposal and the undo toast all run in the browser.
+      if (cmd === "move_tracks") {
+        const spec = payload?.spec as {
+          itemIds: number[];
+          targetAlbumId?: number;
+          newAlbum?: { album: string; albumartist: string };
+          kind?: string;
+          renumber?: boolean;
+        };
+        const { tracks } = responses.list_library as { tracks: Record<string, unknown>[] };
+        const created = spec.targetAlbumId == null;
+        const targetAlbumId = created
+          ? Math.max(0, ...tracks.map((track) => Number(track.album_id) || 0)) + 1
+          : Number(spec.targetAlbumId);
+        const residents = tracks.filter((track) => track.album_id === targetAlbumId);
+        if (!created && residents.length === 0) throw new Error("album not found");
+        const album = created ? spec.newAlbum!.album : String(residents[0].album);
+        const albumArtist = created ? spec.newAlbum!.albumartist : String(residents[0].album_artist ?? "");
+        const targetKind = spec.kind
+          ? spec.kind === "collection"
+            ? "collection"
+            : null
+          : created
+            ? null
+            : ((residents[0]?.album_kind as string | null) ?? null);
+        const targetArt = created ? null : ((residents[0]?.art_path as string | null) ?? null);
+
+        let next = spec.renumber ? Math.max(0, ...residents.map((track) => Number(track.track) || 0)) : 0;
+        const sources = new Set<number>();
+        let moved = 0;
+        let skipped = 0;
+        for (const id of spec.itemIds) {
+          const track = tracks.find((candidate) => candidate.id === id);
+          if (!track) continue;
+          if (track.album_id === targetAlbumId) {
+            skipped += 1;
+            continue;
+          }
+          if (track.album_id != null) sources.add(track.album_id as number);
+          track.album_id = targetAlbumId;
+          track.album = album;
+          track.album_artist = albumArtist;
+          track.art_path = targetArt;
+          if (spec.renumber) {
+            track.track = ++next;
+            track.track_total = null;
+          }
+          moved += 1;
+        }
+        for (const track of tracks) {
+          if (track.album_id === targetAlbumId) track.album_kind = targetKind;
+        }
+        const sourcesRemoved = [...sources].filter(
+          (sourceId) => !tracks.some((track) => track.album_id === sourceId),
+        ).length;
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        return { moved, skipped, created, target_album_id: targetAlbumId, sources_removed: sourcesRemoved };
+      }
       // Answered checks, on the same built listing as `set_album_kind`: the
       // point of the mock here is that accepting really does close the line.
       if (cmd === "set_check_accepted") {

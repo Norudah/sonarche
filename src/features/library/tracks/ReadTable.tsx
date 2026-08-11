@@ -31,6 +31,7 @@ export function ReadTable({
   onEdit,
   onDelete,
   onAddToPlaylist,
+  onMoveToAlbum,
 }: TrackListingProps) {
   const { t } = useTranslation("library");
   const rowWindow = useRowWindow(tracks);
@@ -92,6 +93,7 @@ export function ReadTable({
               onEdit={() => onEdit(track)}
               onDelete={() => onDelete(track)}
               onAddToPlaylist={() => onAddToPlaylist(track)}
+              onMoveToAlbum={() => onMoveToAlbum(track)}
             />
           ))}
 
