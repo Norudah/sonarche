@@ -50,7 +50,11 @@ export function RowActions({
     // discovery problem. They idle at a third opacity — present enough to read
     // as "there is something here", quiet enough not to compete with the
     // titles — and come up to full on row hover.
-    <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+    // `:focus-visible`, not `:focus-within`: closing the metadata drawer hands
+    // focus back to the pencil that opened it, and a plain focus-within kept
+    // the controls lit as if the row were still hovered. A mouse-restored
+    // focus is not focus-visible, while keyboard travel still is.
+    <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 has-[:focus-visible]:opacity-100">
       {favoriteId != null && <FavoriteButton itemId={favoriteId} className={ACTION} />}
       <button
         type="button"
