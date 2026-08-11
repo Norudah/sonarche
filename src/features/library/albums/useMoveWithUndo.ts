@@ -54,7 +54,14 @@ export function useMoveWithUndo() {
                 // and reading a sentence then deciding takes more than four
                 // seconds — after that the move simply stands.
                 timeout: 10_000,
-                actionProps: { children: t("move.undo"), onPress: () => void undo(snapshot, toastId) },
+                // Soft rather than filled: the toast reports something that
+                // already worked, so the loudest object in it should not be
+                // the button that takes it back.
+                actionProps: {
+                  variant: "secondary",
+                  children: t("move.undo"),
+                  onPress: () => void undo(snapshot, toastId),
+                },
               }
             : undefined,
         );

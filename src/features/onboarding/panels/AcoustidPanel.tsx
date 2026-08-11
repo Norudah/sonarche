@@ -87,7 +87,7 @@ export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean;
               className="py-2.5"
             />
           </InputGroup.Root>
-          <Button type="submit" variant="primary" className="shrink-0 rounded-xl px-4" isDisabled={!canSubmit}>
+          <Button type="submit" variant="primary" className="shrink-0 px-4" isDisabled={!canSubmit}>
             {save.isPending && <Loader2 className="size-4 animate-spin" />}
             {save.isPending ? t("steps.acoustid.checking") : t("steps.acoustid.check")}
           </Button>

@@ -470,7 +470,7 @@
     "confirm_one": "Déplacer {{count}} titre",
     "confirm_other": "Déplacer {{count}} titres",
     "confirmEmpty": "Déplacer",
-    "doneToast_one": "{{count}} titre déplacé vers « {{name}} »",
+    "doneToast_one": "Déplacé vers « {{name}} »",
     "doneToast_other": "{{count}} titres déplacés vers « {{name}} »",
     "undo": "Annuler",
     "undoneToast": "Déplacement annulé — chaque morceau est rentré chez lui.",

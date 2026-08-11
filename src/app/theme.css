@@ -421,6 +421,24 @@
   }
 }
 
+/* --- Button shape --------------------------------------------------------- */
+
+/* The app's rule, stated once instead of at every call site.
+   HeroUI ships buttons at `rounded-3xl` — 24px on a 36px control, which is a
+   pill in everything but name, and a phone's alert language rather than this
+   app's. Sonarche's own controls (Récupérer, Importer, Enregistrer, the album
+   hero's row) have always been `rounded-xl`, and half a dozen call sites had
+   already pinned that by hand on a HeroUI button; those patches are gone now
+   that the default agrees with them.
+   In `components` on purpose: Tailwind's utilities layer comes after, so a
+   button that means to be round — the play control, the icon pills — still
+   says `rounded-full` at its call site and still wins. */
+@layer components {
+  .button {
+    border-radius: var(--radius-xl);
+  }
+}
+
 /* --- Toast viewport ------------------------------------------------------- */
 
 /* HeroUI's `bottom end` region is pinned to `bottom-4`, which puts a toast on
@@ -430,6 +448,59 @@
    Imported after @heroui/styles, so this wins at equal specificity. */
 .toast-region-lifted {
   bottom: calc(var(--spacing-player) + 1rem);
+}
+
+/* A toast is the quietest thing the app says: it reports something that already
+   happened, to someone who is looking elsewhere. HeroUI's is built the other
+   way — a 32px corner, 14px text at both levels and a full-height button, which
+   at the bottom of the window read as a dialog that had escaped its backdrop.
+   So: the app's own corner, one step down in type at each level, and a control
+   sized like a chip. The padding does not shrink with the text — the point is
+   that less is said, with more room around it, not that the box gets tighter. */
+@layer components {
+  .toast {
+    border-radius: var(--radius-xl);
+    padding: 0.875rem 1rem;
+    gap: 0.625rem;
+  }
+
+  /* Optically centred on the title's cap height rather than its line box —
+     a 14px glyph beside a 13px line sits a hair low without it. */
+  .toast__indicator {
+    padding: 0;
+    margin-top: 0.0625rem;
+
+    [data-slot="toast-default-icon"],
+    [data-slot="spinner"],
+    [data-slot="spinner-icon"] {
+      width: calc(var(--spacing) * 3.5);
+      height: calc(var(--spacing) * 3.5);
+    }
+  }
+
+  .toast__title {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .toast__description {
+    margin-top: 0.1875rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  /* Chip-sized, and set apart from the sentence it answers: the gap is what
+     keeps a one-word button from reading as the end of the text. */
+  .toast__action {
+    height: calc(var(--spacing) * 7);
+    align-self: center;
+    margin-left: 0.5rem;
+    padding-inline: 0.625rem;
+    font-size: 0.75rem;
+    /* One step under the toast's own corner: HeroUI's radius scale has no
+       `lg`, and `--radius` is its base 8px. */
+    border-radius: var(--radius);
+  }
 }
 
 /* --- Theme preview tiles -------------------------------------------------- */

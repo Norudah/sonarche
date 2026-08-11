@@ -86,10 +86,10 @@ export function EraseDataDialog({
               </TextField>
             </AlertDialog.Body>
             <AlertDialog.Footer>
-              <Button variant="secondary" className="rounded-xl" onPress={close} isDisabled={isErasing}>
+              <Button variant="secondary" onPress={close} isDisabled={isErasing}>
                 {t("library.danger.erase.cancel")}
               </Button>
-              <Button variant="danger" className="rounded-xl" onPress={onConfirm} isDisabled={!armed || isErasing}>
+              <Button variant="danger" onPress={onConfirm} isDisabled={!armed || isErasing}>
                 {isErasing && <Loader2 className="size-4 animate-spin" />}
                 {t("library.danger.erase.confirm")}
               </Button>

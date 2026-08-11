@@ -470,7 +470,7 @@
     "confirm_one": "Move {{count}} track",
     "confirm_other": "Move {{count}} tracks",
     "confirmEmpty": "Move",
-    "doneToast_one": "{{count}} track moved to “{{name}}”",
+    "doneToast_one": "Moved to “{{name}}”",
     "doneToast_other": "{{count}} tracks moved to “{{name}}”",
     "undo": "Undo",
     "undoneToast": "Move undone — every track is back home.",

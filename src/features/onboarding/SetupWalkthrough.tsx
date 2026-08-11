@@ -127,7 +127,7 @@ export function SetupWalkthrough({
                 className="flex flex-col gap-3 border-t border-separator pt-6"
               >
                 <div className="flex items-center gap-4">
-                  <Button variant="primary" onPress={onFinish} isDisabled={isFinishing} className="rounded-xl px-5">
+                  <Button variant="primary" onPress={onFinish} isDisabled={isFinishing} className="px-5">
                     {t("walkthrough.enter", { app: tCommon("appName") })}
                     <ArrowRight className="size-4" />
                   </Button>
