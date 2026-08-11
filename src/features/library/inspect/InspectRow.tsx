@@ -1,9 +1,11 @@
 import { Copy, Pencil, TriangleAlert } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ATTENTION_LABEL } from "@/features/library/albums/attentionLabels";
 import type { LibraryTrack } from "@/features/library/api";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
+import { CellNote } from "@/features/library/inspect/CellNote";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import type { DoorKey } from "@/features/library/triage/queue";
 import { formatDuration } from "@/shared/lib/format";
@@ -11,11 +13,21 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = "px-2 py-1.5 text-[0.75rem] leading-4 text-muted";
 
-/** A field the Metadata page is still asking about. The tint is on the cell and
- * not on the text: at this density a coloured word is one word among two
- * hundred, while a lit cell is a position in a grid — which is what makes a
- * column of holes visible without reading any of it. */
+/** A field that is *empty* and that the Metadata page is still asking about. The
+ * tint is on the cell and not on the text: at this density a coloured word is
+ * one word among two hundred, while a lit cell is a position in a grid — which
+ * is what makes a column of holes visible without reading any of it. */
 const HOLE = "bg-warning-soft font-medium text-warning";
+
+/** A field that is *filled* but whose value the app could not place — today only
+ * a genre the tree does not know.
+ *
+ * Deliberately not `HOLE`. Filling a cell amber says "nothing here", and saying
+ * that over a genre somebody typed on purpose is simply false: the value is
+ * fine, it is our classification that has no room for it. So the value stays
+ * plain and legible, and only a hairline underneath says there is something to
+ * read about it — the tooltip. A remark, not a verdict. */
+const UNPLACED = "underline decoration-warning/70 decoration-dotted underline-offset-[3px]";
 
 interface InspectRowProps {
   track: LibraryTrack;
@@ -55,18 +67,26 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
     return key ? t(key) : undefined;
   };
 
+  /** A marked cell says why, on hover — an unmarked one is handed back
+   * untouched, so the table renders one tooltip per lit cell and not one per
+   * cell on screen. */
+  const noted = (text: string | undefined, content: ReactNode) =>
+    text ? <CellNote text={text}>{content}</CellNote> : content;
+
   const empty = t("metadata.emptyValue");
+  const noGenre = has("genreMissing");
+  const unplacedGenre = has("genreOffTree");
 
   return (
     <tr
       onDoubleClick={rowPlayHandler(onPlay)}
       className="group/row select-none [&>td:first-child]:rounded-l [&>td:last-child]:rounded-r"
     >
-      <td
-        className={`${cell(has("missingTrackNumber"))} w-12 text-right tabular-nums`}
-        title={label("missingTrackNumber")}
-      >
-        {track.track != null && track.track > 0 ? track.track : empty}
+      <td className={`${cell(has("missingTrackNumber"))} w-12 text-right tabular-nums`}>
+        {noted(
+          has("missingTrackNumber") ? label("missingTrackNumber") : undefined,
+          track.track != null && track.track > 0 ? track.track : empty,
+        )}
       </td>
 
       {/* The colour is conditional rather than a second utility: two `text-`
@@ -86,15 +106,19 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         </td>
       )}
 
-      <td className={`${cell(has("missingYear"))} w-14 text-right tabular-nums`} title={label("missingYear")}>
-        {track.year ?? empty}
+      <td className={`${cell(has("missingYear"))} w-14 text-right tabular-nums`}>
+        {noted(has("missingYear") ? label("missingYear") : undefined, track.year ?? empty)}
       </td>
 
-      <td
-        className={`${cell(has("genreMissing") || has("genreOffTree"))} w-[13%]`}
-        title={label(has("genreOffTree") ? "genreOffTree" : "genreMissing")}
-      >
-        <span className="block truncate">{track.genre || empty}</span>
+      {/* Two very different verdicts share this column, and only one of them is
+          a hole — see `UNPLACED`. The genre is interpolated into the off-tree
+          sentence rather than described in the abstract: "unknown to the tree"
+          over a cell reading "Psycho" is a riddle until it names Psycho. */}
+      <td className={`${cell(noGenre)} w-[13%]`}>
+        {noted(
+          noGenre ? label("genreMissing") : unplacedGenre ? t("inspect.offTree", { genre: track.genre }) : undefined,
+          <span className={`block truncate ${unplacedGenre ? UNPLACED : ""}`}>{track.genre || empty}</span>,
+        )}
       </td>
 
       {/* Never lit: a category is optional by nature — most music has no
@@ -108,11 +132,12 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
       </td>
 
       {/* The two verdicts that are about the row rather than about a field: no
-       * cell of theirs to light, so they get their own. */}
+       * cell of theirs to light, so they get their own. Both are pictograms,
+       * which is the case where the name has to be one hover away. */}
       <td className={`${cell()} w-10`}>
         <span className="flex items-center gap-1 text-warning">
-          {has("suspectMatch") && <TriangleAlert className="size-3.5" aria-label={label("suspectMatch")} />}
-          {has("duplicateRecording") && <Copy className="size-3.5" aria-label={label("duplicateRecording")} />}
+          {has("suspectMatch") && noted(label("suspectMatch"), <TriangleAlert className="size-3.5" />)}
+          {has("duplicateRecording") && noted(label("duplicateRecording"), <Copy className="size-3.5" />)}
         </span>
       </td>
 

@@ -155,7 +155,8 @@
   },
   "inspect": {
     "enter": "Inspecter les métadonnées",
-    "exit": "Revenir à l'écoute"
+    "exit": "Revenir à l'écoute",
+    "offTree": "« {{genre}} » est inconnu de l'arbre des genres : rien ne manque, mais ce titre est rangé dans Autre."
   },
   "search": {
     "placeholder": "Rechercher…",

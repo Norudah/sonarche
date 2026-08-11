@@ -155,7 +155,8 @@
   },
   "inspect": {
     "enter": "Inspect metadata",
-    "exit": "Back to listening"
+    "exit": "Back to listening",
+    "offTree": "“{{genre}}” is unknown to the genre tree: nothing is missing, but this track is filed under Other."
   },
   "search": {
     "placeholder": "Search…",
