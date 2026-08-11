@@ -775,14 +775,14 @@ const FAMILY_LABELS: &[&str] = &[
     "Pop",
     "Electronic",
     "Hip-Hop",
+    "R&B, Soul & Funk",
     "Jazz",
     "Blues",
-    "Soul & Funk",
-    "Folk",
-    "Country",
+    "Folk & Country",
+    "Classical",
     "Reggae",
     "Latin",
-    "Classical",
+    "World",
 ];
 
 /// File a genre under a family of the user's choosing, or return it to the

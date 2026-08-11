@@ -255,12 +255,16 @@ describe("isFamilyRootGenre", () => {
   it("blocks the tree's own root spellings", () => {
     // The stored genre can be the root itself, spelled the tree's way.
     expect(isFamilyRootGenre("hip hop")).toBe(true);
-    expect(isFamilyRootGenre("Soul & Funk")).toBe(true);
+    expect(isFamilyRootGenre("R&B")).toBe(true);
   });
 
   it("lets every ordinary genre through", () => {
     expect(isFamilyRootGenre("Dream Pop")).toBe(false);
     expect(isFamilyRootGenre("Grunge")).toBe(false);
+    // Since the Folk & Country fusion these are ordinary genres again,
+    // movable like any other.
+    expect(isFamilyRootGenre("Folk")).toBe(false);
+    expect(isFamilyRootGenre("Country")).toBe(false);
   });
 });
 

@@ -180,6 +180,18 @@ class RobustnessTest(OverridesTestCase):
         os.remove(os.path.join(self._dir.name, OVERRIDES_NAME))
         self.assertIsNone(bucket_for("hyperpop"))
 
+    def test_legacy_family_roots_resolve_to_their_heirs(self):
+        # Placements written before the 2026-08 family audit name roots that
+        # no longer exist; they must keep working without rewriting the file.
+        payload = {
+            "version": 1,
+            "families": {"quiet storm": "soul & funk", "americana rock": "country"},
+        }
+        with open(os.path.join(self._dir.name, OVERRIDES_NAME), "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+        self.assertEqual(bucket_for("quiet storm"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("americana rock"), "Folk & Country")
+
     def test_saved_file_is_versioned_json(self):
         set_family("hyperpop", "Electronic")
         with open(os.path.join(self._dir.name, OVERRIDES_NAME), encoding="utf-8") as f:

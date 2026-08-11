@@ -2,8 +2,8 @@
 
 genres-tree.yaml is the base: the stored genre is the most specific node, the
 browse bucket is the family root above it. Only the 13 family roots are browse
-families; genres under the other roots (african, asian, world, ...) resolve to
-None and the front shows them under Other.
+families; genres under the other roots (avant-garde, comedy, easy listening,
+kids music, soundtrack) resolve to None and the front shows them under Other.
 
 The user's own placements (genre_overrides) sit on top and win: a genre the
 user filed somewhere buckets there, whatever the base tree says. lastgenre
@@ -18,20 +18,32 @@ TREE_PATH = os.path.join(os.path.dirname(__file__), "genres-tree.yaml")
 WHITELIST_PATH = os.path.join(os.path.dirname(__file__), "genres-whitelist.txt")
 
 # Family root node -> display label. Roots outside this map are not families.
+# The set follows the 2026-08 audit (Discogs/AllMusic/RYM cross-check): R&B
+# stopped hiding under Blues, Folk and Country merged, and World exists so the
+# african/asian sections stop rotting in Other.
 _FAMILIES = {
     "metal": "Metal",
     "rock": "Rock",
     "pop": "Pop",
     "electronic": "Electronic",
     "hip hop": "Hip-Hop",
+    "r&b": "R&B, Soul & Funk",
     "jazz": "Jazz",
     "blues": "Blues",
-    "soul & funk": "Soul & Funk",
-    "folk": "Folk",
-    "country": "Country",
+    "folk & country": "Folk & Country",
+    "classical": "Classical",
     "reggae": "Reggae",
     "latin": "Latin",
-    "classical": "Classical",
+    "world": "World",
+}
+
+# Family roots that existed before the audit, still alive in a user's
+# genre-overrides.json. Resolved on read, never rewritten: the file is the
+# user's, and mapping beats migrating.
+LEGACY_ROOTS = {
+    "soul & funk": "r&b",
+    "folk": "folk & country",
+    "country": "folk & country",
 }
 
 

@@ -121,9 +121,9 @@
   --family-hip-hop: oklch(0.55 0.1 322);
   --family-jazz: oklch(0.55 0.1 76);
   --family-blues: oklch(0.55 0.1 240);
-  --family-soul-funk: oklch(0.55 0.1 54);
-  --family-folk: oklch(0.55 0.1 126);
-  --family-country: oklch(0.55 0.1 100);
+  --family-rnb: oklch(0.55 0.1 54);
+  --family-folk-country: oklch(0.55 0.1 126);
+  --family-world: oklch(0.55 0.1 100);
   --family-reggae: oklch(0.55 0.1 152);
   --family-latin: oklch(0.55 0.1 12);
   --family-classical: oklch(0.55 0.1 300);
@@ -313,9 +313,9 @@
   --family-hip-hop: oklch(0.74 0.095 322);
   --family-jazz: oklch(0.74 0.095 76);
   --family-blues: oklch(0.74 0.095 240);
-  --family-soul-funk: oklch(0.74 0.095 54);
-  --family-folk: oklch(0.74 0.095 126);
-  --family-country: oklch(0.74 0.095 100);
+  --family-rnb: oklch(0.74 0.095 54);
+  --family-folk-country: oklch(0.74 0.095 126);
+  --family-world: oklch(0.74 0.095 100);
   --family-reggae: oklch(0.74 0.095 152);
   --family-latin: oklch(0.74 0.095 12);
   --family-classical: oklch(0.74 0.095 300);

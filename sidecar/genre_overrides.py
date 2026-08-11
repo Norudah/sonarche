@@ -73,10 +73,17 @@ def load() -> dict[str, str]:
         _cache, _cache_stamp = {}, None
         return _cache
     try:
+        import genre_tree
+
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         families = data.get("families") or {}
-        _cache = {str(k).lower(): str(v).lower() for k, v in families.items()}
+        # Legacy family roots (pre-audit placements) resolve to their heirs on
+        # read; the file itself is left as the user wrote it.
+        _cache = {
+            str(k).lower(): genre_tree.LEGACY_ROOTS.get(str(v).lower(), str(v).lower())
+            for k, v in families.items()
+        }
     except (OSError, ValueError) as exc:
         # A broken file must not take the whole read path down with it; the
         # library still browses, just without the user's placements.

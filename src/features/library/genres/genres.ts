@@ -17,21 +17,21 @@ export const FAMILY_KEYS = [
   "Pop",
   "Electronic",
   "Hip-Hop",
+  "R&B, Soul & Funk",
   "Jazz",
   "Blues",
-  "Soul & Funk",
-  "Folk",
-  "Country",
+  "Folk & Country",
+  "Classical",
   "Reggae",
   "Latin",
-  "Classical",
+  "World",
 ] as const;
 
 /** A genre string that *is* a family root cannot be refiled — moving it would
  * fold one browse shelf into another, and the sidecar refuses it. Both the
- * tree's root spelling ("hip hop") and the display label ("Hip-Hop") count:
- * either can show up as a stored genre. */
-const FAMILY_ROOT_GENRES = new Set([...FAMILY_KEYS.map((key) => key.toLowerCase()), "hip hop", "soul and funk"]);
+ * tree's root spelling ("hip hop", "r&b") and the display label ("Hip-Hop")
+ * count: either can show up as a stored genre. */
+const FAMILY_ROOT_GENRES = new Set([...FAMILY_KEYS.map((key) => key.toLowerCase()), "hip hop", "r&b"]);
 
 export function isFamilyRootGenre(genre: string): boolean {
   return FAMILY_ROOT_GENRES.has(genre.trim().toLowerCase());
