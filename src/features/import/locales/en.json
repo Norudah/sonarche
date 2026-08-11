@@ -94,7 +94,7 @@
     "clean": "Everything is filled in: year, genre, artwork, tracklist.",
     "withoutYear": "Missing year",
     "withoutGenre": "Missing genre",
-    "offTree": "Off-tree genre",
+    "offTree": "Genre without a family",
     "albumsWithoutArt": "Albums with no artwork",
     "albumsWithGaps": "Gapped tracklists",
     "alignHint": "These albums arrive without a MusicBrainz identity. The alignment can identify them and fill the gaps — year, genre and covers included.",

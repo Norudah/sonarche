@@ -142,16 +142,3 @@ export const filterArtists = createTextFilter<Artist>((artist) =>
 export function findArtist(artists: Artist[], name: string): Artist | null {
   return artists.find((artist) => artist.name === name) ?? null;
 }
-
-/**
- * The letter the avatar shows while the artist has no picture.
- *
- * First *grapheme*, not first UTF-16 unit: "Ólafur" must give "Ó" and an
- * emoji-fronted alias must not shear in half. Digits and symbols pass through
- * as they are ("65daysofstatic" → "6"); a blank name gets a music note rather
- * than an empty disc.
- */
-export function artistInitial(name: string): string {
-  const first = [...name.trim()][0];
-  return first ? first.toLocaleUpperCase() : "♪";
-}

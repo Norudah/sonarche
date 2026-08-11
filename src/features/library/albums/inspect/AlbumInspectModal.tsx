@@ -310,7 +310,6 @@ function InspectBody({
         </button>
         {artist && (
           <ArtistImageButton
-            name={artist.name}
             imageUrl={artistImageUrl}
             label={t("artists.image.title")}
             onClick={() => setIsArtistOpen(true)}

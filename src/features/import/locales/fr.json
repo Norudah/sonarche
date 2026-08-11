@@ -94,7 +94,7 @@
     "clean": "Tout est renseigné : année, genre, pochette, tracklist.",
     "withoutYear": "Année manquante",
     "withoutGenre": "Genre manquant",
-    "offTree": "Genre hors arbre",
+    "offTree": "Genre sans famille",
     "albumsWithoutArt": "Albums sans pochette",
     "albumsWithGaps": "Tracklists à trous",
     "alignHint": "Ces albums arrivent sans identité MusicBrainz. L'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",

@@ -43,7 +43,6 @@ export function ArtistCard({ artist, style, onPlay }: ArtistCardProps) {
         className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <ArtistAvatar
-          name={artist.name}
           imageUrl={imageUrl}
           className="aspect-square w-full shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg"
         />

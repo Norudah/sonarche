@@ -101,7 +101,7 @@
       "missingYear": "Missing year",
       "missingTrackNumber": "Missing track number",
       "genreMissing": "Missing genre",
-      "genreOffTree": "Genre off the tree"
+      "genreOffTree": "Genre without a family"
     }
   },
   "artists": {
@@ -127,7 +127,7 @@
       "current": "Current",
       "next": "New",
       "hasCurrent": "The image you chose for this artist.",
-      "noCurrent": "No image yet — the initial stands in until you pick one.",
+      "noCurrent": "No image yet — a mic stands in until you pick one.",
       "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
       "unreadable": "This image can't be read.",
       "failed": "The change failed — try again in a moment.",
@@ -167,7 +167,7 @@
   "inspect": {
     "enter": "Inspect metadata",
     "exit": "Back to listening",
-    "offTree": "“{{genre}}” is unknown to the genre tree: nothing is missing, but this track falls into the Other family."
+    "offTree": "“{{genre}}” belongs to no family: nothing is missing, but this track falls under Other."
   },
   "search": {
     "placeholder": "Search…",
@@ -191,7 +191,7 @@
   "triage": {
     "missingYear": "Missing year",
     "genreMissing": "Missing genre",
-    "genreOffTree": "Genre outside the tree",
+    "genreOffTree": "Genre without a family",
     "missingArtwork": "Missing artwork",
     "tracklistGaps": "Tracks missing from the album",
     "clearFilter": "Remove the “{{filter}}” filter",

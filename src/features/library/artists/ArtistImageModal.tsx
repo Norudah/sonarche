@@ -124,7 +124,7 @@ export function ArtistImageModal({
         currentTitle={t("artists.image.current")}
         current={
           <div style={{ width: STAGE_PX, height: STAGE_PX }}>
-            <ArtistAvatar name={artist.name} imageUrl={imageUrl} className="size-full ring-1 ring-separator/60" />
+            <ArtistAvatar imageUrl={imageUrl} className="size-full ring-1 ring-separator/60" />
           </div>
         }
         currentInfo={<p>{imageUrl ? t("artists.image.hasCurrent") : t("artists.image.noCurrent")}</p>}

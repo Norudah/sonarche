@@ -101,7 +101,7 @@
       "missingYear": "Année manquante",
       "missingTrackNumber": "Numéro de piste manquant",
       "genreMissing": "Genre manquant",
-      "genreOffTree": "Genre hors arbre"
+      "genreOffTree": "Genre sans famille"
     }
   },
   "artists": {
@@ -127,7 +127,7 @@
       "current": "Actuelle",
       "next": "Nouvelle",
       "hasCurrent": "L'image que tu as choisie pour cet artiste.",
-      "noCurrent": "Pas encore d'image — l'initiale fait office en attendant la tienne.",
+      "noCurrent": "Pas encore d'image — un micro fait office en attendant la tienne.",
       "drop": "Glisse ou colle ({{chord}}) une image ici, ou clique pour choisir un fichier",
       "unreadable": "Cette image ne peut pas être lue.",
       "failed": "Le changement a échoué — réessaie dans un instant.",
@@ -167,7 +167,7 @@
   "inspect": {
     "enter": "Inspecter les métadonnées",
     "exit": "Revenir à l'écoute",
-    "offTree": "« {{genre}} » est inconnu de l'arbre des genres : rien ne manque, mais ce titre tombe dans la famille Autres."
+    "offTree": "« {{genre}} » n'appartient à aucune famille : rien ne manque, mais ce titre tombe dans Autres."
   },
   "search": {
     "placeholder": "Rechercher…",
@@ -191,7 +191,7 @@
   "triage": {
     "missingYear": "Année manquante",
     "genreMissing": "Genre manquant",
-    "genreOffTree": "Genre hors arbre",
+    "genreOffTree": "Genre sans famille",
     "missingArtwork": "Pochette absente",
     "tracklistGaps": "Pistes manquantes dans l’album",
     "clearFilter": "Retirer le filtre « {{filter}} »",
