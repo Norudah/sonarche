@@ -37,6 +37,7 @@ def _handlers():
     import library_align
     import library_import
     import lyrics
+    import move_tracks
     import probe
     import remux
     import services
@@ -57,6 +58,7 @@ def _handlers():
         "library_remux": remux.handle,
         "library_remove": library.remove,
         "library_update": library.update,
+        "library_move_tracks": move_tracks.handle,
         "album_kind_set": album_kind.handle,
         "accepted_set": accepted.handle,
         "cover_set": cover_set.handle,

@@ -648,6 +648,88 @@ pub async fn update_tracks(
 /// asked to write whatever string arrived.
 const ALBUM_KINDS: &[&str] = &["album", "collection"];
 
+/// A brand-new record to gather the moved tracks into.
+#[derive(Deserialize)]
+pub struct NewAlbum {
+    album: String,
+    albumartist: String,
+}
+
+/// One move request, whole: what goes where, as what, numbered how.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveSpec {
+    /// Order matters: it is the numbering order when `renumber` is on.
+    item_ids: Vec<i64>,
+    target_album_id: Option<i64>,
+    new_album: Option<NewAlbum>,
+    kind: Option<String>,
+    #[serde(default)]
+    renumber: bool,
+}
+
+/// Refile tracks onto another record — existing (`target_album_id`) or created
+/// on the spot (`new_album`). `kind` optionally declares the target's nature in
+/// the same pass; `renumber` stacks the arrivals after the target's own track
+/// numbers.
+#[tauri::command]
+pub async fn move_tracks(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    spec: MoveSpec,
+) -> AppResult<Value> {
+    if spec.item_ids.is_empty() {
+        return Err(AppError::InvalidInput("no tracks to move".into()));
+    }
+    if spec.target_album_id.is_some() == spec.new_album.is_some() {
+        return Err(AppError::InvalidInput(
+            "need exactly one of target_album_id and new_album".into(),
+        ));
+    }
+    let new_album = spec
+        .new_album
+        .map(|target| {
+            let album = target.album.trim().to_string();
+            let albumartist = target.albumartist.trim().to_string();
+            if album.is_empty() || albumartist.is_empty() {
+                return Err(AppError::InvalidInput(
+                    "a new album needs a title and an artist".into(),
+                ));
+            }
+            Ok(json!({ "album": album, "albumartist": albumartist }))
+        })
+        .transpose()?;
+    if let Some(kind) = spec.kind.as_deref() {
+        if !ALBUM_KINDS.contains(&kind) {
+            return Err(AppError::InvalidInput(format!(
+                "unknown album kind: {kind}"
+            )));
+        }
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    let result = state
+        .request(
+            &app,
+            "library_move_tracks",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "item_ids": spec.item_ids,
+                "target_album_id": spec.target_album_id,
+                "new_album": new_album,
+                "kind": spec.kind,
+                "renumber": spec.renumber,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await?;
+    // Every moved file is now a dead path in any M3U line naming it.
+    crate::playlists_mirror::sync(&app, &jobs).await;
+    Ok(result)
+}
+
 /// Say whether these albums are releases or someone's own gatherings.
 ///
 /// Takes a list of beets album ids because the front groups by (artist, title):
