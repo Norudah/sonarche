@@ -100,12 +100,10 @@
   --danger: oklch(0.545 0.145 25);
   --danger-foreground: var(--snow);
 
-  /* Artist genre avatar — the plate sinks with the paper, or it would end up
-     lighter than the surface carrying it; the picked-out detail leaves
-     graphite for the axis. */
+  /* Artist initial avatar — the plate sinks with the paper, or it would end
+     up lighter than the surface carrying it. */
   --artist-avatar-bg: oklch(0.948 0.02 279);
   --artist-avatar-ink: var(--accent);
-  --artist-avatar-accent: oklch(0.44 0.025 279);
 
   /* Genre family identity tones — one fixed colour per browse family (the 13
      roots of the sidecar's genre tree; a closed, curated set, which is what
@@ -298,7 +296,6 @@
 
   --artist-avatar-bg: oklch(0.3 0.03 279);
   --artist-avatar-ink: oklch(0.82 0.09 279);
-  --artist-avatar-accent: oklch(0.68 0.015 279);
 
   /* One chroma and one value for all twenty, the hue alone carrying identity.
      At the 4–22% these are actually used at, a chroma difference does not read
@@ -393,10 +390,9 @@
 
 /* --- Artist genre avatar -------------------------------------------------- */
 
-/* A line-art genre motif on a coloured disc, standing in for the artist photo
-   we deliberately don't fetch (see genreArt.tsx). Fully token-driven so the
-   whole set re-tints from three variables (defined per theme above): `ink` is
-   the primary stroke via currentColor, `accent` the one picked-out detail. */
+/* The artist's initial on a coloured disc, standing in for the photo we
+   deliberately don't fetch — a slot waiting for the user's own picture (the
+   image modal makes the invitation explicit). Token-driven per theme above. */
 .artist-avatar {
   background: var(--artist-avatar-bg);
   color: var(--artist-avatar-ink);

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { groupAlbums } from "@/features/library/albums/albums";
 import {
   appearancesOf,
+  artistInitial,
   filterArtists,
   findArtist,
   groupArtists,
@@ -159,5 +160,26 @@ describe("filterArtists", () => {
 
   it("requires every term to match", () => {
     expect(filterArtists(artists, "daft kid")).toEqual([]);
+  });
+});
+
+describe("artistInitial", () => {
+  it("takes the first grapheme, uppercased", () => {
+    expect(artistInitial("daft punk")).toBe("D");
+    expect(artistInitial("Ólafur Arnalds")).toBe("Ó");
+    expect(artistInitial("  Metallica")).toBe("M");
+  });
+
+  it("passes digits and symbols through", () => {
+    expect(artistInitial("65daysofstatic")).toBe("6");
+    expect(artistInitial("!!!")).toBe("!");
+  });
+
+  it("never shears an astral character in half", () => {
+    expect(artistInitial("𝕏 Ambassadors")).toBe("𝕏");
+  });
+
+  it("gives a blank name a note rather than an empty disc", () => {
+    expect(artistInitial("   ")).toBe("♪");
   });
 });

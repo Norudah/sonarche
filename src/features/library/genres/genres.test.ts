@@ -14,7 +14,6 @@ import {
   groupFamilies,
   isFamilyRootGenre,
   listGenres,
-  sortFamilies,
 } from "@/features/library/genres/genres";
 import { toneOf } from "@/features/library/genres/tone";
 import { track } from "@/features/library/testFixtures";
@@ -243,54 +242,6 @@ describe("albumsWithGenre", () => {
     expect(albumsWithGenre(rock, "Art Rock").map((a) => a.title)).toEqual(["OK"]);
     expect(albumsWithGenre(rock, "Grunge").map((a) => a.title)).toEqual(["OK", "Bleach"]);
     expect(albumsWithGenre(rock, null)).toHaveLength(2);
-  });
-});
-
-describe("sortFamilies", () => {
-  // "Autres" and the untagged pile are answers to a question nobody asked, so
-  // they must not float up whichever way the shelf is ordered.
-  const shelf = () =>
-    familiesOf([
-      track({ id: 1, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
-      track({ id: 2, album: "A", albumArtist: "X", genre: "Grunge", genreBucket: "Rock" }),
-      track({ id: 3, album: "B", albumArtist: "Y", genre: "Disco", genreBucket: "Electronic" }),
-      track({ id: 4, album: "C", albumArtist: "Z", genre: "Chiptune" }),
-      track({ id: 5, album: "D", albumArtist: "W", genre: null }),
-    ]);
-
-  const asIs = (key: string) => key;
-
-  it("orders by track count, largest first", () => {
-    expect(sortFamilies(shelf(), "size", asIs).map((family) => family.key)).toEqual([
-      "Rock",
-      "Electronic",
-      FAMILY_OTHER,
-      FAMILY_NONE,
-    ]);
-  });
-
-  it("orders by displayed label, not by stored key", () => {
-    // "Electronic" stored, "Zebre" shown: sorting on the key would put it first.
-    const labelOf = (key: string) => (key === "Electronic" ? "Zebre" : key);
-    expect(sortFamilies(shelf(), "name", labelOf).map((family) => family.key)).toEqual([
-      "Rock",
-      "Electronic",
-      FAMILY_OTHER,
-      FAMILY_NONE,
-    ]);
-  });
-
-  it("sinks the sentinels even when sorting A to Z", () => {
-    // Both sentinel keys start with an underscore, which sorts before letters.
-    const keys = sortFamilies(shelf(), "name", asIs).map((family) => family.key);
-    expect(keys.slice(-2)).toEqual([FAMILY_OTHER, FAMILY_NONE]);
-  });
-
-  it("leaves the input array alone", () => {
-    const families = shelf();
-    const before = families.map((family) => family.key);
-    sortFamilies(families, "name", asIs);
-    expect(families.map((family) => family.key)).toEqual(before);
   });
 });
 

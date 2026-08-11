@@ -50,10 +50,6 @@
     "moreSubs_other": "+{{count}} autres",
     "albums": "Albums",
     "artists": "Artistes",
-    "sort": {
-      "size": "Taille",
-      "name": "Nom"
-    },
     "noAlbums": "Aucun album entier ne relève de ce genre — ses titres sont minoritaires sur des albums classés ailleurs.",
     "noResults": "Aucun genre ne correspond à « {{query}} ».",
     "recompute": "Recalculer les genres",
@@ -131,7 +127,7 @@
       "current": "Actuelle",
       "next": "Nouvelle",
       "hasCurrent": "L'image que tu as choisie pour cet artiste.",
-      "noCurrent": "Pas encore d'image — un motif de genre fait office.",
+      "noCurrent": "Pas encore d'image — l'initiale fait office en attendant la tienne.",
       "drop": "Glisse ou colle ({{chord}}) une image ici, ou clique pour choisir un fichier",
       "unreadable": "Cette image ne peut pas être lue.",
       "failed": "Le changement a échoué — réessaie dans un instant.",

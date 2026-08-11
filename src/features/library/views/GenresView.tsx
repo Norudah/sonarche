@@ -6,15 +6,7 @@ import { useTranslation } from "react-i18next";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { ghostFamilies } from "@/features/library/genres/arrange";
 import { FamilyList } from "@/features/library/genres/FamilyList";
-import {
-  countGenres,
-  FAMILY_NONE,
-  FAMILY_SORTS,
-  filterFamilies,
-  groupFamilies,
-  sortFamilies,
-  type FamilySort,
-} from "@/features/library/genres/genres";
+import { countGenres, FAMILY_NONE, filterFamilies, groupFamilies } from "@/features/library/genres/genres";
 import { GenresHeader } from "@/features/library/genres/GenresHeader";
 import { toneOf } from "@/features/library/genres/tone";
 import { useChipDrag } from "@/features/library/genres/useChipDrag";
@@ -23,7 +15,6 @@ import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
-import { SortSelect } from "@/features/library/SortSelect";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -53,7 +44,6 @@ export function GenresView() {
   const library = useLibrary();
   const labelOf = useFamilyLabel();
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<FamilySort>("size");
   const [arranging, setArranging] = useState(false);
 
   const overrides = useGenreOverrides();
@@ -74,16 +64,15 @@ export function GenresView() {
   // page turned browsing into a chore, and the Metadata queue is where fixing
   // belongs. It survives as one figure in the header's count line.
   //
+  // No sort control: size order — groupFamilies' own, sentinels sunk — *is*
+  // the page (the shelf shows what the library is mostly made of), and the
+  // A→Z variant only ever existed to dress the bar like the other shelves'.
+  //
   // Arrange mode ignores the query on purpose: a drop target hidden by a
   // stale search is a gesture that dies mid-air.
   const visibleFamilies = useMemo(
-    () =>
-      sortFamilies(
-        filterFamilies(families, arranging ? "" : query).filter((family) => family.key !== FAMILY_NONE),
-        sort,
-        labelOf,
-      ),
-    [families, query, sort, labelOf, arranging],
+    () => filterFamilies(families, arranging ? "" : query).filter((family) => family.key !== FAMILY_NONE),
+    [families, query, arranging],
   );
 
   const unclassified = families.find((family) => family.key === FAMILY_NONE)?.trackCount ?? 0;
@@ -127,12 +116,6 @@ export function GenresView() {
           shown={visibleFamilies.length}
           total={families.filter((family) => family.key !== FAMILY_NONE).length}
         >
-          <SortSelect
-            options={FAMILY_SORTS}
-            value={sort}
-            onChange={setSort}
-            labelOf={(option) => t(`genres.sort.${option}`)}
-          />
           {families.length > 0 && (
             <button type="button" onClick={() => setArranging(true)} className={BAR_BUTTON}>
               <FolderInput className="size-4 text-muted" />
@@ -168,7 +151,7 @@ export function GenresView() {
       {visibleFamilies.length > 0 && (
         <FamilyList
           families={visibleFamilies}
-          animationKey={arranging ? "arrange" : `${query}:${sort}`}
+          animationKey={arranging ? "arrange" : query}
           labelOf={labelOf}
           arrange={
             arranging
@@ -194,8 +177,11 @@ export function GenresView() {
           className="pointer-events-none fixed top-0 left-0 z-50"
           style={{ transform: `translate(${drag.x}px, ${drag.y}px)` }}
         >
+          {/* Centred on the pointer, not floating above it: the hand should
+           * read as *holding* the chip, the way a lifted iOS icon stays under
+           * the finger. The slight tilt is what says "in transit". */}
           <span
-            className="inline-block -translate-x-1/2 -translate-y-[130%] rotate-2 rounded-full px-2.5 py-1 text-[0.75rem] text-foreground shadow-lg"
+            className="inline-block -translate-x-1/2 -translate-y-1/2 rotate-3 scale-105 rounded-full px-2.5 py-1 text-[0.75rem] text-foreground shadow-lg"
             style={{
               background: `color-mix(in oklab, ${toneOf(drag.over ?? drag.from)} 30%, var(--color-surface))`,
             }}

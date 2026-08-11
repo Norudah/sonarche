@@ -50,10 +50,6 @@
     "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
-    "sort": {
-      "size": "Size",
-      "name": "Name"
-    },
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on albums filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
@@ -131,7 +127,7 @@
       "current": "Current",
       "next": "New",
       "hasCurrent": "The image you chose for this artist.",
-      "noCurrent": "No image yet — a genre motif stands in.",
+      "noCurrent": "No image yet — the initial stands in until you pick one.",
       "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
       "unreadable": "This image can't be read.",
       "failed": "The change failed — try again in a moment.",

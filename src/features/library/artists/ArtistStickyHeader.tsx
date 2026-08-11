@@ -35,7 +35,7 @@ export function ArtistStickyHeader({ artist, imageUrl, isVisible, onPlay }: Arti
         (isVisible ? "" : "pointer-events-none")
       }
     >
-      <ArtistAvatar family={artist.family} imageUrl={imageUrl} className="size-9 shrink-0" />
+      <ArtistAvatar name={artist.name} imageUrl={imageUrl} className="size-9 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{artist.name}</p>
         <p className="truncate text-[0.6875rem] text-muted">{t("albumCount", { count: artist.albums.length })}</p>

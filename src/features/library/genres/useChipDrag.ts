@@ -79,6 +79,13 @@ export function useChipDrag(onDrop: (genre: string, family: string, from: string
       let current: ChipDrag = { genre, from, over: null, x: lastX, y: lastY };
       setDrag(current);
 
+      // The chip's own `active:cursor-grabbing` only rules while the pointer
+      // is over the chip — under capture the browser keeps styling the cursor
+      // from whatever is hovered. The gesture owns the cursor for its whole
+      // life, so the hand never flickers back to an arrow mid-drag.
+      const previousCursor = document.body.style.cursor;
+      document.body.style.cursor = "grabbing";
+
       const moveGhost = () => {
         const ghost = ghostRef.current;
         if (ghost) ghost.style.transform = `translate(${lastX}px, ${lastY}px)`;
@@ -123,6 +130,7 @@ export function useChipDrag(onDrop: (genre: string, family: string, from: string
         chip.removeEventListener("pointerup", onUp);
         chip.removeEventListener("pointercancel", onCancel);
         if (scrollFrame != null) cancelAnimationFrame(scrollFrame);
+        document.body.style.cursor = previousCursor;
         setDrag(null);
         if (commit && current.over != null) onDrop(current.genre, current.over, current.from);
       };

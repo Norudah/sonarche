@@ -172,32 +172,6 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
     .sort((a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key));
 }
 
-export const FAMILY_SORTS = ["size", "name"] as const;
-export type FamilySort = (typeof FAMILY_SORTS)[number];
-
-/**
- * Reorders the shelf without ever letting a sentinel climb it.
- *
- * `rankOf` stays the primary key in both directions: "Autres" and the untagged
- * pile are answers to a question nobody asked, and an A→Z pass that floated
- * "Autres" to the top would put the least meaningful card first.
- *
- * Size is the default because it is the page's own reading — the shelf shows
- * what the library is mostly made of. Name is for the other job, finding a
- * family you already have in mind, and it sorts on the *displayed* label: the
- * keys are stored English, so ordering by key would put "Jeux vidéo" under J in
- * one language and V in another.
- */
-export function sortFamilies(families: Family[], sort: FamilySort, labelOf: (key: string) => string): Family[] {
-  const sorted = [...families];
-  if (sort === "name") {
-    return sorted.sort((a, b) => rankOf(a.key) - rankOf(b.key) || labelOf(a.key).localeCompare(labelOf(b.key)));
-  }
-  return sorted.sort(
-    (a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key),
-  );
-}
-
 /**
  * A specific genre, as its own browsable object rather than as a filter on its
  * family.

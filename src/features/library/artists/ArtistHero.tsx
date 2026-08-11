@@ -78,7 +78,7 @@ export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEdit, action
            * "Modifier", below, carries it now: the app has a single word for
            * "this opens a form", and it is that one. */}
           <div className="relative size-48 shrink-0 overflow-hidden rounded-full glow-accent-deep">
-            <ArtistAvatar family={artist.family} imageUrl={imageUrl} className="size-full" />
+            <ArtistAvatar name={artist.name} imageUrl={imageUrl} className="size-full" />
           </div>
 
           {/* Capped rather than stretched: the album's text column is bounded on
