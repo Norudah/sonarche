@@ -440,11 +440,29 @@ pub fn get_job(conn: &Connection, id: &str) -> AppResult<Option<Job>> {
     Ok(job)
 }
 
-/// All jobs, newest first, tracks attached. One extra query per job to gather
-/// tracks — history is human-scale; paginating this read is deferred backlog.
-pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
-    let mut stmt = conn.prepare("SELECT * FROM jobs ORDER BY created_at DESC")?;
-    let rows = stmt.query_map([], |row| Ok(row_to_job(row)))?;
+/// Terminal statuses as SQL — the archive; everything else is the live queue.
+/// One list, shared by every read that carves the two apart.
+const TERMINAL_STATUSES: &str = "('done', 'failed', 'cancelled')";
+
+/// How many terminal jobs ride along with the live queue: enough for the
+/// Downloads page's "recent" strip with slack, small enough that launch never
+/// pays for months of history. The archive is `list_jobs_page`'s business.
+pub const LIVE_TERMINAL_WINDOW: u32 = 50;
+
+/// The live window, newest first, tracks attached: every job still moving —
+/// however old, a retried failure must not vanish — plus the most recent
+/// terminal ones. The one extra query per job to gather tracks is bounded by
+/// the window.
+pub fn list_live_jobs(conn: &Connection, recent_terminal: u32) -> AppResult<Vec<Job>> {
+    let sql = format!(
+        "SELECT * FROM jobs
+         WHERE status NOT IN {TERMINAL_STATUSES}
+            OR id IN (SELECT id FROM jobs WHERE status IN {TERMINAL_STATUSES}
+                      ORDER BY created_at DESC LIMIT ?1)
+         ORDER BY created_at DESC"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params![recent_terminal], |row| Ok(row_to_job(row)))?;
     let mut jobs = Vec::new();
     for row in rows {
         jobs.push(row??);
@@ -453,6 +471,42 @@ pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
         job.tracks = load_tracks(conn, &job.id)?;
     }
     Ok(jobs)
+}
+
+/// One page of the whole archive — every job whatever its status, newest
+/// first — plus the totals the history page paginates and counts on.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobsPage {
+    pub jobs: Vec<Job>,
+    /// Every job in the store, live included — what the page count divides.
+    pub total: u64,
+    /// Terminal jobs only — what "clear history" would sweep.
+    pub terminal_total: u64,
+}
+
+pub fn list_jobs_page(conn: &Connection, offset: u64, limit: u64) -> AppResult<JobsPage> {
+    let mut stmt =
+        conn.prepare("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?1 OFFSET ?2")?;
+    let rows = stmt.query_map(params![limit, offset], |row| Ok(row_to_job(row)))?;
+    let mut jobs = Vec::new();
+    for row in rows {
+        jobs.push(row??);
+    }
+    for job in &mut jobs {
+        job.tracks = load_tracks(conn, &job.id)?;
+    }
+    let total = conn.query_row("SELECT COUNT(*) FROM jobs", [], |row| row.get::<_, i64>(0))? as u64;
+    let terminal_total = conn.query_row(
+        &format!("SELECT COUNT(*) FROM jobs WHERE status IN {TERMINAL_STATUSES}"),
+        [],
+        |row| row.get::<_, i64>(0),
+    )? as u64;
+    Ok(JobsPage {
+        jobs,
+        total,
+        terminal_total,
+    })
 }
 
 pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> {
@@ -847,7 +901,10 @@ mod tests {
         });
         upsert_job(&conn, &job).unwrap();
 
-        let read = list_jobs(&conn).unwrap().pop().unwrap();
+        let read = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
+            .unwrap()
+            .pop()
+            .unwrap();
         let forced = read.forced_album.expect("forced album lost in the store");
         assert_eq!(forced.title, "Inception");
         assert_eq!(forced.artist.as_deref(), Some("Hans Zimmer"));
@@ -858,7 +915,7 @@ mod tests {
         let conn = mem();
         upsert_job(&conn, &single("plain", JobStatus::Queued)).unwrap();
 
-        assert!(list_jobs(&conn)
+        assert!(list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
             .unwrap()
             .pop()
             .unwrap()
@@ -1036,7 +1093,7 @@ mod tests {
 
         clear_history(&conn).unwrap();
 
-        let remaining: Vec<String> = list_jobs(&conn)
+        let remaining: Vec<String> = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
             .unwrap()
             .into_iter()
             .map(|j| j.id)
@@ -1058,12 +1115,78 @@ mod tests {
         upsert_job(&conn, &older).unwrap();
         upsert_job(&conn, &newer).unwrap();
 
-        let ids: Vec<String> = list_jobs(&conn)
+        let ids: Vec<String> = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
             .unwrap()
             .into_iter()
             .map(|j| j.id)
             .collect();
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+
+    /// The live window keeps every moving job — a retried failure can be the
+    /// oldest row in the store — while only the newest terminal ones ride.
+    #[test]
+    fn live_window_keeps_old_active_jobs_and_drops_old_terminal_ones() {
+        let conn = mem();
+        let mut ancient_active = single("ancient-active", JobStatus::Queued);
+        ancient_active.created_at = 1;
+        upsert_job(&conn, &ancient_active).unwrap();
+        for i in 0..4u64 {
+            let mut done = single(&format!("done-{i}"), JobStatus::Done);
+            done.created_at = 100 + i;
+            upsert_job(&conn, &done).unwrap();
+        }
+
+        let ids: Vec<String> = list_live_jobs(&conn, 2)
+            .unwrap()
+            .into_iter()
+            .map(|j| j.id)
+            .collect();
+        // The two newest terminal jobs, then the ancient live one — never lost.
+        assert_eq!(
+            ids,
+            vec![
+                "done-3".to_string(),
+                "done-2".to_string(),
+                "ancient-active".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn jobs_page_slices_newest_first_and_reports_totals() {
+        let conn = mem();
+        for i in 0..7u64 {
+            let status = if i == 0 {
+                JobStatus::Queued
+            } else {
+                JobStatus::Done
+            };
+            let mut job = single(&format!("job-{i}"), status);
+            job.created_at = 100 + i;
+            upsert_job(&conn, &job).unwrap();
+        }
+
+        let first = list_jobs_page(&conn, 0, 3).unwrap();
+        assert_eq!(first.total, 7);
+        assert_eq!(first.terminal_total, 6);
+        let ids: Vec<String> = first.jobs.into_iter().map(|j| j.id).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "job-6".to_string(),
+                "job-5".to_string(),
+                "job-4".to_string()
+            ]
+        );
+
+        let last = list_jobs_page(&conn, 6, 3).unwrap();
+        assert_eq!(last.jobs.len(), 1);
+        assert_eq!(last.jobs[0].id, "job-0");
+
+        let past_the_end = list_jobs_page(&conn, 30, 3).unwrap();
+        assert!(past_the_end.jobs.is_empty());
+        assert_eq!(past_the_end.total, 7);
     }
 
     fn import(id: &str, finished_at: u64) -> ImportRecord {
@@ -1232,7 +1355,9 @@ mod tests {
 
         clear_history(&conn).unwrap();
 
-        assert!(list_jobs(&conn).unwrap().is_empty());
+        assert!(list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
+            .unwrap()
+            .is_empty());
         assert!(list_imports(&conn).unwrap().is_empty());
     }
 }

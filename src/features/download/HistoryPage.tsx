@@ -5,12 +5,13 @@ import { useTranslation } from "react-i18next";
 import { paths } from "@/app/routes";
 import { JobDeck, type JobSection } from "@/features/download/activity/JobDeck";
 import { ClearHistoryDialog } from "@/features/download/ClearHistoryDialog";
-import { useActiveDownloadProgress, useEnrichProgress, useJobs } from "@/features/download/hooks";
-import { Pagination } from "@/features/download/queue/Pagination";
-import { pageOfJobs } from "@/features/download/queue/page";
+import { useActiveDownloadProgress, useEnrichProgress, useJobsPage } from "@/features/download/hooks";
+import { HISTORY_PAGE_SIZE } from "@/features/download/queue/page";
+import { pageWindow } from "@/shared/lib/pagination";
 import { ActionButton, ActionLink } from "@/shared/ui/ActionLink";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
+import { Pagination } from "@/shared/ui/Pagination";
 
 interface HistoryPageProps {
   /**
@@ -47,20 +48,23 @@ export function HistoryPage({ arrivals, arrivalsCount = 0, onHistoryCleared }: H
   const { t } = useTranslation("download");
   const [clearingHistory, setClearingHistory] = useState(false);
   const [requestedPage, setRequestedPage] = useState(1);
-  const jobs = useJobs();
+  // The archive stays in the store and comes over one page at a time — the
+  // full list used to ride into memory on every launch, tracks and all.
+  const jobsPage = useJobsPage(requestedPage);
 
-  const all = useMemo(() => jobs.data ?? [], [jobs.data]);
-  // `page` comes back clamped, so a history cleared from under page 4 lands on
-  // the last page that still exists instead of an empty list.
-  const { jobs: visible, page, pageCount } = pageOfJobs(all, requestedPage);
+  const visible = useMemo(() => jobsPage.data?.jobs ?? [], [jobsPage.data]);
+  // Clamped against the server's total, so a history cleared from under page 4
+  // lands on the last page that still exists instead of an empty list.
+  const { page, pageCount } = pageWindow(requestedPage, jobsPage.data?.total ?? 0, HISTORY_PAGE_SIZE);
+  if (requestedPage !== page) setRequestedPage(page);
 
-  const terminalCount = all.filter(
-    (job) => job.status === "done" || job.status === "failed" || job.status === "cancelled",
-  ).length;
+  const terminalCount = jobsPage.data?.terminalTotal ?? 0;
   const hasHistory = terminalCount > 0 || arrivalsCount > 0;
 
-  const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
-  const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
+  // The worker is sequential and the archive is newest-first, so a job in
+  // flight can only sit on the first page — where these subscriptions find it.
+  const downloadPercent = useActiveDownloadProgress(visible.some((job) => job.status === "downloading"));
+  const enrichStages = useEnrichProgress(visible.some((job) => job.status === "enriching"));
 
   // Named now that it is not the only thing on the page: a library import files
   // its own section above, and two unlabelled stacks of rows would read as one

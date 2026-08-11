@@ -947,6 +947,19 @@ export function installMockTauri() {
         mockImportCancelRequested = true;
         return null;
       }
+      if (cmd === "list_jobs_page") {
+        // Mirrors the backend: one slice of the whole archive plus the totals
+        // the history page paginates on.
+        const all = isEmpty ? [] : jobs;
+        const offset = Number(payload?.offset ?? 0);
+        const limit = Number(payload?.limit ?? 25);
+        const terminal = new Set(["done", "failed", "cancelled"]);
+        return {
+          jobs: all.slice(offset, offset + limit),
+          total: all.length,
+          terminalTotal: all.filter((job) => terminal.has(String(job.status))).length,
+        };
+      }
       if (cmd === "list_imports") return [...mockImports];
       if (cmd === "preview_import_undo") return mockUndoPreview(String(payload?.id ?? ""));
       if (cmd === "undo_import") return mockUndo(String(payload?.id ?? ""));

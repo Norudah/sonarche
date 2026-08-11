@@ -10,5 +10,10 @@
       "arche": "Arche"
     }
   },
-  "settings": "Settings"
+  "settings": "Settings",
+  "pagination": {
+    "previous": "Previous page",
+    "next": "Next page",
+    "pageOf": "{{page}} / {{pageCount}}"
+  }
 }

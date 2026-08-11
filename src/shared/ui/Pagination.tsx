@@ -7,7 +7,7 @@ const STEP =
 /**
  * Prev/next with the page count between them — no numbered pages.
  *
- * The history is read backwards from the newest row, so "which page am I on"
+ * An archive is read backwards from the newest row, so "which page am I on"
  * is the only question a reader has here; jumping to page 7 of an undated list
  * answers nothing. Renders nothing at all on a single page rather than showing
  * two dead arrows.
@@ -21,7 +21,7 @@ export function Pagination({
   pageCount: number;
   onChange: (page: number) => void;
 }) {
-  const { t } = useTranslation("download");
+  const { t } = useTranslation("common");
   if (pageCount <= 1) return null;
 
   return (
@@ -29,17 +29,19 @@ export function Pagination({
       <button
         type="button"
         className={STEP}
-        aria-label={t("queue.previousPage")}
+        aria-label={t("pagination.previous")}
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
       >
         <ChevronLeft className="size-4" />
       </button>
-      <span className="px-1 text-[0.8125rem] tabular-nums text-muted">{t("queue.pageOf", { page, pageCount })}</span>
+      <span className="px-1 text-[0.8125rem] tabular-nums text-muted">
+        {t("pagination.pageOf", { page, pageCount })}
+      </span>
       <button
         type="button"
         className={STEP}
-        aria-label={t("queue.nextPage")}
+        aria-label={t("pagination.next")}
         disabled={page >= pageCount}
         onClick={() => onChange(page + 1)}
       >

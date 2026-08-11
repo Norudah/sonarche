@@ -215,6 +215,24 @@ export async function listJobs(): Promise<DownloadJob[]> {
   return raw.map(mapJob);
 }
 
+/** One page of the whole archive, plus the totals the history page counts on.
+ * `list_jobs` only carries the live window; this is the way to the rest. */
+export interface JobsPage {
+  jobs: DownloadJob[];
+  /** Every job in the store, live included — what the page count divides. */
+  total: number;
+  /** Terminal jobs only — what "clear history" would sweep. */
+  terminalTotal: number;
+}
+
+export async function listJobsPage(offset: number, limit: number): Promise<JobsPage> {
+  const raw = await invoke<{ jobs: WireJob[]; total: number; terminalTotal: number }>("list_jobs_page", {
+    offset,
+    limit,
+  });
+  return { jobs: raw.jobs.map(mapJob), total: raw.total, terminalTotal: raw.terminalTotal };
+}
+
 export async function retryJob(id: string): Promise<DownloadJob> {
   return mapJob(await invoke<WireJob>("retry_job", { id }));
 }

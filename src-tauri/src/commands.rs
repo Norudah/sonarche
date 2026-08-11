@@ -120,6 +120,18 @@ pub async fn list_jobs(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
     Ok(state.list().await)
 }
 
+/// One page of the whole download archive, newest first. The limit is clamped
+/// rather than trusted — it is a UI constant, not something to validate a
+/// conversation over.
+#[tauri::command]
+pub async fn list_jobs_page(
+    state: State<'_, JobsState>,
+    offset: u64,
+    limit: u64,
+) -> AppResult<crate::jobs_store::JobsPage> {
+    state.page(offset, limit.clamp(1, 100)).await
+}
+
 #[tauri::command]
 pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) -> AppResult<Job> {
     state.retry(&app, &id).await

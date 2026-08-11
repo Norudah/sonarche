@@ -101,6 +101,7 @@ fn main() {
             commands::set_onboarding_completed,
             commands::enqueue_download,
             commands::list_jobs,
+            commands::list_jobs_page,
             commands::retry_job,
             commands::cancel_job,
             commands::clear_job_history,

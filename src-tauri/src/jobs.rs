@@ -1407,14 +1407,31 @@ impl JobsState {
         Ok(job)
     }
 
+    /// The live window — every moving job plus the most recent terminal ones.
+    /// What the Downloads page and the in-flight checks read; the archive is
+    /// paged through `page`.
     pub async fn list(&self) -> Vec<Job> {
-        match with_conn(&self.0, jobs_store::list_jobs).await {
+        match with_conn(&self.0, |conn| {
+            jobs_store::list_live_jobs(conn, jobs_store::LIVE_TERMINAL_WINDOW)
+        })
+        .await
+        {
             Ok(jobs) => jobs,
             Err(err) => {
                 eprintln!("[jobs] list failed: {err}");
                 Vec::new()
             }
         }
+    }
+
+    /// One page of the whole archive, newest first, with the totals the
+    /// history page paginates on. Unlike `list`, an unreadable store surfaces
+    /// as an error: the page would otherwise claim an empty history.
+    pub async fn page(&self, offset: u64, limit: u64) -> AppResult<jobs_store::JobsPage> {
+        with_conn(&self.0, move |conn| {
+            jobs_store::list_jobs_page(conn, offset, limit)
+        })
+        .await
     }
 
     /// File a finished library import in the same store the download history
