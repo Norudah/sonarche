@@ -51,7 +51,7 @@ export function AlbumCard({ album, style, onPlay, onEdit }: AlbumCardProps) {
        * every incomplete record, which on a shelf of two hundred is two hundred
        * grades read at once, none of them saying what is missing. The album's
        * own page carries the verdict; the wall is a wall of covers. */}
-      <div className="absolute right-2.5 bottom-14 flex translate-y-1 items-center gap-1.5 opacity-0 transition-[opacity,translate] group-hover/card:translate-y-0 group-hover/card:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
+      <div className="absolute right-2.5 bottom-14 flex translate-y-1 items-center gap-1.5 opacity-0 transition-[opacity,translate] group-hover/card:translate-y-0 group-hover/card:opacity-100 has-[:focus-visible]:translate-y-0 has-[:focus-visible]:opacity-100">
         {onEdit && (
           <motion.button
             type="button"
