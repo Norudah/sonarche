@@ -67,6 +67,12 @@
     "classifyUndoneToast": "Filing undone",
     "classifyFailedToast": "Filing failed",
     "classifyUndo": "Undo",
+    "arrange": {
+      "enter": "Rearrange",
+      "done": "Done",
+      "hint": "Drag a genre onto the family it belongs to.",
+      "emptyFamily": "No tracks — drop a genre here"
+    },
     "overviewMode": "Albums & artists",
     "empty": {
       "title": "No genres yet",

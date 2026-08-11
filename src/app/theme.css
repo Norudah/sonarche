@@ -727,6 +727,21 @@
     }
   }
 
+  /* Genres arrange mode — the iOS home-screen tremble, the one motion idiom
+     everyone already reads as "these are loose now". Rotation only, a hair
+     over a degree: the chips are text, and a translate makes labels swim. */
+  --animate-chip-jiggle: sonarche-chip-jiggle 0.34s ease-in-out infinite;
+
+  @keyframes sonarche-chip-jiggle {
+    0%,
+    100% {
+      transform: rotate(-1.1deg);
+    }
+    50% {
+      transform: rotate(1.3deg);
+    }
+  }
+
   /* Startup splash — an indeterminate sliver crossing its track. Ends off the
      right edge and restarts off the left, so there is no visible snap back. */
   --animate-splash-bar: sonarche-splash-bar 1.4s ease-in-out infinite;
@@ -893,6 +908,15 @@
   animation-fill-mode: backwards;
 }
 
+/** A genre chip while the Genres page is in arrange mode. The phase offsets
+    per chip (set inline as `--jiggle-phase`) so the shelf shivers rather than
+    marches — thirteen chips rocking in lockstep read as one animation applied
+    thirteen times, not as thirteen loose objects. */
+@utility chip-jiggle {
+  animation: var(--animate-chip-jiggle);
+  animation-delay: var(--jiggle-phase, 0s);
+}
+
 /* MotionProvider's `reducedMotion="user"` only governs Motion components; these
    two are plain CSS and have to opt out on their own. Opacity is kept (it reads
    as responsive without moving anything), only the travel is dropped. */
@@ -903,6 +927,13 @@
   .row-cascade > th > *,
   .cascade-item,
   .card-reveal {
+    animation: none;
+  }
+
+  /* The tremble is the one signal that chips are draggable, so its absence
+     must not leave the mode mute: the chips keep their arrange-mode dashed
+     outline (set in the markup), which says "loose" without moving. */
+  .chip-jiggle {
     animation: none;
   }
 

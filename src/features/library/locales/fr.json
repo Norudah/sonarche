@@ -67,6 +67,12 @@
     "classifyUndoneToast": "Classement annulé",
     "classifyFailedToast": "Le classement a échoué",
     "classifyUndo": "Annuler",
+    "arrange": {
+      "enter": "Réorganiser",
+      "done": "Terminé",
+      "hint": "Glisse un genre sur la famille où il doit vivre.",
+      "emptyFamily": "Aucun titre — dépose un genre ici"
+    },
     "overviewMode": "Albums & artistes",
     "empty": {
       "title": "Aucun genre pour l'instant",

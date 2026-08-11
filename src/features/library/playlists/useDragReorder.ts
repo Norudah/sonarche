@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
-import { edgeScrollSpeed, rowShift, targetIndex } from "@/features/library/playlists/reorder";
+import { rowShift, targetIndex } from "@/features/library/playlists/reorder";
+import { edgeScrollSpeed } from "@/shared/lib/edgeScroll";
 import { useScrollport } from "@/shared/ui/Scrollport";
 
 /** Vertical distance between two row tops beyond the row itself: the table's

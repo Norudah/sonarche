@@ -30,19 +30,3 @@ export function moveItem<T>(list: T[], from: number, to: number): T[] {
   next.splice(to, 0, moved);
   return next;
 }
-
-/** Signed auto-scroll speed (px/frame) for a pointer at `clientY` inside a
- * scrollport spanning [top, bottom]. Zero outside the edge zones; ramps up as
- * the pointer digs into them, so the scroll answers intent rather than lurching
- * the moment the pointer crosses a line. */
-export function edgeScrollSpeed(clientY: number, top: number, bottom: number, zone = 56, max = 14): number {
-  if (clientY < top + zone) {
-    const depth = Math.min(1, (top + zone - clientY) / zone);
-    return -Math.ceil(depth * max);
-  }
-  if (clientY > bottom - zone) {
-    const depth = Math.min(1, (clientY - (bottom - zone)) / zone);
-    return Math.ceil(depth * max);
-  }
-  return 0;
-}
