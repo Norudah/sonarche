@@ -62,9 +62,19 @@ export function AlbumsView() {
 
   const chips: TriageChip[] = [];
   if (triage.missingArtwork)
-    chips.push({ key: "missingArtwork", label: t("triage.missingArtwork"), onRemove: () => clearParam("missing") });
+    chips.push({
+      key: "missingArtwork",
+      label: t("triage.missingArtwork"),
+      tone: "correction",
+      onRemove: () => clearParam("missing"),
+    });
   if (triage.tracklistGaps)
-    chips.push({ key: "tracklistGaps", label: t("triage.tracklistGaps"), onRemove: () => clearParam("tracklist") });
+    chips.push({
+      key: "tracklistGaps",
+      label: t("triage.tracklistGaps"),
+      tone: "correction",
+      onRemove: () => clearParam("tracklist"),
+    });
 
   return (
     <PageContainer>

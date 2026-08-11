@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { groupAlbums } from "@/features/library/albums/albums";
 import { track } from "@/features/library/testFixtures";
-import { albumAttention } from "@/features/library/triage/attention";
+import { albumAttention, trackAttention } from "@/features/library/triage/attention";
 
 /** A record whose second track lacks both a year and a genre, and whose third
  * carries a genre the tree does not know. */
@@ -73,5 +73,45 @@ describe("albumAttention", () => {
   it("ignores album-level doors: a coverless record is not a pending track", () => {
     const coverless = tracks.map((row) => ({ ...row, artUrl: null }));
     expect(attentionOf(coverless).has(1)).toBe(false);
+  });
+});
+
+describe("trackAttention", () => {
+  /** What the inspection table gets: a list with no record of its own, whose
+   * tracks may come from anywhere. Same verdicts, same doors. */
+  it("names the same doors over a free-standing list", () => {
+    const attention = trackAttention(tracks, [], []);
+    expect(attention.get(2)).toEqual(["missingYear", "genreMissing"]);
+    expect(attention.get(3)).toEqual(["genreOffTree"]);
+    expect(attention.has(1)).toBe(false);
+  });
+
+  /** Duplicates are relative to the list in scope, which is what makes the
+   * verdict mean "twice in what you are looking at". */
+  it("pairs duplicates within the list it is handed", () => {
+    const twice = [
+      track({
+        id: 10,
+        title: "Once",
+        album: "A",
+        year: 2001,
+        genre: "Grunge",
+        genreBucket: "rock",
+        track: 1,
+        mbTrackId: "rec-1",
+      }),
+      track({
+        id: 11,
+        title: "Again",
+        album: "B",
+        year: 2001,
+        genre: "Grunge",
+        genreBucket: "rock",
+        track: 1,
+        mbTrackId: "rec-1",
+      }),
+    ];
+    expect(trackAttention(twice, [], []).get(10)).toEqual(["duplicateRecording"]);
+    expect(trackAttention([twice[0]], [], []).size).toBe(0);
   });
 });

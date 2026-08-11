@@ -53,15 +53,31 @@ export const paths = {
  * in, kept with the same meaning here; `missing` and `off-tree` are sentinel
  * values no real genre uses.
  */
+/**
+ * The lens's entrance — `?vue=inspection`, which hands the arriving page over in
+ * inspection mode. It is not where the mode is stored (see `inspectMode`): it is
+ * consumed on arrival, so a door from the Metadata page opens on the table that
+ * shows what the door was about.
+ *
+ * Declared here with the rest of the URL contract, and here rather than in the
+ * feature so this module stays the dependency-free leaf it is.
+ */
+export const INSPECT_PARAM = "vue";
+export const INSPECT_VALUE = "inspection";
+
+/** Appended to the track doors only: the albums shelf shows cards, and the lens
+ * has nothing to change there yet. */
+const LENS = `${INSPECT_PARAM}=${INSPECT_VALUE}`;
+
 export const triagePaths = {
-  missingYear: `${paths.libraryTracks}?missing=year`,
-  missingTrackNumber: `${paths.libraryTracks}?missing=track`,
-  genreMissing: `${paths.libraryTracks}?genre=missing`,
-  genreOffTree: `${paths.libraryTracks}?genre=off-tree`,
+  missingYear: `${paths.libraryTracks}?missing=year&${LENS}`,
+  missingTrackNumber: `${paths.libraryTracks}?missing=track&${LENS}`,
+  genreMissing: `${paths.libraryTracks}?genre=missing&${LENS}`,
+  genreOffTree: `${paths.libraryTracks}?genre=off-tree&${LENS}`,
   missingArtwork: `${paths.libraryAlbums}?missing=artwork`,
   tracklistGaps: `${paths.libraryAlbums}?tracklist=gaps`,
-  suspectMatch: `${paths.libraryTracks}?suspect=match`,
-  duplicateRecording: `${paths.libraryTracks}?duplicates=recording`,
+  suspectMatch: `${paths.libraryTracks}?suspect=match&${LENS}`,
+  duplicateRecording: `${paths.libraryTracks}?duplicates=recording&${LENS}`,
 } as const;
 
 /**

@@ -59,7 +59,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
   return (
-    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-6">
+    <div className="relative -mx-8 -mt-5 overflow-hidden px-8 pt-10 pb-6">
       {/* The same accent wash every library hero sits on — `accent-soft` fading
        * to the page background — so this landing band reads as one family with
        * the album, artist and genre headers rather than a screen of its own.

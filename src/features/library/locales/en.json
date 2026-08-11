@@ -147,9 +147,15 @@
     "artist": "Artist",
     "album": "Album",
     "genre": "Genre",
+    "year": "Year",
+    "category": "Category",
     "duration": "Duration",
     "actions": "Actions",
     "attention": "Needs attention"
+  },
+  "inspect": {
+    "enter": "Inspect metadata",
+    "exit": "Back to listening"
   },
   "search": {
     "placeholder": "Search…",

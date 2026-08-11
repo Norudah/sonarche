@@ -28,6 +28,7 @@
 import { useMemo } from "react";
 
 import type { Album } from "@/features/library/albums/albums";
+import type { LibraryTrack } from "@/features/library/api";
 import { type CheckKey, enabledLines, useDisabledChecks } from "@/features/library/triage/enabledChecks";
 import { buildTriageQueue, type DoorKey } from "@/features/library/triage/queue";
 
@@ -40,12 +41,15 @@ const TRACK_PREFIX = "t:";
 export type AlbumAttention = ReadonlyMap<number, DoorKey[]>;
 
 /**
- * Scoped to the album's own rows, which is what makes the duplicates door mean
- * "twice on this record" here and "twice in the library" on the page. Both are
- * true; this one is the one you can act on from an album.
+ * The verdict for a set of tracks, by track id.
+ *
+ * Scoped to whatever list it is handed, which is what makes the duplicates door
+ * mean "twice on this record" on an album and "twice in this list" in the
+ * inspection table. Both are true; each is the one you can act on from where
+ * you are standing.
  */
-export function albumAttention(album: Album, disabled: CheckKey[]): AlbumAttention {
-  const lines = enabledLines(buildTriageQueue(album.tracks, [album]), disabled);
+export function trackAttention(tracks: LibraryTrack[], albums: Album[], disabled: CheckKey[]): AlbumAttention {
+  const lines = enabledLines(buildTriageQueue(tracks, albums), disabled);
 
   const reasons = new Map<number, DoorKey[]>();
 
@@ -64,9 +68,29 @@ export function albumAttention(album: Album, disabled: CheckKey[]): AlbumAttenti
   return reasons;
 }
 
+/** The album's own rows, with its record in scope so the album-level doors are
+ * computed against the right thing. */
+export function albumAttention(album: Album, disabled: CheckKey[]): AlbumAttention {
+  return trackAttention(album.tracks, [album], disabled);
+}
+
 /** The live verdict: flipping a check off in the Métadonnées popover re-renders
  * the tracklist that was dotting for it. */
 export function useAlbumAttention(album: Album): AlbumAttention {
   const disabled = useDisabledChecks();
   return useMemo(() => albumAttention(album, disabled), [album, disabled]);
+}
+
+/**
+ * The same verdict over a free-standing list — the inspection table's, which has
+ * tracks from everywhere and no record of its own.
+ *
+ * No albums in scope: the album-level doors (artwork, tracklist gaps) name a
+ * record, never a row, so nothing they return could reach a cell here. Passing
+ * the library's albums would only make the queue do work whose result is
+ * discarded on a list that can be thousands of rows long.
+ */
+export function useTrackAttention(tracks: LibraryTrack[]): AlbumAttention {
+  const disabled = useDisabledChecks();
+  return useMemo(() => trackAttention(tracks, [], disabled), [tracks, disabled]);
 }

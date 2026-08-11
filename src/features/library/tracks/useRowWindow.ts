@@ -8,6 +8,11 @@ import { useScrollport } from "@/shared/ui/Scrollport";
  * a wrong value here makes the scrollbar lie about the list's length. */
 export const ROW_HEIGHT = 58;
 
+/** The inspection table's own row: no cover, one line of small text, and rows
+ * that touch. Set by the edit button rather than by the text — it is the tallest
+ * thing in the row. Same rule as above: measured, not guessed. */
+export const INSPECT_ROW_HEIGHT = 32;
+
 /**
  * Below this, every row is mounted as before. A few hundred rows cost nothing,
  * and the plain table keeps what virtualization takes away: the row cascade
@@ -79,7 +84,7 @@ export function windowFromSlices(tracks: LibraryTrack[], slices: Slice[], totalS
  * Scrolling happens on <main>, not on a container of ours, so the virtualizer
  * is pointed at the shared scrollport rather than a local ref.
  */
-export function useRowWindow(tracks: LibraryTrack[]): RowWindow {
+export function useRowWindow(tracks: LibraryTrack[], rowHeight: number = ROW_HEIGHT): RowWindow {
   const scrollport = useScrollport();
   const isVirtual = tracks.length > VIRTUALIZE_ABOVE;
 
@@ -88,7 +93,7 @@ export function useRowWindow(tracks: LibraryTrack[]): RowWindow {
     // itself still runs unconditionally, as hooks must.
     count: isVirtual ? tracks.length : 0,
     getScrollElement: () => scrollport.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     overscan: OVERSCAN,
   });
 

@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 export interface TriageChip {
   key: string;
   label: string;
-  /** "filter" (default) is any narrowed list; "review" is the one filter that
-   * means the app may have written something wrong. */
-  tone?: "filter" | "review";
+  /** "filter" (default) is browsing — a decade, a genre, a family. "correction"
+   * is a filter that names something wrong or missing. */
+  tone?: "filter" | "correction";
   onRemove: () => void;
 }
 
@@ -24,15 +24,20 @@ interface TriageChipsProps {
  * remove button: the filter has no other state to toggle, and a separate ×
  * hit-zone at this size is a misclick trap.
  *
- * The accent is the default, amber the exception. Every correction filter used
- * to arrive in amber, so landing on "tracks with no year" looked like landing
- * on an incident — for a list of files whose only sin is an empty tag. A
- * filtered list is a filtered list, whichever door opened it; only "match to
- * review" warns, because only there might the app have written the wrong thing.
+ * Two tones, and the split is what the filter is *about*. Browsing a decade or
+ * a family narrows a list and wears the accent. Arriving from the Metadata page
+ * is a correction — the list is exactly the set of holes that page counted — and
+ * wears amber, the one colour this app uses for a hole, from the lit cells of
+ * the inspection table to the album's own dots.
+ *
+ * The chips did briefly go all-accent, on the reasoning that a filtered list is
+ * a filtered list whichever door opened it. That was the wrong lesson from the
+ * right complaint: what made the app punitive was scoring music nobody asked it
+ * to score, not naming a problem on a page you opened by clicking the problem.
  */
 const CHIP_TONE = {
   filter: "bg-accent-soft text-accent",
-  review: "bg-warning-soft text-warning",
+  correction: "bg-warning-soft text-warning",
 } as const;
 
 export function TriageChips({ chips, countLabel }: TriageChipsProps) {

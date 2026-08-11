@@ -48,11 +48,10 @@ function BadgeSwitch() {
  * The triage post's band.
  *
  * `pt-10`, like the download and import bands and unlike the library heroes'
- * `pt-5`. Two reasons, and either alone would do it. Metadata sits in the
- * sidebar's Explorer section with those two, so it should open on the same air.
- * And `WindowDragStrip` owns the top 2rem of every page: a control starting at
- * 1.25rem is *under* the drag band, which swallows the press — the switch below
- * simply did not respond until this padding pushed it clear.
+ * `pt-5`: Metadata sits in the sidebar's Explorer section with those two, so it
+ * should open on the same air. It once had a second reason — the page's own drag
+ * strip owned the top 2rem and swallowed the switch's clicks until this padding
+ * pushed it clear — which died with the strip when the topbar took over dragging.
  *
  * The verdict *is* the headline — but it names what it counts. "64 choses à
  * corriger" was two lies in one line: the lines were summed, so a track missing
@@ -66,7 +65,7 @@ export function TriageHero({ tally, queue, disabled, trackCount, albumCount, art
   const { t } = useTranslation(["metadata", "library"]);
 
   return (
-    <header className="relative -mx-8 -mt-8 px-8 pt-10 pb-6">
+    <header className="relative -mx-8 -mt-5 px-8 pt-10 pb-6">
       <HeroWash />
 
       <div className="relative flex items-start justify-between gap-6">

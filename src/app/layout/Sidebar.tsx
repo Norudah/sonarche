@@ -1,7 +1,6 @@
 import { cn } from "@heroui/react";
 import type { LucideIcon } from "lucide-react";
 import {
-  ChevronLeft,
   Disc,
   Download,
   FileText,
@@ -12,12 +11,11 @@ import {
   Mic2,
   Music,
   Plus,
-  Settings,
   Tags,
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
@@ -260,20 +258,9 @@ function SettingsNav() {
 
 export function Sidebar() {
   const { t } = useTranslation("common");
-  const { t: tSettings } = useTranslation("settings");
   const { pathname } = useLocation();
-  const navigate = useNavigate();
 
   const inSettings = pathname.startsWith(paths.settings);
-
-  // Where the back arrow returns to: the last place that wasn't settings. Kept
-  // in a ref and updated only while outside settings, so switching categories
-  // (all under /settings) never overwrites the exit target. An effect because
-  // it records navigation history — an external timeline, not render output.
-  const exitTarget = useRef<string>(paths.download);
-  useEffect(() => {
-    if (!inSettings) exitTarget.current = pathname;
-  }, [inSettings, pathname]);
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
@@ -328,33 +315,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* The bottom entry keeps its spot and only its face changes: the settings
-          link in the app, a back control in settings — same cross-fade as the
-          nav above. The link stays in flow to give the row its height; the back
-          button overlays it. */}
-      <div className="relative px-3 pt-2 pb-4">
-        <div
-          className={cn(
-            "transition-opacity duration-200 ease-out",
-            inSettings ? "pointer-events-none opacity-0" : "opacity-100",
-          )}
-          aria-hidden={inSettings}
-        >
-          <NavItem to={paths.settings} label={tSettings("title")} icon={Settings} />
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate(exitTarget.current)}
-          className={cn(
-            "group absolute inset-x-3 top-2 flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition-opacity duration-200 ease-out hover:bg-default/40",
-            inSettings ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          aria-hidden={!inSettings}
-        >
-          <ChevronLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
-          <span>{tSettings("back")}</span>
-        </button>
-      </div>
+      {/* No bottom entry any more: the way into settings, and back out of it, is
+          one control in the topbar — see `SettingsToggle`. The column ends where
+          the nav does, and the padding below belongs to the nav. */}
+      <div className="pb-2" />
     </aside>
   );
 }

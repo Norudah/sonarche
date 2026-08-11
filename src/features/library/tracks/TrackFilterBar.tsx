@@ -45,35 +45,46 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
       label: t("filters.decadeValue", { decade: triage.decade }),
       onRemove: () => setParam("decade", null),
     });
+  // Amber from here down. Each of these arrives from the Metadata page and the
+  // list it opens is a set of holes, so the chip says so in the colour the rest
+  // of the app uses for one.
   if (triage.missingYear)
-    chips.push({ key: "missingYear", label: t("triage.missingYear"), onRemove: () => setParam("missing", null) });
+    chips.push({
+      key: "missingYear",
+      label: t("triage.missingYear"),
+      tone: "correction",
+      onRemove: () => setParam("missing", null),
+    });
   if (triage.missingTrackNumber)
     chips.push({
       key: "missingTrackNumber",
       label: t("triage.missingTrackNumber"),
+      tone: "correction",
       onRemove: () => setParam("missing", null),
     });
   if (triage.genre === GENRE_MISSING || triage.genre === GENRE_OFF_TREE)
     chips.push({
       key: "genre",
       label: t(triage.genre === GENRE_MISSING ? "triage.genreMissing" : "triage.genreOffTree"),
+      tone: "correction",
       onRemove: () => setParam("genre", null),
     });
+  // A plain genre name is browsing, not a correction — the same param, the
+  // other tone.
   else if (triage.genre != null)
     chips.push({ key: "genre", label: triage.genre, onRemove: () => setParam("genre", null) });
-  // The one chip that warns: everything else narrows a list, this one says the
-  // app may have filed these tracks under the wrong recording.
   if (triage.suspectMatch)
     chips.push({
       key: "suspect",
       label: t("triage.suspectMatch"),
-      tone: "review",
+      tone: "correction",
       onRemove: () => setParam("suspect", null),
     });
   if (triage.duplicateRecording)
     chips.push({
       key: "duplicates",
       label: t("triage.duplicateRecording"),
+      tone: "correction",
       onRemove: () => setParam("duplicates", null),
     });
 

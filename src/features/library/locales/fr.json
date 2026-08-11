@@ -147,9 +147,15 @@
     "artist": "Artiste",
     "album": "Album",
     "genre": "Genre",
+    "year": "Année",
+    "category": "Catégorie",
     "duration": "Durée",
     "actions": "Actions",
     "attention": "À compléter"
+  },
+  "inspect": {
+    "enter": "Inspecter les métadonnées",
+    "exit": "Revenir à l'écoute"
   },
   "search": {
     "placeholder": "Rechercher…",

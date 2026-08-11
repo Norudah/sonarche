@@ -66,7 +66,7 @@ export function ImportPage({ children }: { children?: ReactNode }) {
     <PageContainer>
       {/* The same accent wash as the download page's composer — the two are the
           only ways music gets into the ark, and they should read as one family. */}
-      <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-6">
+      <div className="relative -mx-8 -mt-5 overflow-hidden px-8 pt-10 pb-6">
         <div className="pointer-events-none absolute inset-0 hero-wash" />
 
         <div className="relative flex flex-col gap-5">

@@ -53,7 +53,7 @@ interface AlbumHeroProps {
  * construction rather than by a hand-tuned offset that would drift the moment a
  * title wraps to two lines.
  *
- * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
+ * `-mx-8 -mt-5` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
 export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToPlaylist, ref }: AlbumHeroProps) {
@@ -67,7 +67,7 @@ export function AlbumHero({ album, onPlay, onShuffle, onEdit, onDelete, onAddToP
   ].filter(Boolean);
 
   return (
-    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+    <header ref={ref} className="relative -mx-8 -mt-5 -mb-2 px-8 pt-5 pb-7">
       <HeroWash />
 
       <div className="relative">
