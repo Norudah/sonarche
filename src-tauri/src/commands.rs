@@ -88,6 +88,9 @@ pub async fn enqueue_download(
                 .artist
                 .map(|a| a.trim().to_string())
                 .filter(|a| !a.is_empty());
+            if forced.album_id.is_some_and(|id| id <= 0) {
+                return Err(AppError::InvalidInput("invalid target album".into()));
+            }
             if title.is_empty() {
                 None
             } else if title.chars().count() > MAX_ALBUM_CHARS
@@ -99,7 +102,11 @@ pub async fn enqueue_download(
                     "forced album name is too long".into(),
                 ));
             } else {
-                Some(ForcedAlbum { title, artist })
+                Some(ForcedAlbum {
+                    title,
+                    artist,
+                    album_id: forced.album_id,
+                })
             }
         }
         None => None,

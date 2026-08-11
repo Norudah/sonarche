@@ -609,5 +609,8 @@
   "unplayable": {
     "badge": "illisible",
     "why": "Sonarche ne sait pas décoder le format {{format}}. Le fichier est bien dans l'arche, avec ses tags et sa place dans l'album — il ne peut simplement pas être joué ici."
+  },
+  "albumSelect": {
+    "clear": "Retirer cet album"
   }
 }

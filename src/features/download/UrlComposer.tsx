@@ -3,8 +3,9 @@ import { ArrowDownToLine, AudioLines, Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { EnqueueRequest, ForcedAlbum, JobKind } from "@/features/download/api";
+import type { EnqueueRequest, JobKind } from "@/features/download/api";
 import { ComposerSettings } from "@/features/download/ComposerSettings";
+import { AUTO_DESTINATION, toForcedAlbum, type Destination } from "@/features/download/DestinationChoice";
 import { readLastCategory, writeLastCategory } from "@/features/download/lastCategory";
 import { detectUrlKind } from "@/features/download/urlKind";
 import { Swap } from "@/shared/motion/Swap";
@@ -36,14 +37,14 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   // Deliberately not remembered across sessions, unlike the category: "this
   // playlist is the Inception soundtrack" is true of one download, where "I
   // file game music under Video Games" is a standing habit.
-  const [forcedAlbum, setForcedAlbum] = useState<ForcedAlbum | null>(null);
+  const [destination, setDestination] = useState<Destination>(AUTO_DESTINATION);
   const [lastReset, setLastReset] = useState(resetToken);
 
   if (resetToken !== lastReset) {
     setLastReset(resetToken);
     setUrl("");
     setChoice(null);
-    setForcedAlbum(null);
+    setDestination(AUTO_DESTINATION);
   }
 
   const detected = detectUrlKind(url);
@@ -86,11 +87,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
             event.preventDefault();
-            // A single has no playlist to gather, and a title-less toggle is a
-            // switch left on over an empty field — neither is a forced album.
-            const title = forcedAlbum?.title.trim();
-            const forced = kind === "album" && title ? { title, artist: forcedAlbum?.artist?.trim() || null } : null;
-            if (canSubmit) onSubmit({ url: url.trim(), kind, category, forcedAlbum: forced });
+            if (canSubmit) onSubmit({ url: url.trim(), kind, category, forcedAlbum: toForcedAlbum(destination) });
           }}
         >
           {/* `items-stretch`, not `items-center`: the input's height comes from
@@ -146,8 +143,8 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               setCategory(next);
               writeLastCategory(next);
             }}
-            forcedAlbum={forcedAlbum}
-            onForcedAlbumChange={setForcedAlbum}
+            destination={destination}
+            onDestinationChange={setDestination}
           />
         </form>
       </div>

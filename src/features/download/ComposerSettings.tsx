@@ -2,8 +2,8 @@ import { Disclosure } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { ForcedAlbum, JobKind } from "@/features/download/api";
-import { ForcedAlbumChoice } from "@/features/download/ForcedAlbumChoice";
+import type { JobKind } from "@/features/download/api";
+import { DestinationChoice, type Destination } from "@/features/download/DestinationChoice";
 import { KindChoice } from "@/features/download/KindChoice";
 import type { DetectedUrlKind } from "@/features/download/urlKind";
 // The taxonomy the composer offers is the library's own axis, and its canonical
@@ -18,8 +18,16 @@ interface ComposerSettingsProps {
   onKindChange: (kind: JobKind) => void;
   category: string | null;
   onCategoryChange: (next: string | null) => void;
-  forcedAlbum: ForcedAlbum | null;
-  onForcedAlbumChange: (next: ForcedAlbum | null) => void;
+  destination: Destination;
+  onDestinationChange: (next: Destination) => void;
+}
+
+/** What the folded strip can say about the destination — the picked album's
+ * title, the typed one, or nothing while the choice is still automatic. */
+function destinationSummary(destination: Destination): string {
+  if (destination.mode === "existing") return destination.target?.title ?? "";
+  if (destination.mode === "new") return destination.title.trim();
+  return "";
 }
 
 /**
@@ -30,6 +38,12 @@ interface ComposerSettingsProps {
  * track, and the tag it will be filed under; the rest folds away, because the
  * defaults are right for almost every link. The summary chip stays visible when
  * folded: an option nobody can see is an option nobody trusts.
+ *
+ * The panel opens itself the moment a link is recognised — the same
+ * data-driven reveal as the import options on a scanned folder. Options only a
+ * chevron ever surfaced were options nobody knew existed; a recognised link is
+ * the moment they are about to matter. Folding it back stays the user's call
+ * for as long as that link is in the field.
  */
 export function ComposerSettings({
   kind,
@@ -37,17 +51,21 @@ export function ComposerSettings({
   onKindChange,
   category,
   onCategoryChange,
-  forcedAlbum,
-  onForcedAlbumChange,
+  destination,
+  onDestinationChange,
 }: ComposerSettingsProps) {
   const { t } = useTranslation("download");
   const labelOf = useCategoryLabel();
-  // A single track has no playlist to gather under one name.
-  const canForceAlbum = kind === "album";
-  const forcedTitle = canForceAlbum ? forcedAlbum?.title.trim() : "";
+  const forcedTitle = destinationSummary(destination);
 
   return (
-    <Disclosure className="border-t border-separator/60 bg-panel px-3 py-2">
+    <Disclosure
+      // Re-keyed on recognition so `defaultExpanded` gets to answer again:
+      // pasting a link opens the panel, clearing the field folds it back.
+      key={detected != null ? "recognised" : "idle"}
+      defaultExpanded={detected != null}
+      className="border-t border-separator/60 bg-panel px-3 py-2"
+    >
       {/* No `Disclosure.Heading`: the switch sits on the same line as the
           trigger, and a radio group nested inside a heading element is a lie
           about the document's structure. */}
@@ -62,7 +80,7 @@ export function ComposerSettings({
             </Disclosure.Indicator>
           </span>
           <span className="flex items-center gap-1">
-            {/* The forced album leads the summary when there is one: it is the
+            {/* The destination leads the summary when there is one: it is the
                 louder of the two decisions, and the one nobody expects to be on
                 by accident. */}
             {forcedTitle && (
@@ -87,7 +105,7 @@ export function ComposerSettings({
             onChange={onCategoryChange}
           />
           <hr className="border-separator/70" />
-          <ForcedAlbumChoice value={forcedAlbum} isDisabled={!canForceAlbum} onChange={onForcedAlbumChange} />
+          <DestinationChoice value={destination} kind={kind} onChange={onDestinationChange} />
         </Disclosure.Body>
       </Disclosure.Content>
     </Disclosure>

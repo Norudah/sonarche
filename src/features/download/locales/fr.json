@@ -16,13 +16,18 @@
     "category": "Catégorie",
     "categoryHint": "Le contexte, pas le style : d'où vient la musique. Modifiable ensuite sur chaque morceau.",
     "categoryNone": "Aucune",
-    "forcedAlbum": {
-      "legend": "Réunir toute la playlist sous un seul album",
+    "destination": {
+      "legend": "Album de destination",
+      "modeAuto": "Automatique",
+      "modeExisting": "Album existant",
+      "modeNew": "Nouvel album",
+      "autoHint": "Chaque morceau rejoint l'album de sa sortie d'origine — le chemin normal, et le bon pour presque tous les liens.",
+      "existingHint": "Ce qui arrive rejoint l'album choisi de ta bibliothèque, à la suite de ses pistes. L'album garde sa pochette et sa nature.",
       "problem": "Une playlist assemblée à la main réunit des morceaux d'albums différents : rangés tels quels, chacun rejoint le sien. Cette option les range sous l'album que tu nommes, sans toucher à leur artiste ni à leur genre.",
       "tryWithout": "Essaie d'abord sans : une bande originale déjà publiée comme album est reconnue toute seule. Forcer ne sert que si l'album n'existe pas.",
+      "newSingleHint": "Le morceau fonde ce nouvel album. Sans artiste nommé, il garde le sien.",
       "without": "Sans",
       "with": "Avec",
-      "singleHint": "Réservé à un album entier : un titre seul n'a pas de playlist à réunir.",
       "title": "Titre de l'album",
       "titlePlaceholder": "Nom du film, de la série, du jeu…",
       "artist": "Artiste de l'album"

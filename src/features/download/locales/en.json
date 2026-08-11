@@ -16,13 +16,18 @@
     "category": "Category",
     "categoryHint": "Context, not musical style — where the music comes from. You can change it later on any track.",
     "categoryNone": "None",
-    "forcedAlbum": {
-      "legend": "Gather the whole playlist under one album",
+    "destination": {
+      "legend": "Destination album",
+      "modeAuto": "Automatic",
+      "modeExisting": "Existing album",
+      "modeNew": "New album",
+      "autoHint": "Each track rejoins the album of its own release — the normal path, and the right one for almost every link.",
+      "existingHint": "Whatever arrives joins the chosen album from your library, after its own tracks. The album keeps its cover and its nature.",
       "problem": "A hand-built playlist gathers tracks from different albums: filed as they come, each rejoins its own. This files them under the album you name, leaving their artist and genre alone.",
       "tryWithout": "Try without it first: a soundtrack already released as an album is recognised on its own. Forcing only helps when no such album exists.",
+      "newSingleHint": "The track founds this new album. With no artist named, it keeps its own.",
       "without": "Without",
       "with": "With",
-      "singleHint": "For a full album only — a single track has no playlist to gather.",
       "title": "Album title",
       "titlePlaceholder": "Name of the film, series, game…",
       "artist": "Album artist"

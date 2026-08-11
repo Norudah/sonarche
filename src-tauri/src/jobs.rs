@@ -162,9 +162,9 @@ pub struct Job {
     pub updated_at: u64,
 }
 
-/// A record the user assembled by hand — a film, a series, a game — filed under
-/// one name however many releases its tracks came from. Per-track identity is
-/// still looked up; only the filing is decided here.
+/// The album the download must land on, because the user said so — a record
+/// assembled by hand (a film, a series, a game), or one already on the shelf.
+/// Per-track identity is still looked up; only the filing is decided here.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForcedAlbum {
@@ -172,6 +172,11 @@ pub struct ForcedAlbum {
     /// Left to the sidecar's compilation default when the user names none.
     #[serde(default)]
     pub artist: Option<String>,
+    /// An existing beets album row to land on, instead of standing up a new
+    /// one. With an id, `title`/`artist` only describe the target (history
+    /// cards, fallbacks) — the move verb does the filing, post-enrich.
+    #[serde(default)]
+    pub album_id: Option<i64>,
 }
 
 struct JobsInner {
@@ -458,6 +463,12 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         Ok(result) => {
             if let Some(category) = job.category.as_deref() {
                 apply_category(app, id, category, &[item_id]).await;
+            }
+            if let Some(forced) = job.forced_album.as_ref() {
+                // Re-read for the artist fallback: probe and enrich have
+                // filled it in since the job was snapshotted.
+                let artist = snapshot(inner, id).await.and_then(|j| j.artist);
+                apply_destination(app, id, forced, &[item_id], artist.as_deref()).await;
             }
             job_log(id, "job done");
             update_job(app, inner, id, |j| {
@@ -756,6 +767,75 @@ async fn apply_category(app: &AppHandle, id: &str, category: &str, item_ids: &[i
             ),
         ),
         Err(err) => job_log(id, &format!("category '{category}' not applied: {err}")),
+    }
+}
+
+/// Land the job's items on the album the user picked — an existing row, or one
+/// created on the spot — through the same sidecar verb as the library's own
+/// "move onto a record". Runs last, after enrich and the category, so the
+/// user's filing wins over whatever the pipeline decided. Never fatal, for the
+/// same reason as `apply_category`: the music has landed, and a failed refile
+/// is a move the user can redo by hand, not a red job.
+async fn apply_destination(
+    app: &AppHandle,
+    id: &str,
+    forced: &ForcedAlbum,
+    item_ids: &[i64],
+    fallback_artist: Option<&str>,
+) {
+    if item_ids.is_empty() {
+        return;
+    }
+    let paths = match AppPaths::resolve(app) {
+        Ok(paths) => paths,
+        Err(err) => {
+            job_log(id, &format!("destination not applied: {err}"));
+            return;
+        }
+    };
+    let (target_album_id, new_album) = match forced.album_id {
+        Some(album_id) => (Some(album_id), Value::Null),
+        None => {
+            // A single into a new record keeps its own artist unless the user
+            // named one; the compilation default only backstops a mixed pile.
+            let artist = forced
+                .artist
+                .clone()
+                .or_else(|| fallback_artist.map(str::to_string))
+                .unwrap_or_else(|| "Various Artists".to_string());
+            (
+                None,
+                json!({ "album": forced.title, "albumartist": artist }),
+            )
+        }
+    };
+    let sidecar = app.state::<SidecarState>();
+    let result = sidecar
+        .request(
+            app,
+            "library_move_tracks",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "item_ids": item_ids,
+                "target_album_id": target_album_id,
+                "new_album": new_album,
+                "kind": Value::Null,
+                "renumber": true,
+            }),
+            LIBRARY_TIMEOUT,
+        )
+        .await;
+    match result {
+        Ok(_) => job_log(
+            id,
+            &format!(
+                "destination « {} » holds {} arriving item(s)",
+                forced.title,
+                item_ids.len()
+            ),
+        ),
+        Err(err) => job_log(id, &format!("destination not applied: {err}")),
     }
 }
 
@@ -1098,15 +1178,24 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         return;
     };
 
-    // Duplicates dropped by enrich have no item left to tag.
+    // Duplicates dropped by enrich have no item left to tag or to move.
+    let kept: Vec<i64> = job
+        .tracks
+        .iter()
+        .filter(|t| t.duplicate_of.is_none())
+        .filter_map(|t| t.item_id)
+        .collect();
     if let Some(category) = job.category.as_deref() {
-        let kept: Vec<i64> = job
-            .tracks
-            .iter()
-            .filter(|t| t.duplicate_of.is_none())
-            .filter_map(|t| t.item_id)
-            .collect();
         apply_category(app, id, category, &kept).await;
+    }
+    // An existing target only: a *new* forced album was already stood up by
+    // the enrich step, cover hunt included.
+    if let Some(forced) = job
+        .forced_album
+        .as_ref()
+        .filter(|forced| forced.album_id.is_some())
+    {
+        apply_destination(app, id, forced, &kept, job.artist.as_deref()).await;
     }
 
     let total = job.tracks.len();
@@ -1232,14 +1321,20 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
 
     // The category rides along so the cover lookup knows whether there is a
     // medium to search for; the thumbnail is the stand-in when there is not.
-    let forced_album = job.forced_album.as_ref().map(|forced| {
-        json!({
-            "title": forced.title,
-            "artist": forced.artist,
-            "category": job.category,
-            "thumbnail": job.thumbnail,
-        })
-    });
+    // An *existing* target is not this path's business: the pipeline files
+    // normally and `apply_destination` moves the items afterwards.
+    let forced_album = job
+        .forced_album
+        .as_ref()
+        .filter(|forced| forced.album_id.is_none())
+        .map(|forced| {
+            json!({
+                "title": forced.title,
+                "artist": forced.artist,
+                "category": job.category,
+                "thumbnail": job.thumbnail,
+            })
+        });
 
     let sidecar = app.state::<SidecarState>();
     sidecar

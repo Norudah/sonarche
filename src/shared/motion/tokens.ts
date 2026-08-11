@@ -106,4 +106,7 @@ export const layoutIds = {
   recordKind: "sonarche-record-kind",
   /** The grouping pill under the import page's folder picker. */
   grouping: "sonarche-grouping",
+  /** The auto/existing/new pill in the composer's destination control. Its own
+   * id: it lives one line under the kind pill, which must not tween into it. */
+  destinationChoice: "sonarche-destination-choice",
 } as const;

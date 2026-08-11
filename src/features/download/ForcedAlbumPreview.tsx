@@ -34,7 +34,7 @@ export function ForcedAlbumPreview({ isOn }: { isOn: boolean }) {
     <div className="flex w-fit items-stretch gap-5 rounded-xl bg-default/40 px-3.5 py-2.5">
       <figure className={`flex flex-col gap-1.5 transition-opacity ${isOn ? "opacity-45" : ""}`}>
         <figcaption className="text-[0.625rem] font-medium tracking-wide text-muted uppercase">
-          {t("options.forcedAlbum.without")}
+          {t("options.destination.without")}
         </figcaption>
         <Shelf width="2.5rem" count={1} tone="scattered" />
         <Shelf width="3.5rem" count={2} tone="scattered" />
@@ -47,7 +47,7 @@ export function ForcedAlbumPreview({ isOn }: { isOn: boolean }) {
         <figcaption
           className={`text-[0.625rem] font-medium tracking-wide uppercase ${isOn ? "text-accent" : "text-muted"}`}
         >
-          {t("options.forcedAlbum.with")}
+          {t("options.destination.with")}
         </figcaption>
         <Shelf width="4.5rem" count={4} tone="gathered" />
       </figure>

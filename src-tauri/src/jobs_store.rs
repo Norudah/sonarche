@@ -898,6 +898,7 @@ mod tests {
         job.forced_album = Some(ForcedAlbum {
             title: "Inception".into(),
             artist: Some("Hans Zimmer".into()),
+            album_id: None,
         });
         upsert_job(&conn, &job).unwrap();
 

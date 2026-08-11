@@ -96,13 +96,16 @@ export interface DownloadJob {
   updatedAt: number;
 }
 
-/** A record assembled by hand — a film, a series, a game — filed under one name
- * however many releases its tracks came from. The per-track artist survives it:
- * only the filing is forced. */
+/** The album the download must land on — a record assembled by hand (a film, a
+ * series, a game), or one already on the shelf. The per-track artist survives
+ * it: only the filing is forced. */
 export interface ForcedAlbum {
   title: string;
   /** Left to the sidecar's compilation default ("Various Artists") when empty. */
   artist: string | null;
+  /** An existing beets album row to land on. With an id, title/artist above
+   * only describe the target; the backend moves the items onto it post-enrich. */
+  albumId?: number | null;
 }
 
 interface WireReport {
