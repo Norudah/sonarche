@@ -129,7 +129,7 @@ export function CommonFields({
         })}
       </div>
 
-      {baseline.genre.mixed && values.genre.trim() === "" && (
+      {((baseline.genre.mixed && values.genre.trim() === "") || (baseline.year.mixed && values.year.trim() === "")) && (
         <p className="-mt-1.5 text-[0.6875rem] leading-snug text-muted/85">
           {t("albumMetadata.mixed.hint", { count: trackCount })}
         </p>

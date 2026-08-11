@@ -11,7 +11,7 @@ import {
   commonBaseline,
   commonOrigins,
   distinctCommonCount,
-  draftGenreCell,
+  draftRowCell,
   rowOrigins,
   toAlbumDraft,
   type AlbumCommonBaseline,
@@ -135,16 +135,21 @@ function InspectBody({
         ? offers.find((offer) => offer.trackId === activeRow)
         : undefined) ?? null;
 
-  // Genre is read off the rows rather than held beside them, so the common field
-  // and the column can never show two different answers.
-  const genreCell = draftGenreCell(album.tracks, draft);
-  const shownCommon: AlbumCommonValues = { ...draft.common, genre: genreCell.value };
-  const shownBaseline: AlbumCommonBaseline = { ...baseline, genre: { value: genreCell.value, mixed: genreCell.mixed } };
+  // Genre and year are read off the rows rather than held beside them, so the
+  // common field and the column can never show two different answers.
+  const genreCell = draftRowCell(album.tracks, draft, "genre");
+  const yearCell = draftRowCell(album.tracks, draft, "year");
+  const shownCommon: AlbumCommonValues = { ...draft.common, genre: genreCell.value, year: yearCell.value };
+  const shownBaseline: AlbumCommonBaseline = {
+    ...baseline,
+    genre: { value: genreCell.value, mixed: genreCell.mixed },
+    year: { value: yearCell.value, mixed: yearCell.mixed },
+  };
   const distinctCounts: Partial<Record<AlbumCommonField, number>> = {
     genre: genreCell.distinct,
+    year: yearCell.distinct,
     album: distinctCommonCount(album.tracks, "album"),
     albumartist: distinctCommonCount(album.tracks, "albumartist"),
-    year: distinctCommonCount(album.tracks, "year"),
     grouping: distinctCommonCount(album.tracks, "grouping"),
   };
 
@@ -156,12 +161,12 @@ function InspectBody({
   const origins = commonOrigins(album.tracks, baseline, draft);
 
   const setCommon = (field: AlbumCommonField, value: string) => {
-    // Writing the shared genre *is* writing every row's genre — the field is a
-    // shortcut into the column, not a value of its own.
-    if (field === "genre") {
+    // Writing the shared genre or year *is* writing every row's — the field is
+    // a shortcut into the column, not a value of its own.
+    if (field === "genre" || field === "year") {
       setDraft((prev) => {
         const rows = { ...prev.rows };
-        for (const id of Object.keys(rows)) rows[Number(id)] = { ...rows[Number(id)], genre: value };
+        for (const id of Object.keys(rows)) rows[Number(id)] = { ...rows[Number(id)], [field]: value };
         return { ...prev, rows };
       });
       setActiveRow(null);
@@ -460,7 +465,7 @@ export function AlbumInspectModal({ album, onClose }: { album: Album | null; onC
           the body, and would double-handle it whenever it does not). */}
       <Modal.Backdrop isKeyboardDismissDisabled>
         <Modal.Container>
-          <Modal.Dialog className="flex h-[92vh] max-h-[54rem] w-[96vw] max-w-[74rem] flex-col overflow-hidden p-0!">
+          <Modal.Dialog className="flex h-[94vh] max-h-[58rem] w-[97vw] max-w-[80rem] flex-col overflow-hidden p-0!">
             {album && (
               <MetadataSuggestionsProvider>
                 <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />

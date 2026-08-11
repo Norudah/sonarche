@@ -298,6 +298,7 @@
       "heading_other": "{{count}} tracks",
       "filedUnder": "Filed under {{artist}} — the Artist column says who plays each title.",
       "missing": "to fill in",
+      "missingShort": "missing",
       "filtered": "Filter: {{label}} · {{count}} of {{total}}",
       "clearFilter": "Clear filter",
       "cell": "{{field}} — {{title}}",

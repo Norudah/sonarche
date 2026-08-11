@@ -70,6 +70,14 @@ export function TracklistRow({
         onChange={(value) => onChange("artist", value)}
       />
       <EditableCell
+        value={row.year}
+        origin={origins.year}
+        label={cell(t("metadata.fields.year"))}
+        align="center"
+        missingLabel={t("albumMetadata.tracks.missingShort")}
+        onChange={(value) => onChange("year", value)}
+      />
+      <EditableCell
         value={row.genre}
         origin={origins.genre}
         label={cell(t("metadata.fields.genre"))}

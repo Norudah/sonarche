@@ -7,7 +7,7 @@ import {
   commonBaseline,
   commonOrigins,
   distinctCommonCount,
-  draftGenreCell,
+  draftRowCell,
   rowOrigins,
   toAlbumDraft,
   trackRowValues,
@@ -79,7 +79,7 @@ describe("buildAlbumUpdates", () => {
   function draftFrom(
     over: {
       common?: Partial<Record<string, string>>;
-      rows?: Record<number, { title?: string; track?: string; genre?: string }>;
+      rows?: Record<number, { title?: string; track?: string; genre?: string; year?: string }>;
     } = {},
   ) {
     const base = commonBaseline(tracks);
@@ -112,6 +112,11 @@ describe("buildAlbumUpdates", () => {
     expect(buildAlbumUpdates(tracks, base, draft)).toEqual([]);
   });
 
+  it("never reads the year off the common draft — the rows are the year", () => {
+    const { base, draft } = draftFrom({ common: { year: "2015" } });
+    expect(buildAlbumUpdates(tracks, base, draft)).toEqual([]);
+  });
+
   it("survives a save moving the baseline under a stale common-genre seed", () => {
     // A mixed record: the draft's genre seed is "".
     const mixed = [track({ id: 1, genre: "Rock" }), track({ id: 2, genre: null })];
@@ -139,11 +144,14 @@ describe("buildAlbumUpdates", () => {
   });
 
   it("combines a common change and a row change into one batch", () => {
-    const { base, draft } = draftFrom({ common: { year: "2010" }, rows: { 1: { title: "New A" } } });
+    const { base, draft } = draftFrom({
+      common: { albumartist: "Skillet & Friends" },
+      rows: { 1: { title: "New A" } },
+    });
     const updates = buildAlbumUpdates(tracks, base, draft);
     expect(updates).toHaveLength(3);
-    expect(updates.find((u) => u.id === 1)!.fields).toEqual({ year: "2010", title: "New A" });
-    expect(updates.find((u) => u.id === 3)!.fields).toEqual({ year: "2010" });
+    expect(updates.find((u) => u.id === 1)!.fields).toEqual({ albumartist: "Skillet & Friends", title: "New A" });
+    expect(updates.find((u) => u.id === 3)!.fields).toEqual({ albumartist: "Skillet & Friends" });
   });
 
   it("leaves an untouched mixed field alone — no blanket wipe", () => {
@@ -154,10 +162,21 @@ describe("buildAlbumUpdates", () => {
   });
 
   it("unifies a mixed field to every track once it is given a value", () => {
+    const mixed = [track({ id: 1, category: "Video Games" }), track({ id: 2, category: null })];
+    const base = commonBaseline(mixed);
+    const draft = toAlbumDraft(mixed, base);
+    draft.common.grouping = "Video Games";
+    const updates = buildAlbumUpdates(mixed, base, draft);
+    expect(updates).toHaveLength(2);
+    expect(updates.every((u) => u.fields.grouping === "Video Games")).toBe(true);
+  });
+
+  it("unifies a mixed year through a fan-out on the rows — what the common field does", () => {
     const mixed = [track({ id: 1, year: 2009 }), track({ id: 2, year: 2011 })];
     const base = commonBaseline(mixed);
     const draft = toAlbumDraft(mixed, base);
-    draft.common.year = "2010";
+    draft.rows[1].year = "2010";
+    draft.rows[2].year = "2010";
     const updates = buildAlbumUpdates(mixed, base, draft);
     expect(updates).toHaveLength(2);
     expect(updates.every((u) => u.fields.year === "2010")).toBe(true);
@@ -201,8 +220,8 @@ describe("buildAlbumUpdates", () => {
 
 describe("rowOrigins", () => {
   it("reports only the cells that moved, each with the value it left", () => {
-    const live = track({ id: 1, title: "Monster", artist: "Skillet", genre: "Rock", track: 1 });
-    const row = { track: "1", title: "Monster (live)", artist: "Skillet", genre: "Post-Rock" };
+    const live = track({ id: 1, title: "Monster", artist: "Skillet", genre: "Rock", track: 1, year: 2009 });
+    const row = { track: "1", title: "Monster (live)", artist: "Skillet", year: "2009", genre: "Post-Rock" };
 
     expect(rowOrigins(live, row)).toEqual({ title: "Monster", genre: "Rock" });
   });
@@ -283,12 +302,12 @@ describe("changeSummary", () => {
   });
 });
 
-describe("draftGenreCell", () => {
+describe("draftRowCell", () => {
   it("reads the shared genre off the rows", () => {
     const tracks = [track({ id: 1 }), track({ id: 2 })];
     const draft = toAlbumDraft(tracks, commonBaseline(tracks));
 
-    expect(draftGenreCell(tracks, draft)).toEqual({ value: "Rock", mixed: false, distinct: 1 });
+    expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "Rock", mixed: false, distinct: 1 });
   });
 
   it("goes mixed the moment one row moves, and counts the values in play", () => {
@@ -296,7 +315,7 @@ describe("draftGenreCell", () => {
     const draft = toAlbumDraft(tracks, commonBaseline(tracks));
     draft.rows[1].genre = "Post-Rock";
 
-    expect(draftGenreCell(tracks, draft)).toEqual({ value: "", mixed: true, distinct: 2 });
+    expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "", mixed: true, distinct: 2 });
   });
 
   it("follows a fan-out back to a single value", () => {
@@ -305,7 +324,22 @@ describe("draftGenreCell", () => {
     draft.rows[1].genre = "Post-Rock";
     draft.rows[2].genre = "Post-Rock";
 
-    expect(draftGenreCell(tracks, draft)).toEqual({ value: "Post-Rock", mixed: false, distinct: 1 });
+    expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "Post-Rock", mixed: false, distinct: 1 });
+  });
+
+  it("reads the shared year off the rows, in the string form the inputs edit", () => {
+    const tracks = [track({ id: 1, year: 2009 }), track({ id: 2, year: 2009 })];
+    const draft = toAlbumDraft(tracks, commonBaseline(tracks));
+
+    expect(draftRowCell(tracks, draft, "year")).toEqual({ value: "2009", mixed: false, distinct: 1 });
+  });
+
+  it("reads a year the sidecar would skip as the stored value — no phantom mix", () => {
+    const tracks = [track({ id: 1, year: 2009 }), track({ id: 2, year: 2009 })];
+    const draft = toAlbumDraft(tracks, commonBaseline(tracks));
+    draft.rows[1].year = "20x9";
+
+    expect(draftRowCell(tracks, draft, "year")).toEqual({ value: "2009", mixed: false, distinct: 1 });
   });
 });
 
@@ -324,7 +358,17 @@ describe("commonOrigins", () => {
     const tracks = [track({ id: 1 }), track({ id: 2 })];
     const baseline = commonBaseline(tracks);
     const draft = toAlbumDraft(tracks, baseline);
-    draft.common.year = "2010";
+    draft.common.album = "Awake (Deluxe)";
+
+    expect(commonOrigins(tracks, baseline, draft)).toEqual({ album: "Awake" });
+  });
+
+  it("judges the year on the rows' shared reading, like the genre", () => {
+    const tracks = [track({ id: 1 }), track({ id: 2 })];
+    const baseline = commonBaseline(tracks);
+    const draft = toAlbumDraft(tracks, baseline);
+    draft.rows[1].year = "2010";
+    draft.rows[2].year = "2010";
 
     expect(commonOrigins(tracks, baseline, draft)).toEqual({ year: "2009" });
   });
@@ -334,7 +378,9 @@ describe("commonOrigins", () => {
     const baseline = commonBaseline(tracks);
     const draft = toAlbumDraft(tracks, baseline);
     draft.common.album = " Awake ";
-    draft.common.year = "20x9";
+    // A non-numeric year the sidecar would skip — typed on a row, where the
+    // year now lives.
+    draft.rows[1].year = "20x9";
 
     expect(commonOrigins(tracks, baseline, draft)).toEqual({});
   });

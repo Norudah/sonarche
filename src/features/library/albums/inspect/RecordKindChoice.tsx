@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import type { AlbumKind } from "@/features/library/api";
 import { layoutIds, springs } from "@/shared/motion/tokens";
+import { FieldHelp } from "@/shared/ui/FieldHelp";
 
 /* The composer's segmented control, verbatim — one pill sliding between two
  * segments already means "throw this switch" in this app. See `KindChoice` for
@@ -39,10 +40,10 @@ function Segment({ kind, selected, children }: { kind: AlbumKind; selected: Albu
  * Sonarche should read the record — so it applies on the spot and has nothing
  * to save.
  *
- * The consequence is stated under the switch rather than left to be discovered:
- * declaring a collection is what stops the app from counting its missing track
- * numbers, and someone who came here *because* of that complaint should see the
- * remedy named.
+ * The consequence lives in the label's "?" rather than under the switch: the
+ * two explanations printed in the column pushed it into scrolling, and the
+ * notion only needs reading once. Both kinds are stated at once — a tooltip
+ * whose text changed with the selection would read as a status, not a help.
  *
  * Absent for a group with no album row behind it — a pile of singletons has no
  * record to be a kind of.
@@ -60,7 +61,24 @@ export function RecordKindChoice({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-[0.75rem] font-medium text-muted">{t("albumMetadata.kind.label")}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-[0.75rem] font-medium text-muted">{t("albumMetadata.kind.label")}</p>
+        <FieldHelp
+          label={t("metadata.help.open", { field: t("albumMetadata.kind.label") })}
+          text={
+            <>
+              <p>
+                <span className="font-semibold">{t("albumMetadata.kind.album")}</span> —{" "}
+                {t("albumMetadata.kind.albumWhy")}
+              </p>
+              <p className="mt-1.5">
+                <span className="font-semibold">{t("albumMetadata.kind.collection")}</span> —{" "}
+                {t("albumMetadata.kind.collectionWhy")}
+              </p>
+            </>
+          }
+        />
+      </div>
 
       <RadioGroup
         value={kind}
@@ -78,10 +96,6 @@ export function RecordKindChoice({
           {t("albumMetadata.kind.collection")}
         </Segment>
       </RadioGroup>
-
-      <p className="text-[0.75rem] leading-relaxed text-muted">
-        {t(kind === "collection" ? "albumMetadata.kind.collectionWhy" : "albumMetadata.kind.albumWhy")}
-      </p>
     </div>
   );
 }

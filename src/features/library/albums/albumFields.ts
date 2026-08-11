@@ -69,22 +69,30 @@ export function commonBaseline(tracks: LibraryTrack[]): AlbumCommonBaseline {
 }
 
 /** The per-track editable cells shown in the tracklist. Track number rides here
- * (not a common field) because it is what actually orders the record. Genre is
- * in *both* places on purpose: edited here when the record genuinely mixes
- * genres, read back into the common field by `draftGenreCell` — the Spirit case
- * showed an album's tracks legitimately disagreeing. */
+ * (not a common field) because it is what actually orders the record. Genre and
+ * year are in *both* places on purpose: edited here when the record genuinely
+ * mixes values, read back into the common field by `draftRowCell` — the Spirit
+ * case showed an album's tracks legitimately disagreeing, and a collection
+ * gathers releases from different years by nature. */
 export interface TrackRowValues {
   track: string;
   title: string;
   artist: string;
+  year: string;
   genre: string;
 }
+
+/** The common tags that actually live on the rows: their common field is a
+ * *reading* of the column, and writing to it fans out to every row. */
+export type RowCarriedField = "genre" | "year";
+export const ROW_CARRIED_FIELDS: readonly RowCarriedField[] = ["genre", "year"];
 
 export function trackRowValues(track: LibraryTrack): TrackRowValues {
   return {
     track: track.track != null ? String(track.track) : "",
     title: track.title,
     artist: track.artist,
+    year: track.year != null ? String(track.year) : "",
     genre: track.genre ?? "",
   };
 }
@@ -110,17 +118,16 @@ export function toAlbumDraft(tracks: LibraryTrack[], baseline: AlbumCommonBaseli
  * value: an untouched "multiple values" field must never blanket-wipe the album,
  * so an empty mixed field is left alone.
  *
- * Genre never diffs here. The common genre is a *reading* of the rows
- * (`draftGenreCell`), and editing it fans out to the rows, so the row diffs
- * already carry every genre change; `draft.common.genre` is only the
- * mount-time seed, which nothing updates. Diffing that seed against a
- * baseline that moves with every save manufactured a phantom pending change
- * right after a successful save — and re-saving the phantom wiped the
- * album's genres. */
+ * Row-carried fields (genre, year) never diff here. Their common field is a
+ * *reading* of the rows (`draftRowCell`), and editing it fans out to the rows,
+ * so the row diffs already carry every change; the common seed is mount-time
+ * only, which nothing updates. Diffing that seed against a baseline that moves
+ * with every save manufactured a phantom pending change right after a
+ * successful save — and re-saving the phantom wiped the album's genres. */
 export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
   const patch: Partial<AlbumCommonValues> = {};
   for (const field of ALBUM_COMMON_FIELDS) {
-    if (field === "genre") continue;
+    if ((ROW_CARRIED_FIELDS as readonly AlbumCommonField[]).includes(field)) continue;
     const cell = baseline[field];
     const value = effectiveEdit(field, draft.common[field], cell.mixed ? "" : cell.value);
     if (value != null) patch[field] = value;
@@ -158,38 +165,54 @@ export function buildAlbumUpdates(
 }
 
 /**
- * The genre as the record currently reads it — derived from the rows, never
- * stored twice.
+ * A row-carried tag as the record currently reads it — derived from the rows,
+ * never stored twice.
  *
- * Genre is the one tag that lives in both views, and holding it as its own
- * common value let the two disagree: fan a row's genre out to the record and the
+ * Genre and year live in both views, and holding them as their own common
+ * value let the two disagree: fan a row's genre out to the record and the
  * common field would still show the old word until something wrote it too. Here
  * the common field is a *reading* of the rows (their shared value, or how many
  * they hold), and writing to it fans out. Nothing left to contradict.
+ *
+ * Each row contributes what a save would actually store — an edit the sidecar
+ * would skip (whitespace, a non-numeric year) reads as the stored value — so
+ * the cell can never claim a change the save would not write.
  */
-export function draftGenreCell(tracks: LibraryTrack[], draft: AlbumDraft): CommonCell & { distinct: number } {
-  const values = new Set(tracks.map((track) => (draft.rows[track.id]?.genre ?? track.genre ?? "").trim()));
+export function draftRowCell(
+  tracks: LibraryTrack[],
+  draft: AlbumDraft,
+  field: RowCarriedField,
+): CommonCell & { distinct: number } {
+  const values = new Set(
+    tracks.map((track) => {
+      const live = fieldOf(track, field);
+      const row = draft.rows[track.id]?.[field] ?? live;
+      return (effectiveEdit(field, row, live) ?? live).trim();
+    }),
+  );
   if (values.size <= 1) return { value: [...values][0] ?? "", mixed: false, distinct: values.size };
   return { value: "", mixed: true, distinct: values.size };
 }
 
 /** The common fields the draft has moved, mapped to the value each left —
- * feeds the revert chips. Genre is judged on its derived cell (the rows'
- * shared reading), the rest on the same effective-edit rule as the save, so a
- * chip can never point at an edit the save would not write. */
+ * feeds the revert chips. Row-carried fields are judged on their derived cell
+ * (the rows' shared reading), the rest on the same effective-edit rule as the
+ * save, so a chip can never point at an edit the save would not write. */
 export function commonOrigins(
   tracks: LibraryTrack[],
   baseline: AlbumCommonBaseline,
   draft: AlbumDraft,
 ): Partial<AlbumCommonValues> {
   const origins: Partial<AlbumCommonValues> = {};
-  const genreCell = draftGenreCell(tracks, draft);
-  // Moved when the rows no longer read as they did — including into "mixed".
-  if (!baseline.genre.mixed && (genreCell.mixed || genreCell.value !== baseline.genre.value)) {
-    origins.genre = baseline.genre.value;
+  for (const field of ROW_CARRIED_FIELDS) {
+    const cell = draftRowCell(tracks, draft, field);
+    // Moved when the rows no longer read as they did — including into "mixed".
+    if (!baseline[field].mixed && (cell.mixed || cell.value !== baseline[field].value)) {
+      origins[field] = baseline[field].value;
+    }
   }
   for (const field of ALBUM_COMMON_FIELDS) {
-    if (field === "genre" || baseline[field].mixed) continue;
+    if ((ROW_CARRIED_FIELDS as readonly AlbumCommonField[]).includes(field) || baseline[field].mixed) continue;
     if (effectiveEdit(field, draft.common[field], baseline[field].value) != null) {
       origins[field] = baseline[field].value;
     }

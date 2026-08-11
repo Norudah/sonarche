@@ -298,6 +298,7 @@
       "heading_other": "{{count}} morceaux",
       "filedUnder": "Rangé sous {{artist}} — la colonne Artiste dit qui joue chaque titre.",
       "missing": "à renseigner",
+      "missingShort": "à saisir",
       "filtered": "Filtre : {{label}} · {{count}} sur {{total}}",
       "clearFilter": "Retirer le filtre",
       "cell": "{{field}} — {{title}}",
