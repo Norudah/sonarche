@@ -26,7 +26,24 @@ const COLUMN = "px-2 pb-1.5 text-[0.625rem] font-semibold tracking-wide text-mut
  * name it — turning a check off, or answering "c'est voulu", puts the light out
  * everywhere at once.
  */
-export function InspectTable({ tracks, animationKey, sort, onSort, onPlay, onEdit }: TrackListingProps) {
+interface InspectTableProps extends TrackListingProps {
+  /** Drops the Album column. One record's tracklist would otherwise spend a
+   * seventh of its width repeating the title in the header above it — and the
+   * whole argument for this table is that the width goes to the fields you came
+   * to check. It is the only thing that differs between the two surfaces, which
+   * is why it is a flag and not a second table. */
+  insideAlbum?: boolean;
+}
+
+export function InspectTable({
+  tracks,
+  animationKey,
+  sort,
+  onSort,
+  onPlay,
+  onEdit,
+  insideAlbum = false,
+}: InspectTableProps) {
   const { t } = useTranslation("library");
   const rowWindow = useRowWindow(tracks, INSPECT_ROW_HEIGHT);
   const attention = useTrackAttention(tracks);
@@ -43,13 +60,20 @@ export function InspectTable({ tracks, animationKey, sort, onSort, onPlay, onEdi
       {/* No vertical spacing between rows, unlike the reading table: the zebra
        * needs to run edge to edge to be readable, and a gap would break it into
        * floating bands. */}
-      <table className="w-full min-w-[58rem] table-fixed border-separate border-spacing-y-0">
+      <table
+        className={
+          "w-full table-fixed border-separate border-spacing-y-0 " + (insideAlbum ? "min-w-[44rem]" : "min-w-[58rem]")
+        }
+      >
         <thead>
           <tr className="[&>th]:border-b [&>th]:border-separator/60">
             <th className={`${COLUMN} w-12 text-right`}>{t("columns.number")}</th>
             {column("title", t("columns.title"), `${COLUMN} text-left`)}
-            {column("artist", t("columns.artist"), `${COLUMN} w-[15%] text-left`)}
-            {column("album", t("columns.album"), `${COLUMN} w-[15%] text-left`)}
+            {/* Wider inside an album, which is where the freed Album column's
+                share goes: left on the flexible title it only opened a gulf
+                between a track's name and its credit. */}
+            {column("artist", t("columns.artist"), `${COLUMN} ${insideAlbum ? "w-[24%]" : "w-[15%]"} text-left`)}
+            {!insideAlbum && column("album", t("columns.album"), `${COLUMN} w-[15%] text-left`)}
             <th className={`${COLUMN} w-14 text-right`}>{t("columns.year")}</th>
             {column("genre", t("columns.genre"), `${COLUMN} w-[13%] text-left`)}
             <th className={`${COLUMN} w-[12%] text-left`}>{t("columns.category")}</th>
@@ -70,6 +94,7 @@ export function InspectTable({ tracks, animationKey, sort, onSort, onPlay, onEdi
               key={track.id}
               track={track}
               index={index}
+              insideAlbum={insideAlbum}
               flags={attention.get(track.id) ?? []}
               onPlay={() => onPlay(index)}
               onEdit={() => onEdit(track)}

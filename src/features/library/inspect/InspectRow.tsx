@@ -24,11 +24,13 @@ interface InspectRowProps {
   index: number;
   /** The checks still naming this track. */
   flags: DoorKey[];
+  /** Drops the Album cell — see `InspectTable`. */
+  insideAlbum?: boolean;
   onPlay: () => void;
   onEdit: () => void;
 }
 
-export function InspectRow({ track, index, flags, onPlay, onEdit }: InspectRowProps) {
+export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, onEdit }: InspectRowProps) {
   const { t } = useTranslation("library");
   const categoryLabelOf = useCategoryLabel();
   const { current } = usePlayer();
@@ -74,13 +76,15 @@ export function InspectRow({ track, index, flags, onPlay, onEdit }: InspectRowPr
         <span className="block truncate">{track.title || t("unknownTitle")}</span>
       </td>
 
-      <td className={`${cell()} w-[15%]`}>
+      <td className={`${cell()} ${insideAlbum ? "w-[24%]" : "w-[15%]"}`}>
         <span className="block truncate">{track.artist || empty}</span>
       </td>
 
-      <td className={`${cell()} w-[15%]`}>
-        <span className="block truncate">{track.album || empty}</span>
-      </td>
+      {!insideAlbum && (
+        <td className={`${cell()} w-[15%]`}>
+          <span className="block truncate">{track.album || empty}</span>
+        </td>
+      )}
 
       <td className={`${cell(has("missingYear"))} w-14 text-right tabular-nums`} title={label("missingYear")}>
         {track.year ?? empty}

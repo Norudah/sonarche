@@ -6,6 +6,8 @@ import { AlbumTrackRow } from "@/features/library/albums/AlbumTrackRow";
 import type { LibraryTrack } from "@/features/library/api";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
+import { useLensHere } from "@/features/library/inspect/inspectMode";
+import { InspectTable } from "@/features/library/inspect/InspectTable";
 import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import { nextSort, sortTracks, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
 import { useAlbumAttention } from "@/features/library/triage/attention";
@@ -25,6 +27,10 @@ const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wide
  * mixed genres (the Spirit soundtrack), which is exactly what the album view
  * would then hide. Bending one table to cover both shapes would have meant a
  * variant prop toggling four columns.
+ *
+ * The inspection table below is the exception that proves it: there, the two
+ * surfaces differ by exactly one column, because the whole point of that table
+ * is that every field has the same place on every page.
  */
 export function AlbumTrackList({ album }: { album: Album }) {
   const { t } = useTranslation("library");
@@ -35,8 +41,10 @@ export function AlbumTrackList({ album }: { album: Album }) {
   // order, and dropping the sort (third click) returns to it.
   const [sort, setSort] = useState<TrackSort | null>(null);
   const { playFrom } = usePlayQueue();
+  const inspecting = useLensHere();
   // The Metadata page's verdict, narrowed to this record: a row is dotted here
-  // exactly when that page would still name it.
+  // exactly when that page would still name it. (Under the lens the inspection
+  // table asks for its own, over the same predicates.)
   const attention = useAlbumAttention(album);
 
   const visible = sortTracks(album.tracks, sort);
@@ -56,45 +64,62 @@ export function AlbumTrackList({ album }: { album: Album }) {
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-0.5">
-          <thead>
-            <tr className="[&>th]:border-b [&>th]:border-separator/60">
-              <th className={`${COLUMN} w-14 text-center`}>#</th>
-              {column("title", t("columns.title"), `${COLUMN} text-left`)}
-              {column("artist", t("columns.artist"), `${COLUMN} w-[22%] text-left`)}
-              {column("genre", t("columns.genre"), `${COLUMN} w-[16%] text-left`)}
-              {/* No visible label: the column holds a dot, and a header over an
+      {inspecting ? (
+        // The record's own tracklist under the lens. Same table as the
+        // explorer's, minus the Album column: on a page whose header is the
+        // album, that column would repeat one title down the whole list.
+        <InspectTable
+          insideAlbum
+          tracks={visible}
+          animationKey={album.key}
+          sort={sort}
+          onSort={(clicked) => setSort(nextSort(sort, clicked))}
+          onPlay={(index) => playFrom(visible, index)}
+          onEdit={(track) => setInspectedId(track.id)}
+          onDelete={setDeleting}
+          onAddToPlaylist={(track) => setAddingToPlaylist([track])}
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-0.5">
+            <thead>
+              <tr className="[&>th]:border-b [&>th]:border-separator/60">
+                <th className={`${COLUMN} w-14 text-center`}>#</th>
+                {column("title", t("columns.title"), `${COLUMN} text-left`)}
+                {column("artist", t("columns.artist"), `${COLUMN} w-[22%] text-left`)}
+                {column("genre", t("columns.genre"), `${COLUMN} w-[16%] text-left`)}
+                {/* No visible label: the column holds a dot, and a header over an
                   empty cell is a promise of content that settled rows do not
                   owe. */}
-              <th className={`${COLUMN} w-8`}>
-                <span className="sr-only">{t("columns.attention")}</span>
-              </th>
-              {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
-              <th className={`${COLUMN} w-36`}>
-                <span className="sr-only">{t("columns.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody key={album.key}>
-            {visible.map((track, position) => (
-              <AlbumTrackRow
-                key={track.id}
-                track={track}
-                position={position + 1}
-                flags={attention.get(track.id) ?? []}
-                style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
-                // The visible order is the playback context, sort included —
-                // same contract as the library-wide table.
-                onPlay={() => playFrom(visible, position)}
-                onEdit={() => setInspectedId(track.id)}
-                onDelete={() => setDeleting(track)}
-                onAddToPlaylist={() => setAddingToPlaylist([track])}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+                <th className={`${COLUMN} w-8`}>
+                  <span className="sr-only">{t("columns.attention")}</span>
+                </th>
+                {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
+                <th className={`${COLUMN} w-36`}>
+                  <span className="sr-only">{t("columns.actions")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody key={album.key}>
+              {visible.map((track, position) => (
+                <AlbumTrackRow
+                  key={track.id}
+                  track={track}
+                  position={position + 1}
+                  flags={attention.get(track.id) ?? []}
+                  style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
+                  // The visible order is the playback context, sort included —
+                  // same contract as the library-wide table.
+                  onPlay={() => playFrom(visible, position)}
+                  onEdit={() => setInspectedId(track.id)}
+                  onDelete={() => setDeleting(track)}
+                  onAddToPlaylist={() => setAddingToPlaylist([track])}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <MetadataDrawer track={inspected} onClose={() => setInspectedId(null)} />
       <DeleteTrackDialog track={deleting} onClose={() => setDeleting(null)} />

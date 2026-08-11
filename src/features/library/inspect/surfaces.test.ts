@@ -6,9 +6,11 @@ const overview = new URLSearchParams();
 const tracks = new URLSearchParams("view=tracks");
 
 describe("isInspectable", () => {
-  it("accepts the tracks explorer, which has no other face", () => {
+  it("accepts the pages that are a tracklist and nothing else", () => {
     expect(isInspectable("/library/tracks", overview)).toBe(true);
     expect(isInspectable("/library/tracks", new URLSearchParams("missing=year"))).toBe(true);
+    expect(isInspectable("/library/albums/Air/Moon%20Safari", overview)).toBe(true);
+    expect(isInspectable("/library/playlists/12", overview)).toBe(true);
   });
 
   it("accepts a scoped page only while it is showing its tracks", () => {
@@ -33,7 +35,7 @@ describe("isInspectable", () => {
     expect(isInspectable("/settings/library", tracks)).toBe(false);
   });
 
-  it("rejects an album, which keeps its own tracklist", () => {
-    expect(isInspectable("/library/albums/Air/Moon%20Safari", tracks)).toBe(false);
+  it("rejects the playlists index, which lists playlists and not tracks", () => {
+    expect(isInspectable("/library/playlists", tracks)).toBe(false);
   });
 });
