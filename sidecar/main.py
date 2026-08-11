@@ -30,6 +30,7 @@ def _handlers():
     import download
     import enrich
     import enrich_album
+    import genre_overrides
     import genres
     import importer
     import library
@@ -66,6 +67,8 @@ def _handlers():
         "artist_image_set": artist_image.handle,
         "artist_image_fetch": artist_image.fetch,
         "genres_recompute": genres.recompute,
+        "genre_family_set": genre_overrides.handle_set,
+        "genre_overrides_list": genre_overrides.handle_list,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,
         "services_check": services.check,
@@ -74,6 +77,12 @@ def _handlers():
 
 def main() -> None:
     handlers = _handlers()
+    # Before anything loads beets: the config's lastgenre section names the
+    # derived tree/whitelist, and the bundled base may have changed since
+    # they were last written (app update).
+    import genre_overrides
+
+    genre_overrides.ensure_derived()
     protocol.log("sidecar ready")
     for line in sys.stdin:
         line = line.strip()

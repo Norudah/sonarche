@@ -766,6 +766,64 @@ pub async fn set_album_kind(
         .await
 }
 
+/// The 13 browse families, by the display labels the sidecar's genre tree
+/// produces — the same strings the front uses as family keys. The sidecar
+/// validates them again; both sides say it so neither has to trust the other.
+const FAMILY_LABELS: &[&str] = &[
+    "Metal",
+    "Rock",
+    "Pop",
+    "Electronic",
+    "Hip-Hop",
+    "Jazz",
+    "Blues",
+    "Soul & Funk",
+    "Folk",
+    "Country",
+    "Reggae",
+    "Latin",
+    "Classical",
+];
+
+/// File a genre under a family of the user's choosing, or return it to the
+/// base tree (family = None). The placement is an opinion about the genre
+/// *name* — no track is touched; the read path rebuckets on its own.
+#[tauri::command]
+pub async fn set_genre_family(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    genre: String,
+    family: Option<String>,
+) -> AppResult<Value> {
+    if genre.trim().is_empty() {
+        return Err(AppError::InvalidInput("empty genre".into()));
+    }
+    if let Some(label) = family.as_deref() {
+        if !FAMILY_LABELS.contains(&label) {
+            return Err(AppError::InvalidInput(format!("unknown family: {label}")));
+        }
+    }
+    state
+        .request(
+            &app,
+            "genre_family_set",
+            json!({ "genre": genre, "family": family }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
+/// Every placement the user has made, for the front to mark overridden genres.
+#[tauri::command]
+pub async fn list_genre_overrides(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+) -> AppResult<Value> {
+    state
+        .request(&app, "genre_overrides_list", json!({}), QUERY_TIMEOUT)
+        .await
+}
+
 /// Checks a person may legitimately mean to leave as they are, per scope. The
 /// sidecar validates the same pair; both sides say it so neither has to trust
 /// the other. `suspect` and `tracklist` are deliberately absent — see

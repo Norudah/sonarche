@@ -96,8 +96,16 @@ pub struct AppPaths {
     pub library_root: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
+    /// The bundled base tree/whitelist, read-only app resources. The beets
+    /// config never names them directly anymore — it points at the derived
+    /// copies in [`Self::genres_dir`], which fold in the user's placements.
     pub genres_tree: PathBuf,
     pub genres_whitelist: PathBuf,
+    /// The user's genre placements and the derived tree/whitelist the sidecar
+    /// regenerates from them (see sidecar `genre_overrides.py`). App data,
+    /// deliberately outside the beets zone: a placement is an opinion about a
+    /// genre name, so erasing the library must not take it along.
+    pub genres_dir: PathBuf,
     pub tools_dir: PathBuf,
     /// The interpreter the app ships, still packed. Unpacked at setup rather
     /// than laid out as loose resources: the tree is full of symlinks and
@@ -179,6 +187,7 @@ impl AppPaths {
             requirements: sidecar_dir.join("requirements.txt"),
             genres_tree: sidecar_dir.join("genres-tree.yaml"),
             genres_whitelist: sidecar_dir.join("genres-whitelist.txt"),
+            genres_dir: data.join("genres"),
             tools_dir: data.join("tools"),
             python_archive: resource("python.tar.gz"),
             runtime_dir: data.join("runtime"),
@@ -186,6 +195,16 @@ impl AppPaths {
             bundled_fpcalc: resource("tools").join(FPCALC_BIN),
             bundled_ffmpeg: resource("tools").join(FFMPEG_BIN),
         })
+    }
+
+    /// Derived genre tree (bundled base + user placements) — what the beets
+    /// config's `lastgenre.canonical` names. Written by the sidecar.
+    pub fn derived_genres_tree(&self) -> PathBuf {
+        self.genres_dir.join("genres-tree.yaml")
+    }
+
+    pub fn derived_genres_whitelist(&self) -> PathBuf {
+        self.genres_dir.join("genres-whitelist.txt")
     }
 
     /// The beets zone — `directory:`, the only folder the sidecar organizes.
@@ -514,8 +533,27 @@ enum Flavour {
 /// Two files rather than a flag on one, because beets takes a single
 /// `--config` and offers no way to override a key from the command line.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
+    ensure_derived_genre_files(paths).await?;
     write_config_file(paths, &paths.beets_config, Flavour::App).await?;
     write_config_file(paths, &paths.beets_import_config, Flavour::Import).await
+}
+
+/// The config above names the derived genre files; make sure something is
+/// there before beets ever reads it. A plain copy of the bundled base is
+/// enough — the sidecar regenerates the real derived pair (base + the user's
+/// placements) at every startup, this only covers the window before its first
+/// run and the fresh-install case.
+async fn ensure_derived_genre_files(paths: &AppPaths) -> AppResult<()> {
+    tokio::fs::create_dir_all(&paths.genres_dir).await?;
+    for (bundled, derived) in [
+        (&paths.genres_tree, paths.derived_genres_tree()),
+        (&paths.genres_whitelist, paths.derived_genres_whitelist()),
+    ] {
+        if !tokio::fs::try_exists(&derived).await.unwrap_or(false) {
+            tokio::fs::copy(bundled, &derived).await?;
+        }
+    }
+    Ok(())
 }
 
 async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) -> AppResult<()> {
@@ -635,9 +673,10 @@ fetchart:
 {art_sources}embedart:
   auto: {embed_art}
 # auto: no — the import stage never runs lastgenre; enrich calls _get_genre()
-# itself. Canonical tree + whitelist are ours (bundled sidecar resources):
-# the stored genre is the most specific tree node (count 3, specific first),
-# the browse bucket is derived by climbing the same tree.
+# itself. Canonical tree + whitelist are the *derived* files the sidecar
+# regenerates from the bundled base plus the user's placements (see
+# genre_overrides.py): the stored genre is the most specific tree node
+# (count 3, specific first), the browse bucket climbs the same tree.
 lastgenre:
   auto: no
   source: track
@@ -652,8 +691,8 @@ ui:
 "#,
         library = yaml_scalar(&paths.music_dir()),
         db = yaml_scalar(&paths.beets_db),
-        tree = yaml_scalar(&paths.genres_tree),
-        whitelist = yaml_scalar(&paths.genres_whitelist),
+        tree = yaml_scalar(&paths.derived_genres_tree()),
+        whitelist = yaml_scalar(&paths.derived_genres_whitelist()),
         embed_art = if flavour == Flavour::App { "yes" } else { "no" },
         // Import flavour only. beets remembers the source directories it has
         // taken on and skips them on a later run, which is what makes a
@@ -799,6 +838,7 @@ mod tests {
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
             genres_whitelist: data.join("sidecar").join("genres-whitelist.txt"),
+            genres_dir: data.join("genres"),
             tools_dir: data.join("tools"),
             python_archive: data.join("python.tar.gz"),
             runtime_dir: data.join("runtime"),

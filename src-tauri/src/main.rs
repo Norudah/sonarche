@@ -121,6 +121,8 @@ fn main() {
             commands::update_tracks,
             commands::move_tracks,
             commands::set_album_kind,
+            commands::set_genre_family,
+            commands::list_genre_overrides,
             commands::set_check_accepted,
             commands::allow_cover_preview,
             commands::set_album_cover,

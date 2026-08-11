@@ -194,6 +194,30 @@ export async function recomputeGenres(): Promise<{ total: number; updated: numbe
   return invoke<{ total: number; updated: number }>("recompute_genres");
 }
 
+/** A placement the user made: this genre files under that family. */
+export interface GenreOverride {
+  genre: string;
+  family: string;
+}
+
+/** File a genre under a family of the user's choosing, or return it to the
+ * base tree (family = null). No track is touched — the read path rebuckets on
+ * its own. Returns where the genre files after the change. */
+export async function setGenreFamily(
+  genre: string,
+  family: string | null,
+): Promise<{ genre: string; family: string | null; overridden: boolean }> {
+  return invoke<{ genre: string; family: string | null; overridden: boolean }>("set_genre_family", {
+    genre,
+    family,
+  });
+}
+
+export async function listGenreOverrides(): Promise<GenreOverride[]> {
+  const result = await invoke<{ overrides: GenreOverride[] }>("list_genre_overrides");
+  return result.overrides;
+}
+
 /** The square to cut from a replacement cover, in source pixels after EXIF
  * orientation — the frame the preview showed. */
 export interface CoverCrop {

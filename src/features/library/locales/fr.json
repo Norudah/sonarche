@@ -60,6 +60,13 @@
     "recomputing": "Recalcul en cours…",
     "recomputeDone": "{{updated}} titre(s) mis à jour sur {{total}}.",
     "recomputeFailed": "Le recalcul a échoué, réessaie dans un instant.",
+    "classify": "Classer dans…",
+    "classifyReset": "Rangement d'origine",
+    "classifyDoneToast": "« {{genre}} » classé dans {{family}}",
+    "classifyResetToast": "« {{genre}} » rangé comme à l'origine",
+    "classifyUndoneToast": "Classement annulé",
+    "classifyFailedToast": "Le classement a échoué",
+    "classifyUndo": "Annuler",
     "overviewMode": "Albums & artistes",
     "empty": {
       "title": "Aucun genre pour l'instant",

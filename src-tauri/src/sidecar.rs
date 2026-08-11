@@ -181,6 +181,9 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         // gets via --config; otherwise it would pick up the user's own beets
         // config (or none), drifting from write_beets_config().
         .env("BEETSDIR", beets_dir)
+        // Where the user's genre placements live, and where the sidecar
+        // regenerates the derived tree/whitelist the config above names.
+        .env("SONARCHE_GENRES_DIR", &paths.genres_dir)
         .current_dir(
             paths
                 .sidecar_main

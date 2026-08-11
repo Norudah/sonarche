@@ -8,6 +8,35 @@ export const FAMILY_OTHER = "__other__";
 /** No genre at all. The only actionable family: it points at Metadata. */
 export const FAMILY_NONE = "__none__";
 
+/** The 13 browse families, by the display labels the sidecar produces — the
+ * same closed set `tone.ts` colours. Ordered for the classify menu: the
+ * sidecar's own family order, which is also the tree's. */
+export const FAMILY_KEYS = [
+  "Metal",
+  "Rock",
+  "Pop",
+  "Electronic",
+  "Hip-Hop",
+  "Jazz",
+  "Blues",
+  "Soul & Funk",
+  "Folk",
+  "Country",
+  "Reggae",
+  "Latin",
+  "Classical",
+] as const;
+
+/** A genre string that *is* a family root cannot be refiled — moving it would
+ * fold one browse shelf into another, and the sidecar refuses it. Both the
+ * tree's root spelling ("hip hop") and the display label ("Hip-Hop") count:
+ * either can show up as a stored genre. */
+const FAMILY_ROOT_GENRES = new Set([...FAMILY_KEYS.map((key) => key.toLowerCase()), "hip hop", "soul and funk"]);
+
+export function isFamilyRootGenre(genre: string): boolean {
+  return FAMILY_ROOT_GENRES.has(genre.trim().toLowerCase());
+}
+
 export interface SubGenre {
   name: string;
   trackCount: number;

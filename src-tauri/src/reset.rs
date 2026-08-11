@@ -332,6 +332,7 @@ mod tests {
             requirements: data.join("sidecar").join("requirements.txt"),
             genres_tree: data.join("sidecar").join("genres-tree.yaml"),
             genres_whitelist: data.join("sidecar").join("genres-whitelist.txt"),
+            genres_dir: data.join("genres"),
             tools_dir: data.join("tools"),
             python_archive: data.join("resources").join("python.tar.gz"),
             runtime_dir: data.join("runtime"),

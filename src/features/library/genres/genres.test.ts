@@ -5,15 +5,18 @@ import type { LibraryTrack } from "@/features/library/api";
 import {
   albumsWithGenre,
   countGenres,
+  FAMILY_KEYS,
   FAMILY_NONE,
   FAMILY_OTHER,
   filterFamilies,
   findFamily,
   findGenre,
   groupFamilies,
+  isFamilyRootGenre,
   listGenres,
   sortFamilies,
 } from "@/features/library/genres/genres";
+import { toneOf } from "@/features/library/genres/tone";
 import { track } from "@/features/library/testFixtures";
 
 function familiesOf(tracks: LibraryTrack[]) {
@@ -288,5 +291,34 @@ describe("sortFamilies", () => {
     const before = families.map((family) => family.key);
     sortFamilies(families, "name", asIs);
     expect(families.map((family) => family.key)).toEqual(before);
+  });
+});
+
+describe("isFamilyRootGenre", () => {
+  it("blocks the display labels, whatever the case", () => {
+    expect(isFamilyRootGenre("Rock")).toBe(true);
+    expect(isFamilyRootGenre("  ROCK ")).toBe(true);
+    expect(isFamilyRootGenre("Hip-Hop")).toBe(true);
+  });
+
+  it("blocks the tree's own root spellings", () => {
+    // The stored genre can be the root itself, spelled the tree's way.
+    expect(isFamilyRootGenre("hip hop")).toBe(true);
+    expect(isFamilyRootGenre("Soul & Funk")).toBe(true);
+  });
+
+  it("lets every ordinary genre through", () => {
+    expect(isFamilyRootGenre("Dream Pop")).toBe(false);
+    expect(isFamilyRootGenre("Grunge")).toBe(false);
+  });
+});
+
+describe("FAMILY_KEYS", () => {
+  it("every family carries an identity tone of its own", () => {
+    // A key tone.ts does not know falls back to the Other grey — which would
+    // make two menu rows wear the same dot and read as the same family.
+    const tones = FAMILY_KEYS.map((key) => toneOf(key));
+    expect(new Set(tones).size).toBe(FAMILY_KEYS.length);
+    for (const tone of tones) expect(tone).toMatch(/^var\(--family-/);
   });
 });

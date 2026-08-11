@@ -664,6 +664,11 @@ function mockPlaylist(id: unknown): MockPlaylist {
   return playlist;
 }
 
+// The user's genre placements and, per touched genre, the bucket the seed had
+// before the first override — enough to make reset honest in the mock.
+const mockGenreOverrides = new Map<string, string>();
+const mockBaseBuckets = new Map<string, string | null>();
+
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
   remux_library: { scanned: 0, fragmented: 0, remuxed: 0, failed: [] },
@@ -1079,6 +1084,28 @@ export function installMockTauri() {
           updated += 1;
         }
         return { updated };
+      }
+      // The classify verb, on the same built listing: every track carrying the
+      // genre gets rebucketed, so the shelves reorganize in the browser. The
+      // base bucket is remembered at first override — that is what "original
+      // placement" restores.
+      if (cmd === "set_genre_family") {
+        const genre = String(payload?.genre ?? "").trim();
+        const family = (payload?.family as string | null) ?? null;
+        const key = genre.toLowerCase();
+        const { tracks } = responses.list_library as {
+          tracks: { genre: string | null; genre_bucket: string | null }[];
+        };
+        const matching = tracks.filter((track) => (track.genre ?? "").toLowerCase() === key);
+        if (!mockBaseBuckets.has(key)) mockBaseBuckets.set(key, matching[0]?.genre_bucket ?? null);
+        const target = family ?? mockBaseBuckets.get(key) ?? null;
+        for (const track of matching) track.genre_bucket = target;
+        if (family == null || family === mockBaseBuckets.get(key)) mockGenreOverrides.delete(key);
+        else mockGenreOverrides.set(key, family);
+        return { genre, family: target, overridden: mockGenreOverrides.has(key) };
+      }
+      if (cmd === "list_genre_overrides") {
+        return { overrides: [...mockGenreOverrides].map(([genre, family]) => ({ genre, family })) };
       }
       // The move verb, on the same built listing: tracks re-filed onto the
       // target row (or a fresh one), numbered onward when asked — so both

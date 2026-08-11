@@ -22,6 +22,9 @@ interface GenreHeroProps {
   /** The view switcher, at the right end of the breadcrumb line. Every detail
    * hero puts it there, so the control never moves between subjects. */
   actions?: ReactNode;
+  /** The classify menu, beside the play buttons — a management act next to the
+   * playback act, the album hero's own arrangement. Genre depth only. */
+  classify?: ReactNode;
   ref?: Ref<HTMLElement>;
 }
 
@@ -50,6 +53,7 @@ export function GenreHero({
   onPlay,
   onShuffle,
   actions,
+  classify,
   ref,
 }: GenreHeroProps) {
   const { t } = useTranslation("library");
@@ -88,8 +92,9 @@ export function GenreHero({
 
           {/* In the band, like the album and artist heroes: the three detail
            * pages answer "how do I start this" in the same place. */}
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-2">
             <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+            {classify}
           </div>
         </div>
       </div>

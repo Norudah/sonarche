@@ -60,6 +60,13 @@
     "recomputing": "Recomputing…",
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
     "recomputeFailed": "Recompute failed, try again in a moment.",
+    "classify": "File under…",
+    "classifyReset": "Original placement",
+    "classifyDoneToast": "Filed “{{genre}}” under {{family}}",
+    "classifyResetToast": "“{{genre}}” back to its original placement",
+    "classifyUndoneToast": "Filing undone",
+    "classifyFailedToast": "Filing failed",
+    "classifyUndo": "Undo",
     "overviewMode": "Albums & artists",
     "empty": {
       "title": "No genres yet",
