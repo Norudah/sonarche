@@ -115,6 +115,7 @@ describe("useMoveWithUndo", () => {
     act(() => run({ itemIds: [10], targetAlbumId: 7 }, snapshot, "Mine"));
 
     await waitFor(() => expect(toast).toHaveBeenCalled());
-    expect(toast.mock.calls[0][1]).toBeUndefined();
+    // The move is still announced — it just carries no button to take it back.
+    expect(toast.mock.calls[0][1]?.actionProps).toBeUndefined();
   });
 });

@@ -10,8 +10,8 @@ verb, and this is it.
 One operation covers every gesture: move a track into an existing record, merge
 a whole record into another, or gather a selection into a brand-new one
 (`new_album`). What changes on the moved items is exactly what decides where a
-file is *filed* — `album`, `albumartist`, and (on request) the position — and
-nothing that states a fact about the recording: `artist`, genre, year and
+file is *filed* — `album`, `albumartist`, `comp` and (on request) the position
+— and nothing that states a fact about the recording: `artist`, genre, year and
 `mb_trackid` stay, which is the whole point of a personal gathering.
 
 Two things the album row writes here must never do, and why `inherit=False` is
@@ -117,6 +117,14 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             continue
         items.append(item)
 
+    # Where each track sat before anything moved. Read up front rather than off
+    # the item inside the loop: `lib.add_album` re-parents its items in its own
+    # transaction, so by the time the loop runs on a *created* target every one
+    # of them already points at the new row and the records they came from are
+    # unrecoverable — which is how an emptied source row and its folder came to
+    # outlive the move that emptied it.
+    origins = {item.id: item.album_id for item in items}
+
     if target_album_id is not None:
         album = lib.get_album(int(target_album_id))
         if album is None:
@@ -142,14 +150,25 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
     for index, item in enumerate(incoming):
         changed: set[str] = set()
         old_album_title = (item.album or "").strip()
-        if item.album_id is not None and item.album_id != album.id:
-            sources.setdefault(item.album_id, None)
+        origin = origins.get(item.id)
+        if origin is not None and origin != album.id:
+            sources.setdefault(origin, None)
 
         for key in ("album", "albumartist"):
             wanted = getattr(album, key) or ""
             if (getattr(item, key, "") or "") != wanted:
                 setattr(item, key, wanted)
                 changed.add(key)
+        # `comp` picks the path *template*, not just a tag: beets files a
+        # compilation track under `Compilations/<album>/` and everything else
+        # under `<albumartist>/<album>/`. A track arriving from a compilation
+        # kept its flag and landed in a second folder — one record, split in
+        # two on disk, while the app (which groups by tag) showed it whole.
+        # It states where a file belongs, so it follows the record like the
+        # two above.
+        if bool(item.comp) != bool(album.comp):
+            item.comp = album.comp
+            changed.add("comp")
         if renumber:
             if (item.track or 0) != numbers[index]:
                 item.track = numbers[index]

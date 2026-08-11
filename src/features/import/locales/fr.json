@@ -151,8 +151,8 @@
     "nothingLeft": "Cet import n'a plus rien dans l'arche. Le retirer ne supprimera donc rien — le dossier sera simplement oublié.",
     "keep": "Garder",
     "confirm": "Retirer de l'arche",
-    "doneToast_one": "{{count, number}} morceau retiré de l'arche ({{name}}).",
-    "doneToast_other": "{{count, number}} morceaux retirés de l'arche ({{name}}).",
+    "doneToast_one": "{{count, number}} morceau retiré de « {{name}} »",
+    "doneToast_other": "{{count, number}} morceaux retirés de « {{name}} »",
     "failedToast": "Le retrait n'a pas abouti",
     "verdict": "Retiré",
     "subtitle": "Retiré de l'arche : plus rien de cet import n'est dans la bibliothèque."

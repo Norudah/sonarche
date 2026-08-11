@@ -7,6 +7,7 @@ import { groupAlbums } from "@/features/library/albums/albums";
 import { buildMoveUndo } from "@/features/library/albums/undoMove";
 import { moveTracks, updateTracks, type LibraryTrack, type MoveSpec } from "@/features/library/api";
 import { libraryKey, useMoveTracks } from "@/features/library/hooks";
+import { TOAST_EXPLAINED, TOAST_GLANCE, TOAST_UNDO } from "@/shared/toast/durations";
 
 /**
  * The move, told and reversible: performs one request, announces it, and hangs
@@ -31,9 +32,9 @@ export function useMoveWithUndo() {
     try {
       for (const spec of plan.specs) await moveTracks(spec);
       await updateTracks(plan.restore);
-      toast(t("move.undoneToast"));
+      toast(t("move.undoneToast"), { timeout: TOAST_GLANCE });
     } catch (error) {
-      toast(t("move.undoFailedToast"), { description: String(error) });
+      toast(t("move.undoFailedToast"), { description: String(error), timeout: TOAST_EXPLAINED });
     } finally {
       queryClient.invalidateQueries({ queryKey: libraryKey });
     }
@@ -50,10 +51,7 @@ export function useMoveWithUndo() {
           t("move.doneToast", { count: moved, name: targetName }),
           undoable
             ? {
-                // Longer than the 4s default: the way back rides this toast,
-                // and reading a sentence then deciding takes more than four
-                // seconds — after that the move simply stands.
-                timeout: 10_000,
+                timeout: TOAST_UNDO,
                 // Soft rather than filled: the toast reports something that
                 // already worked, so the loudest object in it should not be
                 // the button that takes it back.
@@ -63,12 +61,12 @@ export function useMoveWithUndo() {
                   onPress: () => void undo(snapshot, toastId),
                 },
               }
-            : undefined,
+            : { timeout: TOAST_GLANCE },
         );
         onSuccess?.();
       },
       onError: (error) => {
-        toast(t("move.failedToast"), { description: String(error) });
+        toast(t("move.failedToast"), { description: String(error), timeout: TOAST_EXPLAINED });
       },
     });
   };

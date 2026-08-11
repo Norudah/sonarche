@@ -15,6 +15,7 @@ import {
   resolvePlaylistTracks,
   tracksById,
 } from "@/features/library/playlists/playlists";
+import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 
 interface AddToPlaylistDialogProps {
   /** What is being filed — one row's track, or a whole album. Null = closed. */
@@ -93,7 +94,9 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   const finish = (name: string, added: number, skipped: number) => {
     toast(
       added > 0 ? t("playlists.addedToast", { count: added, name }) : t("playlists.nothingAddedToast", { name }),
-      skipped > 0 && added > 0 ? { description: t("playlists.skippedToast", { count: skipped }) } : undefined,
+      skipped > 0 && added > 0
+        ? { description: t("playlists.skippedToast", { count: skipped }), timeout: TOAST_EXPLAINED }
+        : { timeout: TOAST_GLANCE },
     );
     onClose();
   };

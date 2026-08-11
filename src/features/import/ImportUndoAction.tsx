@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ImportUndoPreview } from "@/features/import/api";
 import { useImportUndoPreview, useUndoImport } from "@/features/import/hooks";
+import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 interface ImportUndoActionProps {
@@ -36,11 +37,11 @@ export function ImportUndoAction({ id, name }: ImportUndoActionProps) {
     undo.mutate(id, {
       onSuccess: (outcome) => {
         setIsOpen(false);
-        toast(t("undo.doneToast", { count: outcome.removed, name }));
+        toast(t("undo.doneToast", { count: outcome.removed, name }), { timeout: TOAST_GLANCE });
       },
       onError: (error) => {
         setIsOpen(false);
-        toast(t("undo.failedToast"), { description: String(error) });
+        toast(t("undo.failedToast"), { description: String(error), timeout: TOAST_EXPLAINED });
       },
     });
   };

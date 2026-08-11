@@ -151,8 +151,8 @@
     "nothingLeft": "This import has nothing left in the ark. Taking it back out removes nothing — the folder is simply forgotten.",
     "keep": "Keep",
     "confirm": "Take out of the ark",
-    "doneToast_one": "{{count, number}} track taken out of the ark ({{name}}).",
-    "doneToast_other": "{{count, number}} tracks taken out of the ark ({{name}}).",
+    "doneToast_one": "{{count, number}} track taken out of “{{name}}”",
+    "doneToast_other": "{{count, number}} tracks taken out of “{{name}}”",
     "failedToast": "The removal did not go through",
     "verdict": "Taken out",
     "subtitle": "Taken back out: nothing from this import is in the library any more."

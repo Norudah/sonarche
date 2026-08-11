@@ -228,6 +228,26 @@ class MoveTest(unittest.TestCase):
         self.assertEqual(item.mb_albumid, "mb-kid-a")
         lib._close()
 
+    def test_a_compilation_track_stops_being_one(self):
+        """Found on the real library: `comp` picks the path *template*, so a
+        track arriving from a compilation kept filing itself under
+        `Compilations/` while its twelve new siblings sat under the artist —
+        one record, two folders, and only the disk knew."""
+        lib = self._lib()
+        target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
+        source = self._album(lib, "JPOP", ["Guest"], album="JPOP", albumartist="Various Artists", comp=True)
+        moved_id = next(iter(source.items())).id
+        lib._close()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        item = lib.get_item(moved_id)
+        self.assertFalse(bool(item.comp))
+        self.assertIn(os.path.join("Muse", "Mine"), item.path.decode())
+        self.assertNotIn("Compilations", item.path.decode())
+        lib._close()
+
     # What the move leaves behind.
 
     def test_an_emptied_source_dies_with_its_folder(self):
@@ -246,6 +266,34 @@ class MoveTest(unittest.TestCase):
         lib._close()
 
         result = self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        self.assertEqual(result["sources_removed"], 1)
+        lib = self._lib()
+        self.assertIsNone(lib.get_album(source.id))
+        lib._close()
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "Kid A")))
+
+    def test_gathering_a_whole_record_takes_its_row_and_folder_with_it(self):
+        """Found on the real library: `add_album` re-parents its items inside
+        its own transaction, so reading the source off the item afterwards read
+        the *new* row — no source was ever recorded, and the emptied one and
+        its cover outlived the move."""
+        lib = self._lib()
+        source = self._album(lib, "Kid A", ["Everything", "Idioteque"], album="Kid A", albumartist="Radiohead")
+        art = os.path.join(self.dir, "Kid A", "cover.jpg")
+        with open(art, "wb") as fh:
+            fh.write(b"art")
+        source.artpath = art.encode()
+        source.store(inherit=False)
+        ids = [item.id for item in sorted(source.items(), key=lambda i: i.track)]
+        lib._close()
+
+        result = self._move(
+            item_ids=ids,
+            new_album={"album": "Mes préférés", "albumartist": "Moi"},
+            kind="collection",
+            renumber=True,
+        )
 
         self.assertEqual(result["sources_removed"], 1)
         lib = self._lib()

@@ -5,14 +5,16 @@ import { useTranslation } from "react-i18next";
 
 import type { Update } from "@/features/update/install";
 import { installUpdate } from "@/features/update/install";
+import { TOAST_EXPLAINED, TOAST_OFFER } from "@/shared/toast/durations";
 
 /**
  * Offer the new version, once, shortly after launch.
  *
  * A toast rather than a screen or a badge: an update is worth mentioning and
- * never worth interrupting for. It is the one toast in the app with no
- * timeout — everything else here reports something that already happened, and
- * this one asks a question, which cannot expire while the user reads it.
+ * never worth interrupting for. It is the longest-lived toast in the app —
+ * everything else reports something that already happened, and this one asks a
+ * question — but it does leave on its own, because the answer is never lost:
+ * Réglages → Mises à jour asks it again on demand.
  *
  * Checked at launch and not again: the app is opened, used, and closed, and a
  * poll running all day would only find what the next launch finds anyway.
@@ -35,7 +37,10 @@ export function useUpdatePrompt() {
         if (!update) return;
         toast(t("available"), {
           description: t("version", { version: update.version }),
-          timeout: 0,
+          // It used to sit there until dismissed by hand. Nothing is lost when
+          // it goes: Réglages → Mises à jour offers the same install, and a
+          // notice that outstays its welcome is the one people learn to swat.
+          timeout: TOAST_OFFER,
           actionProps: {
             children: t("install"),
             onPress: () => void install(update, t),
@@ -47,11 +52,15 @@ export function useUpdatePrompt() {
 }
 
 async function install(update: Update, t: (key: string) => string) {
+  // `timeout: 0` on purpose, and the one toast that keeps it: this is a
+  // progress line, not a message — it has to stand until the install ends
+  // (which relaunches the app) or fails. A timer-less toast is skipped by the
+  // countdown pass in `ToastViewport`.
   const progress = toast(t("installing"), { timeout: 0, isLoading: true });
   try {
     await installUpdate(update);
   } catch {
     toast.close(progress);
-    toast.danger(t("failed"), { description: t("failedHint") });
+    toast.danger(t("failed"), { description: t("failedHint"), timeout: TOAST_EXPLAINED });
   }
 }
