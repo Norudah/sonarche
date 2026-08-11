@@ -96,3 +96,44 @@ class CandidateSortKeyTest(unittest.TestCase):
         hint = "(Official Video) [HD]"
         key = candidate_sort_key(hint, "Some Song", self.STUDIO)
         self.assertTrue(is_settled(key, hint))
+
+
+class CollectionGuardTest(unittest.TestCase):
+    """A track filed in a collection must be refused by the per-track chain:
+    a match would re-file it onto its release's album row (`_album_row_for`),
+    ripping it out of the record its owner placed it in."""
+
+    def test_refuses_a_track_sitting_on_a_collection(self):
+        import os
+        import shutil
+        import tempfile
+
+        from beets.library import Item, Library
+
+        import enrich
+        import library
+
+        root = tempfile.mkdtemp()
+        try:
+            path = os.path.join(root, "Mine", "1 Kept.mp3")
+            os.makedirs(os.path.dirname(path))
+            with open(path, "wb") as fh:
+                fh.write(b"audio")
+            lib = Library(os.path.join(root, "library.db"), directory=root)
+            album = lib.add_album([Item(path=path.encode(), title="Kept", album="Mine")])
+            album[library.ALBUM_KIND_KEY] = library.COLLECTION
+            album.store(inherit=False)
+            item_id = next(iter(album.items())).id
+            lib._close()
+
+            with self.assertRaises(RuntimeError):
+                enrich.handle(
+                    "req",
+                    {
+                        "beets_db": os.path.join(root, "library.db"),
+                        "library_dir": root,
+                        "item_id": item_id,
+                    },
+                )
+        finally:
+            shutil.rmtree(root, ignore_errors=True)

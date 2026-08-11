@@ -397,6 +397,7 @@ function InspectBody({
         summary={summary}
         feedback={feedback}
         isSaving={update.isPending}
+        isCollection={album.kind === "collection"}
         rematchProgress={rematch.progress}
         rematchOutcome={
           rematch.isError ? { kind: "failed" } : rematch.isSuccess ? { kind: "finished", ...rematch.data } : null

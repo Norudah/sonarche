@@ -444,10 +444,22 @@ def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> 
 def handle(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
+    import library
+
     lib = Library(params["beets_db"], directory=params["library_dir"])
     item = lib.get_item(params["item_id"])
     if item is None:
         raise RuntimeError(f"item not found: {params['item_id']}")
+
+    # A collection is its owner's gathering, not a release: there is nothing to
+    # be matched against, and this chain re-files a matched item onto its
+    # release's album row (`_album_row_for`) — which would rip the track out of
+    # the record someone placed it in. The UI greys the button and says why;
+    # this guard is what makes the promise hold whatever calls in.
+    if item.album_id:
+        album = lib.get_album(item.album_id)
+        if album is not None and album.get(library.ALBUM_KIND_KEY) == library.COLLECTION:
+            raise RuntimeError("track sits on a collection: re-identify would re-file it")
 
     metadata.ensure_plugins()
     return enrich_one(request_id, lib, item, params)

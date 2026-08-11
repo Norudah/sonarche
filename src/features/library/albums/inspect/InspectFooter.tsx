@@ -27,6 +27,7 @@ export function InspectFooter({
   summary,
   feedback,
   isSaving,
+  isCollection,
   rematchProgress,
   rematchOutcome,
   isCancellingRematch,
@@ -39,6 +40,9 @@ export function InspectFooter({
   summary: ChangeSummary;
   feedback: SaveFeedback;
   isSaving: boolean;
+  /** A collection has no release to be matched against: re-match is off, and
+   * the footer says why instead of leaving a grey button to be wondered at. */
+  isCollection: boolean;
   rematchProgress: { done: number; matched: number; total: number } | null;
   rematchOutcome: RematchOutcome;
   isCancellingRematch: boolean;
@@ -130,7 +134,7 @@ export function InspectFooter({
       <div className="flex items-center gap-3 px-5 py-3">
         <button
           type="button"
-          disabled={isDirty || isRematching}
+          disabled={isDirty || isRematching || isCollection}
           onClick={onRematch}
           className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
         >
@@ -165,6 +169,10 @@ export function InspectFooter({
               {isCancellingRematch ? t("albumMetadata.rematch.stopping") : t("albumMetadata.rematch.stop")}
             </button>
           </div>
+        ) : isCollection ? (
+          <p className="min-w-0 flex-1 text-[0.6875rem] leading-snug text-muted/90">
+            {t("albumMetadata.rematch.collection")}
+          </p>
         ) : isDirty ? (
           <p className="min-w-0 flex-1 text-[0.6875rem] leading-snug text-muted/90">
             {t("albumMetadata.rematch.blocked")}
