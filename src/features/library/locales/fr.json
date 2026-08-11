@@ -148,6 +148,7 @@
     "album": "Album",
     "genre": "Genre",
     "year": "Année",
+    "family": "Famille",
     "category": "Catégorie",
     "duration": "Durée",
     "actions": "Actions",
@@ -156,7 +157,7 @@
   "inspect": {
     "enter": "Inspecter les métadonnées",
     "exit": "Revenir à l'écoute",
-    "offTree": "« {{genre}} » est inconnu de l'arbre des genres : rien ne manque, mais ce titre est rangé dans Autre."
+    "offTree": "« {{genre}} » est inconnu de l'arbre des genres : rien ne manque, mais ce titre tombe dans la famille Autres."
   },
   "search": {
     "placeholder": "Rechercher…",

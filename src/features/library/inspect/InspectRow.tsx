@@ -5,19 +5,26 @@ import { useTranslation } from "react-i18next";
 import { ATTENTION_LABEL } from "@/features/library/albums/attentionLabels";
 import type { LibraryTrack } from "@/features/library/api";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
+import { familyKeyOf } from "@/features/library/genres/genres";
+import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { CellNote } from "@/features/library/inspect/CellNote";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
+import { NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import type { DoorKey } from "@/features/library/triage/queue";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
-const CELL = "px-2 py-1.5 text-[0.75rem] leading-4 text-muted";
+const CELL = `${PAD} py-1.5 text-[0.75rem] leading-4 text-muted`;
 
 /** A field that is *empty* and that the Metadata page is still asking about. The
  * tint is on the cell and not on the text: at this density a coloured word is
  * one word among two hundred, while a lit cell is a position in a grid — which
- * is what makes a column of holes visible without reading any of it. */
-const HOLE = "bg-warning-soft font-medium text-warning";
+ * is what makes a column of holes visible without reading any of it.
+ *
+ * The hairline is what keeps it a *cell*. A track missing both its year and its
+ * genre lit two columns that share an edge, and a fill alone fused them into one
+ * pavé spanning two headers — one problem where there are two. */
+const HOLE = "bg-warning-soft inset-ring inset-ring-warning/20 font-medium text-warning";
 
 /** A field that is *filled* but whose value the app could not place — today only
  * a genre the tree does not know.
@@ -45,6 +52,7 @@ interface InspectRowProps {
 export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, onEdit }: InspectRowProps) {
   const { t } = useTranslation("library");
   const categoryLabelOf = useCategoryLabel();
+  const familyLabelOf = useFamilyLabel();
   const { current } = usePlayer();
   const isCurrent = current?.id === track.id;
 
@@ -82,7 +90,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
       onDoubleClick={rowPlayHandler(onPlay)}
       className="group/row select-none [&>td:first-child]:rounded-l [&>td:last-child]:rounded-r"
     >
-      <td className={`${cell(has("missingTrackNumber"))} w-12 text-right tabular-nums`}>
+      <td className={`${cell(has("missingTrackNumber"))} w-14 ${NUMERIC} text-right`}>
         {noted(
           has("missingTrackNumber") ? label("missingTrackNumber") : undefined,
           track.track != null && track.track > 0 ? track.track : empty,
@@ -96,17 +104,17 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         <span className="block truncate">{track.title || t("unknownTitle")}</span>
       </td>
 
-      <td className={`${cell()} ${insideAlbum ? "w-[24%]" : "w-[15%]"}`}>
+      <td className={`${cell()} ${insideAlbum ? "w-[20%]" : "w-[14%]"}`}>
         <span className="block truncate">{track.artist || empty}</span>
       </td>
 
       {!insideAlbum && (
-        <td className={`${cell()} w-[15%]`}>
+        <td className={`${cell()} w-[14%]`}>
           <span className="block truncate">{track.album || empty}</span>
         </td>
       )}
 
-      <td className={`${cell(has("missingYear"))} w-14 text-right tabular-nums`}>
+      <td className={`${cell(has("missingYear"))} w-20 ${NUMERIC} text-right`}>
         {noted(has("missingYear") ? label("missingYear") : undefined, track.year ?? empty)}
       </td>
 
@@ -114,11 +122,20 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
           a hole — see `UNPLACED`. The genre is interpolated into the off-tree
           sentence rather than described in the abstract: "unknown to the tree"
           over a cell reading "Psycho" is a riddle until it names Psycho. */}
-      <td className={`${cell(noGenre)} w-[13%]`}>
+      <td className={`${cell(noGenre)} w-[12%]`}>
         {noted(
           noGenre ? label("genreMissing") : unplacedGenre ? t("inspect.offTree", { genre: track.genre }) : undefined,
           <span className={`block truncate ${unplacedGenre ? UNPLACED : ""}`}>{track.genre || empty}</span>,
         )}
+      </td>
+
+      {/* Never lit either, and for a different reason from the category's: this
+       * cell holds no stored field at all. It is what the tree made of the genre
+       * to its left, shown so the off-tree remark can be checked rather than
+       * believed. A track with no genre has no family to name — the hole is one
+       * column over, and repeating it here would count one gap as two. */}
+      <td className={`${cell()} w-[10%]`}>
+        <span className="block truncate">{track.genre ? familyLabelOf(familyKeyOf(track)) : empty}</span>
       </td>
 
       {/* Never lit: a category is optional by nature — most music has no
@@ -127,7 +144,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         <span className="block truncate">{track.category ? categoryLabelOf(track.category) : empty}</span>
       </td>
 
-      <td className={`${cell()} w-14 text-right tabular-nums`}>
+      <td className={`${cell()} w-20 ${NUMERIC} text-right`}>
         {track.length != null ? formatDuration(track.length) : empty}
       </td>
 

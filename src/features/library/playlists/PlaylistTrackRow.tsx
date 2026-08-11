@@ -7,12 +7,13 @@ import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
+import { NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import { TrackThumb } from "@/shared/ui/TrackThumb";
 
-const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
+const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 const CELL_LINK = "block truncate outline-none hover:text-foreground hover:underline focus-visible:text-foreground";
 
 interface PlaylistTrackRowProps {
@@ -129,7 +130,7 @@ export function PlaylistTrackRow({
         )}
       </td>
 
-      <td className={`${CELL} w-16 text-right tabular-nums`}>
+      <td className={`${CELL} w-20 ${NUMERIC} text-right`}>
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 

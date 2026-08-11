@@ -14,10 +14,11 @@ import { PlaylistTrackRow } from "@/features/library/playlists/PlaylistTrackRow"
 import { useDragReorder } from "@/features/library/playlists/useDragReorder";
 import { nextSort, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
 import { SortableColumn } from "@/features/library/tracks/SortableColumn";
+import { HEADER, NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 
-const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+const COLUMN = `${PAD} ${HEADER}`;
 
 /** Handed to the windowing hook while the inspection table is the one on screen:
  * this table is not rendered then, so it has nothing to window. Same idiom as
@@ -63,11 +64,12 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
 
   const inspected = inspectedId != null ? (tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
-  const column = (key: TrackSortKey, label: string, className: string) => (
+  const column = (key: TrackSortKey, label: string, className: string, align?: "left" | "right") => (
     <SortableColumn
       column={key}
       label={label}
       className={className}
+      align={align}
       sort={sort}
       onSort={(clicked) => setSort(nextSort(sort, clicked))}
     />
@@ -98,10 +100,10 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
                   <span className="sr-only">{t("playlists.dragToReorder")}</span>
                 </th>
                 <th className={`${COLUMN} w-12 text-center`}>#</th>
-                {column("title", t("columns.title"), `${COLUMN} text-left`)}
-                {column("artist", t("columns.artist"), `${COLUMN} w-[18%] text-left`)}
-                {column("album", t("columns.album"), `${COLUMN} w-[18%] text-left`)}
-                {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
+                {column("title", t("columns.title"), COLUMN)}
+                {column("artist", t("columns.artist"), `${COLUMN} w-[18%]`)}
+                {column("album", t("columns.album"), `${COLUMN} w-[18%]`)}
+                {column("length", t("columns.duration"), `${COLUMN} w-20 ${NUMERIC}`, "right")}
                 <th className={`${COLUMN} w-36`}>
                   <span className="sr-only">{t("columns.actions")}</span>
                 </th>

@@ -8,12 +8,13 @@ import { extensionOf, unplayableTest, usePlayableExtensions } from "@/features/l
 import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
+import { NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import { TrackThumb } from "@/shared/ui/TrackThumb";
 
-const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
+const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 
 /* Underline on hover only. A row holds two of these and permanently underlined
  * text would turn the table into a page of links; the pointer plus the reveal is
@@ -159,7 +160,7 @@ export function TrackRow({
 
       {/* Wrapped in a span, not raw text: the row cascade animates each cell's
        * child element, and a bare text node has nothing to animate. */}
-      <td className={`${CELL} w-16 text-right tabular-nums`}>
+      <td className={`${CELL} w-20 ${NUMERIC} text-right`}>
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 

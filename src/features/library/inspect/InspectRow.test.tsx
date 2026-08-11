@@ -58,10 +58,30 @@ describe("the genre column", () => {
   });
 
   it("says nothing at all about a genre the tree knows", () => {
-    rowOf({ genre: "Synthpop" }, []);
+    rowOf({ genre: "Synthpop", genreBucket: "Electronic" }, []);
 
     const cell = cellOf("Synthpop");
     expect(cell?.className).not.toContain("bg-warning-soft");
     expect(cell?.textContent).toBe("Synthpop");
+  });
+});
+
+/** The column beside it, which is what the off-tree remark is *about*. */
+describe("the family column", () => {
+  it("names the family the tree resolved", () => {
+    rowOf({ genre: "Synthpop", genreBucket: "Electronic" }, []);
+    expect(cellOf("Electronic")).not.toBeNull();
+  });
+
+  it("shows where an off-tree genre actually lands", () => {
+    rowOf({ genre: "Psycho" }, ["genreOffTree"]);
+    expect(cellOf("genres.other")).not.toBeNull();
+  });
+
+  /** No genre, no family: the hole is one column over, and naming it twice
+   * would read as two problems. */
+  it("stays empty when there is no genre to place", () => {
+    rowOf({ genre: null }, ["genreMissing"]);
+    expect(screen.queryByText("genres.none")).toBeNull();
   });
 });

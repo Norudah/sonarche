@@ -7,10 +7,11 @@ import { ATTENTION_LABEL } from "@/features/library/albums/attentionLabels";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
+import { NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
-const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
+const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 
 /**
  * The only thing an album says about its own metadata, and it says it per row.
@@ -137,7 +138,7 @@ export function AlbumTrackRow({
         <AttentionDot flags={flags} />
       </td>
 
-      <td className={`${CELL} w-16 text-right tabular-nums`}>
+      <td className={`${CELL} w-20 ${NUMERIC} text-right`}>
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 

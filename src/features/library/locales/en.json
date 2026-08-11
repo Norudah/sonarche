@@ -148,6 +148,7 @@
     "album": "Album",
     "genre": "Genre",
     "year": "Year",
+    "family": "Family",
     "category": "Category",
     "duration": "Duration",
     "actions": "Actions",
@@ -156,7 +157,7 @@
   "inspect": {
     "enter": "Inspect metadata",
     "exit": "Back to listening",
-    "offTree": "“{{genre}}” is unknown to the genre tree: nothing is missing, but this track is filed under Other."
+    "offTree": "“{{genre}}” is unknown to the genre tree: nothing is missing, but this track falls into the Other family."
   },
   "search": {
     "placeholder": "Search…",

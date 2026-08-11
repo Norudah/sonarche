@@ -12,12 +12,13 @@ import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistD
 import { nextSort, sortTracks, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
 import { useAlbumAttention } from "@/features/library/triage/attention";
 import { SortableColumn } from "@/features/library/tracks/SortableColumn";
+import { HEADER, NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 // No alignment in the base: `${COLUMN} text-center` looks like it wins, but
 // Tailwind resolves conflicts by stylesheet order, not by class-string order,
 // so a `text-left` baked in here silently beat the "#" column's override.
-const COLUMN = "px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted";
+const COLUMN = `${PAD} ${HEADER}`;
 
 /**
  * Deliberately not `TrackTable`: an album's tracklist drops the Album column
@@ -52,11 +53,12 @@ export function AlbumTrackList({ album }: { album: Album }) {
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
   const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
-  const column = (key: TrackSortKey, label: string, className: string) => (
+  const column = (key: TrackSortKey, label: string, className: string, align?: "left" | "right") => (
     <SortableColumn
       column={key}
       label={label}
       className={className}
+      align={align}
       sort={sort}
       onSort={(clicked) => setSort(nextSort(sort, clicked))}
     />
@@ -85,16 +87,16 @@ export function AlbumTrackList({ album }: { album: Album }) {
             <thead>
               <tr className="[&>th]:border-b [&>th]:border-separator/60">
                 <th className={`${COLUMN} w-14 text-center`}>#</th>
-                {column("title", t("columns.title"), `${COLUMN} text-left`)}
-                {column("artist", t("columns.artist"), `${COLUMN} w-[22%] text-left`)}
-                {column("genre", t("columns.genre"), `${COLUMN} w-[16%] text-left`)}
+                {column("title", t("columns.title"), COLUMN)}
+                {column("artist", t("columns.artist"), `${COLUMN} w-[22%]`)}
+                {column("genre", t("columns.genre"), `${COLUMN} w-[16%]`)}
                 {/* No visible label: the column holds a dot, and a header over an
                   empty cell is a promise of content that settled rows do not
                   owe. */}
                 <th className={`${COLUMN} w-8`}>
                   <span className="sr-only">{t("columns.attention")}</span>
                 </th>
-                {column("length", t("columns.duration"), `${COLUMN} w-16 text-right`)}
+                {column("length", t("columns.duration"), `${COLUMN} w-20 ${NUMERIC}`, "right")}
                 <th className={`${COLUMN} w-36`}>
                   <span className="sr-only">{t("columns.actions")}</span>
                 </th>

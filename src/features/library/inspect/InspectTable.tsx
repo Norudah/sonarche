@@ -4,13 +4,15 @@ import { InspectRow } from "@/features/library/inspect/InspectRow";
 import type { TrackListingProps } from "@/features/library/tracks/listing";
 import type { TrackSortKey } from "@/features/library/tracks/sort";
 import { SortableColumn } from "@/features/library/tracks/SortableColumn";
+import { HEADER, NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { INSPECT_ROW_HEIGHT, useRowWindow } from "@/features/library/tracks/useRowWindow";
 import { useTrackAttention } from "@/features/library/triage/attention";
 
-/* No `uppercase`, unlike the reading table's: a sortable header renders its
- * label inside a button, and the UA stylesheet resets `text-transform` on form
- * elements — so half this row would have shouted and the other half not. */
-const COLUMN = "px-2 pb-1.5 text-[0.625rem] font-semibold tracking-wide text-muted";
+/* The same header as the reading table's, down to the padding: the lens shows
+ * the same tracks, and a row of labels that changed case and size on the way in
+ * made the switch read as a different screen rather than a different reading of
+ * one. Density is bought on the rows (half the height), not here. */
+const COLUMN = `${PAD} ${HEADER}`;
 
 /**
  * The same list, laid out to be audited rather than listened to.
@@ -48,11 +50,11 @@ export function InspectTable({
   const rowWindow = useRowWindow(tracks, INSPECT_ROW_HEIGHT);
   const attention = useTrackAttention(tracks);
 
-  const column = (key: TrackSortKey, label: string, className: string) =>
+  const column = (key: TrackSortKey, label: string, className: string, align?: "left" | "right") =>
     onSort ? (
-      <SortableColumn column={key} label={label} className={className} sort={sort} onSort={onSort} />
+      <SortableColumn column={key} label={label} className={className} align={align} sort={sort} onSort={onSort} />
     ) : (
-      <th className={className}>{label}</th>
+      <th className={`${className} ${align === "right" ? "text-right" : "text-left"}`}>{label}</th>
     );
 
   return (
@@ -62,22 +64,27 @@ export function InspectTable({
        * floating bands. */}
       <table
         className={
-          "w-full table-fixed border-separate border-spacing-y-0 " + (insideAlbum ? "min-w-[44rem]" : "min-w-[58rem]")
+          "w-full table-fixed border-separate border-spacing-y-0 " + (insideAlbum ? "min-w-[64rem]" : "min-w-[80rem]")
         }
       >
         <thead>
           <tr className="[&>th]:border-b [&>th]:border-separator/60">
-            <th className={`${COLUMN} w-12 text-right`}>{t("columns.number")}</th>
-            {column("title", t("columns.title"), `${COLUMN} text-left`)}
+            <th className={`${COLUMN} w-14 ${NUMERIC} text-right`}>{t("columns.number")}</th>
+            {column("title", t("columns.title"), COLUMN)}
             {/* Wider inside an album, which is where the freed Album column's
                 share goes: left on the flexible title it only opened a gulf
                 between a track's name and its credit. */}
-            {column("artist", t("columns.artist"), `${COLUMN} ${insideAlbum ? "w-[24%]" : "w-[15%]"} text-left`)}
-            {!insideAlbum && column("album", t("columns.album"), `${COLUMN} w-[15%] text-left`)}
-            <th className={`${COLUMN} w-14 text-right`}>{t("columns.year")}</th>
-            {column("genre", t("columns.genre"), `${COLUMN} w-[13%] text-left`)}
+            {column("artist", t("columns.artist"), `${COLUMN} ${insideAlbum ? "w-[20%]" : "w-[14%]"}`)}
+            {!insideAlbum && column("album", t("columns.album"), `${COLUMN} w-[14%]`)}
+            <th className={`${COLUMN} w-20 ${NUMERIC} text-right`}>{t("columns.year")}</th>
+            {column("genre", t("columns.genre"), `${COLUMN} w-[12%]`)}
+            {/* Right beside the genre it is derived from, because the pair is
+                the point: a genre the tree does not know reads as itself here
+                and as "Autres" there, and seeing the two side by side is what
+                turns an off-tree mark from a reproach into a fact. */}
+            <th className={`${COLUMN} w-[10%] text-left`}>{t("columns.family")}</th>
             <th className={`${COLUMN} w-[12%] text-left`}>{t("columns.category")}</th>
-            {column("length", t("columns.duration"), `${COLUMN} w-14 text-right`)}
+            {column("length", t("columns.duration"), `${COLUMN} w-20 ${NUMERIC}`, "right")}
             <th className={`${COLUMN} w-10`}>
               <span className="sr-only">{t("columns.attention")}</span>
             </th>
