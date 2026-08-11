@@ -272,9 +272,11 @@ const jobs = [
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
+// The API delays mirror the backend's fixed defaults — `preferences.rs` stamps
+// them on every load, so the mock must never show a value the app can't hold.
 const preferences = {
   lastfmFetchDelaySeconds: 1,
-  acoustidLookupDelaySeconds: 0.5,
+  acoustidLookupDelaySeconds: 1,
   downloadDelaySeconds: 3,
 };
 

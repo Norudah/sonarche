@@ -98,21 +98,22 @@
         "why": "On a playlist, tracks are fetched one by one. This pause spaces the requests out so long batches stay within the source's rate limits instead of triggering 403 errors. The real delay is randomised between this value and twice it.",
         "estimate": "For a {{count}}-track playlist, the pauses add about {{duration}}.",
         "warning": "Below one second the requests run back to back with almost no pause — which is exactly the behaviour that gets a client spotted and handed 403s halfway through a long playlist. Three seconds is the safe setting."
-      },
-      "acoustid": {
-        "name": "Delay between AcoustID requests",
-        "why": "Every imported track is identified by its acoustic fingerprint through AcoustID. The service allows 3 requests per second per key, and an album runs its lookups back to back — hence this pause.",
-        "estimate": "For a {{count}}-track album, the pauses add about {{duration}}.",
-        "warning": "Below one second a whole album goes out in a burst. AcoustID documents three requests per second per key: past that it is your key that gets throttled, and the service has no reason to warn you first."
-      },
-      "lastfm": {
-        "name": "Delay between Last.fm requests",
-        "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
-        "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
-        "warning": "Below one second we ask more of Last.fm than it invites — on a key shared by every beets user in the world. Getting it blocked blocks it for them too."
       }
     },
-    "impoliteTitle": "Not recommended."
+    "impoliteTitle": "Not recommended.",
+    "fixed": {
+      "title": "Metadata services' pace",
+      "body": "AcoustID and Last.fm are reached through keys every install shares: one rushed user can get the key throttled for everyone. The app sets the pace itself, and it is not adjustable.",
+      "perRequest": "{{delay}} between requests",
+      "acoustid": {
+        "name": "AcoustID",
+        "role": "fingerprint identification of tracks"
+      },
+      "lastfm": {
+        "name": "Last.fm",
+        "role": "fetching missing genres"
+      }
+    }
   },
   "updates": {
     "category": "Updates"

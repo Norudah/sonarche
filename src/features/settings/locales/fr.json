@@ -98,21 +98,22 @@
         "why": "Sur une playlist, les pistes sont récupérées une par une. Cette pause espace les requêtes pour que les longs lots restent dans les limites de débit de la source au lieu de déclencher des erreurs 403. Le délai réel est tiré au hasard entre cette valeur et son double.",
         "estimate": "Pour une playlist de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
         "warning": "Sous une seconde, les requêtes s'enchaînent quasiment sans pause — c'est exactement le comportement qui fait repérer un client et renvoyer des erreurs 403 au milieu d'une longue playlist. Trois secondes reste le réglage sûr."
-      },
-      "acoustid": {
-        "name": "Délai entre les requêtes AcoustID",
-        "why": "Chaque piste importée est identifiée par son empreinte acoustique via AcoustID. Le service autorise 3 requêtes par seconde et par clef : sur un album, les recherches s'enchaînent, d'où cette pause.",
-        "estimate": "Pour un album de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
-        "warning": "Sous une seconde, l'album entier part en rafale. AcoustID documente trois requêtes par seconde et par clef : au-delà, c'est ta clef qui est bridée, et le service n'a aucune raison de prévenir avant."
-      },
-      "lastfm": {
-        "name": "Délai entre les requêtes Last.fm",
-        "why": "Quand un morceau n'a aucun genre MusicBrainz, l'action « Recalculer les genres » interroge Last.fm pour le retrouver. Cette clef API est partagée par tous les utilisateurs de beets dans le monde : un délai entre chaque requête évite de la faire bloquer temporairement pour tout le monde.",
-        "estimate": "Pour {{count}} titres sans genre à ce rythme : environ {{duration}}.",
-        "warning": "Sous une seconde, on sollicite Last.fm plus vite qu'elle ne le demande — avec une clef partagée par tous les utilisateurs de beets dans le monde. La faire bloquer la bloque pour eux aussi."
       }
     },
-    "impoliteTitle": "Réglage déconseillé."
+    "impoliteTitle": "Réglage déconseillé.",
+    "fixed": {
+      "title": "Délais des services de métadonnées",
+      "body": "AcoustID et Last.fm sont interrogés avec des clefs partagées par toutes les installations : un seul utilisateur trop pressé peut faire brider la clef pour tout le monde. Le rythme est donc fixé par l'app, et ne se règle pas.",
+      "perRequest": "{{delay}} entre deux requêtes",
+      "acoustid": {
+        "name": "AcoustID",
+        "role": "identification des morceaux par empreinte acoustique"
+      },
+      "lastfm": {
+        "name": "Last.fm",
+        "role": "récupération des genres manquants"
+      }
+    }
   },
   "updates": {
     "category": "Mises à jour"

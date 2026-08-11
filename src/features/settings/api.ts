@@ -98,7 +98,10 @@ export async function reinstallEnvironment(): Promise<void> {
   await invoke("reinstall_environment");
 }
 
-export type RateLimitKey = "lastfm" | "acoustid" | "download";
+/** The one delay the user may still tune. The AcoustID and Last.fm pauses are
+ * fixed server-side — their keys are shared across installs — and the backend
+ * refuses writes to them. */
+export type RateLimitKey = "download";
 
 export interface Preferences {
   lastfmFetchDelaySeconds: number;

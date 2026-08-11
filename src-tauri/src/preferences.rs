@@ -111,7 +111,15 @@ pub async fn load(app: &AppHandle) -> AppResult<Preferences> {
         Ok(raw) => raw,
         Err(_) => return Ok(Preferences::default()),
     };
-    Ok(serde_json::from_str(&raw).unwrap_or_default())
+    let mut prefs: Preferences = serde_json::from_str(&raw).unwrap_or_default();
+    // The API delays are fixed, not tuned: both services are reached through
+    // keys every install shares (beets' embedded Last.fm key, the app's
+    // AcoustID key), so one user dialing the pause down can get the key — and
+    // everyone behind it — throttled. Values a previous build let users store
+    // are stamped back to the defaults here rather than honoured.
+    prefs.lastfm_fetch_delay_seconds = LASTFM_DELAY.default;
+    prefs.acoustid_lookup_delay_seconds = ACOUSTID_DELAY.default;
+    Ok(prefs)
 }
 
 async fn save(app: &AppHandle, prefs: &Preferences) -> AppResult<()> {
@@ -139,7 +147,8 @@ pub async fn set_library_dir(app: &AppHandle, dir: Option<PathBuf>) -> AppResult
 }
 
 /// Sets one delay by its wire key. Unknown keys are rejected rather than
-/// silently ignored — the IPC boundary validates, it does not guess.
+/// silently ignored — the IPC boundary validates, it does not guess. The two
+/// API delays are fixed (see `load`) and refuse writes outright.
 pub async fn set_rate_limit_delay(
     app: &AppHandle,
     key: &str,
@@ -147,9 +156,12 @@ pub async fn set_rate_limit_delay(
 ) -> AppResult<Preferences> {
     let mut prefs = load(app).await?;
     let (field, limit): (&mut f64, &RateLimit) = match key {
-        "lastfm" => (&mut prefs.lastfm_fetch_delay_seconds, &LASTFM_DELAY),
-        "acoustid" => (&mut prefs.acoustid_lookup_delay_seconds, &ACOUSTID_DELAY),
         "download" => (&mut prefs.download_delay_seconds, &DOWNLOAD_DELAY),
+        "lastfm" | "acoustid" => {
+            return Err(AppError::InvalidInput(format!(
+                "rate limit '{key}' is fixed"
+            )))
+        }
         other => {
             return Err(AppError::InvalidInput(format!(
                 "unknown rate limit '{other}'"

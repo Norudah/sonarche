@@ -31,10 +31,18 @@ export interface RateLimitDef {
 
 const POLITE_FLOOR = 1;
 
+/** Only the download delay keeps a dial. The API delays became fixed — shared
+ * keys, see `FIXED_API_DELAYS` — so their slider defs went with them. */
 export const RATE_LIMITS: RateLimitDef[] = [
   { key: "download", field: "downloadDelaySeconds", max: 15, politeThreshold: POLITE_FLOOR, sampleCount: 15 },
-  { key: "acoustid", field: "acoustidLookupDelaySeconds", max: 2, politeThreshold: POLITE_FLOOR, sampleCount: 15 },
-  { key: "lastfm", field: "lastfmFetchDelaySeconds", max: 1.5, politeThreshold: POLITE_FLOOR, sampleCount: 100 },
+];
+
+/** The two pauses the app imposes rather than offers, in display order. Read
+ * off the preferences (the backend stamps them to its defaults on every load)
+ * so the printed number can never drift from the enforced one. */
+export const FIXED_API_DELAYS: { key: "acoustid" | "lastfm"; field: keyof Preferences }[] = [
+  { key: "acoustid", field: "acoustidLookupDelaySeconds" },
+  { key: "lastfm", field: "lastfmFetchDelaySeconds" },
 ];
 
 /** Where the fine grain stops and whole seconds take over. */
