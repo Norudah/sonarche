@@ -24,8 +24,18 @@ import type { TriageLine } from "@/features/library/triage/queue";
 
 export type CheckKey = TriageLine["key"];
 
-/** Every check, in the order the queue lists them. */
-export const CHECK_KEYS: CheckKey[] = ["suspect", "duplicates", "year", "track", "genre", "artwork", "tracklist"];
+/** Every check, in the order the queue lists them — the Sonarche-side artist
+ * image last, after the metadata checks, the way the page stacks them. */
+export const CHECK_KEYS: CheckKey[] = [
+  "suspect",
+  "duplicates",
+  "year",
+  "track",
+  "genre",
+  "artwork",
+  "tracklist",
+  "artistImage",
+];
 
 const STORAGE_KEY = "sonarche.disabledChecks";
 

@@ -1,5 +1,6 @@
 import { triagePaths } from "@/app/paths";
 import type { Album } from "@/features/library/albums/albums";
+import type { Artist } from "@/features/library/artists/artists";
 import { hasTracklistGaps } from "@/features/library/albums/triage";
 import type { AcceptedCheck, LibraryTrack } from "@/features/library/api";
 import {
@@ -33,14 +34,15 @@ export type DoorKey =
   | "missingArtwork"
   | "tracklistGaps"
   | "suspectMatch"
-  | "duplicateRecording";
+  | "duplicateRecording"
+  | "artistImageMissing";
 
 /** One row of the correction queue. The genre row fuses two doors — missing
  * and off-tree are fixed in the same editor — every other row carries one.
  * Doors that count zero are dropped; a row whose doors all dropped counts
  * zero and is the view's cue to hide it. */
 export interface TriageLine {
-  key: "year" | "track" | "genre" | "artwork" | "tracklist" | "suspect" | "duplicates";
+  key: "year" | "track" | "genre" | "artwork" | "tracklist" | "suspect" | "duplicates" | "artistImage";
   count: number;
   doors: TriageDoor[];
   /** A few concrete names (track or album titles), untranslated data. */
@@ -187,6 +189,44 @@ export function buildTriageQueue(tracks: LibraryTrack[], albums: Album[]): Triag
       examples: examplesOf(gapped.map((album) => album.title)),
       // Not answerable either, and for a happier reason: a record with no
       // tracklist is a collection, which says so once for the whole record.
+      accept: null,
+    },
+  ];
+}
+
+/**
+ * The Sonarche-side gaps, kept apart from `buildTriageQueue` on purpose: an
+ * artist without a picture is not a metadata defect — no tag carries it, the
+ * files are whole — it is the app's own dress with a hole in it. The page
+ * shows these under their own heading, and neither the headline tally nor the
+ * sidebar badge counts them: a fresh library would open on "87 artistes" of
+ * reproach for something the user never claimed to maintain.
+ *
+ * Empty while the image map is still loading — a half-loaded map would read
+ * as "every artist is missing one".
+ */
+export function buildSystemQueue(artists: Artist[], images: ReadonlyMap<string, string> | undefined): TriageLine[] {
+  if (images == null) return [];
+  const missing = artists.filter((artist) => !images.has(artist.name));
+  return [
+    {
+      key: "artistImage",
+      count: missing.length,
+      doors:
+        missing.length > 0
+          ? [
+              {
+                key: "artistImageMissing",
+                count: missing.length,
+                subjects: missing.map((artist) => `ar:${artist.name}`),
+                to: triagePaths.artistImageMissing,
+              },
+            ]
+          : [],
+      examples: examplesOf(missing.map((artist) => artist.name)),
+      subjects: missing.map((artist) => `ar:${artist.name}`),
+      // Not answerable "c'est voulu": there is no beets row to write the
+      // answer on. The controls menu is the way to stop watching this.
       accept: null,
     },
   ];

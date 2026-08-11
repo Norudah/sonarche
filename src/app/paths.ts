@@ -78,6 +78,7 @@ export const triagePaths = {
   tracklistGaps: `${paths.libraryAlbums}?tracklist=gaps`,
   suspectMatch: `${paths.libraryTracks}?suspect=match&${LENS}`,
   duplicateRecording: `${paths.libraryTracks}?duplicates=recording&${LENS}`,
+  artistImageMissing: `${paths.libraryArtists}?missing=image`,
 } as const;
 
 /**

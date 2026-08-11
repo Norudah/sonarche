@@ -53,7 +53,8 @@
     "genreOffTree_one": "{{count}} without a family",
     "genreOffTree_other": "{{count}} without a family",
     "more_one": "+{{count}} more",
-    "more_other": "+{{count}} more"
+    "more_other": "+{{count}} more",
+    "artistImage": "Artists without an image"
   },
   "accept": {
     "action": "That's on purpose",
@@ -63,5 +64,9 @@
     "label": "Checks",
     "heading": "What Sonarche watches",
     "why": "A check that is off is no longer counted or queued. Nothing is lost: its number stays here, and switching it back on brings it back."
+  },
+  "system": {
+    "heading": "Sonarche's side",
+    "hint": "Nothing about your files — just the app's own dress."
   }
 }

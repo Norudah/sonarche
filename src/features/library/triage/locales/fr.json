@@ -53,7 +53,8 @@
     "genreOffTree_one": "{{count}} sans famille",
     "genreOffTree_other": "{{count}} sans famille",
     "more_one": "+{{count}} autre",
-    "more_other": "+{{count}} autres"
+    "more_other": "+{{count}} autres",
+    "artistImage": "Artistes sans image"
   },
   "accept": {
     "action": "C'est voulu",
@@ -63,5 +64,9 @@
     "label": "Contrôles",
     "heading": "Ce que Sonarche surveille",
     "why": "Un contrôle éteint n'est plus compté ni proposé. Rien n'est perdu : son nombre reste ici, et le rallumer le ramène."
+  },
+  "system": {
+    "heading": "Côté Sonarche",
+    "hint": "Rien à voir avec tes fichiers — juste l'habillage de l'app."
   }
 }

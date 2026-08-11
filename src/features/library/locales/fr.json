@@ -198,7 +198,8 @@
     "noResults": "Rien ne correspond au filtre actif.",
     "suspectMatch": "Correspondance à vérifier",
     "duplicateRecording": "Morceaux en double",
-    "missingTrackNumber": "Numéro de piste manquant"
+    "missingTrackNumber": "Numéro de piste manquant",
+    "artistImageMissing": "Sans image"
   },
   "loadFailed": "Impossible de charger la bibliothèque",
   "empty": {

@@ -1,4 +1,15 @@
-import { CalendarOff, Check, ChevronRight, Copy, Hash, ImageOff, Layers, ListX, ScanSearch } from "lucide-react";
+import {
+  CalendarOff,
+  Check,
+  ChevronRight,
+  Copy,
+  Hash,
+  ImageOff,
+  Layers,
+  ListX,
+  ScanSearch,
+  UserRoundX,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +40,7 @@ const ICONS: Record<TriageLine["key"], LucideIcon> = {
   genre: Layers,
   artwork: ImageOff,
   tracklist: ListX,
+  artistImage: UserRoundX,
 };
 
 /**

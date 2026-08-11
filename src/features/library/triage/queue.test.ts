@@ -2,8 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { triagePaths } from "@/app/paths";
 import { groupAlbums } from "@/features/library/albums/albums";
+import { groupArtists } from "@/features/library/artists/artists";
 import { track } from "@/features/library/testFixtures";
-import { acceptedTargets, buildTriageQueue, tallyToFix, type TriageLine } from "@/features/library/triage/queue";
+import {
+  acceptedTargets,
+  buildSystemQueue,
+  buildTriageQueue,
+  tallyToFix,
+  type TriageLine,
+} from "@/features/library/triage/queue";
 
 function lineOf(queue: TriageLine[], key: TriageLine["key"]): TriageLine {
   const line = queue.find((entry) => entry.key === key);
@@ -213,5 +220,25 @@ describe("tallyToFix", () => {
       }),
     ];
     expect(tallyToFix(buildTriageQueue(clean, groupAlbums(clean))).total).toBe(0);
+  });
+});
+
+describe("buildSystemQueue", () => {
+  const artists = groupArtists(albums);
+
+  it("counts only the artists still wearing the generated motif", () => {
+    const images = new Map([["Artist", "asset://artist.jpg"]]);
+    expect(buildSystemQueue(artists, images)[0].count).toBe(0);
+
+    const line = buildSystemQueue(artists, new Map())[0];
+    expect(line.key).toBe("artistImage");
+    expect(line.count).toBe(artists.length);
+    expect(line.doors[0].to).toBe(triagePaths.artistImageMissing);
+    // No beets row to write "c'est voulu" on — the controls menu is the out.
+    expect(line.accept).toBeNull();
+  });
+
+  it("raises nothing while the image map is still loading", () => {
+    expect(buildSystemQueue(artists, undefined)).toEqual([]);
   });
 });

@@ -45,6 +45,7 @@ describe("enabledLines", () => {
       "track",
       "genre",
       "tracklist",
+      "artistImage",
     ]);
   });
 });

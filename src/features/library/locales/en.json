@@ -198,7 +198,8 @@
     "noResults": "Nothing matches the active filter.",
     "suspectMatch": "Match to review",
     "duplicateRecording": "Duplicate tracks",
-    "missingTrackNumber": "Missing track number"
+    "missingTrackNumber": "Missing track number",
+    "artistImageMissing": "No image"
   },
   "loadFailed": "Unable to load the library",
   "empty": {
