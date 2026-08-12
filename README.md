@@ -9,8 +9,8 @@
 A desktop music library that files, tags and plays your collection — and keeps it
 as plain files you own, long after the app that made them is gone.
 
-[![Version](https://img.shields.io/badge/version-0.9.1-6163f2)](CHANGELOG.md)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6163f2)](#install)
+[![Version](https://img.shields.io/badge/version-2.0.0-157c4f)](CHANGELOG.md)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-70727f)](#install)
 [![License](https://img.shields.io/badge/license-MIT-6163f2)](LICENSE)
 
 **English** · [Français](README.fr.md)
