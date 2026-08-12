@@ -5,7 +5,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
-import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { appearancesOf, findArtist, groupArtists } from "@/features/library/artists/artists";
 import { ArtistAppearances } from "@/features/library/artists/ArtistAppearances";
@@ -127,8 +127,12 @@ export function ArtistDetailView() {
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>
-            <AlbumGrid
+            <AlbumShelf
               albums={artist.albums}
+              // The whole library, not the discography: renaming an album's
+              // artist moves it off this page, and the panel should follow the
+              // record rather than close on the save.
+              pool={groupAlbums(library.data ?? [])}
               animationKey={artist.name}
               onPlay={(album) => playOrdered(album.tracks)}
             />

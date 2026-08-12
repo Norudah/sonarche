@@ -6,7 +6,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { genrePath, paths } from "@/app/routes";
 import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
-import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import {
@@ -183,7 +183,12 @@ export function GenreDetailView() {
            * actually differ and leaves the rest where they are. */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playOrdered(album.tracks)} />
+            <AlbumShelf
+              albums={albums}
+              pool={groupAlbums(library.data ?? [])}
+              animationKey={family.key}
+              onPlay={(album) => playOrdered(album.tracks)}
+            />
           </section>
 
           <section className="flex flex-col gap-3">

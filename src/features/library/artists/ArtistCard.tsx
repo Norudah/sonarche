@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { artistPath } from "@/app/routes";
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
+import { CARD_ACTION_PLAY, CARD_ACTION_SECONDARY } from "@/features/library/cardActions";
 import { useArtistImages } from "@/features/library/hooks";
 import { springs } from "@/shared/motion/tokens";
 
@@ -72,7 +73,7 @@ export function ArtistCard({ artist, style, onPlay, onEditImage }: ArtistCardPro
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="pointer-events-auto flex size-9 scale-90 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white/90 shadow-md opacity-0 backdrop-blur-sm outline-none transition-[opacity,scale,background-color] group-hover/card:scale-100 group-hover/card:opacity-100 hover:bg-black/70 hover:text-white focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className={`${CARD_ACTION_SECONDARY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale,background-color] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100`}
         >
           <ImagePlus className="size-4" />
         </motion.button>
@@ -85,9 +86,9 @@ export function ArtistCard({ artist, style, onPlay, onEditImage }: ArtistCardPro
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="pointer-events-auto flex size-11 scale-90 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground opacity-0 glow-accent outline-none transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className={`${CARD_ACTION_PLAY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100`}
         >
-          <Play className="size-5 fill-current" />
+          <Play className="size-4 fill-current" />
         </motion.button>
       </div>
     </div>

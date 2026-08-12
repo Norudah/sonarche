@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { albumPath } from "@/app/routes";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
+import { CARD_ACTION_PLAY, CARD_ACTION_SECONDARY } from "@/features/library/cardActions";
 import { springs } from "@/shared/motion/tokens";
 
 interface AlbumCardProps {
@@ -60,7 +61,7 @@ export function AlbumCard({ album, style, onPlay, onEdit }: AlbumCardProps) {
             whileTap={{ scale: 0.92 }}
             whileHover={{ scale: 1.06 }}
             transition={springs.snappy}
-            className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white/90 shadow-md backdrop-blur-sm outline-none transition-colors hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-accent/40"
+            className={`${CARD_ACTION_SECONDARY} transition-colors`}
           >
             <FilePen className="size-4" />
           </motion.button>
@@ -73,7 +74,7 @@ export function AlbumCard({ album, style, onPlay, onEdit }: AlbumCardProps) {
           whileTap={{ scale: 0.92 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className={CARD_ACTION_PLAY}
         >
           <Play className="size-4 fill-current" />
         </motion.button>
