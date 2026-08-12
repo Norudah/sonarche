@@ -113,7 +113,7 @@ export function RowActions({ track, sourceUrl, onEdit, onDelete, onRetry, isRetr
             {onRetry && <RetryItem onRetry={onRetry} isRetrying={isRetrying} />}
             <CopySourceItem url={sourceUrl} />
             {track && (
-              <Dropdown.Item id="delete" onAction={() => onDelete(track)}>
+              <Dropdown.Item id="delete" variant="danger" onAction={() => onDelete(track)}>
                 <Trash2 className="size-4" />
                 {t("queue.delete")}
               </Dropdown.Item>
@@ -171,7 +171,7 @@ export function AlbumRowActions({
             )}
             {onRetry && <RetryItem onRetry={onRetry} isRetrying={isRetrying} />}
             <CopySourceItem url={sourceUrl} />
-            <Dropdown.Item id="delete-album" isDisabled={trackIds.length === 0} onAction={onDelete}>
+            <Dropdown.Item id="delete-album" variant="danger" isDisabled={trackIds.length === 0} onAction={onDelete}>
               <Trash2 className="size-4" />
               {tLibrary("deleteAlbum.action")}
             </Dropdown.Item>

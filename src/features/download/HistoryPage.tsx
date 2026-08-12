@@ -100,7 +100,10 @@ export function HistoryPage({ arrivals, arrivalsCount = 0, onHistoryCleared }: H
           <h1 className="text-3xl font-semibold tracking-tight">{t("history.title")}</h1>
           <p className="mt-1 text-sm text-muted">{t("history.lede")}</p>
         </div>
-        <ActionButton icon={Trash2} tone="muted" isDisabled={!hasHistory} onPress={() => setClearingHistory(true)}>
+        {/* Danger, like every other way into a deletion: the dialog behind it
+            is the same red one, and a muted word for it was the only place in
+            the app where wiping something read as ordinary chrome. */}
+        <ActionButton icon={Trash2} tone="danger" isDisabled={!hasHistory} onPress={() => setClearingHistory(true)}>
           {t("queue.clearHistory")}
         </ActionButton>
       </header>

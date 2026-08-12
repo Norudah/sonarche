@@ -57,11 +57,9 @@ function OverflowMenu({
             <FolderInput className="size-4" />
             {t("move.menuAction")}
           </Dropdown.Item>
-          <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")} onAction={onDelete}>
-            <span className="flex items-center gap-2 text-danger">
-              <Trash2 className="size-4" />
-              {t("deleteAlbum.action")}
-            </span>
+          <Dropdown.Item id="delete" variant="danger" textValue={t("deleteAlbum.action")} onAction={onDelete}>
+            <Trash2 className="size-4" />
+            {t("deleteAlbum.action")}
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>

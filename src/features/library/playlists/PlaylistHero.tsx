@@ -119,11 +119,9 @@ export function PlaylistHero({
                     </Dropdown.Trigger>
                     <Dropdown.Popover placement="bottom start">
                       <Dropdown.Menu onAction={() => onDelete()}>
-                        <Dropdown.Item id="delete" textValue={t("playlists.delete.action")}>
-                          <span className="flex items-center gap-2 text-danger">
-                            <Trash2 className="size-4" />
-                            {t("playlists.delete.action")}
-                          </span>
+                        <Dropdown.Item id="delete" variant="danger" textValue={t("playlists.delete.action")}>
+                          <Trash2 className="size-4" />
+                          {t("playlists.delete.action")}
                         </Dropdown.Item>
                       </Dropdown.Menu>
                     </Dropdown.Popover>

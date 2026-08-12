@@ -435,6 +435,19 @@
   }
 }
 
+/* --- Destructive menu items ----------------------------------------------- */
+
+/* HeroUI's `variant="danger"` only reddens what it finds in the `label` slot,
+   and every menu in this app hands its items a plain icon + word. So the
+   colour is taken up one level, onto the item itself: the icon and the label
+   inherit it, and a delete looks like a delete in every menu without each call
+   site remembering to paint its own children. */
+@layer components {
+  .menu-item--danger {
+    color: var(--danger);
+  }
+}
+
 /* --- Toast viewport ------------------------------------------------------- */
 
 /* HeroUI's `bottom end` region is pinned to `bottom-4`, which puts a toast on

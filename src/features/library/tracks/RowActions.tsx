@@ -96,11 +96,9 @@ export function RowActions({
                 {t("playlists.removeFrom")}
               </Dropdown.Item>
             )}
-            <Dropdown.Item id="delete" textValue={t("delete.action")} onAction={onDelete}>
-              <span className="flex items-center gap-2 text-danger">
-                <Trash2 className="size-4" />
-                {t("delete.action")}
-              </span>
+            <Dropdown.Item id="delete" variant="danger" textValue={t("delete.action")} onAction={onDelete}>
+              <Trash2 className="size-4" />
+              {t("delete.action")}
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown.Popover>
