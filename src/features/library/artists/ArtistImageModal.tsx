@@ -11,8 +11,9 @@ import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
+import { RecropButton } from "@/features/library/covers/RecropButton";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
-import { useRemoveArtistImage, useSetArtistImage } from "@/features/library/hooks";
+import { useArtistImagePath, useRemoveArtistImage, useSetArtistImage } from "@/features/library/hooks";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
 /**
@@ -41,6 +42,7 @@ export function ArtistImageModal({
   const { t } = useTranslation("library");
   const replace = useSetArtistImage();
   const remove = useRemoveArtistImage();
+  const currentPath = useArtistImagePath(artist.name);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -132,6 +134,16 @@ export function ArtistImageModal({
           </div>
         }
         currentInfo={<p>{imageUrl ? t("artists.image.hasCurrent") : t("artists.image.noCurrent")}</p>}
+        currentAction={
+          currentPath != null && (
+            <RecropButton
+              disabled={isPending}
+              source={async () => currentPath}
+              onAdopt={(path) => local.adopt(path)}
+              onFailed={() => setError(t("imageSource.recropFailed"))}
+            />
+          )
+        }
         nextTitle={t("artists.image.next")}
         help={
           <FieldHelpPopover

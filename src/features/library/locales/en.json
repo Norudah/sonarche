@@ -434,6 +434,8 @@
     "browse": "Browse…",
     "pasteLink": "Paste a link",
     "clipboard": "Clipboard",
+    "recrop": "Reframe the current image",
+    "recropFailed": "The current image could not be reopened.",
     "clipboardEmpty": "The clipboard holds neither an image nor a link.",
     "clipboardTooLarge": "The copied image is outsized — go through a file instead.",
     "clipboardUnreadable": "The copied image could not be read."

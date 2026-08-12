@@ -434,6 +434,8 @@
     "browse": "Parcourir…",
     "pasteLink": "Coller un lien",
     "clipboard": "Presse-papiers",
+    "recrop": "Recadrer l'image actuelle",
+    "recropFailed": "L'image actuelle n'a pas pu être rouverte.",
     "clipboardEmpty": "Le presse-papiers ne contient ni image ni lien.",
     "clipboardTooLarge": "L'image copiée est démesurée — passe par un fichier.",
     "clipboardUnreadable": "L'image copiée n'a pas pu être lue."

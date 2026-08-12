@@ -239,6 +239,13 @@ export async function allowCoverPreview(path: string): Promise<{ path: string; b
   return { ...result, url: convertFileSrc(result.path) };
 }
 
+/** The album's own cover as a file to reframe: the full-size archive kept
+ * beside the display rendition when there is one, so a tighter square is cut
+ * from the original rather than from the 500px copy. */
+export async function albumRecropSource(artPath: string): Promise<{ path: string; bytes: number }> {
+  return invoke("album_recrop_source", { artPath });
+}
+
 /** What replaces the cover: a local file (with its crop) or a Cover Art
  * Archive upload picked from the candidates. */
 export type CoverSource = { sourcePath: string; crop: CoverCrop | null } | { candidateUrl: string };
@@ -286,6 +293,8 @@ export async function listCoverCandidates(albumId: number): Promise<CoverCandida
 export interface ArtistImage {
   name: string;
   url: string;
+  /** The file itself — what reframing the image already in place reopens. */
+  path: string;
 }
 
 export async function listArtistImages(): Promise<ArtistImage[]> {
@@ -293,6 +302,7 @@ export async function listArtistImages(): Promise<ArtistImage[]> {
   return raw.images.map((image) => ({
     name: image.name,
     url: withCacheBuster(convertFileSrc(image.path), image.updated_at),
+    path: image.path,
   }));
 }
 

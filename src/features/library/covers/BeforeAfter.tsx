@@ -14,6 +14,7 @@ export function BeforeAfter({
   currentTitle,
   current,
   currentInfo,
+  currentAction,
   nextTitle,
   help,
   next,
@@ -22,6 +23,10 @@ export function BeforeAfter({
   currentTitle: string;
   current: ReactNode;
   currentInfo: ReactNode;
+  /** What can still be done with the image already worn — reframing it. Under
+   * its own pane rather than in the source bar: the bar is where a *new*
+   * image comes from, and this one is already here. */
+  currentAction?: ReactNode;
   nextTitle: string;
   /** The help popover beside the "next" label. */
   help?: ReactNode;
@@ -36,6 +41,7 @@ export function BeforeAfter({
         </h3>
         {current}
         <div className="w-full text-[0.75rem] leading-relaxed text-muted">{currentInfo}</div>
+        {currentAction}
       </section>
 
       <MoveRight className="mt-32 size-5 shrink-0 text-muted/50" />

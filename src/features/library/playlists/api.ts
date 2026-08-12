@@ -15,6 +15,8 @@ export interface Playlist {
   /** The user-chosen tile, ready to draw — fresh random filename per write, so
    * the URL itself is the cache buster. Null draws the cover mosaic. */
   coverUrl: string | null;
+  /** The same tile as a file — what reframing the image in place reopens. */
+  coverPath: string | null;
   /** What the list wears in the navigation, as stored (`icon:<key>` / `cover` /
    * `color:<key>`). Null means the default glyph — see `marker.ts`. */
   marker: string | null;
@@ -42,6 +44,7 @@ function toPlaylist(wire: WirePlaylist): Playlist {
     // The file is named after the playlist and keeps its name when the image
     // is replaced; `updated_at` busts the webview's cache in its place.
     coverUrl: wire.cover_path ? withCacheBuster(convertFileSrc(wire.cover_path), wire.updated_at) : null,
+    coverPath: wire.cover_path,
     marker: wire.marker ?? null,
     createdAt: wire.created_at,
     updatedAt: wire.updated_at,

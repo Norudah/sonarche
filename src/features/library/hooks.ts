@@ -222,16 +222,32 @@ export function useSetAlbumCover() {
 }
 
 /** The artist -> image URL map, once. Same `staleTime: Infinity` reasoning as
- * the library: only our own mutations move it, and each invalidates the key. */
+ * the library: only our own mutations move it, and each invalidates the key.
+ *
+ * The listing itself is what the cache holds, with the map derived in `select`:
+ * the file paths are the other reading of the same rows (see
+ * `useArtistImagePath`), and two hooks on one key may not disagree about what
+ * that key stores. */
 export function useArtistImages() {
   return useQuery({
     queryKey: artistImagesKey,
-    queryFn: async () => {
-      const images = await listArtistImages();
-      return new Map(images.map((image) => [image.name, image.url]));
-    },
+    queryFn: listArtistImages,
     staleTime: Infinity,
+    select: (images) => new Map(images.map((image) => [image.name, image.url])),
   });
+}
+
+/** Where one artist's image lives on disk — what "reframe this one" reopens.
+ * Null while nothing is stored for them. */
+export function useArtistImagePath(name: string): string | null {
+  return (
+    useQuery({
+      queryKey: artistImagesKey,
+      queryFn: listArtistImages,
+      staleTime: Infinity,
+      select: (images) => images.find((image) => image.name === name)?.path ?? null,
+    }).data ?? null
+  );
 }
 
 export function useSetArtistImage() {

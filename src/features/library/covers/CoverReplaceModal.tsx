@@ -2,7 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { allowCoverPreview, listCoverCandidates, type CoverCandidate, type CoverSource } from "@/features/library/api";
+import {
+  albumRecropSource,
+  allowCoverPreview,
+  listCoverCandidates,
+  type CoverCandidate,
+  type CoverSource,
+} from "@/features/library/api";
 import type { Album } from "@/features/library/albums/albums";
 import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
 import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
@@ -12,6 +18,7 @@ import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
+import { RecropButton } from "@/features/library/covers/RecropButton";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
 import { useSetAlbumCover } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
@@ -215,6 +222,16 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
             <div style={{ width: STAGE_PX, height: STAGE_PX }}>
               <ArtworkPlaceholder className="size-full rounded-xl" />
             </div>
+          )
+        }
+        currentAction={
+          currentArtPath != null && (
+            <RecropButton
+              disabled={replace.isPending}
+              source={async () => (await albumRecropSource(currentArtPath)).path}
+              onAdopt={(path) => local.adopt(path)}
+              onFailed={() => setError(t("imageSource.recropFailed"))}
+            />
           )
         }
         currentInfo={

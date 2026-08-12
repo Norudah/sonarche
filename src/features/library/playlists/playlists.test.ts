@@ -14,7 +14,7 @@ import {
 } from "@/features/library/playlists/playlists";
 
 function playlist(id: number, name: string, kind: Playlist["kind"] = "user", updatedAt = 0): Playlist {
-  return { id, name, kind, coverUrl: null, marker: null, createdAt: 0, updatedAt, itemIds: [] };
+  return { id, name, kind, coverUrl: null, coverPath: null, marker: null, createdAt: 0, updatedAt, itemIds: [] };
 }
 
 describe("resolvePlaylistTracks", () => {

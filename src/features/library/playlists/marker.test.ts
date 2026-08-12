@@ -10,6 +10,7 @@ function playlist(overrides: Partial<Playlist> = {}): Playlist {
     name: "Route de nuit",
     kind: "user",
     coverUrl: null,
+    coverPath: null,
     marker: null,
     createdAt: 0,
     updatedAt: 0,

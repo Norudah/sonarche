@@ -127,6 +127,7 @@ fn main() {
             commands::list_genre_overrides,
             commands::set_check_accepted,
             commands::allow_cover_preview,
+            commands::album_recrop_source,
             commands::set_album_cover,
             commands::list_cover_candidates,
             artist_images::list_artist_images,

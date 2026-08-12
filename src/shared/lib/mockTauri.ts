@@ -772,6 +772,12 @@ export function installMockTauri() {
       if (cmd === "allow_cover_preview") {
         return { path: thumb("#0ea5e9", "#164e63"), bytes: 4_600_000 };
       }
+      // The cover the album already wears, reopened for a tighter frame. Square
+      // here, the way a real archive is — the point being to check that the
+      // stage receives it, not the aspect ratio it arrives in.
+      if (cmd === "album_recrop_source") {
+        return { path: thumb("#f472b6", "#7c3aed"), bytes: 3_100_000 };
+      }
       // The Cover Art Archive's uploads for a release: three plausible scans,
       // front first, after a network-ish delay. `?nocandidates` previews the
       // empty state, `?candidatesfail` the error one.

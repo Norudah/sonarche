@@ -973,6 +973,52 @@ pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Valu
     Ok(json!({ "path": canonical.to_string_lossy(), "bytes": bytes }))
 }
 
+/// The cover an album already wears, as a file the crop stage can reopen —
+/// what "reframe this one" needs, where every other road into the modal brings
+/// its own file.
+///
+/// Not simply the display cover: the two-file convention keeps the full-size
+/// image beside it as `cover-hq.*`, and cutting a tighter square out of the
+/// 500px rendition would archive that rendition as the new original. The
+/// archive is the source whenever there is one, the display cover otherwise.
+///
+/// `art_path` is beets' own artpath, which the library listing already handed
+/// the front. It is checked back to the library all the same — an IPC argument
+/// is never a fact — and only then admitted to the asset scope.
+#[tauri::command]
+pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<Value> {
+    use tauri::Manager;
+
+    let paths = AppPaths::resolve(&app)?;
+    let music_dir = tokio::fs::canonicalize(paths.music_dir())
+        .await
+        .unwrap_or_else(|_| paths.music_dir());
+    let art = checked_cover_source(&art_path).await?;
+    if !art.starts_with(&music_dir) {
+        return Err(AppError::InvalidInput("cover outside the library".into()));
+    }
+
+    let mut source = art.clone();
+    if let Some(dir) = art.parent() {
+        for extension in COVER_SOURCE_EXTENSIONS {
+            let archive = dir.join(format!("cover-hq.{extension}"));
+            if tokio::fs::metadata(&archive)
+                .await
+                .is_ok_and(|m| m.is_file())
+            {
+                source = archive;
+                break;
+            }
+        }
+    }
+
+    let bytes = tokio::fs::metadata(&source).await?.len();
+    app.asset_protocol_scope()
+        .allow_file(&source)
+        .map_err(|err| AppError::InvalidInput(format!("could not admit the file: {err}")))?;
+    Ok(json!({ "path": source.to_string_lossy(), "bytes": bytes }))
+}
+
 /// The square the sidecar should cut from the source image, in source pixels
 /// after EXIF orientation — the same frame the preview showed the user.
 #[derive(Deserialize)]

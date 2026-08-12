@@ -9,6 +9,7 @@ import { cropRect, frameFits } from "@/features/library/covers/coverCrop";
 import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
+import { RecropButton } from "@/features/library/covers/RecropButton";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
 import type { Playlist } from "@/features/library/playlists/api";
 import { useRemovePlaylistCover, useSetPlaylistCover } from "@/features/library/playlists/hooks";
@@ -103,6 +104,16 @@ export function PlaylistImageStep({
             </div>
           }
           currentInfo={<p>{playlist.coverUrl ? t("playlists.image.hasCurrent") : t("playlists.image.noCurrent")}</p>}
+          currentAction={
+            playlist.coverPath != null && (
+              <RecropButton
+                disabled={isPending}
+                source={async () => playlist.coverPath ?? ""}
+                onAdopt={(path) => local.adopt(path)}
+                onFailed={() => setError(t("imageSource.recropFailed"))}
+              />
+            )
+          }
           nextTitle={t("playlists.image.next")}
           help={
             <FieldHelpPopover
