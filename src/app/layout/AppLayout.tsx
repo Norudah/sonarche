@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 
 import { JobProgressToasts } from "@/app/layout/JobProgressToasts";
 import { RouteTransition } from "@/app/layout/RouteTransition";
+import { HomeTourHost } from "@/app/tour/HomeTourHost";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { Topbar } from "@/app/layout/Topbar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
@@ -51,6 +52,7 @@ export function AppLayout() {
               the gate opening is exactly that signal. */}
           <LibraryRepair />
           <JobProgressToasts />
+          <HomeTourHost />
           <div className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1">
               <Sidebar />

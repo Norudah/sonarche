@@ -18,5 +18,35 @@
     "previous": "Previous page",
     "next": "Next page",
     "pageOf": "{{page}} / {{pageCount}}"
+  },
+  "tour": {
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "openGuide": "Open the guide",
+    "explorer": {
+      "title": "The Explorer",
+      "body": "This is where music comes in: a download from a link, or an import of a folder you already have. History and metadata tell you what arrived."
+    },
+    "arche": {
+      "title": "The Arche",
+      "body": "Your library, on five shelves: tracks, albums, artists, genres and categories. Everything that comes in ends up here."
+    },
+    "playlists": {
+      "title": "Playlists",
+      "body": "Your own lists, next to what the library sorts by itself. The + creates a new one."
+    },
+    "chrome": {
+      "title": "Help and settings",
+      "body": "The question mark opens the guide in your browser; the gear opens the settings — and brings you back where you were."
+    },
+    "player": {
+      "title": "The player",
+      "body": "Playback lives at the bottom, on every page: the current track, the queue, shuffle and repeat."
+    },
+    "finale": {
+      "title": "That's it!",
+      "body": "You can replay this tour from Settings → Appearance. And to go further, the guide is waiting on the website."
+    }
   }
 }

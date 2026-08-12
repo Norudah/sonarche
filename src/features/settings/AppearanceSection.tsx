@@ -1,4 +1,5 @@
 import { RadioGroup, Switch } from "@heroui/react";
+import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +10,7 @@ import { SettingsHero } from "@/features/settings/SettingsHero";
 import { ThemeTile } from "@/features/settings/ThemeTile";
 import { useTheme } from "@/features/settings/ThemeContext";
 import { THEME_PREFERENCES, type ThemePreference } from "@/features/settings/theme";
+import { requestHomeTour } from "@/shared/lib/homeTour";
 
 /** One setting's title and reason, above whatever control it drives. */
 function Setting({ name, why, children }: { name: string; why: string; children: React.ReactNode }) {
@@ -86,6 +88,21 @@ export function AppearanceSection() {
           </Switch>
           <p className="text-[0.8125rem] leading-relaxed text-muted">{t("appearance.launchWelcome.why")}</p>
         </div>
+      </SettingCard>
+
+      <SettingCard>
+        <Setting name={t("appearance.tour.name")} why={t("appearance.tour.why")}>
+          <div>
+            <button
+              type="button"
+              onClick={requestHomeTour}
+              className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <RotateCcw className="size-3.5" />
+              {t("appearance.tour.replay")}
+            </button>
+          </div>
+        </Setting>
       </SettingCard>
     </>
   );

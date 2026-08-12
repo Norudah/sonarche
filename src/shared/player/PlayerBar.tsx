@@ -21,7 +21,7 @@ export function PlayerBar({ accessory }: PlayerBarProps) {
   const { current, isPlaying } = usePlayer();
 
   return (
-    <div className="flex h-player shrink-0 items-center border-t border-separator bg-surface px-6">
+    <div data-tour="player" className="flex h-player shrink-0 items-center border-t border-separator bg-surface px-6">
       <div className="flex flex-1 items-center">
         <NowPlaying current={current} isPlaying={isPlaying} />
       </div>

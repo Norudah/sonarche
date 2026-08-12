@@ -25,6 +25,11 @@
     "launchWelcome": {
       "name": "Mot de bienvenue au lancement",
       "why": "Une fois l'environnement vérifié, Sonarche prend une seconde pour se présenter avant d'ouvrir la fenêtre. Désactive-le et l'application entre directement — le fondu entre les deux, lui, reste."
+    },
+    "tour": {
+      "name": "Visite guidée",
+      "why": "Les repères de l'interface, en six étapes. À revoir quand tu veux.",
+      "replay": "Revoir la visite"
     }
   },
   "metadata": {

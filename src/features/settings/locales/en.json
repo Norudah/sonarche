@@ -25,6 +25,11 @@
     "launchWelcome": {
       "name": "Welcome at launch",
       "why": "Once the environment check is done, Sonarche takes a second to say hello before opening the window. Turn it off and the app goes straight in — the fade between the two stays either way."
+    },
+    "tour": {
+      "name": "Guided tour",
+      "why": "The interface's landmarks, in six steps. Replay it any time.",
+      "replay": "Replay the tour"
     }
   },
   "metadata": {

@@ -35,8 +35,12 @@ export function Topbar() {
       className="flex h-10 shrink-0 items-center justify-end gap-0.5 border-b border-separator bg-surface px-4"
     >
       {hasLens && <InspectSwitch />}
-      <GuideButton />
-      <SettingsToggle />
+      {/* One anchor around the pair: the tour talks about "help and settings"
+          as one corner of the window, not two separate stops. */}
+      <span data-tour="chrome" className="flex items-center gap-0.5">
+        <GuideButton />
+        <SettingsToggle />
+      </span>
     </div>
   );
 }

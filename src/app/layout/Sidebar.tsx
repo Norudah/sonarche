@@ -98,9 +98,20 @@ function NavItem({
   );
 }
 
-function NavSection({ label, action, children }: { label: string; action?: ReactNode; children: ReactNode }) {
+function NavSection({
+  label,
+  action,
+  tourId,
+  children,
+}: {
+  label: string;
+  action?: ReactNode;
+  /** Anchor for the guided tour's spotlight — see `app/tour`. */
+  tourId?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div data-tour={tourId} className="flex flex-col gap-1.5">
       {/* A shade lighter and a hair smaller than the items they head: these are
           signposts, and they should be found when looked for rather than read
           on the way past. The optional action keeps to the same register — a
@@ -134,7 +145,7 @@ function MainNav() {
 
   return (
     <div className="flex flex-col">
-      <NavSection label={t("nav.sections.explorer")}>
+      <NavSection label={t("nav.sections.explorer")} tourId="explorer">
         <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
         {/* Directly under Downloads: the two ways music enters the ark, in the
             order most people meet them. */}
@@ -145,7 +156,7 @@ function MainNav() {
 
       <Divider />
 
-      <NavSection label={t("nav.sections.arche")}>
+      <NavSection label={t("nav.sections.arche")} tourId="arche">
         <NavItem to={paths.libraryTracks} label={tLibrary("views.tracks")} icon={Music} />
         <NavItem to={paths.libraryAlbums} label={tLibrary("views.albums")} icon={Disc} />
         <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
@@ -187,6 +198,7 @@ function PlaylistsNav() {
   return (
     <NavSection
       label={tLibrary("views.playlists")}
+      tourId="playlists"
       action={
         <button
           type="button"
