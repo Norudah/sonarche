@@ -7,10 +7,16 @@
 //! the native scrollbars and the system menus dark alongside the webview.
 //!
 //! Windows keeps its caption bar above us and there is no config key for it, so
-//! what is left is the two things DWM will let a process change about its own
-//! window: the title text and the bar's colour. Both are done here rather than
-//! left as they came — a grey strip reading "Sonarche" over an app whose whole
-//! chrome is near-white is the one seam a user sees before anything else.
+//! what is left is the one thing DWM will let a process change about its own
+//! window: the bar's colour. Painting it the app's own is what closes the seam
+//! — a grey strip over an app whose whole chrome is near-white is the first
+//! thing a user sees.
+//!
+//! The title text stays. Emptying it did quieten the caption bar, but the
+//! window title is also what Windows shows when you hover the app in the
+//! taskbar, and what Alt-Tab and the window list read: the app arrived
+//! nameless everywhere outside its own frame. A word in a caption bar the
+//! colour of the app is a far smaller price than that.
 
 use serde::Deserialize;
 use tauri::window::Color;
@@ -56,12 +62,11 @@ impl From<ThemeChoice> for Option<Theme> {
     }
 }
 
-/// Startup: strip the caption text and paint the frame for whatever theme the
-/// window came up in. The front end sends the real choice a moment later, once
-/// it has read the stored preference.
+/// Startup: paint the frame for whatever theme the window came up in. The
+/// front end sends the real choice a moment later, once it has read the stored
+/// preference.
 pub fn quieten(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        strip_title(&window);
         paint(&window, resolved(&window));
     }
 }
@@ -94,17 +99,6 @@ fn paint(window: &WebviewWindow, theme: Theme) {
     let _ = window.set_background_color(Some(colour));
     paint_caption(window, theme);
 }
-
-#[cfg(target_os = "windows")]
-fn strip_title(window: &WebviewWindow) {
-    // An empty title is the only way to take the app's name off a native caption
-    // bar. Nothing else loses it: the taskbar names the app from the executable,
-    // and the window already says what it is on every one of its own pages.
-    let _ = window.set_title("");
-}
-
-#[cfg(not(target_os = "windows"))]
-fn strip_title(_window: &WebviewWindow) {}
 
 #[cfg(target_os = "windows")]
 fn paint_caption(window: &WebviewWindow, theme: Theme) {
