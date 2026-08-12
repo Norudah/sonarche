@@ -165,6 +165,8 @@
     "attention": "Needs attention"
   },
   "inspect": {
+    "modeListening": "Listening",
+    "modeInspecting": "Inspecting",
     "enter": "Inspect metadata",
     "exit": "Back to listening",
     "offTree": "“{{genre}}” belongs to no family: nothing is missing, but this track falls under Other."

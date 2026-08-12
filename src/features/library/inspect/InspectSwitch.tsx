@@ -1,20 +1,23 @@
-import { ScanSearch } from "lucide-react";
+import { Headphones, ScanSearch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useInspectMode } from "@/features/library/inspect/inspectMode";
-import { chromeButton } from "@/shared/ui/chromeButton";
+import { chromePill } from "@/shared/ui/chromeButton";
 import { ActionHelp } from "@/shared/ui/FieldHelp";
 
 /**
- * The lens, as one button that lights up.
+ * The lens, as a switch that says which of the two rooms you are standing in.
  *
- * It began as a two-segment switch naming both modes, which was the honest way
- * to say that listening is a *place* and not the absence of a feature. In a bar
- * of this height it was simply too much furniture — two labels and a sliding
- * pill for a control you throw twice a week. The mode is still legible: off is
- * quiet chrome, on is an amber plate, and amber means "something to fix"
- * everywhere else in the app. The tooltip names what the click does, which is
- * the one thing an icon cannot say.
+ * It began as a two-segment control naming both modes, which was too much
+ * furniture for a bar this tall; it then became a bare icon, which read as a
+ * third door beside settings and the guide. This is the middle: one control,
+ * one word, and the word is the mode you are *in* — the tooltip is where the
+ * next click is named, because that is the one thing a state cannot say.
+ *
+ * The colour carries the argument. Listening is the app's ordinary chrome;
+ * inspecting is amber, the same amber every missing tag and every doubtful
+ * match wears underneath — so the switch is not only the way into that room,
+ * it is a sample of what the room looks like.
  */
 export function InspectSwitch() {
   const { t } = useTranslation("library");
@@ -27,9 +30,10 @@ export function InspectSwitch() {
         aria-pressed={inspecting}
         aria-label={t(inspecting ? "inspect.exit" : "inspect.enter")}
         onClick={() => setInspecting(!inspecting)}
-        className={chromeButton(inspecting ? "warning" : "idle")}
+        className={chromePill(inspecting ? "warning" : "idle")}
       >
-        <ScanSearch className="size-4" />
+        {inspecting ? <ScanSearch className="size-3.5" /> : <Headphones className="size-3.5" />}
+        {t(inspecting ? "inspect.modeInspecting" : "inspect.modeListening")}
       </button>
     </ActionHelp>
   );
