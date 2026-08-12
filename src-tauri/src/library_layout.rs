@@ -91,6 +91,10 @@ pub fn ensure_zones(root: &Path) -> AppResult<()> {
     fs::create_dir_all(root.join(MUSIC_DIR))?;
     fs::create_dir_all(root.join(ARTWORK_DIR).join(ARTWORK_ARTISTS))?;
     fs::create_dir_all(root.join(ARTWORK_DIR).join(ARTWORK_PLAYLISTS))?;
+    // Present from day one, even empty: opening the folder in a file manager
+    // should show the whole shape of the library, not a shape that grows as
+    // features get used. The mirror only ever sweeps files, never the folder.
+    fs::create_dir_all(root.join(PLAYLISTS_DIR))?;
     let marker_dir = root.join(MARKER_DIR);
     fs::create_dir_all(&marker_dir)?;
     hide_dir(&marker_dir);
@@ -630,6 +634,21 @@ mod tests {
         assert_eq!(first.identity, second.identity);
         assert!(root.path().join(MUSIC_DIR).is_dir());
         assert!(root.path().join(ARTWORK_DIR).is_dir());
+    }
+
+    #[test]
+    fn zones_include_every_folder_even_the_empty_ones() {
+        let root = temp_root();
+        ensure_zones(root.path()).unwrap();
+        assert!(root.path().join(MUSIC_DIR).is_dir());
+        assert!(root.path().join(ARTWORK_DIR).join(ARTWORK_ARTISTS).is_dir());
+        assert!(root
+            .path()
+            .join(ARTWORK_DIR)
+            .join(ARTWORK_PLAYLISTS)
+            .is_dir());
+        assert!(root.path().join(PLAYLISTS_DIR).is_dir());
+        assert!(root.path().join(MARKER_DIR).is_dir());
     }
 
     #[test]
