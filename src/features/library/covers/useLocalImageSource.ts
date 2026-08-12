@@ -2,7 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
 
 import { allowCoverPreview } from "@/features/library/api";
-import type { SourceSize } from "@/features/library/covers/coverCrop";
+import { WHOLE_FRAME, type CropFrame, type SourceSize } from "@/features/library/covers/coverCrop";
 
 /** Image formats a picked replacement may arrive in — mirrors the Rust
  * whitelist (`COVER_SOURCE_EXTENSIONS`). */
@@ -39,7 +39,7 @@ export function useLocalImageSource({
 }) {
   const [image, setImage] = useState<LocalImage | null>(null);
   const [natural, setNatural] = useState<SourceSize | null>(null);
-  const [offset, setOffset] = useState(0.5);
+  const [frame, setFrame] = useState<CropFrame>(WHOLE_FRAME);
   const [isDropTarget, setIsDropTarget] = useState(false);
 
   const adopt = async (path: string) => {
@@ -48,7 +48,7 @@ export function useLocalImageSource({
       const admitted = await allowCoverPreview(path);
       setImage(admitted);
       setNatural(null);
-      setOffset(0.5);
+      setFrame(WHOLE_FRAME);
     } catch {
       onUnreadable();
     }
@@ -65,7 +65,7 @@ export function useLocalImageSource({
   const clear = () => {
     setImage(null);
     setNatural(null);
-    setOffset(0.5);
+    setFrame(WHOLE_FRAME);
     setIsDropTarget(false);
   };
 
@@ -103,5 +103,5 @@ export function useLocalImageSource({
     };
   }, [isOpen]);
 
-  return { image, natural, offset, isDropTarget, pick, adopt, clear, setOffset, setNatural };
+  return { image, natural, frame, isDropTarget, pick, adopt, clear, setFrame, setNatural };
 }

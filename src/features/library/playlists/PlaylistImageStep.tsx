@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { LibraryTrack } from "@/features/library/api";
 import { BeforeAfter } from "@/features/library/covers/BeforeAfter";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
-import { cropRect } from "@/features/library/covers/coverCrop";
+import { cropRect, frameFits } from "@/features/library/covers/coverCrop";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
@@ -66,11 +66,11 @@ export function PlaylistImageStep({
   const isPending = replace.isPending || remove.isPending;
 
   const confirm = () => {
-    const { image, natural, offset } = local;
+    const { image, natural, frame } = local;
     if (!image || !natural) return;
     setError(null);
     replace.mutate(
-      { id: playlist.id, sourcePath: image.path, crop: cropRect(natural, offset) },
+      { id: playlist.id, sourcePath: image.path, crop: cropRect(natural, frame) },
       { onSuccess: onClose, onError: () => setError(t("playlists.image.failed")) },
     );
   };
@@ -80,7 +80,10 @@ export function PlaylistImageStep({
     remove.mutate(playlist.id, { onSuccess: onClose, onError: () => setError(t("playlists.image.failed")) });
   };
 
-  const canConfirm = local.image != null && local.natural != null && !isPending;
+  // A frame wider than the picture would come back letterboxed; the tile is
+  // square wherever the shelf draws it.
+  const fits = local.natural == null || frameFits(local.natural, local.frame.zoom);
+  const canConfirm = local.image != null && local.natural != null && fits && !isPending;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -113,16 +116,17 @@ export function PlaylistImageStep({
             <ImagePickStage
               image={local.image}
               natural={local.natural}
-              offset={local.offset}
+              frame={local.frame}
               stagePx={STAGE_PX}
               isDropTarget={local.isDropTarget}
               labels={{
                 drop: t("playlists.image.drop", { chord: PASTE_CHORD }),
                 formats: t("albumMetadata.cover.formats"),
                 reframe: t("albumMetadata.cover.reframe"),
+                zoom: t("albumMetadata.cover.zoom"),
               }}
               onPick={() => void local.pick()}
-              onOffset={local.setOffset}
+              onFrame={local.setFrame}
               onNatural={local.setNatural}
               onUnreadable={() => {
                 local.clear();
@@ -150,6 +154,12 @@ export function PlaylistImageStep({
           onAdopt={(path) => local.adopt(path)}
           onNotice={setError}
         />
+
+        {!fits && (
+          <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
+            {t("albumMetadata.cover.notSquare")}
+          </p>
+        )}
 
         {error && <p className="text-center text-[0.75rem] text-danger">{error}</p>}
       </div>

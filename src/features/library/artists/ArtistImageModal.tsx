@@ -6,7 +6,7 @@ import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
 import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
-import { cropRect } from "@/features/library/covers/coverCrop";
+import { cropRect, frameFits } from "@/features/library/covers/coverCrop";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -64,11 +64,11 @@ export function ArtistImageModal({
   };
 
   const confirm = () => {
-    const { image, natural, offset } = local;
+    const { image, natural, frame } = local;
     if (!image || !natural) return;
     setError(null);
     replace.mutate(
-      { name: artist.name, sourcePath: image.path, crop: cropRect(natural, offset) },
+      { name: artist.name, sourcePath: image.path, crop: cropRect(natural, frame) },
       {
         onSuccess: () => {
           reset();
@@ -90,8 +90,11 @@ export function ArtistImageModal({
     });
   };
 
-  const squareSide = local.image && local.natural ? Math.min(local.natural.width, local.natural.height) : null;
-  const canConfirm = local.image != null && local.natural != null && !isPending;
+  const squareSide = local.image && local.natural ? (cropRect(local.natural, local.frame)?.size ?? null) : null;
+  // Same rule as a cover: a frame wider than the picture comes back
+  // letterboxed, and the disc is drawn from a square.
+  const fits = local.natural == null || frameFits(local.natural, local.frame.zoom);
+  const canConfirm = local.image != null && local.natural != null && fits && !isPending;
 
   return (
     <ImageModalShell
@@ -142,17 +145,18 @@ export function ArtistImageModal({
           <ImagePickStage
             image={local.image}
             natural={local.natural}
-            offset={local.offset}
+            frame={local.frame}
             stagePx={STAGE_PX}
             isDropTarget={local.isDropTarget}
             labels={{
               drop: t("artists.image.drop", { chord: PASTE_CHORD }),
               formats: t("albumMetadata.cover.formats"),
               reframe: t("albumMetadata.cover.reframe"),
+              zoom: t("albumMetadata.cover.zoom"),
             }}
             round
             onPick={() => void local.pick()}
-            onOffset={local.setOffset}
+            onFrame={local.setFrame}
             onNatural={local.setNatural}
             onUnreadable={() => {
               local.clear();
@@ -170,9 +174,7 @@ export function ArtistImageModal({
                   {local.natural.width}×{local.natural.height} px
                 </span>
               </p>
-              {local.natural.width !== local.natural.height && (
-                <p className="text-[0.6875rem] text-muted/80">{t("albumMetadata.cover.reframeHint")}</p>
-              )}
+              <p className="text-[0.6875rem] text-muted/80">{t("albumMetadata.cover.reframeHint")}</p>
             </>
           )
         }
@@ -186,7 +188,13 @@ export function ArtistImageModal({
         onNotice={setError}
       />
 
-      {squareSide != null && squareSide < 500 && (
+      {!fits && (
+        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
+          {t("albumMetadata.cover.notSquare")}
+        </p>
+      )}
+
+      {fits && squareSide != null && squareSide < 500 && (
         <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
           {t("artists.image.tooSmall")}
         </p>

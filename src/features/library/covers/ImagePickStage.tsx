@@ -1,20 +1,20 @@
 import { ImagePlus } from "lucide-react";
 
-import type { SourceSize } from "@/features/library/covers/coverCrop";
+import type { CropFrame, SourceSize } from "@/features/library/covers/coverCrop";
 import { CropStage } from "@/features/library/covers/CropStage";
 import type { LocalImage } from "@/features/library/covers/useLocalImageSource";
 
 interface ImagePickStageProps {
   image: LocalImage | null;
   natural: SourceSize | null;
-  offset: number;
+  frame: CropFrame;
   stagePx: number;
   isDropTarget: boolean;
-  labels: { drop: string; formats: string; reframe: string };
+  labels: { drop: string; formats: string; reframe: string; zoom: string };
   /** Circular pick target and crop window — for images worn as a disc. */
   round?: boolean;
   onPick: () => void;
-  onOffset: (offset: number) => void;
+  onFrame: (frame: CropFrame) => void;
   onNatural: (size: SourceSize) => void;
   /** The picked file failed to decode in the webview — drop it and say so. */
   onUnreadable: () => void;
@@ -29,13 +29,13 @@ interface ImagePickStageProps {
 export function ImagePickStage({
   image,
   natural,
-  offset,
+  frame,
   stagePx,
   isDropTarget,
   labels,
   round = false,
   onPick,
-  onOffset,
+  onFrame,
   onNatural,
   onUnreadable,
 }: ImagePickStageProps) {
@@ -69,11 +69,12 @@ export function ImagePickStage({
         <CropStage
           url={image.url}
           natural={natural}
-          offset={offset}
+          frame={frame}
           maxPx={stagePx}
           label={labels.reframe}
+          zoomLabel={labels.zoom}
           round={round}
-          onOffset={onOffset}
+          onFrame={onFrame}
         />
       ) : (
         <img

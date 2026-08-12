@@ -7,7 +7,7 @@ import type { Album } from "@/features/library/albums/albums";
 import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
 import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
-import { cropRect, type SourceSize } from "@/features/library/covers/coverCrop";
+import { cropRect, frameFits, type SourceSize } from "@/features/library/covers/coverCrop";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -131,13 +131,13 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
 
   // Estimated embedded weight of the crop, re-measured shortly after the frame
   // settles — an encode per keypress would churn for nothing.
-  const { image, natural, offset } = local;
+  const { image, natural, frame } = local;
   useEffect(() => {
     if (!image || !natural) {
       setEmbeddedEstimate(null);
       return;
     }
-    const crop = cropRect(natural, offset) ?? { left: 0, top: 0, size: natural.width };
+    const crop = cropRect(natural, frame) ?? { left: 0, top: 0, size: natural.width };
     let stale = false;
     const timer = window.setTimeout(async () => {
       const bytes = await estimateEmbeddedBytes(image.url, crop, image.path.toLowerCase().endsWith(".png"));
@@ -147,7 +147,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
       stale = true;
       window.clearTimeout(timer);
     };
-  }, [image, natural, offset]);
+  }, [image, natural, frame]);
 
   const confirm = () => {
     if (albumIds.length === 0) return;
@@ -155,7 +155,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     if (candidate) {
       wire = { candidateUrl: candidate.imageUrl };
     } else if (image && natural) {
-      wire = { sourcePath: image.path, crop: cropRect(natural, offset) };
+      wire = { sourcePath: image.path, crop: cropRect(natural, frame) };
     } else {
       return;
     }
@@ -172,8 +172,13 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     );
   };
 
-  const squareSide = candidate == null && image && natural ? Math.min(natural.width, natural.height) : null;
-  const canConfirm = (candidate != null || (image != null && natural != null)) && !replace.isPending;
+  // What the crop would actually archive, zoom included — the source's short
+  // side only answers that at full zoom.
+  const squareSide = candidate == null && image && natural ? (cropRect(natural, frame)?.size ?? natural.width) : null;
+  // A frame wider than the picture would come back letterboxed, and a cover has
+  // to be square: the stage lets you go there, the confirm button does not.
+  const fits = natural == null || frameFits(natural, frame.zoom);
+  const canConfirm = (candidate != null || (image != null && natural != null && fits)) && !replace.isPending;
 
   return (
     <ImageModalShell
@@ -255,16 +260,17 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
             <ImagePickStage
               image={local.image}
               natural={local.natural}
-              offset={local.offset}
+              frame={local.frame}
               stagePx={STAGE_PX}
               isDropTarget={local.isDropTarget}
               labels={{
                 drop: t("albumMetadata.cover.drop", { chord: PASTE_CHORD }),
                 formats: t("albumMetadata.cover.formats"),
                 reframe: t("albumMetadata.cover.reframe"),
+                zoom: t("albumMetadata.cover.zoom"),
               }}
               onPick={() => void local.pick()}
-              onOffset={local.setOffset}
+              onFrame={local.setFrame}
               onNatural={local.setNatural}
               onUnreadable={() => {
                 local.clear();
@@ -283,9 +289,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                     {natural.width}×{natural.height} px · {weight(image.bytes)}
                   </span>
                 </p>
-                {natural.width !== natural.height && (
-                  <p className="text-[0.6875rem] text-muted/80">{t("albumMetadata.cover.reframeHint")}</p>
-                )}
+                <p className="text-[0.6875rem] text-muted/80">{t("albumMetadata.cover.reframeHint")}</p>
                 {squareSide != null && <p>{t("albumMetadata.cover.archiveLine", { side: squareSide })}</p>}
                 {embedCount > 0 && (
                   <p>
@@ -313,7 +317,13 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
         onNotice={setError}
       />
 
-      {squareSide != null && squareSide < 500 && (
+      {!fits && (
+        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
+          {t("albumMetadata.cover.notSquare")}
+        </p>
+      )}
+
+      {fits && squareSide != null && squareSide < 500 && (
         <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
           {t("albumMetadata.cover.tooSmall")}
         </p>
