@@ -11,5 +11,15 @@
   "install": "Installer",
   "installing": "Installation en cours…",
   "failed": "La mise à jour a échoué",
-  "failedHint": "Réessaie plus tard, ou télécharge la dernière version depuis GitHub."
+  "failedHint": "Réessaie plus tard, ou télécharge la dernière version depuis GitHub.",
+  "notes": {
+    "view": "Voir les nouveautés",
+    "title": "Sonarche {{version}}",
+    "detail": "Dans le détail",
+    "breaking": "Changements majeurs",
+    "features": "Nouveautés",
+    "fixes": "Corrections",
+    "perf": "Performances",
+    "later": "Plus tard"
+  }
 }

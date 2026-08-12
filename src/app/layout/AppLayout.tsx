@@ -12,7 +12,7 @@ import { LibraryRepair } from "@/features/library/LibraryRepair";
 import { FavoriteCurrentButton } from "@/features/library/playlists/FavoriteButton";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { readLaunchWelcome } from "@/features/settings/launchWelcome";
-import { useUpdatePrompt } from "@/features/update/useUpdatePrompt";
+import { UpdatePrompt } from "@/features/update/UpdatePrompt";
 import { HistoryDepthProvider } from "@/shared/navigation/historyDepth";
 import { PlayerBar } from "@/shared/player/PlayerBar";
 import { ToastViewport } from "@/shared/toast/ToastViewport";
@@ -23,8 +23,6 @@ export function AppLayout() {
   // is ours to do; nothing upstream resets or restores it.
   const scrollRef = useRef<HTMLElement>(null);
   useScrollRestoration(scrollRef);
-  // Inside the shell, so the prompt has the toast viewport below it to land in.
-  useUpdatePrompt();
 
   // Read here rather than in the gate, because `features` do not import each
   // other and this preference belongs to Settings; the shell is the one place
@@ -52,6 +50,9 @@ export function AppLayout() {
               the gate opening is exactly that signal. */}
           <LibraryRepair />
           <JobProgressToasts />
+          {/* Inside the gate, so the offer never lands on top of onboarding —
+              and the toast viewport it needs is only mounted in here anyway. */}
+          <UpdatePrompt />
           <HomeTourHost />
           <div className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1">

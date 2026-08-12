@@ -295,6 +295,26 @@ const preferenceFields: Record<string, keyof typeof preferences> = {
  * AAC, which is exactly what importing someone's existing collection produces.
  * A format the player refuses is a state the UI has to draw, so it needs to be
  * reachable by clicking a row rather than only in a real install. */
+const MOCK_RELEASE_BODY = `## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-08-12)
+
+### En bref
+
+* Un clic sur une pochette l'agrandit, et tu peux la recadrer sans la remplacer.
+* La langue se choisit dès l'installation.
+* Chaque suppression demande confirmation, partout.
+
+### Features
+
+* **library:** let a cover be recropped in place ([1a2b3c4](https://github.com/Norudah/sonarche/commit/1a2b3c4d))
+* **onboarding:** pick the language during setup ([5e6f7a8](https://github.com/Norudah/sonarche/commit/5e6f7a8b))
+* **shell:** name the two modes on the lens toggle ([8607459](https://github.com/Norudah/sonarche/commit/86074590))
+
+### Bug Fixes
+
+* **ui:** mark every delete as destructive ([9b8c7d6](https://github.com/Norudah/sonarche/commit/9b8c7d6e))
+* **shell:** keep the app's name on the Windows window ([f9d5943](https://github.com/Norudah/sonarche/commit/f9d59430))
+`;
+
 const UNPLAYABLE_TITLE = "Wait";
 
 /** Whether the mock engine would open this file. Mirrors the decoder's own
@@ -944,9 +964,12 @@ export function installMockTauri() {
       if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
+      // The body is a faithful release-please changelog with the hand-written
+      // `En bref` section on top — the exact shape `parseReleaseNotes` is fed
+      // in production, so `?update` previews the notes modal too.
       if (cmd === "plugin:updater|check") {
         return new URLSearchParams(window.location.search).has("update")
-          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: null, rawJson: {} }
+          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: MOCK_RELEASE_BODY, rawJson: {} }
           : null;
       }
       if (cmd === "plugin:updater|download_and_install") return null;

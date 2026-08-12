@@ -1,10 +1,13 @@
 import { Button, Spinner } from "@heroui/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
 import { useAppVersion, useCheckForUpdate, useInstallUpdate } from "@/features/update/hooks";
+import { parseReleaseNotes } from "@/features/update/notes";
 import { updateStatus, type Tone } from "@/features/update/status";
+import { UpdateNotesModal } from "@/features/update/UpdateNotesModal";
 
 const TONES: Record<Tone, string> = {
   muted: "text-muted",
@@ -28,6 +31,10 @@ export function UpdateSection() {
 
   const update = check.data;
   const busy = check.isPending || install.isPending;
+  const [showNotes, setShowNotes] = useState(false);
+  // Derived from the check result, never stored: the modal is a view of the
+  // update the last check found, not a copy of it.
+  const notes = update ? parseReleaseNotes(update.body) : null;
   // Derived on every render, never mirrored into state: a status line kept in a
   // `useState` synced by an effect is how it ends up one press behind.
   const status = updateStatus({
@@ -56,9 +63,16 @@ export function UpdateSection() {
             </p>
 
             {update ? (
-              <Button variant="primary" onPress={() => install.mutate(update)} isDisabled={busy}>
-                {t("install")}
-              </Button>
+              <span className="flex items-center gap-2">
+                {notes && (
+                  <Button variant="ghost" onPress={() => setShowNotes(true)} isDisabled={busy}>
+                    {t("notes.view")}
+                  </Button>
+                )}
+                <Button variant="primary" onPress={() => install.mutate(update)} isDisabled={busy}>
+                  {t("install")}
+                </Button>
+              </span>
             ) : (
               <Button variant="secondary" onPress={() => check.mutate()} isDisabled={busy}>
                 {t("check")}
@@ -67,6 +81,19 @@ export function UpdateSection() {
           </div>
         </div>
       </SettingCard>
+
+      {update && notes && (
+        <UpdateNotesModal
+          isOpen={showNotes}
+          onClose={() => setShowNotes(false)}
+          version={update.version}
+          notes={notes}
+          onInstall={() => {
+            setShowNotes(false);
+            install.mutate(update);
+          }}
+        />
+      )}
     </>
   );
 }
