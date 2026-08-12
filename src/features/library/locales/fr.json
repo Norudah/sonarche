@@ -167,8 +167,7 @@
   "inspect": {
     "modeListening": "Écoute",
     "modeInspecting": "Inspection",
-    "enter": "Inspecter les métadonnées",
-    "exit": "Revenir à l'écoute",
+    "switchLabel": "Écoute ou inspection",
     "offTree": "« {{genre}} » n'appartient à aucune famille : rien ne manque, mais ce titre tombe dans Autres."
   },
   "search": {

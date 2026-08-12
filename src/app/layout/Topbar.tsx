@@ -32,9 +32,20 @@ export function Topbar() {
       // Tighter than the page's own 2rem gutter. Chrome sits closer to the edge
       // of the window than content does — aligning these with the search field
       // below made them read as page furniture parked in a strip of its own.
-      className="flex h-10 shrink-0 items-center justify-end gap-0.5 border-b border-separator bg-surface px-4"
+      //
+      // `h-12`, not the `h-10` it started at: once the bar carried a real
+      // control (the 32px lens switch), 40px left it 4px of clearance and the
+      // bar's edges visibly pressed on it. A control can only be as calm as
+      // the band around it — 48px is ordinary toolbar height, and it also
+      // widens the macOS drag strip.
+      className="flex h-12 shrink-0 items-center justify-between border-b border-separator bg-surface px-4"
     >
-      {hasLens && <InspectSwitch />}
+      {/* The lens lives on the left, away from help and settings: those two are
+          window furniture, the lens changes what the page below is showing —
+          and parked in the right corner it kept reading as a third door beside
+          them. The slot renders even without a lens so the pair stays pinned
+          right. */}
+      <span className="flex items-center">{hasLens && <InspectSwitch />}</span>
       {/* One anchor around the pair: the tour talks about "help and settings"
           as one corner of the window, not two separate stops. */}
       <span data-tour="chrome" className="flex items-center gap-0.5">
