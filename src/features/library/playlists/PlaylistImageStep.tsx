@@ -6,6 +6,7 @@ import type { LibraryTrack } from "@/features/library/api";
 import { BeforeAfter } from "@/features/library/covers/BeforeAfter";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect, frameFits } from "@/features/library/covers/coverCrop";
+import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
 import { useLocalImageSource } from "@/features/library/covers/useLocalImageSource";
@@ -155,11 +156,10 @@ export function PlaylistImageStep({
           onNotice={setError}
         />
 
-        {!fits && (
-          <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
-            {t("albumMetadata.cover.notSquare")}
-          </p>
-        )}
+        <CropWarningSlot
+          active={local.image != null && local.natural != null}
+          warning={fits ? null : t("albumMetadata.cover.notSquare")}
+        />
 
         {error && <p className="text-center text-[0.75rem] text-danger">{error}</p>}
       </div>

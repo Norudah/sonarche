@@ -8,6 +8,7 @@ import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
 import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect, frameFits, type SourceSize } from "@/features/library/covers/coverCrop";
+import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -317,17 +318,16 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
         onNotice={setError}
       />
 
-      {!fits && (
-        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
-          {t("albumMetadata.cover.notSquare")}
-        </p>
-      )}
-
-      {fits && squareSide != null && squareSide < 500 && (
-        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
-          {t("albumMetadata.cover.tooSmall")}
-        </p>
-      )}
+      <CropWarningSlot
+        active={candidate == null && image != null && natural != null}
+        warning={
+          !fits
+            ? t("albumMetadata.cover.notSquare")
+            : squareSide != null && squareSide < 500
+              ? t("albumMetadata.cover.tooSmall")
+              : null
+        }
+      />
 
       {albumIds.length > 0 && (
         <CandidateStrip

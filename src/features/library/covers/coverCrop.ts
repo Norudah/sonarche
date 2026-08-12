@@ -114,10 +114,12 @@ export interface StageLayout {
   travelY: number;
 }
 
-/** Rounds to whole CSS pixels, and folds `-0` back to `0` — the sign survives
- * `Math.round` and turns up in comparisons. */
+/** Rounds to quarter CSS pixels — coarse enough to keep the numbers exact in
+ * tests, fine enough that a smooth zoom no longer steps the box and the image
+ * a whole pixel at a time — and folds `-0` back to `0`, whose sign survives
+ * rounding and turns up in comparisons. */
 function px(value: number): number {
-  return Math.round(value) || 0;
+  return Math.round(value * 4) / 4 || 0;
 }
 
 export function stageLayout(source: SourceSize, frame: CropFrame, maxPx: number): StageLayout {

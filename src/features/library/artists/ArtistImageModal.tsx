@@ -7,6 +7,7 @@ import type { Artist } from "@/features/library/artists/artists";
 import { BeforeAfter, STAGE_PX } from "@/features/library/covers/BeforeAfter";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect, frameFits } from "@/features/library/covers/coverCrop";
+import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -188,17 +189,16 @@ export function ArtistImageModal({
         onNotice={setError}
       />
 
-      {!fits && (
-        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
-          {t("albumMetadata.cover.notSquare")}
-        </p>
-      )}
-
-      {fits && squareSide != null && squareSide < 500 && (
-        <p className="rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2 text-[0.75rem] leading-snug text-warning">
-          {t("artists.image.tooSmall")}
-        </p>
-      )}
+      <CropWarningSlot
+        active={local.image != null && local.natural != null}
+        warning={
+          !fits
+            ? t("albumMetadata.cover.notSquare")
+            : squareSide != null && squareSide < 500
+              ? t("artists.image.tooSmall")
+              : null
+        }
+      />
     </ImageModalShell>
   );
 }

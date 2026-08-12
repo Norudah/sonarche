@@ -106,57 +106,75 @@ export function CropStage({
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
+    // Coalesced to one update per animation frame: a trackpad reports far
+    // faster than the screen draws, and each tick re-lays-out the stage.
+    let raf = 0;
+    let pending = 0;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      wheelRef.current(event.deltaY);
+      pending += event.deltaY;
+      if (raf === 0)
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          const delta = pending;
+          pending = 0;
+          wheelRef.current(delta);
+        });
     };
     box.addEventListener("wheel", onWheel, { passive: false });
-    return () => box.removeEventListener("wheel", onWheel);
+    return () => {
+      box.removeEventListener("wheel", onWheel);
+      if (raf !== 0) cancelAnimationFrame(raf);
+    };
   }, []);
 
   const canDrag = stage.travelX > 0 || stage.travelY > 0;
 
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: maxPx }}>
-      <div
-        ref={boxRef}
-        className="relative touch-none overflow-hidden rounded-xl bg-surface-secondary ring-1 ring-artwork-edge select-none"
-        style={{ width: stage.width, height: stage.height }}
-        onPointerDown={beginDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-      >
-        <img
-          src={url}
-          alt=""
-          draggable={false}
-          className="absolute"
-          style={{
-            left: stage.imageLeft,
-            top: stage.imageTop,
-            width: stage.imageWidth,
-            height: stage.imageHeight,
-          }}
-        />
-        {/* The window: the wash outside it comes from its own oversized shadow,
-            so there is exactly one element to move. */}
+      {/* Fixed-footprint viewport: the union box breathes with the zoom inside
+          it, so nothing outside the stage moves while the wheel turns. */}
+      <div className="flex items-center justify-center" style={{ width: maxPx, height: maxPx }}>
         <div
-          tabIndex={0}
-          role="group"
-          aria-label={label}
-          onKeyDown={onKeyDown}
-          className={`absolute ${round ? "rounded-full" : "rounded-lg"} ring-2 outline-none focus-visible:ring-accent ${
-            fits ? "ring-white/90" : "ring-warning"
-          } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
-          style={{
-            width: stage.side,
-            height: stage.side,
-            left: stage.left,
-            top: stage.top,
-            boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.55)",
-          }}
-        />
+          ref={boxRef}
+          className="relative touch-none overflow-hidden rounded-xl bg-surface-secondary ring-1 ring-artwork-edge select-none"
+          style={{ width: stage.width, height: stage.height }}
+          onPointerDown={beginDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          <img
+            src={url}
+            alt=""
+            draggable={false}
+            className="absolute"
+            style={{
+              left: stage.imageLeft,
+              top: stage.imageTop,
+              width: stage.imageWidth,
+              height: stage.imageHeight,
+            }}
+          />
+          {/* The window: the wash outside it comes from its own oversized shadow,
+            so there is exactly one element to move. */}
+          <div
+            tabIndex={0}
+            role="group"
+            aria-label={label}
+            onKeyDown={onKeyDown}
+            className={`absolute ${round ? "rounded-full" : "rounded-lg"} ring-2 outline-none focus-visible:ring-accent ${
+              fits ? "ring-white/90" : "ring-warning"
+            } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
+            style={{
+              width: stage.side,
+              height: stage.side,
+              left: stage.left,
+              top: stage.top,
+              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.55)",
+            }}
+          />
+        </div>
       </div>
 
       <div className="flex w-full items-center gap-2 text-muted">

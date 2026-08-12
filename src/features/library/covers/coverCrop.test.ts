@@ -116,11 +116,11 @@ describe("stageLayout", () => {
     // picture is the thing left with room to slide.
     const centred = stageLayout(source, zoomedOut, 280);
     expect(centred).toMatchObject({ width: 280, height: 280, side: 280, left: 0, top: 0 });
-    expect(centred.imageLeft).toBe(18);
+    expect(centred.imageLeft).toBe(18.25);
 
     const pulled = stageLayout(source, { ...zoomedOut, x: 1 }, 280);
     expect(pulled.left).toBe(0);
-    expect(pulled.imageLeft).toBe(37);
+    expect(pulled.imageLeft).toBe(36.5);
   });
 
   it("survives a degenerate zero-size image", () => {
