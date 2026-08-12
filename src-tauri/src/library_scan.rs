@@ -51,10 +51,48 @@ pub struct ScanReport {
     /// this is the denominator of the progress bar — the only count the import
     /// can be measured against without asking beets how far it has to go.
     pub album_folders: u64,
+    /// Audio files in the fullest single folder.
+    ///
+    /// The one structural hint available without reading a tag, and the page
+    /// uses it to suggest a grouping: a directory holding forty tracks is
+    /// unlikely to be one release, and beets would make it one anyway. A hint,
+    /// not a verdict — box sets exist, and the choice stays the user's.
+    pub largest_folder: u64,
     /// Total bytes of every audio file found — what the copy will cost.
     pub bytes: u64,
     /// The walk hit `MAX_ENTRIES` and stopped. Every count above is a floor.
     pub truncated: bool,
+    /// When this folder (or one overlapping it) was last imported, if ever.
+    ///
+    /// Not a refusal — re-importing is legitimate, and beets skips the
+    /// directories it has already taken on. It is here so the screen can say so
+    /// out loud, because a second import that silently adds almost nothing is
+    /// otherwise indistinguishable from one that failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previously_imported: Option<PreviousImport>,
+}
+
+/// An earlier run over the same ground, as the archive remembers it.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviousImport {
+    pub folder: String,
+    pub finished_at: u64,
+    /// A stopped run, which is the case worth naming: part of the folder is
+    /// already in the library and finishing the job is the obvious next move.
+    pub cancelled: bool,
+}
+
+/// Hidden, in the sense beets uses: a leading dot.
+///
+/// Counted as audio, once. beets ignores these outright (`ignore_hidden`), so
+/// every `._Track.m4a` a copy to a FAT volume left behind was one track the
+/// summary promised and the import never delivered — the whole of the gap
+/// between "4 287 pistes" on one screen and "4 270" on the next.
+fn is_hidden(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with('.'))
 }
 
 /// Everything that is not audio: covers, logs, `.DS_Store`, the PDF booklet.
@@ -125,8 +163,10 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         unplayable_by_extension: BTreeMap::new(),
         unplayable_examples: Vec::new(),
         album_folders: 0,
+        largest_folder: 0,
         bytes: 0,
         truncated: false,
+        previously_imported: None,
     };
     let mut seen: u64 = 0;
     let mut pending = vec![root.to_path_buf()];
@@ -139,7 +179,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
         let Ok(entries) = fs::read_dir(&dir) else {
             continue;
         };
-        let mut holds_audio = false;
+        let mut in_this_folder: u64 = 0;
 
         for entry in entries.flatten() {
             seen += 1;
@@ -156,22 +196,27 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
             let path = entry.path();
 
             if file_type.is_dir() {
-                pending.push(path);
+                // A hidden directory is beets' blind spot too, and `.git` or
+                // `.Trashes` inside a music folder is not somebody's album.
+                if !is_hidden(&path) {
+                    pending.push(path);
+                }
                 continue;
             }
-            if !file_type.is_file() || !is_audio(&path) {
+            if !file_type.is_file() || is_hidden(&path) || !is_audio(&path) {
                 continue;
             }
 
-            holds_audio = true;
+            in_this_folder += 1;
             report.bytes += entry.metadata().map(|meta| meta.len()).unwrap_or(0);
             record(&mut report, &path);
         }
 
         // Counted per folder, not per file: an album spread over `Disc 1` and
         // `Disc 2` is two folders to beets, and both are named as it goes.
-        if holds_audio {
+        if in_this_folder > 0 {
             report.album_folders += 1;
+            report.largest_folder = report.largest_folder.max(in_this_folder);
         }
     }
 
@@ -210,6 +255,10 @@ mod tests {
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(&root).expect("temp tree");
             Tree(root)
+        }
+
+        fn root_ref(&self) -> &PathBuf {
+            &self.0
         }
 
         fn file(&self, relative: &str, bytes: usize) -> &Self {
@@ -262,6 +311,23 @@ mod tests {
         assert_eq!(report.album_folders, 4);
     }
 
+    /// The hint the import page reads to suggest a grouping: the fullest
+    /// single folder, not the total and not an average.
+    #[test]
+    fn reports_the_fullest_single_folder() {
+        let tree = Tree::new("fullest");
+        tree.file("Artist/Album/01.m4a", 1)
+            .file("Artist/Album/02.m4a", 1)
+            .file("Rips/a.mp3", 1)
+            .file("Rips/b.mp3", 1)
+            .file("Rips/c.mp3", 1);
+
+        let report = scan(&tree.0).unwrap();
+
+        assert_eq!(report.largest_folder, 3);
+        assert_eq!(report.album_folders, 2);
+    }
+
     #[test]
     fn separates_what_it_cannot_decode_and_says_which_formats() {
         let tree = Tree::new("mixed");
@@ -281,6 +347,21 @@ mod tests {
 
     /// A music folder is full of things that are not music. Counting the cover
     /// art as a track would make every summary wrong by an album's worth.
+    /// The scan and beets have to agree on what is in the folder, or the
+    /// summary promises tracks the import will never mention again.
+    #[test]
+    fn skips_what_beets_skips() {
+        let tree = Tree::new("hidden");
+        tree.file("Album/01.m4a", 1)
+            .file("Album/._01.m4a", 1)
+            .file(".Trashes/deleted.mp3", 1);
+
+        let report = scan(tree.root_ref()).unwrap();
+
+        assert_eq!(report.playable, 1);
+        assert_eq!(report.album_folders, 1);
+    }
+
     #[test]
     fn ignores_everything_that_is_not_audio() {
         let tree = Tree::new("clutter");

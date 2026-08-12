@@ -1,14 +1,17 @@
-import { RadioGroup, Switch } from "@heroui/react";
+import { RadioGroup } from "@heroui/react";
+import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { LanguageChoice } from "@/features/settings/LanguageChoice";
+import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { readLaunchWelcome, storeLaunchWelcome } from "@/features/settings/launchWelcome";
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
+import { SwitchCard } from "@/features/settings/SwitchCard";
 import { ThemeTile } from "@/features/settings/ThemeTile";
 import { useTheme } from "@/features/settings/ThemeContext";
 import { THEME_PREFERENCES, type ThemePreference } from "@/features/settings/theme";
+import { requestHomeTour } from "@/shared/lib/homeTour";
 
 /** One setting's title and reason, above whatever control it drives. */
 function Setting({ name, why, children }: { name: string; why: string; children: React.ReactNode }) {
@@ -30,7 +33,7 @@ function Setting({ name, why, children }: { name: string; why: string; children:
  */
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  const { preference, resolved, choose } = useTheme();
+  const { preference, choose } = useTheme();
   // Local state, no context: the shell read this once at mount and nothing else
   // on screen answers to it. The switch is showing a stored value, not driving
   // anything live.
@@ -57,14 +60,6 @@ export function AppearanceSection() {
               <ThemeTile key={option} value={option} selected={preference} label={t(`appearance.theme.${option}`)} />
             ))}
           </RadioGroup>
-
-          {/* Only under `system`: with an explicit choice the tile already
-              says which theme is on, and repeating it would be noise. */}
-          {preference === "system" && (
-            <p className="text-[0.75rem] text-muted">
-              {t(resolved === "dark" ? "appearance.theme.followingDark" : "appearance.theme.followingLight")}
-            </p>
-          )}
         </Setting>
       </SettingCard>
 
@@ -74,26 +69,26 @@ export function AppearanceSection() {
         </Setting>
       </SettingCard>
 
-      {/* The one setting here whose answer is yes or no, so the only one whose
-          name and control fit on the same line. `Setting` is not reused for
-          that reason — it stacks name, reason, control, and stacking a switch
-          under its own name puts the label twice on screen. The reason still
-          sits at full width underneath, like everywhere else on this page. */}
+      <SwitchCard
+        name={t("appearance.launchWelcome.name")}
+        why={t("appearance.launchWelcome.why")}
+        isSelected={welcome}
+        onChange={chooseWelcome}
+      />
+
       <SettingCard>
-        <div className="flex flex-col gap-1">
-          <Switch isSelected={welcome} onChange={chooseWelcome} className="w-full">
-            {/* `flex-row-reverse` on the clickable row, not on the root: the
-                control is authored first and belongs on the right, and the
-                whole row stays the hit target either way. */}
-            <Switch.Content className="w-full flex-row-reverse justify-between">
-              <Switch.Control>
-                <Switch.Thumb />
-              </Switch.Control>
-              <span className="text-[0.8125rem] font-semibold">{t("appearance.launchWelcome.name")}</span>
-            </Switch.Content>
-          </Switch>
-          <p className="text-[0.8125rem] leading-relaxed text-muted">{t("appearance.launchWelcome.why")}</p>
-        </div>
+        <Setting name={t("appearance.tour.name")} why={t("appearance.tour.why")}>
+          <div>
+            <button
+              type="button"
+              onClick={requestHomeTour}
+              className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <RotateCcw className="size-3.5" />
+              {t("appearance.tour.replay")}
+            </button>
+          </div>
+        </Setting>
       </SettingCard>
     </>
   );

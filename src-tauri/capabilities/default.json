@@ -11,10 +11,15 @@
       "allow": [
         {
           "url": "https://acoustid.org/*"
+        },
+        {
+          "url": "https://sonarche.org/*"
         }
       ]
     },
     "dialog:allow-open",
+    "clipboard-manager:allow-read-image",
+    "clipboard-manager:allow-read-text",
     "updater:default",
     "process:allow-restart"
   ]

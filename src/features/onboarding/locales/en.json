@@ -15,6 +15,7 @@
     "eyebrow": "Welcome",
     "title": "Before the first play",
     "lead": "Long enough to put the engine in place, and to give you real tags instead of guessed ones.",
+    "language": "Language",
     "enter": "Enter {{app}}",
     "libraryHint": "Your music will be filed in {{path}}"
   },

@@ -9,6 +9,7 @@ const report: ScanReport = {
   unplayableByExtension: {},
   unplayableExamples: [],
   albumFolders: 10,
+  largestFolder: 0,
   bytes: 1000,
   truncated: false,
 };
@@ -66,11 +67,23 @@ describe("importRail", () => {
   });
 
   it("fills every stage in the success tone once the import lands", () => {
-    const outcome = { folders: 10, renditions: 0, recap: null };
+    const outcome = { folders: 10, renditions: 0, recap: null, cancelled: false };
     expect(importRail({ kind: "imported", outcome, report }, null)).toMatchObject({
       fills: [1, 1, 1],
       tone: "success",
       activeIndex: null,
+    });
+  });
+
+  /** Amber and honest: the copy segment holds where the stop landed, and the
+   * cover segment is full because that pass did run over what landed. */
+  it("draws a cancelled import as amber, stopped where it stopped", () => {
+    const outcome = { folders: 4, renditions: 0, recap: null, cancelled: true };
+    expect(importRail({ kind: "importCancelled", outcome, report }, null)).toMatchObject({
+      fills: [1, 0.4, 1],
+      tone: "warning",
+      activeIndex: null,
+      failedIndex: null,
     });
   });
 });

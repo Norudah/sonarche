@@ -17,6 +17,7 @@ a different library than the one the user is about to go and look at.
 import os
 import sqlite3
 
+import library
 from genre_tree import bucket_for
 from library import first_genre
 
@@ -109,12 +110,22 @@ def build(db_path: str, batch: str) -> dict | None:
             for r in conn.execute("SELECT id, artpath FROM albums")
         }
         shapes = _album_shapes(conn)
+        # A collection has no tracklist to have holes in — same rule as the
+        # albums view, so the recap and the page cannot disagree about the very
+        # same record.
+        collections = {
+            album_id
+            for album_id, kind in library.flex_attrs_by_album(
+                conn, library.ALBUM_KIND_KEY
+            ).items()
+            if kind == library.COLLECTION
+        }
 
         without_art = sum(1 for album_id in album_ids if not art.get(album_id))
         gapped = sum(
             1
             for album_id in album_ids
-            if has_gaps(*shapes.get(album_id, (set(), 0)))
+            if album_id not in collections and has_gaps(*shapes.get(album_id, (set(), 0)))
         )
     finally:
         conn.close()

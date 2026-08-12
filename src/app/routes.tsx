@@ -5,6 +5,7 @@ import { AppLayout } from "@/app/layout/AppLayout";
 import { DownloadPage } from "@/features/download/DownloadPage";
 import { HistoryRoute } from "@/app/HistoryRoute";
 import { ImportPage } from "@/features/import/ImportPage";
+import { AlignSection } from "@/features/library/triage/AlignSection";
 import { LibraryLayout } from "@/features/library/LibraryLayout";
 import { AlbumDetailView } from "@/features/library/views/AlbumDetailView";
 import { AlbumsView } from "@/features/library/views/AlbumsView";
@@ -15,10 +16,14 @@ import { CategoryDetailView } from "@/features/library/views/CategoryDetailView"
 import { GenreDetailView } from "@/features/library/views/GenreDetailView";
 import { GenresView } from "@/features/library/views/GenresView";
 import { MetadataPage } from "@/features/library/triage/MetadataPage";
+import { PlaylistDetailView } from "@/features/library/views/PlaylistDetailView";
+import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
+import { AddingSection } from "@/features/settings/AddingSection";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
+import { MetadataSection } from "@/features/settings/MetadataSection";
 import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
 import { LibrarySection } from "@/features/settings/LibrarySection";
 import { SettingsLayout } from "@/features/settings/SettingsLayout";
@@ -27,7 +32,7 @@ import { UpdateSection } from "@/features/update/UpdateSection";
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
 // public import site for the many callers that already use it.
-export { albumPath, artistPath, categoryPath, genrePath, paths, triagePaths } from "@/app/paths";
+export { albumPath, artistPath, categoryPath, genrePath, paths, playlistPath, triagePaths } from "@/app/paths";
 
 // A memory router has no URL to deep-link, so in dev a `?route=` param seeds the
 // initial entry — the only way to land a browser (or an automated one) straight
@@ -46,7 +51,17 @@ export const router = createMemoryRouter(
       element: <AppLayout />,
       children: [
         { path: paths.download, element: <DownloadPage /> },
-        { path: paths.import, element: <ImportPage /> },
+        {
+          path: paths.import,
+          // Composed here because the two features must not import each other:
+          // the alignment belongs to the library's metadata domain, but the
+          // place a user reaches for it is right after an import lands.
+          element: (
+            <ImportPage>
+              <AlignSection />
+            </ImportPage>
+          ),
+        },
         // Composed in its own shell component: the history is the archive of
         // both ways music enters the ark, and neither feature may import the other.
         { path: paths.history, element: <HistoryRoute /> },
@@ -60,6 +75,8 @@ export const router = createMemoryRouter(
           children: [
             { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
             { path: paths.settingsAppearance, element: <AppearanceSection /> },
+            { path: paths.settingsAdding, element: <AddingSection /> },
+            { path: paths.settingsMetadata, element: <MetadataSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
             { path: paths.settingsLibrary, element: <LibrarySection /> },
@@ -82,6 +99,8 @@ export const router = createMemoryRouter(
             { path: paths.libraryGenre, element: <GenreDetailView /> },
             { path: paths.libraryCategories, element: <CategoriesView /> },
             { path: paths.libraryCategory, element: <CategoryDetailView /> },
+            { path: paths.libraryPlaylists, element: <PlaylistsView /> },
+            { path: paths.libraryPlaylist, element: <PlaylistDetailView /> },
           ],
         },
       ],

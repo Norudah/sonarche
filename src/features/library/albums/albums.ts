@@ -1,5 +1,4 @@
-import type { LibraryTrack } from "@/features/library/api";
-import { COMPLETENESS_KEYS, countFilled, toFieldValues } from "@/features/library/metadata/fields";
+import type { AcceptedCheck, AlbumKind, LibraryTrack } from "@/features/library/api";
 import { createTextFilter } from "@/shared/lib/search";
 
 export interface Album {
@@ -18,11 +17,17 @@ export interface Album {
   artUrl: string | null;
   /** Distinct container formats — "AAC", "FLAC"… */
   formats: string[];
-  /** Share of tracked metadata fields that are filled, 0…1. */
-  completeness: number;
-  /** Tracks whose every tracked field is filled. Counted here rather than in
-   * the hero: it rides the pass `completeness` already makes over the tracks. */
-  fullyTagged: number;
+  /** What this record is. A card is a (artist, title) group and can cover
+   * several beets albums, so it only reads as a collection when every one of
+   * them says so — a half-declared group stays an album, which is the reading
+   * that asks the fewest questions of the user. */
+  kind: AlbumKind;
+  /** The beets album rows behind the card, ascending. What a kind change has
+   * to be applied to; empty for a group made only of singletons. */
+  albumIds: number[];
+  /** Album-level checks the owner has answered. Same all-must-agree rule as
+   * `kind`, and for the same reason. */
+  accepted: AcceptedCheck[];
 }
 
 /**
@@ -59,24 +64,21 @@ function distinctGenres(tracks: LibraryTrack[]): string[] {
     .map(([genre]) => genre);
 }
 
-/**
- * Fraction of filled metadata cells across the whole album — every track
- * contributes every tracked field. An album where one track of twelve lacks a
- * genre should read as nearly complete, which a per-track "all or nothing"
- * count would not convey.
- */
-function tagStatsOf(tracks: LibraryTrack[]): { completeness: number; fullyTagged: number } {
-  const total = tracks.length * COMPLETENESS_KEYS.length;
-  let filled = 0;
-  let fullyTagged = 0;
-
-  for (const track of tracks) {
-    const count = countFilled(toFieldValues(track));
-    filled += count;
-    if (count === COMPLETENESS_KEYS.length) fullyTagged += 1;
-  }
-
-  return { completeness: total === 0 ? 1 : filled / total, fullyTagged };
+/** The rows behind a card, and what they agree on. */
+function recordOf(tracks: LibraryTrack[]): { kind: AlbumKind; albumIds: number[]; accepted: AcceptedCheck[] } {
+  const albumIds = Array.from(new Set(tracks.map((track) => track.albumId).filter((id) => id != null))).sort(
+    (a, b) => a - b,
+  );
+  const collection = albumIds.length > 0 && tracks.every((track) => track.albumKind === "collection");
+  // Intersection, not union: a card standing for two beets albums is only
+  // done with a check once both of them are.
+  const accepted =
+    albumIds.length === 0
+      ? []
+      : tracks
+          .map((track) => track.albumAccepted)
+          .reduce((common, carried) => common.filter((check) => carried.includes(check)));
+  return { kind: collection ? "collection" : "album", albumIds, accepted };
 }
 
 function computeAlbums(tracks: LibraryTrack[]): Album[] {
@@ -102,7 +104,7 @@ function computeAlbums(tracks: LibraryTrack[]): Album[] {
       length: ordered.reduce((sum, track) => sum + (track.length ?? 0), 0),
       artUrl: ordered.find((track) => track.artUrl)?.artUrl ?? null,
       formats: Array.from(new Set(ordered.map((track) => track.format).filter(Boolean))).sort(),
-      ...tagStatsOf(ordered),
+      ...recordOf(ordered),
     };
   });
 }

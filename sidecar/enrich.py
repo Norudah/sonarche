@@ -126,6 +126,44 @@ def _album_for_recording(rec_id: str):
     return album_info, track_info, release
 
 
+# The three verdicts the video's title can pass on a candidate, in sort order.
+_TITLE_NAMES = 0  # shares a real word with the video title
+_TITLE_NEUTRAL = 1  # no evidence either way (junk or empty titles)
+_TITLE_CONTRADICTS = 2  # both carry words, none shared
+
+
+def candidate_sort_key(
+    title_hint: str | None, candidate_title: str | None, release: dict
+) -> tuple:
+    """How much to trust one candidate recording; lower is better. Pure.
+
+    The video's own title outranks the release type. AcoustID's crowd data
+    mislinks confusable recordings (language versions, or two songs off one
+    soundtrack whose fingerprints someone cross-submitted), and submission
+    count then puts the wrong song first — « Real Gone » landed as
+    « Sleepin' on the Foldout » with the right title sitting in candidate slot
+    two. A candidate the video names beats any candidate it contradicts; the
+    release rank (studio album over best-of, earliest date) only arbitrates
+    within the same title verdict. Junk titles cost nothing: both sides
+    reduced to noise judge every candidate neutral, which is the old order."""
+    if suspect.titles_agree(title_hint, candidate_title):
+        verdict = _TITLE_NAMES
+    elif suspect.is_title_mismatch(title_hint, candidate_title):
+        verdict = _TITLE_CONTRADICTS
+    else:
+        verdict = _TITLE_NEUTRAL
+    return (verdict, metadata.release_rank(release))
+
+
+def is_settled(key: tuple, title_hint: str | None) -> bool:
+    """Whether a candidate is unbeatable, ending the scan early: a clean studio
+    album (no unwanted secondary type, primary rank 0) that the video's title
+    vouches for — or, when the hint carries no usable words, on rank alone."""
+    verdict, rank = key
+    confirmed = verdict == _TITLE_NAMES or not suspect.has_words(title_hint)
+    return confirmed and not rank[0] and rank[1] == 0
+
+
 def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str | None:
     """Search MusicBrainz by name using the YouTube hints. In-memory only:
     nothing is stored unless a near-perfect match is applied afterwards."""
@@ -277,6 +315,12 @@ def _apply(lib, item, album_info, track_info) -> None:
     # Last.fm fetch (its client swallows network errors and returns []).
     # An empty result means nothing resolved: keep the raw MB genre (it may
     # simply be off-whitelist) rather than erasing it.
+    #
+    # Hand-edited genres are NOT spared, deliberately: a re-match rewrites
+    # every tag it recognises, and the confirmation dialog upstream is what
+    # says so — sparing fields quietly would make its warning a lie. The bulk
+    # genre recompute (`genres.assign`) keeps its own hand-edit guard; that
+    # pass runs without a per-item warning.
     genres, label = metadata.lastgenre_plugin()._get_genre(item)
     if genres:
         item.genres = genres
@@ -292,20 +336,31 @@ def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]
     its 500px rendition (or the original when CAA has no rendition)."""
     import requests
 
-    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30)
+    import cover_set
+    import net
+
+    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30, stream=True)
     if hq_resp.status_code != 200:
         return None
-    hq_data = hq_resp.content
+    try:
+        hq_data = net.read_bounded(hq_resp, cover_set.MAX_CANDIDATE_BYTES)
+    except RuntimeError:
+        # An outsized upload degrades to "no cover", never to a failed enrich.
+        protocol.log(f"enrich: cover on {entity_path} over the size cap, skipped")
+        return None
+    if not hq_data:
+        return None
     hq = (hq_data, hq_data[:4] == b"\x89PNG")
 
-    thumb_resp = requests.get(
-        f"https://coverartarchive.org/{entity_path}/front-500", timeout=30
-    )
-    thumb = (
-        (thumb_resp.content, thumb_resp.content[:4] == b"\x89PNG")
-        if thumb_resp.status_code == 200
-        else hq
-    )
+    thumb_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front-500", timeout=30, stream=True)
+    thumb = hq
+    if thumb_resp.status_code == 200:
+        try:
+            thumb_data = net.read_bounded(thumb_resp, cover_set.MAX_CANDIDATE_BYTES)
+            if thumb_data:
+                thumb = (thumb_data, thumb_data[:4] == b"\x89PNG")
+        except RuntimeError:
+            protocol.log(f"enrich: 500px rendition on {entity_path} over the size cap, kept the original")
     return hq, thumb
 
 
@@ -333,15 +388,17 @@ def download_cover(
     return None
 
 
-def set_album_art(album, data: bytes, is_png: bool) -> None:
+def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Archive") -> None:
     """Set beets' artpath (cover.jpg) — expects the 500px thumb, so the beets
-    copy stays light."""
+    copy stays light. `source` records where the picture came from: a forced
+    album may fall back to a video thumbnail, and the row should not claim the
+    Cover Art Archive gave it one."""
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
     try:
         album.set_art(tmp_path, copy=True)
-        album["art_source"] = "Cover Art Archive"
+        album["art_source"] = source
         album.store()
     finally:
         if os.path.exists(tmp_path):
@@ -387,10 +444,22 @@ def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> 
 def handle(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
+    import library
+
     lib = Library(params["beets_db"], directory=params["library_dir"])
     item = lib.get_item(params["item_id"])
     if item is None:
         raise RuntimeError(f"item not found: {params['item_id']}")
+
+    # A collection is its owner's gathering, not a release: there is nothing to
+    # be matched against, and this chain re-files a matched item onto its
+    # release's album row (`_album_row_for`) — which would rip the track out of
+    # the record someone placed it in. The UI greys the button and says why;
+    # this guard is what makes the promise hold whatever calls in.
+    if item.album_id:
+        album = lib.get_album(item.album_id)
+        if album is not None and album.get(library.ALBUM_KIND_KEY) == library.COLLECTION:
+            raise RuntimeError("track sits on a collection: re-identify would re-file it")
 
     metadata.ensure_plugins()
     return enrich_one(request_id, lib, item, params)
@@ -403,13 +472,20 @@ def enrich_one(
     params: dict,
     fetch_cover: bool = True,
     provisional_fallback: bool = True,
+    known_recordings: list[str] | None = None,
 ) -> dict:
     """Fingerprint-first enrichment of one item. Caller owns the Library and
     must have called metadata.ensure_plugins(). `params` carries fpcalc,
     acoustid_key and the optional title/artist hints. `fetch_cover=False`
     lets the album batch fetch one cover per album instead of per track;
     `provisional_fallback=False` likewise defers the unidentified-file guess to
-    the album batch, which can borrow its siblings' release."""
+    the album batch, which can borrow its siblings' release.
+
+    `known_recordings` short-circuits the fingerprint+lookup with recording ids
+    the album batch already resolved for this very file: without it, every
+    track the batch handed to the per-track pass paid fpcalc and the AcoustID
+    round-trip a second time. An empty list is a real answer (fingerprinted,
+    nothing above the score bar) — only None means "not looked up yet"."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
@@ -417,7 +493,10 @@ def enrich_one(
     recordings: list[str] = []
     fingerprinted = False
     api_key = params.get("acoustid_key")
-    if api_key:
+    if known_recordings is not None:
+        recordings = known_recordings
+        fingerprinted = True
+    elif api_key:
         # item_id lets the album batch's UI animate the matching child row.
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
@@ -436,9 +515,20 @@ def enrich_one(
     # recording for the album version and for each best-of it lands on), ordered
     # by AcoustID submission count. Picking the first that resolves tags whatever
     # release happens to top that list — often a compilation. Score every
-    # candidate's canonical release and keep the best (studio album over best-of).
+    # candidate's canonical release and keep the best.
+    #
+    # The video's own title outranks the release type. AcoustID's crowd data
+    # mislinks confusable recordings (language versions, or two songs off one
+    # soundtrack whose fingerprints someone cross-submitted), and submission
+    # count then puts the wrong song first — « Real Gone » landed as
+    # « Sleepin' on the Foldout » with the right title sitting in candidate
+    # slot two. A candidate whose title shares a word with the video's beats
+    # any candidate that contradicts it; the release rank only arbitrates
+    # within the same title verdict. Junk titles cost nothing: both sides
+    # reduced to noise judge every candidate "neutral", which is the old order.
+    title_hint = params.get("title")
     album_info = track_info = None
-    best_rank = None
+    best_key = None
     for rec_id in recordings:
         try:
             ai, ti, release = _album_for_recording(rec_id)
@@ -447,11 +537,18 @@ def enrich_one(
             continue
         if ti is None:
             continue
-        rank = metadata.release_rank(release)
-        if best_rank is None or rank < best_rank:
-            album_info, track_info, best_rank = ai, ti, rank
-        if not rank[0] and rank[1] == 0:  # clean studio album: nothing beats it
+        key = candidate_sort_key(title_hint, ti.title, release)
+        if best_key is None or key < best_key:
+            album_info, track_info, best_key = ai, ti, key
+        # A clean studio album the video's title vouches for (or, with no
+        # usable hint, any clean studio album): nothing later can beat it.
+        if is_settled(key, title_hint):
             break
+    if track_info is not None and best_key is not None and best_key[0] == _TITLE_CONTRADICTS:
+        protocol.log(
+            f"enrich: no candidate matched the video title « {title_hint} », "
+            f"keeping best-ranked « {track_info.title} »"
+        )
 
     source = "acoustid" if track_info is not None else None
     if track_info is None:
@@ -468,12 +565,25 @@ def enrich_one(
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
         )
+        # Read before _apply rewrites it: whether this match lands on the
+        # release the item already wore.
+        previous_release = str(item.mb_albumid or "")
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
-            try:
-                _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
-            except Exception as exc:  # metadata landed; a missing cover is not a failure
-                protocol.log(f"enrich: cover fetch failed: {exc}")
+            # A re-match confirming the same release must not stomp the cover
+            # the album already wears — the user may have replaced it by hand.
+            # A changed release is a changed record: fetch as before.
+            album = item.get_album()
+            same_release = bool(previous_release) and previous_release == str(
+                album_info.album_id or ""
+            )
+            if same_release and album is not None and album.artpath:
+                protocol.log("enrich: release unchanged and cover present, keeping it")
+            else:
+                try:
+                    _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
+                except Exception as exc:  # metadata landed; a missing cover is not a failure
+                    protocol.log(f"enrich: cover fetch failed: {exc}")
     elif provisional_fallback:
         apply_provisional(lib, item, params)
 
@@ -485,6 +595,10 @@ def enrich_one(
         if fingerprinted:
             provenance.mark_fingerprinted(fresh)
         if matched and source:
+            # The tags stop being guesses the moment a real match vouches for
+            # them — a provisional track re-matched later must drop its flag.
+            if provisional.clear(fresh):
+                protocol.log(f"enrich: item {item.id} no longer provisional")
             provenance.mark_match(fresh, source)
             if suspect.mark(fresh, params.get("title")):
                 protocol.log(

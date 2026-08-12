@@ -42,7 +42,7 @@ jobs:
       # existence check would double its length for no answer.
       - name: Stub what tauri-build insists on finding
         run: |
-          mkdir -p dist src-tauri/resources/wheels
+          mkdir -p dist src-tauri/resources/wheels src-tauri/resources/tools
           touch dist/index.html src-tauri/resources/python.tar.gz
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings

@@ -20,7 +20,8 @@
   "verdict": {
     "ready": "Ready",
     "done": "Imported",
-    "failed": "Failed"
+    "failed": "Failed",
+    "cancelled": "Stopped"
   },
   "scanning": "Reading the folder…",
   "scanFailed": "Can't read that folder",
@@ -44,6 +45,10 @@
   "progress": "Folder {{done, number}} of {{total, number}}",
   "importFailed": "The import stopped",
   "retry": "Try again",
+  "stop": "Stop",
+  "cancelled": "Import stopped",
+  "cancelledDetail": "Stopped mid-copy. Already in the ark: {{landed}}.",
+  "cancelledNothing": "Stopped before anything came in. The library is unchanged.",
   "done": "Import finished",
   "doneDetail_one": "{{count, number}} folder added to the ark.",
   "doneDetail_other": "{{count, number}} folders added to the ark.",
@@ -53,7 +58,28 @@
   "doneRenditions_one": "{{count, number}} cover got a display version.",
   "doneRenditions_other": "{{count, number}} covers got a display version.",
   "history": {
-    "heading": "Imports"
+    "heading": "Imports",
+    "last": "Last import",
+    "seeAll": "Full history"
+  },
+  "how": {
+    "label": "What will happen",
+    "scan": {
+      "name": "Scan",
+      "body": "Your folder is read, never changed. Sonarche counts what it can read and shows you the verdict before anything starts — nothing moves without your go."
+    },
+    "copy": {
+      "name": "Copy",
+      "body": "Every track is copied into the ark and filed by artist and album, from its tags. When a title is missing from the tags, Sonarche takes it from the filename rather than lose it."
+    },
+    "covers": {
+      "name": "Covers",
+      "body": "The cover comes from the folder, or from the image embedded in the files themselves. Oversized images get a display version, with the original kept beside it."
+    },
+    "after": {
+      "name": "What comes next",
+      "body": "The import invents nothing: your existing tags are kept as they are, with no online lookup. To identify albums and fill missing years, genres or covers, run the alignment — offered at the bottom of this page."
+    }
   },
   "recap": {
     "albums_one": "{{count, number}} album",
@@ -62,16 +88,81 @@
     "folders_other": "{{count, number}} folders",
     "unplayable_one": "{{count, number}} unreadable file ({{formats}}) — imported anyway",
     "unplayable_other": "{{count, number}} unreadable files ({{formats}}) — imported anyway",
+    "collections_one": "{{count, number}} folder came in as a collection: its tracks never agreed on one record, so no tracklist is asked of it. Changeable on its page.",
+    "collections_other": "{{count, number}} folders came in as collections: their tracks never agreed on one record, so no tracklist is asked of them. Changeable on their pages.",
     "tagState": "Tag state on arrival",
     "clean": "Everything is filled in: year, genre, artwork, tracklist.",
     "withoutYear": "Missing year",
     "withoutGenre": "Missing genre",
-    "offTree": "Off-tree genre",
+    "offTree": "Genre without a family",
     "albumsWithoutArt": "Albums with no artwork",
     "albumsWithGaps": "Gapped tracklists",
-    "alignHint": "These albums arrive without a MusicBrainz identity. In Metadata, the alignment can identify them and fill the gaps — year, genre and covers included.",
-    "openMetadata": "Open Metadata",
+    "alignHint": "These albums arrive without a MusicBrainz identity. The alignment can identify them and fill the gaps — year, genre and covers included.",
+    "openAlign": "Go to the alignment",
     "expand": "Show the import's detail",
     "collapse": "Hide the import's detail"
+  },
+  "grouping": {
+    "label": "What makes an album",
+    "intro": "Sonarche has to decide which tracks belong to the same record. You say what decides.",
+    "folder": "The folder",
+    "tags": "The tags",
+    "tracks": "Nothing",
+    "folderAnswer": "Every folder becomes an album",
+    "folderWhy": "Tags do not count: a folder of 40 tracks by 40 artists makes one record, named after the folder — filed as a collection, so no tracklist is asked of it.",
+    "folderFor": "For a collection already filed record by record.",
+    "tagsAnswer": "The album tag decides",
+    "tagsWhy": "A folder holding two records makes two. But if the files carry no album tag they all group together anyway, and the result matches the first choice.",
+    "tagsFor": "For a catch-all folder whose files are properly tagged.",
+    "tracksAnswer": "No album is created",
+    "tracksWhy": "Every file comes in on its own, with its title, its artist and its cover. The only choice that invents no record.",
+    "tracksFor": "For tracks picked up one by one.",
+    "suggested": "Suggested here: one folder holds {{count}} tracks — more than a record has."
+  },
+  "again": {
+    "done": "This folder was already imported on {{when}}.",
+    "doneHint": "Directories already taken on are skipped: only what is new comes in. Nothing will be duplicated.",
+    "stopped": "An import of this folder was stopped on {{when}}.",
+    "stoppedHint": "Pick it up whenever: what already landed is kept, only the rest gets copied."
+  },
+  "category": {
+    "label": "Category",
+    "hint": "Applied to everything this import brings in. Context — game or film soundtrack — not musical style.",
+    "none": "None"
+  },
+  "options": {
+    "title": "Options"
+  },
+  "undo": {
+    "action": "Take this import back out",
+    "title": "Take “{{name}}” back out of the ark?",
+    "counting": "Counting what this import still has in the ark…",
+    "countFailed": "Could not count what this import still has in the ark. Try again in a moment.",
+    "tracks_one": "{{count, number}} track will be removed from the ark, file included.",
+    "tracks_other": "{{count, number}} tracks will be removed from the ark, files included.",
+    "albumsRemoved_one": "{{count, number}} album disappears entirely, artwork with it.",
+    "albumsRemoved_other": "{{count, number}} albums disappear entirely, artwork with them.",
+    "albumsKept_one": "{{count, number}} album loses some of its tracks and stays on the shelf.",
+    "albumsKept_other": "{{count, number}} albums lose some of their tracks and stay on the shelf.",
+    "playlistEntries_one": "{{count, number}} playlist entry goes with them.",
+    "playlistEntries_other": "{{count, number}} playlist entries go with them.",
+    "edits": "Anything done to these tracks since — fixed tags, replaced artwork, genres, a place in a playlist — does not come back.",
+    "originals": "Your original files are untouched: the import only ever copied them. You can import this folder again whenever you like.",
+    "nothingLeft": "This import has nothing left in the ark. Taking it back out removes nothing — the folder is simply forgotten.",
+    "keep": "Keep",
+    "confirm": "Take out of the ark",
+    "doneToast_one": "{{count, number}} track taken out of “{{name}}”",
+    "doneToast_other": "{{count, number}} tracks taken out of “{{name}}”",
+    "failedToast": "The removal did not go through",
+    "verdict": "Taken out",
+    "subtitle": "Taken back out: nothing from this import is in the library any more."
+  },
+  "toast": {
+    "view": "View",
+    "title": "Folder import",
+    "folders": "Folder {{count, number}}",
+    "done": "Import finished",
+    "cancelled": "Import stopped",
+    "failed": "Import failed"
   }
 }

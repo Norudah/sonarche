@@ -181,6 +181,9 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         // gets via --config; otherwise it would pick up the user's own beets
         // config (or none), drifting from write_beets_config().
         .env("BEETSDIR", beets_dir)
+        // Where the user's genre placements live, and where the sidecar
+        // regenerates the derived tree/whitelist the config above names.
+        .env("SONARCHE_GENRES_DIR", &paths.genres_dir)
         .current_dir(
             paths
                 .sidecar_main
@@ -303,6 +306,14 @@ impl SidecarState {
         timeout: Duration,
     ) -> AppResult<Box<RawValue>> {
         self.read.request(app, cmd, params, timeout).await
+    }
+
+    /// Kill the work process to interrupt whatever request is in flight on it —
+    /// the one lever a cancel has over a busy serial channel (yt-dlp dies with
+    /// its parent). Every pending work request fails fast, and the next request
+    /// restarts the process; the read channel is untouched.
+    pub async fn abort_work(&self) {
+        self.work.shutdown().await;
     }
 
     pub async fn shutdown(&self) {

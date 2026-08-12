@@ -10,19 +10,29 @@ import { springs } from "@/shared/motion/tokens";
 
 export type SaveFeedback = { kind: "saved"; tracks: number } | { kind: "failed" } | null;
 
+/** How the last re-match ended: the loop's own counts, or a thrown call. */
+export type RematchOutcome =
+  { kind: "failed" } | { kind: "finished"; matched: number; done: number; total: number; cancelled: boolean } | null;
+
 /**
  * The panel's action bar, and the one place that says what is pending.
  *
  * Re-match sits on the left, where it has always been — but it is now shut while
  * changes are waiting, and says why. It rewrites tags from MusicBrainz; running
- * it over a pending draft used to silently undo the match on save.
+ * it over a pending draft used to silently undo the match on save. While it
+ * runs, the progress bar carries a Stop: the loop is sequential, so stopping is
+ * honest — the track in flight finishes, the rest are not started.
  */
 export function InspectFooter({
   summary,
   feedback,
   isSaving,
+  isCollection,
   rematchProgress,
+  rematchOutcome,
+  isCancellingRematch,
   onRematch,
+  onCancelRematch,
   onDiscard,
   onSave,
   onDismissFeedback,
@@ -30,8 +40,14 @@ export function InspectFooter({
   summary: ChangeSummary;
   feedback: SaveFeedback;
   isSaving: boolean;
+  /** A collection has no release to be matched against: re-match is off, and
+   * the footer says why instead of leaving a grey button to be wondered at. */
+  isCollection: boolean;
   rematchProgress: { done: number; matched: number; total: number } | null;
+  rematchOutcome: RematchOutcome;
+  isCancellingRematch: boolean;
   onRematch: () => void;
+  onCancelRematch: () => void;
   onDiscard: () => void;
   onSave: () => void;
   onDismissFeedback: () => void;
@@ -40,10 +56,22 @@ export function InspectFooter({
   const isDirty = summary.fields > 0;
   const isRematching = rematchProgress != null;
 
+  // A save's own feedback owns the line; the re-match verdict takes it back
+  // once there is nothing pending — same precedence as the track footer.
+  const line = feedback ?? rematchOutcome;
+  const lineWash =
+    line == null
+      ? ""
+      : line.kind === "failed"
+        ? "bg-danger/8"
+        : line.kind === "finished" && line.cancelled
+          ? ""
+          : "bg-success/10";
+
   return (
     <footer className="flex shrink-0 flex-col border-t border-separator bg-panel">
       <AnimatePresence>
-        {feedback && (
+        {line && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -51,29 +79,35 @@ export function InspectFooter({
             transition={springs.snappy}
             className="overflow-hidden"
           >
-            <div
-              className={`flex items-center gap-2.5 px-5 py-2.5 text-[0.8125rem] ${
-                feedback.kind === "saved" ? "bg-success/10 text-foreground" : "bg-danger/8 text-foreground"
-              }`}
-            >
-              {feedback.kind === "saved" ? (
+            <div className={`flex items-center gap-2.5 px-5 py-2.5 text-[0.8125rem] text-foreground ${lineWash}`}>
+              {line.kind === "failed" ? (
+                <TriangleAlert className="size-4 shrink-0 text-danger" />
+              ) : line.kind === "finished" && line.cancelled ? (
+                <span className="size-2 shrink-0 rounded-full bg-muted/50" />
+              ) : (
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-success-foreground">
                   <Check className="size-3" strokeWidth={3} />
                 </span>
-              ) : (
-                <TriangleAlert className="size-4 shrink-0 text-danger" />
               )}
               <span className="min-w-0">
-                {feedback.kind === "saved" ? (
-                  <strong className="font-semibold">{t("albumMetadata.saved", { count: feedback.tracks })}</strong>
+                {line.kind === "saved" ? (
+                  <strong className="font-semibold">{t("albumMetadata.saved", { count: line.tracks })}</strong>
+                ) : line.kind === "failed" ? (
+                  feedback ? (
+                    <>
+                      <strong className="font-semibold">{t("metadata.saveFailed")}</strong>{" "}
+                      <span className="text-muted">{t("albumMetadata.saveFailedSafe")}</span>
+                    </>
+                  ) : (
+                    t("albumMetadata.rematch.failed")
+                  )
+                ) : line.cancelled ? (
+                  <span className="text-muted">{t("albumMetadata.rematch.stopped", line)}</span>
                 ) : (
-                  <>
-                    <strong className="font-semibold">{t("metadata.saveFailed")}</strong>{" "}
-                    <span className="text-muted">{t("albumMetadata.saveFailedSafe")}</span>
-                  </>
+                  t("albums.rematchDone", line)
                 )}
               </span>
-              {feedback.kind === "failed" && (
+              {feedback?.kind === "failed" && (
                 <button
                   type="button"
                   onClick={onSave}
@@ -82,7 +116,7 @@ export function InspectFooter({
                   {t("albumMetadata.retry")}
                 </button>
               )}
-              {feedback.kind === "saved" && (
+              {feedback?.kind === "saved" && (
                 <button
                   type="button"
                   onClick={onDismissFeedback}
@@ -100,7 +134,7 @@ export function InspectFooter({
       <div className="flex items-center gap-3 px-5 py-3">
         <button
           type="button"
-          disabled={isDirty || isRematching}
+          disabled={isDirty || isRematching || isCollection}
           onClick={onRematch}
           className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
         >
@@ -113,15 +147,32 @@ export function InspectFooter({
         </button>
 
         {isRematching ? (
-          <div className="min-w-0 flex-1">
-            <div className="h-1 overflow-hidden rounded-full bg-default">
-              <div
-                className="h-full rounded-full bg-accent transition-[width] duration-300"
-                style={{ width: `${Math.round((rematchProgress.done / Math.max(rematchProgress.total, 1)) * 100)}%` }}
-              />
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-1 overflow-hidden rounded-full bg-default">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width] duration-300"
+                  style={{
+                    width: `${Math.round((rematchProgress.done / Math.max(rematchProgress.total, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-[0.6875rem] text-muted">{t("albumMetadata.rematch.progress", rematchProgress)}</p>
             </div>
-            <p className="mt-1 text-[0.6875rem] text-muted">{t("albumMetadata.rematch.progress", rematchProgress)}</p>
+            {/* Stopping waits for the track in flight — the label says so. */}
+            <button
+              type="button"
+              disabled={isCancellingRematch}
+              onClick={onCancelRematch}
+              className={`${HERO_BUTTON_SECONDARY} shrink-0 cursor-pointer text-danger disabled:cursor-default disabled:opacity-55`}
+            >
+              {isCancellingRematch ? t("albumMetadata.rematch.stopping") : t("albumMetadata.rematch.stop")}
+            </button>
           </div>
+        ) : isCollection ? (
+          <p className="min-w-0 flex-1 text-[0.6875rem] leading-snug text-muted/90">
+            {t("albumMetadata.rematch.collection")}
+          </p>
         ) : isDirty ? (
           <p className="min-w-0 flex-1 text-[0.6875rem] leading-snug text-muted/90">
             {t("albumMetadata.rematch.blocked")}

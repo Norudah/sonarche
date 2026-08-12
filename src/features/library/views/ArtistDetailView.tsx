@@ -1,17 +1,18 @@
 import { Alert, Spinner } from "@heroui/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { paths } from "@/app/routes";
 import { groupAlbums } from "@/features/library/albums/albums";
-import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { appearancesOf, findArtist, groupArtists } from "@/features/library/artists/artists";
 import { ArtistAppearances } from "@/features/library/artists/ArtistAppearances";
 import { ArtistHero } from "@/features/library/artists/ArtistHero";
+import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
 import { ArtistStickyHeader } from "@/features/library/artists/ArtistStickyHeader";
-import { useLibrary } from "@/features/library/hooks";
+import { useArtistImages, useLibrary } from "@/features/library/hooks";
 import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
 import { TrackResults } from "@/features/library/tracks/TrackResults";
 import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTrackFilter";
@@ -32,6 +33,8 @@ export function ArtistDetailView() {
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
+  const images = useArtistImages();
+  const [isImageOpen, setIsImageOpen] = useState(false);
 
   const artist = useMemo(() => findArtist(groupArtists(groupAlbums(library.data ?? [])), name), [library.data, name]);
   const appearances = useMemo(() => appearancesOf(library.data ?? [], name), [library.data, name]);
@@ -85,6 +88,7 @@ export function ArtistDetailView() {
   const queue = () => (mode === "tracks" ? explorer.visible : artist.albums.flatMap((album) => album.tracks));
   const playAll = () => playOrdered(queue());
   const shuffleAll = () => playShuffled(queue());
+  const imageUrl = images.data?.get(artist.name) ?? null;
 
   return (
     <PageContainer
@@ -92,15 +96,26 @@ export function ArtistDetailView() {
       // to the top of the scrollport, and the filters are what a long list needs
       // within reach. The switch back is in the hero, one scroll up.
       sticky={
-        mode === "overview" ? <ArtistStickyHeader artist={artist} isVisible={heroPassed} onPlay={playAll} /> : undefined
+        mode === "overview" ? (
+          <ArtistStickyHeader artist={artist} imageUrl={imageUrl} isVisible={heroPassed} onPlay={playAll} />
+        ) : undefined
       }
     >
       <ArtistHero
         ref={heroRef}
         artist={artist}
+        imageUrl={imageUrl}
         onPlay={playAll}
         onShuffle={shuffleAll}
+        onEdit={() => setIsImageOpen(true)}
         actions={<ViewModeSwitch overviewLabel={t("artists.overviewMode")} tracksLabel={t("views.tracks")} />}
+      />
+
+      <ArtistImageModal
+        artist={artist}
+        imageUrl={imageUrl}
+        isOpen={isImageOpen}
+        onClose={() => setIsImageOpen(false)}
       />
 
       {mode === "tracks" ? (
@@ -112,8 +127,12 @@ export function ArtistDetailView() {
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>
-            <AlbumGrid
+            <AlbumShelf
               albums={artist.albums}
+              // The whole library, not the discography: renaming an album's
+              // artist moves it off this page, and the panel should follow the
+              // record rather than close on the save.
+              pool={groupAlbums(library.data ?? [])}
               animationKey={artist.name}
               onPlay={(album) => playOrdered(album.tracks)}
             />

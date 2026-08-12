@@ -15,6 +15,7 @@
     "eyebrow": "Bienvenue",
     "title": "Avant la première écoute",
     "lead": "Le temps de mettre le moteur en place, et de te donner de vrais tags plutôt que des tags devinés.",
+    "language": "Langue",
     "enter": "Entrer dans {{app}}",
     "libraryHint": "Ta musique sera rangée dans {{path}}"
   },

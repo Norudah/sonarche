@@ -82,8 +82,13 @@ export function StepRow({ index, step, isLast, title, summary, children }: StepR
       <div className="flex flex-col items-center">
         <Badge state={step.state} index={index} />
         {!isLast && (
+          // Held off both badges: the active one wears a 2px ring that sits
+          // *outside* its box, so a rail running edge to edge crossed it — and
+          // the pending badge's fill is translucent enough to let the line
+          // show through the circle. A gap at each end fixes both, and reads
+          // as a rail with stations rather than a line with beads on it.
           <span
-            className={`w-px flex-1 transition-colors ${step.state === "satisfied" ? "bg-accent/35" : "bg-separator"}`}
+            className={`my-1.5 w-px flex-1 transition-colors ${step.state === "satisfied" ? "bg-accent/35" : "bg-separator"}`}
           />
         )}
       </div>

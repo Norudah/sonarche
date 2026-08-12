@@ -8,6 +8,35 @@ export const FAMILY_OTHER = "__other__";
 /** No genre at all. The only actionable family: it points at Metadata. */
 export const FAMILY_NONE = "__none__";
 
+/** The 13 browse families, by the display labels the sidecar produces — the
+ * same closed set `tone.ts` colours. Ordered for the classify menu: the
+ * sidecar's own family order, which is also the tree's. */
+export const FAMILY_KEYS = [
+  "Metal",
+  "Rock",
+  "Pop",
+  "Electronic",
+  "Hip-Hop",
+  "R&B, Soul & Funk",
+  "Jazz",
+  "Blues",
+  "Folk & Country",
+  "Classical",
+  "Reggae",
+  "Latin",
+  "World",
+] as const;
+
+/** A genre string that *is* a family root cannot be refiled — moving it would
+ * fold one browse shelf into another, and the sidecar refuses it. Both the
+ * tree's root spelling ("hip hop", "r&b") and the display label ("Hip-Hop")
+ * count: either can show up as a stored genre. */
+const FAMILY_ROOT_GENRES = new Set([...FAMILY_KEYS.map((key) => key.toLowerCase()), "hip hop", "r&b"]);
+
+export function isFamilyRootGenre(genre: string): boolean {
+  return FAMILY_ROOT_GENRES.has(genre.trim().toLowerCase());
+}
+
 export interface SubGenre {
   name: string;
   trackCount: number;
@@ -141,32 +170,6 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
       };
     })
     .sort((a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key));
-}
-
-export const FAMILY_SORTS = ["size", "name"] as const;
-export type FamilySort = (typeof FAMILY_SORTS)[number];
-
-/**
- * Reorders the shelf without ever letting a sentinel climb it.
- *
- * `rankOf` stays the primary key in both directions: "Autres" and the untagged
- * pile are answers to a question nobody asked, and an A→Z pass that floated
- * "Autres" to the top would put the least meaningful card first.
- *
- * Size is the default because it is the page's own reading — the shelf shows
- * what the library is mostly made of. Name is for the other job, finding a
- * family you already have in mind, and it sorts on the *displayed* label: the
- * keys are stored English, so ordering by key would put "Jeux vidéo" under J in
- * one language and V in another.
- */
-export function sortFamilies(families: Family[], sort: FamilySort, labelOf: (key: string) => string): Family[] {
-  const sorted = [...families];
-  if (sort === "name") {
-    return sorted.sort((a, b) => rankOf(a.key) - rankOf(b.key) || labelOf(a.key).localeCompare(labelOf(b.key)));
-  }
-  return sorted.sort(
-    (a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key),
-  );
 }
 
 /**

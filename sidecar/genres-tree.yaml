@@ -1,10 +1,11 @@
 # Sonarche canonicalization tree for beets' lastgenre plugin.
 # Generated from the default lastgenre genres-tree.yaml, re-rooted on the
 # 13 browse families (first 13 roots) and adjusted with Sonarche's curated
-# genre->family placements. Non-family roots are kept so their genres stay
-# whitelisted; they resolve to no family (front buckets them under Other).
-# Edit by hand from here on; keep genres-whitelist.txt in sync
-# (see genre_tree_test.py).
+# genre->family placements (2026-08 family audit: r&b, folk & country and
+# world became families; modern pop industries file under pop). Non-family
+# roots are kept so their genres stay whitelisted; they resolve to no family
+# (front buckets them under Other). Edit by hand from here on; keep
+# genres-whitelist.txt in sync (see genre_tree_test.py).
 - metal:
   - heavy metal:
     - alternative metal:
@@ -125,7 +126,7 @@
       - street punk
       - thrashcore
     - horror punk
-    - oi!
+    - "oi!"
     - pop punk
     - psychobilly
     - riot grrrl
@@ -142,9 +143,12 @@
   - space rock
 - pop:
   - adult contemporary
+  - anison
   - arab pop
   - baroque pop
   - bubblegum pop
+  - c-pop
+  - cantopop
   - christian pop
   - classical crossover
   - europop:
@@ -155,15 +159,25 @@
     - laïkó
     - nederpop
     - russian pop
+  - hong kong english pop
+  - indian pop
   - iranian pop
+  - j-pop
   - jangle pop
+  - k-pop
+  - kayōkyoku
+  - korean pop
   - latin ballad
   - levenslied
   - louisiana swamp pop
+  - mandopop
+  - manila sound
   - mexican pop
   - motorpop
   - new romanticism
+  - pinoy pop
   - pop rap
+  - pop sunda
   - popera
   - psychedelic pop
   - schlager
@@ -172,7 +186,9 @@
   - space age pop
   - sunshine pop
   - surf pop
+  - taiwanese pop
   - teen pop
+  - thai pop
   - traditional pop music
   - turkish pop
   - vispop
@@ -352,7 +368,7 @@
       - dream house
       - space house
     - progressive breaks
-    - progressive drum & bass
+    - "progressive drum & bass"
     - progressive techno
   - techno:
     - acid techno
@@ -411,7 +427,6 @@
   - gangsta rap
   - glitch hop
   - golden age hip hop
-  - hip hop soul
   - hip pop
   - hyphy
   - industrial hip hop
@@ -428,7 +443,6 @@
     - twin cities hip hop
   - motswako
   - nerdcore
-  - new jack swing
   - new school hip hop
   - old school hip hop
   - political hip hop
@@ -449,9 +463,22 @@
   - urban pasifika
   - west coast hip hop:
     - chicano rap
-    - jerkin'
+    - "jerkin'"
   - austrian hip hop
   - german hip hop
+- "r&b":
+  - "contemporary r&b"
+  - new jack swing
+  - hip hop soul
+  - funk:
+    - deep funk
+    - go-go
+    - p-funk
+  - soul:
+    - blue-eyed soul
+    - neo soul
+    - northern soul
+  - rhythm and blues
 - jazz:
   - asian american jazz
   - avant-garde jazz
@@ -508,7 +535,6 @@
   - canadian blues
   - chicago blues
   - classic female blues
-  - contemporary r&b
   - country blues
   - delta blues
   - detroit blues
@@ -529,72 +555,95 @@
   - swamp blues
   - texas blues
   - west coast blues
-- soul & funk:
-  - funk:
-    - deep funk
-    - go-go
-    - p-funk
-  - soul:
-    - blue-eyed soul
-    - neo soul
-    - northern soul
-  - rhythm and blues
-- folk:
-  - american folk revival
-  - anti-folk
-  - british folk revival
-  - celtic music
-  - contemporary folk
-  - filk music
-  - freak folk
-  - indie folk
-  - industrial folk
-  - neofolk
-  - progressive folk
-  - psychedelic folk
-  - sung poetry
-  - techno-folk
-- country:
-  - alternative country:
-    - cowpunk
-  - americana
-  - australian country music
-  - bakersfield sound
-  - bluegrass:
-    - progressive bluegrass
-    - reactionary bluegrass
-  - blues country
-  - cajun:
-    - cajun fiddle tunes
-  - christian country music
-  - classic country
-  - close harmony
-  - country pop
-  - country rap
-  - country rock
-  - country soul
-  - cowboy/western music
-  - dansband music
-  - franco-country
-  - gulf and western
-  - hellbilly music
-  - hokum
-  - honky tonk
-  - instrumental country
-  - lubbock sound
-  - nashville sound
-  - neotraditional country
-  - outlaw country
-  - progressive country
-  - psychobilly/punkabilly
-  - red dirt
-  - rockabilly
-  - sertanejo
-  - texas country
-  - traditional country music
-  - truck-driving country
-  - western swing
-  - zydeco
+- "folk & country":
+  - folk:
+    - american folk revival
+    - anti-folk
+    - british folk revival
+    - celtic music
+    - contemporary folk
+    - filk music
+    - freak folk
+    - indie folk
+    - industrial folk
+    - neofolk
+    - progressive folk
+    - psychedelic folk
+    - sung poetry
+    - techno-folk
+  - country:
+    - alternative country:
+      - cowpunk
+    - americana
+    - australian country music
+    - bakersfield sound
+    - bluegrass:
+      - progressive bluegrass
+      - reactionary bluegrass
+    - blues country
+    - cajun:
+      - cajun fiddle tunes
+    - christian country music
+    - classic country
+    - close harmony
+    - country pop
+    - country rap
+    - country rock
+    - country soul
+    - cowboy/western music
+    - dansband music
+    - franco-country
+    - gulf and western
+    - hellbilly music
+    - hokum
+    - honky tonk
+    - instrumental country
+    - lubbock sound
+    - nashville sound
+    - neotraditional country
+    - outlaw country
+    - progressive country
+    - psychobilly/punkabilly
+    - red dirt
+    - rockabilly
+    - sertanejo
+    - texas country
+    - traditional country music
+    - truck-driving country
+    - western swing
+    - zydeco
+  - singer-songwriter:
+    - cantautorato
+    - cantautor
+    - cantautora
+    - chanson
+    - canción de autor
+    - nueva canción
+- classical:
+  - ballet
+  - baroque:
+    - baroque music
+  - cantata
+  - chamber music:
+    - string quartet
+  - classical music
+  - concerto:
+    - concerto grosso
+  - contemporary classical
+  - modern classical
+  - opera
+  - oratorio
+  - orchestra:
+    - orchestral
+    - symphonic
+    - symphony
+  - organum
+  - mass:
+    - requiem
+  - sacred music:
+    - cantique
+    - gregorian chant
+  - sonata
 - reggae:
   - roots reggae
   - reggae fusion
@@ -660,108 +709,71 @@
   - timba
   - twoubadou
   - zouk
-- classical:
-  - ballet
-  - baroque:
-    - baroque music
-  - cantata
-  - chamber music:
-    - string quartet
-  - classical music
-  - concerto:
-    - concerto grosso
-  - contemporary classical
-  - modern classical
-  - opera
-  - oratorio
-  - orchestra:
-    - orchestral
-    - symphonic
-    - symphony
-  - organum
-  - mass:
-    - requiem
-  - sacred music:
-    - cantique
-    - gregorian chant
-  - sonata
-- african:
-  - african heavy metal
-  - african hip hop
-  - afrobeat
-  - apala
-  - benga
-  - bikutsi
-  - bongo flava
-  - cape jazz
-  - chimurenga
-  - coupé-décalé
-  - egyptian
-  - fuji music
-  - genge
-  - highlife
-  - hiplife
-  - isicathamiya
-  - jit
-  - jùjú
-  - kapuka
-  - kizomba
-  - kuduro
-  - kwaito
-  - kwela
-  - makossa
-  - maloya
-  - marrabenta
-  - mbalax
-  - mbaqanga
-  - mbube
-  - morna
-  - museve
-  - palm-wine
-  - raï
-  - sakara
-  - sega
-  - seggae
-  - semba
-  - shangaan electro
-  - soukous
-  - taarab
-  - zouglou
-- asian:
-  - east asian:
-    - anison
-    - c-pop
-    - cantopop
-    - enka
-    - hong kong english pop
-    - j-pop
-    - k-pop
-    - kayōkyoku
-    - korean pop
-    - mandopop
-    - onkyokei
-    - taiwanese pop
-  - fann at-tanbura
-  - fijiri
-  - khaliji
-  - liwa
-  - sawt
-  - south and southeast asian:
-    - baila
-    - bhangra
-    - bhojpuri
-    - dangdut
-    - filmi
-    - indian pop
-    - lavani
-    - luk thung:
-      - luk krung
-    - manila sound
-    - morlam
-    - pinoy pop
-    - pop sunda
-    - ragini
-    - thai pop
+- world:
+  - world dub
+  - worldbeat
+  - african:
+    - african heavy metal
+    - african hip hop
+    - afrobeat
+    - apala
+    - benga
+    - bikutsi
+    - bongo flava
+    - cape jazz
+    - chimurenga
+    - coupé-décalé
+    - egyptian
+    - fuji music
+    - genge
+    - highlife
+    - hiplife
+    - isicathamiya
+    - jit
+    - jùjú
+    - kapuka
+    - kizomba
+    - kuduro
+    - kwaito
+    - kwela
+    - makossa
+    - maloya
+    - marrabenta
+    - mbalax
+    - mbaqanga
+    - mbube
+    - morna
+    - museve
+    - palm-wine
+    - raï
+    - sakara
+    - sega
+    - seggae
+    - semba
+    - shangaan electro
+    - soukous
+    - taarab
+    - zouglou
+  - asian:
+    - east asian:
+      - enka
+      - onkyokei
+    - fann at-tanbura
+    - fijiri
+    - khaliji
+    - liwa
+    - sawt
+    - south and southeast asian:
+      - baila
+      - bhangra
+      - bhojpuri
+      - dangdut
+      - filmi
+      - lavani
+      - luk thung:
+        - luk krung
+      - morlam
+      - ragini
 - avant-garde:
   - experimental music
   - lo-fi
@@ -783,14 +795,4 @@
   - new-age music
 - kids music:
   - kinderlieder
-- singer-songwriter:
-  - cantautorato
-  - cantautor
-  - cantautora
-  - chanson
-  - canción de autor
-  - nueva canción
 - soundtrack
-- world:
-  - world dub
-  - worldbeat

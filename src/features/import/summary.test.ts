@@ -10,6 +10,7 @@ function report(overrides: Partial<ScanReport> = {}): ScanReport {
     unplayableByExtension: {},
     unplayableExamples: [],
     albumFolders: 0,
+    largestFolder: 0,
     bytes: 0,
     truncated: false,
     ...overrides,

@@ -1,7 +1,8 @@
 import { Alert, Spinner } from "@heroui/react";
-import { Mic2, SearchX } from "lucide-react";
+import { ListFilter, Mic2, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 
 import { groupAlbums } from "@/features/library/albums/albums";
 import {
@@ -16,7 +17,8 @@ import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { SortSelect } from "@/features/library/SortSelect";
-import { useLibrary } from "@/features/library/hooks";
+import { useArtistImages, useLibrary } from "@/features/library/hooks";
+import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -27,11 +29,39 @@ export function ArtistsView() {
   const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ArtistSort>("name");
+  const [params, setParams] = useSearchParams();
+
+  // The metadata page's door: only the artists still wearing the generated
+  // motif. No filter while the image map is loading — a half-loaded map would
+  // read as "everyone is missing one".
+  const missingImage = params.get("missing") === "image";
+  const artistImages = useArtistImages();
 
   // Two memos rather than one: the album grouping is the expensive half and it
   // does not depend on the query or the sort, so it must not rerun on a keystroke.
   const artists = useMemo(() => groupArtists(groupAlbums(library.data ?? [])), [library.data]);
-  const visible = useMemo(() => sortArtists(filterArtists(artists, query), sort), [artists, query, sort]);
+  const triaged = useMemo(
+    () =>
+      missingImage && artistImages.data != null
+        ? artists.filter((artist) => !artistImages.data.has(artist.name))
+        : artists,
+    [artists, missingImage, artistImages.data],
+  );
+  const visible = useMemo(() => sortArtists(filterArtists(triaged, query), sort), [triaged, query, sort]);
+
+  const chips: TriageChip[] = [];
+  if (missingImage)
+    chips.push({
+      key: "artistImageMissing",
+      label: t("triage.artistImageMissing"),
+      tone: "correction",
+      onRemove: () => {
+        // Removing a filter refines the entry we are on, it is not a new place.
+        const next = new URLSearchParams(params);
+        next.delete("missing");
+        setParams(next, { replace: true });
+      },
+    });
 
   return (
     <PageContainer>
@@ -47,6 +77,7 @@ export function ArtistsView() {
           onChange={setSort}
           labelOf={(option) => t(`artists.sort.${option}`)}
         />
+        <TriageChips chips={chips} />
       </ExplorerBar>
 
       {library.isPending && (
@@ -69,13 +100,16 @@ export function ArtistsView() {
       )}
 
       {artists.length > 0 && visible.length === 0 && (
-        <NoResults icon={SearchX} message={t("artists.noResults", { query })} />
+        <NoResults
+          icon={query ? SearchX : ListFilter}
+          message={query ? t("artists.noResults", { query }) : t("triage.noResults")}
+        />
       )}
 
       {visible.length > 0 && (
         <ArtistGrid
           artists={visible}
-          animationKey={`${query}:${sort}`}
+          animationKey={`${params.toString()}:${query}:${sort}`}
           // The first track of the earliest album: an artist's "play" has to
           // start *somewhere*, and the discography's opening is the only choice
           // that is not arbitrary. Shuffle belongs to a queue we do not have yet.

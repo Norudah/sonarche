@@ -55,7 +55,7 @@ async fn request(app: &AppHandle) -> AppResult<Value> {
             "genres_recompute",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
             }),
             RECOMPUTE_TIMEOUT,

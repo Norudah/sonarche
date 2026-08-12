@@ -24,10 +24,9 @@ use crate::error::{AppError, AppResult};
 use crate::jobs::{AlbumTrack, Job};
 use crate::library_import::{ImportRecord, ScanCounts};
 
-/// Schema version stamped into `PRAGMA user_version`. Bump it and add a migration
-/// step here when the shape changes; new tables that only ever `CREATE ... IF NOT
-/// EXISTS` don't need a bump.
-const SCHEMA_VERSION: i64 = 3;
+/// Schema version stamped into `PRAGMA user_version`. Informational: it records
+/// which build last touched the file. Nothing branches on it — see `open()`.
+const SCHEMA_VERSION: i64 = 7;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -49,6 +48,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- applied to every item the job produces once enrich is through. NULL means
     -- leave it alone, which is what every job written before this existed did.
     category    TEXT,
+    -- The album the user forced this playlist into, as JSON ({title, artist}).
+    -- NULL is the normal path: let the pipeline decide what album this is.
+    forced_album TEXT,
+    -- Playlist slots skipped at probe time because their video was deleted,
+    -- private or claimed: the job's downloads mirror the playable playlist.
+    unavailable INTEGER NOT NULL DEFAULT 0,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -91,11 +96,74 @@ CREATE TABLE IF NOT EXISTS imports (
     folders       INTEGER NOT NULL DEFAULT 0,
     renditions    INTEGER NOT NULL DEFAULT 0,
     recap         TEXT,
+    -- What the run was told to do. Kept because it is the first thing anyone
+    -- asks of a result they do not recognise: an archive that reports what
+    -- landed without what was asked cannot answer whether the wrong one was
+    -- picked.
+    grouping      TEXT,
+    category      TEXT,
+    -- When the import was taken back out of the library, NULL while it stands.
+    -- The row is kept rather than deleted: the archive says what happened, and
+    -- an import that was undone happened twice.
+    undone_at     INTEGER,
     finished_at   INTEGER NOT NULL
+);
+
+-- The image an artist wears in the interface. An artist is an entity nowhere
+-- else — no beets table, no folder, no audio tag — so this row IS the artist's
+-- existence as far as images go. `name` is the exact albumartist string the
+-- front groups on; `filename` lives under the library's `Artwork/Artists/`
+-- and is the artist's readable name (the front cache-busts on `updated_at`).
+-- `source` says where the picture came from (today: local).
+CREATE TABLE IF NOT EXISTS artist_images (
+    name       TEXT PRIMARY KEY,
+    filename   TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- A user-curated playlist: the exact kind of \"user collection\" this store was
+-- opened for. Only the collection itself lives here — every member row points
+-- at a beets item id and carries none of its tags, so library truth stays in
+-- the library.
+CREATE TABLE IF NOT EXISTS playlists (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    -- 'user' for everything the user created; 'favorites' for the one built-in
+    -- list, seeded at startup, that rename and delete refuse to touch. The
+    -- front shows it under a localized label, so the stored name is not UI.
+    kind       TEXT NOT NULL DEFAULT 'user',
+    -- Filename of a user-chosen tile under the library's `Artwork/Playlists/`
+    -- (named after the playlist, like artist images). NULL draws the cover
+    -- mosaic instead.
+    cover      TEXT,
+    -- What the playlist wears in the navigation: 'icon:<key>' from the front's
+    -- curated set, 'cover' for a thumbnail of its own tile, or 'color:<key>'
+    -- from the theme palette. NULL means the front decides (its default glyph).
+    -- Stored as opaque text: the shape is validated, the keys are not, so a
+    -- front that adds an icon needs no migration and an older build simply
+    -- falls back to the default.
+    marker     TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- Membership, ordered. `position` is dense (0..n-1, rewritten wholesale on any
+-- reorder/removal — a playlist is small enough that correctness beats clever
+-- gap schemes). `item_id` is a beets `items.id`; it cannot be a foreign key
+-- (other database file), so `delete_track` prunes memberships best-effort and
+-- the front drops any id the library no longer answers for.
+CREATE TABLE IF NOT EXISTS playlist_tracks (
+    playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    position    INTEGER NOT NULL,
+    item_id     INTEGER NOT NULL,
+    added_at    INTEGER NOT NULL,
+    PRIMARY KEY (playlist_id, position)
 );
 
 -- Read path ordering + the queryable columns future features (retry-all,
 -- URL/video dedup at enqueue, per-item lookup) will index against.
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_item ON playlist_tracks(item_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_imports_finished ON imports(finished_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status  ON jobs(status);
@@ -107,15 +175,24 @@ CREATE INDEX IF NOT EXISTS idx_tracks_item  ON job_tracks(item_id);
 /// WAL keeps the worker's writes from blocking concurrent command reads.
 pub fn open(path: &Path) -> AppResult<Connection> {
     let conn = Connection::open(path)?;
+    // Before any pragma. The WAL switch below needs an exclusive lock, and
+    // there is one ordinary moment when another process holds the file: the
+    // relaunch after an erase, where the dying instance is still running its
+    // closing checkpoint. Without a timeout that open returned SQLITE_BUSY
+    // immediately, the setup hook failed, and tauri's "Failed to setup app"
+    // panic aborted the fresh instance before it drew a window.
+    conn.busy_timeout(std::time::Duration::from_secs(10))?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.execute_batch(SCHEMA)?;
-    // Establish the migration baseline on a fresh (or pre-versioning) file.
-    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version < SCHEMA_VERSION {
-        migrate(&conn)?;
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-    }
+    // Unconditional, deliberately. This used to run only when the file was
+    // stamped below SCHEMA_VERSION, which meant a migration step added without
+    // bumping the constant never reached a single existing install: the column
+    // stayed missing and the first write failed with "table jobs has no column
+    // named …". Every step is idempotent (`add_column` checks first), so the
+    // gate bought nothing but that failure mode.
+    migrate(&conn)?;
+    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(conn)
 }
 
@@ -138,6 +215,18 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         "INTEGER NOT NULL DEFAULT 0",
     )?;
     add_column(conn, "jobs", "category", "TEXT")?;
+    add_column(conn, "jobs", "forced_album", "TEXT")?;
+    add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
+    add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
+    add_column(conn, "playlists", "cover", "TEXT")?;
+    add_column(conn, "playlists", "marker", "TEXT")?;
+    // Runs archived before the import had options carry neither: they were all
+    // made under the one behaviour beets has by default.
+    add_column(conn, "imports", "grouping", "TEXT")?;
+    add_column(conn, "imports", "category", "TEXT")?;
+    // When the run was taken back out. NULL for every row that still stands,
+    // which is what an older file's rows are.
+    add_column(conn, "imports", "undone_at", "INTEGER")?;
     Ok(())
 }
 
@@ -207,6 +296,12 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
         tracks: Vec::new(),
         download_attempts: row.get::<_, i64>("download_attempts")? as u32,
         category: row.get("category")?,
+        forced_album: row
+            .get::<_, Option<String>>("forced_album")?
+            .map(|text| serde_json::from_str(&text))
+            .transpose()
+            .map_err(|e| AppError::Sidecar(format!("bad forced_album json: {e}")))?,
+        unavailable: row.get::<_, i64>("unavailable")? as u32,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -234,8 +329,8 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
             duration, staged_path, item_id, report, download_attempts, category,
-            created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            forced_album, unavailable, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
         params![
             job.id,
             job.url,
@@ -252,6 +347,12 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
             report_to_text(&job.report)?,
             job.download_attempts as i64,
             job.category,
+            job.forced_album
+                .as_ref()
+                .map(serde_json::to_string)
+                .transpose()
+                .map_err(|e| AppError::Sidecar(format!("forced_album not serializable: {e}")))?,
+            job.unavailable as i64,
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -339,11 +440,29 @@ pub fn get_job(conn: &Connection, id: &str) -> AppResult<Option<Job>> {
     Ok(job)
 }
 
-/// All jobs, newest first, tracks attached. One extra query per job to gather
-/// tracks — history is human-scale; paginating this read is deferred backlog.
-pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
-    let mut stmt = conn.prepare("SELECT * FROM jobs ORDER BY created_at DESC")?;
-    let rows = stmt.query_map([], |row| Ok(row_to_job(row)))?;
+/// Terminal statuses as SQL — the archive; everything else is the live queue.
+/// One list, shared by every read that carves the two apart.
+const TERMINAL_STATUSES: &str = "('done', 'failed', 'cancelled')";
+
+/// How many terminal jobs ride along with the live queue: enough for the
+/// Downloads page's "recent" strip with slack, small enough that launch never
+/// pays for months of history. The archive is `list_jobs_page`'s business.
+pub const LIVE_TERMINAL_WINDOW: u32 = 50;
+
+/// The live window, newest first, tracks attached: every job still moving —
+/// however old, a retried failure must not vanish — plus the most recent
+/// terminal ones. The one extra query per job to gather tracks is bounded by
+/// the window.
+pub fn list_live_jobs(conn: &Connection, recent_terminal: u32) -> AppResult<Vec<Job>> {
+    let sql = format!(
+        "SELECT * FROM jobs
+         WHERE status NOT IN {TERMINAL_STATUSES}
+            OR id IN (SELECT id FROM jobs WHERE status IN {TERMINAL_STATUSES}
+                      ORDER BY created_at DESC LIMIT ?1)
+         ORDER BY created_at DESC"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params![recent_terminal], |row| Ok(row_to_job(row)))?;
     let mut jobs = Vec::new();
     for row in rows {
         jobs.push(row??);
@@ -354,13 +473,50 @@ pub fn list_jobs(conn: &Connection) -> AppResult<Vec<Job>> {
     Ok(jobs)
 }
 
+/// One page of the whole archive — every job whatever its status, newest
+/// first — plus the totals the history page paginates and counts on.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobsPage {
+    pub jobs: Vec<Job>,
+    /// Every job in the store, live included — what the page count divides.
+    pub total: u64,
+    /// Terminal jobs only — what "clear history" would sweep.
+    pub terminal_total: u64,
+}
+
+pub fn list_jobs_page(conn: &Connection, offset: u64, limit: u64) -> AppResult<JobsPage> {
+    let mut stmt =
+        conn.prepare("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?1 OFFSET ?2")?;
+    let rows = stmt.query_map(params![limit, offset], |row| Ok(row_to_job(row)))?;
+    let mut jobs = Vec::new();
+    for row in rows {
+        jobs.push(row??);
+    }
+    for job in &mut jobs {
+        job.tracks = load_tracks(conn, &job.id)?;
+    }
+    let total = conn.query_row("SELECT COUNT(*) FROM jobs", [], |row| row.get::<_, i64>(0))? as u64;
+    let terminal_total = conn.query_row(
+        &format!("SELECT COUNT(*) FROM jobs WHERE status IN {TERMINAL_STATUSES}"),
+        [],
+        |row| row.get::<_, i64>(0),
+    )? as u64;
+    Ok(JobsPage {
+        jobs,
+        total,
+        terminal_total,
+    })
+}
+
 pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> {
     conn.execute(
         "INSERT OR REPLACE INTO imports (
             id, folder, status, error, playable, unplayable,
             unplayable_by_extension, bytes, album_folders, folders, renditions,
-            recap, finished_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            grouping, category,
+            recap, undone_at, finished_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             record.id,
             record.folder,
@@ -373,9 +529,33 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
             record.scan.album_folders as i64,
             record.folders as i64,
             record.renditions as i64,
+            record.grouping,
+            record.category,
             report_to_text(&record.recap)?,
+            record.undone_at.map(|at| at as i64),
             record.finished_at as i64,
         ],
+    )?;
+    Ok(())
+}
+
+/// One archived import, or None when the id names nothing. The undo needs the
+/// folder it read — the sidecar has to forget it from beets' incremental
+/// memory, and only this row remembers which folder the run was about.
+pub fn get_import(conn: &Connection, id: &str) -> AppResult<Option<ImportRecord>> {
+    let mut stmt = conn.prepare("SELECT * FROM imports WHERE id = ?1")?;
+    let mut rows = stmt.query_map(params![id], |row| Ok(row_to_import(row)))?;
+    match rows.next() {
+        Some(row) => Ok(Some(row??)),
+        None => Ok(None),
+    }
+}
+
+/// Mark a run as taken back out. The row stays, and the history says so.
+pub fn mark_import_undone(conn: &Connection, id: &str, when: u64) -> AppResult<()> {
+    conn.execute(
+        "UPDATE imports SET undone_at = ?2 WHERE id = ?1",
+        params![id, when as i64],
     )?;
     Ok(())
 }
@@ -408,20 +588,144 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
         },
         folders: row.get::<_, i64>("folders")? as u64,
         renditions: row.get::<_, i64>("renditions")? as u64,
+        grouping: row.get("grouping")?,
+        category: row.get("category")?,
         recap: report_from_text(row.get("recap")?)?,
+        undone_at: row.get::<_, Option<i64>>("undone_at")?.map(|at| at as u64),
         finished_at: row.get::<_, i64>("finished_at")? as u64,
     })
 }
 
-/// The history page's one sweep: terminal (done/failed) jobs — their tracks go
-/// with them via cascade — and the whole import archive. In-flight jobs stay.
-/// One transaction, because the page shows both archives under one button and a
-/// crash between the two deletes would leave it half-cleared.
+/// The history page's one sweep: terminal (done/failed/cancelled) jobs — their
+/// tracks go with them via cascade — and the whole import archive. In-flight
+/// jobs stay. One transaction, because the page shows both archives under one
+/// button and a crash between the two deletes would leave it half-cleared.
 pub fn clear_history(conn: &Connection) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
-    tx.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')", [])?;
+    tx.execute(
+        "DELETE FROM jobs WHERE status IN ('done', 'failed', 'cancelled')",
+        [],
+    )?;
     tx.execute("DELETE FROM imports", [])?;
     tx.commit()?;
+    Ok(())
+}
+
+/// One artist image row: which file (under app data's `artists/`) the named
+/// artist wears. `updated_at` rides along for a future "when" in the UI.
+pub struct ArtistImageRow {
+    pub name: String,
+    pub filename: String,
+    pub updated_at: u64,
+}
+
+pub fn list_artist_images(conn: &Connection) -> AppResult<Vec<ArtistImageRow>> {
+    let mut stmt =
+        conn.prepare("SELECT name, filename, updated_at FROM artist_images ORDER BY name ASC")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(ArtistImageRow {
+            name: row.get("name")?,
+            filename: row.get("filename")?,
+            updated_at: row.get::<_, i64>("updated_at")? as u64,
+        })
+    })?;
+    let mut images = Vec::new();
+    for row in rows {
+        images.push(row?);
+    }
+    Ok(images)
+}
+
+/// Record the image an artist now wears. Returns the filename it replaces, if
+/// any, so the caller can remove the orphaned file — the row can't, it only
+/// knows names.
+pub fn upsert_artist_image(
+    conn: &Connection,
+    name: &str,
+    filename: &str,
+    source: &str,
+    now: u64,
+) -> AppResult<Option<String>> {
+    let previous: Option<String> = conn
+        .query_row(
+            "SELECT filename FROM artist_images WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )
+        .optional()?;
+    conn.execute(
+        "INSERT OR REPLACE INTO artist_images (name, filename, source, updated_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![name, filename, source, now as i64],
+    )?;
+    Ok(previous.filter(|old| old != filename))
+}
+
+/// Forget an artist's image. Returns the filename that just went ownerless.
+pub fn remove_artist_image(conn: &Connection, name: &str) -> AppResult<Option<String>> {
+    let filename: Option<String> = conn
+        .query_row(
+            "SELECT filename FROM artist_images WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )
+        .optional()?;
+    conn.execute("DELETE FROM artist_images WHERE name = ?1", params![name])?;
+    Ok(filename)
+}
+
+/// Follow an albumartist rename: the image goes with the name, and since the
+/// file on disk is named after the artist too, the caller renames it first
+/// and passes the resulting filename here. When the new name already wears an
+/// image of its own, that one wins — the rename usually merges a misspelling
+/// into an artist that already exists, and their chosen picture should not be
+/// overwritten by the stray's. Returns the filename left ownerless (the
+/// loser's), if any, for the caller to delete.
+pub fn rename_artist_image(
+    conn: &Connection,
+    old: &str,
+    new: &str,
+    filename: &str,
+) -> AppResult<Option<String>> {
+    if old == new {
+        return Ok(None);
+    }
+    let target_taken: bool = conn
+        .query_row(
+            "SELECT 1 FROM artist_images WHERE name = ?1",
+            params![new],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if target_taken {
+        return remove_artist_image(conn, old);
+    }
+    conn.execute(
+        "UPDATE artist_images SET name = ?2, filename = ?3 WHERE name = ?1",
+        params![old, new, filename],
+    )?;
+    Ok(None)
+}
+
+/// Repoint one row at a renamed file, name untouched. The launch migration's
+/// tool, as it moves the app-data era's technical names to readable ones.
+pub fn update_artist_image_filename(
+    conn: &Connection,
+    name: &str,
+    filename: &str,
+) -> AppResult<()> {
+    conn.execute(
+        "UPDATE artist_images SET filename = ?2 WHERE name = ?1",
+        params![name, filename],
+    )?;
+    Ok(())
+}
+
+/// The erase-all sweep for artist images: every row at once. File removal is
+/// the caller's job (the directory goes wholesale).
+pub fn clear_artist_images(conn: &Connection) -> AppResult<()> {
+    conn.execute("DELETE FROM artist_images", [])?;
     Ok(())
 }
 
@@ -431,7 +735,7 @@ pub fn clear_history(conn: &Connection) -> AppResult<()> {
 pub fn fail_interrupted(conn: &Connection, now: u64) -> AppResult<bool> {
     let jobs = conn.execute(
         "UPDATE jobs SET status = 'failed', error = 'interrupted by app restart', updated_at = ?1
-         WHERE status NOT IN ('done', 'failed')",
+         WHERE status NOT IN ('done', 'failed', 'cancelled')",
         params![now as i64],
     )?;
     conn.execute(
@@ -454,18 +758,26 @@ pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
     Ok(())
 }
 
+/// In-memory connection carrying the full schema — for this module's tests and
+/// any sibling whose store functions take a `&Connection` (playlists).
+#[cfg(test)]
+pub fn open_in_memory_for_tests() -> Connection {
+    let conn = Connection::open_in_memory().expect("in-memory db");
+    conn.pragma_update(None, "foreign_keys", "ON")
+        .expect("foreign_keys pragma");
+    conn.execute_batch(SCHEMA).expect("schema");
+    conn
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jobs::{JobKind, JobStatus, JobStep, TrackStatus};
+    use crate::jobs::{ForcedAlbum, JobKind, JobStatus, JobStep, TrackStatus};
     use crate::library_import::ImportStatus;
     use serde_json::json;
 
     fn mem() -> Connection {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
-        conn.execute_batch(SCHEMA).unwrap();
-        conn
+        open_in_memory_for_tests()
     }
 
     /// The v1 tables, before `download_attempts` existed — what a file written
@@ -495,13 +807,21 @@ mod tests {
             .unwrap()
     }
 
+    /// The v1 fixtures replay `open()`'s real sequence: SCHEMA first (which
+    /// creates the tables a v1 file never had — playlists — and leaves the
+    /// existing ones untouched), then the migration under test.
+    fn migrate_v1(conn: &Connection) {
+        conn.execute_batch(SCHEMA).unwrap();
+        migrate(conn).unwrap();
+    }
+
     #[test]
     fn migrate_adds_the_attempts_columns_to_a_v1_file() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(SCHEMA_V1).unwrap();
         assert!(!column_names(&conn, "jobs").contains(&"download_attempts".to_string()));
 
-        migrate(&conn).unwrap();
+        migrate_v1(&conn);
 
         for table in ["jobs", "job_tracks"] {
             assert!(
@@ -517,9 +837,91 @@ mod tests {
         conn.execute_batch(SCHEMA_V1).unwrap();
         assert!(!column_names(&conn, "jobs").contains(&"category".to_string()));
 
-        migrate(&conn).unwrap();
+        migrate_v1(&conn);
 
         assert!(column_names(&conn, "jobs").contains(&"category".to_string()));
+    }
+
+    /// Regression: `open()` used to migrate only when the file was stamped
+    /// *below* SCHEMA_VERSION. Add a migration step without bumping the
+    /// constant and no existing install ever ran it — the column stayed missing
+    /// and the first write failed with "table jobs has no column named …".
+    ///
+    /// The stamp is deliberately the current version over an old schema, which
+    /// is exactly the state that shipped: writing `SCHEMA_VERSION - 1` here
+    /// would follow the bug instead of catching it, and the other migration
+    /// tests call `migrate()` directly and sail straight past the gate.
+    #[test]
+    fn opening_an_old_file_migrates_it_however_it_is_stamped() {
+        let path = std::env::temp_dir().join(format!("sonarche-migrate-{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+
+        {
+            let old = Connection::open(&path).unwrap();
+            old.execute_batch(SCHEMA_V1).unwrap();
+            old.pragma_update(None, "user_version", SCHEMA_VERSION)
+                .unwrap();
+        }
+
+        let conn = open(&path).unwrap();
+
+        for column in [
+            "download_attempts",
+            "category",
+            "forced_album",
+            "unavailable",
+        ] {
+            assert!(
+                column_names(&conn, "jobs").contains(&column.to_string()),
+                "{column} missing after opening an older file"
+            );
+        }
+        drop(conn);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn migrate_adds_the_forced_album_column_to_an_older_file() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA_V1).unwrap();
+        assert!(!column_names(&conn, "jobs").contains(&"forced_album".to_string()));
+
+        migrate_v1(&conn);
+
+        assert!(column_names(&conn, "jobs").contains(&"forced_album".to_string()));
+    }
+
+    #[test]
+    fn a_forced_album_survives_the_round_trip() {
+        let conn = mem();
+        let mut job = single("forced", JobStatus::Queued);
+        job.forced_album = Some(ForcedAlbum {
+            title: "Inception".into(),
+            artist: Some("Hans Zimmer".into()),
+            album_id: None,
+        });
+        upsert_job(&conn, &job).unwrap();
+
+        let read = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let forced = read.forced_album.expect("forced album lost in the store");
+        assert_eq!(forced.title, "Inception");
+        assert_eq!(forced.artist.as_deref(), Some("Hans Zimmer"));
+    }
+
+    #[test]
+    fn a_job_written_before_forced_albums_reads_back_without_one() {
+        let conn = mem();
+        upsert_job(&conn, &single("plain", JobStatus::Queued)).unwrap();
+
+        assert!(list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
+            .unwrap()
+            .pop()
+            .unwrap()
+            .forced_album
+            .is_none());
     }
 
     #[test]
@@ -556,6 +958,8 @@ mod tests {
             tracks: Vec::new(),
             download_attempts: 1,
             category: Some("Video Games".into()),
+            forced_album: None,
+            unavailable: 0,
             created_at: 1000,
             updated_at: 1000,
         }
@@ -659,6 +1063,7 @@ mod tests {
         ];
         upsert_job(&conn, &running).unwrap();
         upsert_job(&conn, &single("f", JobStatus::Done)).unwrap();
+        upsert_job(&conn, &single("f2", JobStatus::Cancelled)).unwrap();
 
         assert!(fail_interrupted(&conn, 3000).unwrap());
 
@@ -670,6 +1075,10 @@ mod tests {
 
         let f = get_job(&conn, "f").unwrap().unwrap();
         assert_eq!(f.status, JobStatus::Done);
+
+        // A user's stop is terminal state, not an interruption to repaint.
+        let f2 = get_job(&conn, "f2").unwrap().unwrap();
+        assert_eq!(f2.status, JobStatus::Cancelled);
     }
 
     #[test]
@@ -680,11 +1089,12 @@ mod tests {
         album.tracks = vec![track(1, TrackStatus::Done)];
         upsert_job(&conn, &album).unwrap();
         upsert_job(&conn, &single("h", JobStatus::Failed)).unwrap();
+        upsert_job(&conn, &single("h2", JobStatus::Cancelled)).unwrap();
         upsert_job(&conn, &single("i", JobStatus::Downloading)).unwrap();
 
         clear_history(&conn).unwrap();
 
-        let remaining: Vec<String> = list_jobs(&conn)
+        let remaining: Vec<String> = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
             .unwrap()
             .into_iter()
             .map(|j| j.id)
@@ -706,12 +1116,78 @@ mod tests {
         upsert_job(&conn, &older).unwrap();
         upsert_job(&conn, &newer).unwrap();
 
-        let ids: Vec<String> = list_jobs(&conn)
+        let ids: Vec<String> = list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
             .unwrap()
             .into_iter()
             .map(|j| j.id)
             .collect();
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
+    }
+
+    /// The live window keeps every moving job — a retried failure can be the
+    /// oldest row in the store — while only the newest terminal ones ride.
+    #[test]
+    fn live_window_keeps_old_active_jobs_and_drops_old_terminal_ones() {
+        let conn = mem();
+        let mut ancient_active = single("ancient-active", JobStatus::Queued);
+        ancient_active.created_at = 1;
+        upsert_job(&conn, &ancient_active).unwrap();
+        for i in 0..4u64 {
+            let mut done = single(&format!("done-{i}"), JobStatus::Done);
+            done.created_at = 100 + i;
+            upsert_job(&conn, &done).unwrap();
+        }
+
+        let ids: Vec<String> = list_live_jobs(&conn, 2)
+            .unwrap()
+            .into_iter()
+            .map(|j| j.id)
+            .collect();
+        // The two newest terminal jobs, then the ancient live one — never lost.
+        assert_eq!(
+            ids,
+            vec![
+                "done-3".to_string(),
+                "done-2".to_string(),
+                "ancient-active".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn jobs_page_slices_newest_first_and_reports_totals() {
+        let conn = mem();
+        for i in 0..7u64 {
+            let status = if i == 0 {
+                JobStatus::Queued
+            } else {
+                JobStatus::Done
+            };
+            let mut job = single(&format!("job-{i}"), status);
+            job.created_at = 100 + i;
+            upsert_job(&conn, &job).unwrap();
+        }
+
+        let first = list_jobs_page(&conn, 0, 3).unwrap();
+        assert_eq!(first.total, 7);
+        assert_eq!(first.terminal_total, 6);
+        let ids: Vec<String> = first.jobs.into_iter().map(|j| j.id).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "job-6".to_string(),
+                "job-5".to_string(),
+                "job-4".to_string()
+            ]
+        );
+
+        let last = list_jobs_page(&conn, 6, 3).unwrap();
+        assert_eq!(last.jobs.len(), 1);
+        assert_eq!(last.jobs[0].id, "job-0");
+
+        let past_the_end = list_jobs_page(&conn, 30, 3).unwrap();
+        assert!(past_the_end.jobs.is_empty());
+        assert_eq!(past_the_end.total, 7);
     }
 
     fn import(id: &str, finished_at: u64) -> ImportRecord {
@@ -730,7 +1206,10 @@ mod tests {
             },
             folders: 312,
             renditions: 40,
+            grouping: Some("tracks".to_string()),
+            category: Some("Video Games".to_string()),
             recap: Some(json!({ "tracks": 4312, "withoutGenre": 96 })),
+            undone_at: None,
             finished_at,
         }
     }
@@ -755,6 +1234,22 @@ mod tests {
         assert!(matches!(record.status, ImportStatus::Done));
     }
 
+    /// The undo keeps the row and stamps it. An archive that deleted the row
+    /// would say the import never happened, which is the one thing it knows to
+    /// be false.
+    #[test]
+    fn undoing_an_import_stamps_the_row_instead_of_dropping_it() {
+        let conn = mem();
+        insert_import(&conn, &import("i", 100)).unwrap();
+
+        mark_import_undone(&conn, "i", 500).unwrap();
+
+        let record = get_import(&conn, "i").unwrap().unwrap();
+        assert_eq!(record.undone_at, Some(500));
+        assert_eq!(list_imports(&conn).unwrap().len(), 1);
+        assert!(get_import(&conn, "nobody").unwrap().is_none());
+    }
+
     #[test]
     fn list_imports_is_newest_first() {
         let conn = mem();
@@ -769,6 +1264,88 @@ mod tests {
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
     }
 
+    #[test]
+    fn an_artist_image_round_trips_and_replacement_reports_the_orphan() {
+        let conn = mem();
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 100).unwrap(),
+            None
+        );
+        // Same file again: nothing to delete.
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 150).unwrap(),
+            None
+        );
+        // New file: the old one goes ownerless.
+        assert_eq!(
+            upsert_artist_image(&conn, "Hans Zimmer", "b.png", "local", 200).unwrap(),
+            Some("a.jpg".to_string())
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "Hans Zimmer");
+        assert_eq!(rows[0].filename, "b.png");
+        assert_eq!(rows[0].updated_at, 200);
+    }
+
+    #[test]
+    fn removing_an_artist_image_hands_back_its_file() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            remove_artist_image(&conn, "Hans Zimmer").unwrap(),
+            Some("a.jpg".to_string())
+        );
+        assert!(list_artist_images(&conn).unwrap().is_empty());
+        assert_eq!(remove_artist_image(&conn, "Hans Zimmer").unwrap(), None);
+    }
+
+    #[test]
+    fn a_rename_moves_the_image_with_the_name() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hanz Zimmer", "a.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer", "Hans Zimmer.jpg").unwrap(),
+            None
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows[0].name, "Hans Zimmer");
+        assert_eq!(rows[0].filename, "Hans Zimmer.jpg");
+    }
+
+    /// Renaming usually merges a misspelling into an artist that already
+    /// exists: the established artist's picture wins, the stray's file is
+    /// reported for deletion.
+    #[test]
+    fn a_rename_onto_an_existing_image_keeps_the_target_and_orphans_the_source() {
+        let conn = mem();
+        upsert_artist_image(&conn, "Hanz Zimmer", "stray.jpg", "local", 100).unwrap();
+        upsert_artist_image(&conn, "Hans Zimmer", "kept.jpg", "local", 100).unwrap();
+
+        assert_eq!(
+            rename_artist_image(&conn, "Hanz Zimmer", "Hans Zimmer", "unused.jpg").unwrap(),
+            Some("stray.jpg".to_string())
+        );
+
+        let rows = list_artist_images(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].filename, "kept.jpg");
+    }
+
+    #[test]
+    fn a_rename_with_no_image_is_a_no_op() {
+        let conn = mem();
+        assert_eq!(
+            rename_artist_image(&conn, "Nobody", "Somebody", "Somebody.jpg").unwrap(),
+            None
+        );
+        assert!(list_artist_images(&conn).unwrap().is_empty());
+    }
+
     /// The page archives both ways music arrives, and its one button says
     /// "clear the history": the sweep takes the imports with it.
     #[test]
@@ -779,7 +1356,9 @@ mod tests {
 
         clear_history(&conn).unwrap();
 
-        assert!(list_jobs(&conn).unwrap().is_empty());
+        assert!(list_live_jobs(&conn, LIVE_TERMINAL_WINDOW)
+            .unwrap()
+            .is_empty());
         assert!(list_imports(&conn).unwrap().is_empty());
     }
 }

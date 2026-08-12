@@ -23,14 +23,14 @@ const FAMILY_TONES: Record<string, string> = {
   Metal: "var(--family-metal)",
   Electronic: "var(--family-electronic)",
   "Hip-Hop": "var(--family-hip-hop)",
+  "R&B, Soul & Funk": "var(--family-rnb)",
   Jazz: "var(--family-jazz)",
   Blues: "var(--family-blues)",
-  "Soul & Funk": "var(--family-soul-funk)",
-  Folk: "var(--family-folk)",
-  Country: "var(--family-country)",
+  "Folk & Country": "var(--family-folk-country)",
+  Classical: "var(--family-classical)",
   Reggae: "var(--family-reggae)",
   Latin: "var(--family-latin)",
-  Classical: "var(--family-classical)",
+  World: "var(--family-world)",
 };
 
 /**

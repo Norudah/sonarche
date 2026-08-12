@@ -15,11 +15,32 @@
     "title": "Options",
     "category": "Category",
     "categoryHint": "Context, not musical style — where the music comes from. You can change it later on any track.",
-    "categoryNone": "None"
+    "categoryNone": "None",
+    "destination": {
+      "legend": "Destination album",
+      "modeAuto": "Automatic",
+      "modeExisting": "Existing album",
+      "modeNew": "New album",
+      "autoHint": "Each track rejoins the album of its own release — the normal path, and the right one for almost every link.",
+      "existingHint": "Whatever arrives joins the chosen album from your library, after its own tracks. The album keeps its cover and its nature.",
+      "problem": "A hand-built playlist gathers tracks from different albums: filed as they come, each rejoins its own. This files them under the album you name, leaving their artist and genre alone.",
+      "tryWithout": "Try without it first: a soundtrack already released as an album is recognised on its own. Forcing only helps when no such album exists.",
+      "newSingleHint": "The track founds this new album. With no artist named, it keeps its own.",
+      "without": "Without",
+      "with": "With",
+      "title": "Album title",
+      "titlePlaceholder": "Name of the film, series, game…",
+      "artist": "Album artist"
+    }
   },
   "activity": {
     "inFlight": "In progress",
-    "recent": "Recent",
+    "recent": "Recent history",
+    "presence": {
+      "full": "In the library",
+      "partial": "Partly removed",
+      "none": "Removed from the library"
+    },
     "expand": "Show details",
     "collapse": "Hide details",
     "percent": "{{value}} %",
@@ -30,7 +51,8 @@
       "import": "Filing",
       "enrich": "Identifying",
       "done": "Done",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelled": "Stopped"
     },
     "verdict": {
       "matched": "Identified",
@@ -38,13 +60,16 @@
       "guessed": "Guessed tags",
       "unmatched": "Not identified",
       "lostTracks": "Partial {{kept}}/{{total}}",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelled": "Stopped"
     },
     "detail": {
       "cover": "Cover",
       "category": "Category",
       "track": "Track",
-      "attempts": "Attempts"
+      "attempts": "Attempts",
+      "unavailable_one": "{{count}} video in the playlist couldn't be fetched: removed, made private or blocked. That doesn't necessarily leave the album incomplete — playlists often carry duplicates, or entries whoever built it never took out. Compare the list below against the album you expected before hunting elsewhere.",
+      "unavailable_other": "{{count}} videos in the playlist couldn't be fetched: removed, made private or blocked. That doesn't necessarily leave the album incomplete — playlists often carry duplicates, or entries whoever built it never took out. Compare the list below against the album you expected before hunting elsewhere."
     },
     "empty": {
       "title": "Nothing has come through yet.",
@@ -95,7 +120,6 @@
     "partiallyInLibrary": "Partial",
     "removedFromLibrary": "Removed",
     "openInLibrary": "Open in library",
-    "inspect": "Inspect metadata",
     "delete": "Delete track",
     "moreActions": "More actions",
     "kindSingle": "Track",
@@ -103,13 +127,11 @@
     "trackCount_one": "{{count}} track",
     "trackCount_other": "{{count}} tracks",
     "retry": "Retry",
+    "cancel": "Stop",
     "matched": "Match found",
     "matchNone": "None",
     "duplicate": "Duplicate skipped",
     "noReport": "No report",
-    "previousPage": "Previous page",
-    "nextPage": "Next page",
-    "pageOf": "{{page}} / {{pageCount}}",
     "seeAll": "Full history",
     "clearHistory": "Clear history",
     "clearHistoryTitle": "Clear the history?",
@@ -122,6 +144,15 @@
     "clearHistoryImports_other": "{{count}} imports",
     "clearHistoryCancel": "Cancel",
     "clearHistoryConfirm": "Clear",
-    "clearHistoryFailed": "Clearing the history failed."
+    "clearHistoryFailed": "Clearing the history failed.",
+    "trackUnavailable": "This video is no longer available.",
+    "unavailableChip": "Unavailable",
+    "edit": "Edit metadata"
+  },
+  "toast": {
+    "view": "View",
+    "more": "+{{count}} queued",
+    "done": "Download finished",
+    "failed": "Download failed"
   }
 }

@@ -1,5 +1,4 @@
 import { Button, toast } from "@heroui/react";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { ChevronDown, RotateCcw, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -61,8 +60,14 @@ function DangerAction({
  * somewhere else, and the frame means that once it is open you know what kind
  * of screen you are on.
  *
- * Both actions end in a relaunch. Neither is worth trying to recover from
- * in-place — the app has just deleted the thing every screen is reading.
+ * Both actions end in a webview reload, not a process relaunch. The reload is
+ * a full front reboot — splash, environment check (which re-adopts the fresh
+ * default root), sidecar respawned on demand — and the process underneath
+ * keeps the setup that now survives an erase. `relaunch()` was worse in both
+ * worlds: in dev it killed the process the tauri CLI was watching, which took
+ * vite down with it and relaunched the app onto a dead dev server — a white
+ * window; in prod it paid a whole process restart for nothing the reload
+ * does not already redo.
  */
 export function DangerZone() {
   const { t } = useTranslation("settings");
@@ -76,7 +81,11 @@ export function DangerZone() {
   const run = async (what: "erase" | "reinstall") => {
     try {
       await (what === "erase" ? erase.mutateAsync() : reinstall.mutateAsync());
-      await relaunch();
+      // Factory settings include the front's own: theme, language choice, the
+      // remembered download category all live in localStorage. Only the erase
+      // claims them — a reinstall touches nothing the user chose.
+      if (what === "erase") window.localStorage.clear();
+      window.location.reload();
     } catch (error) {
       setAsking(null);
       toast.danger(t(`library.danger.${what === "erase" ? "erase" : "reinstall"}.failedTitle`), {
@@ -96,6 +105,21 @@ export function DangerZone() {
         <span className="flex flex-col gap-0.5">
           <span className="text-[0.8125rem] font-semibold text-danger">{t("library.danger.title")}</span>
           <span className="text-[0.8125rem] text-muted">{t("library.danger.description")}</span>
+          {/* Folded, the zone still says what it holds: the two actions by
+              name, so nobody has to open it just to find out. The fold keeps
+              being the misclick guard; it stops being a mystery box. */}
+          {!open && (
+            <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
+                <RotateCcw className="size-3.5 shrink-0" />
+                {t("library.danger.reinstall.name")}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
+                <Trash2 className="size-3.5 shrink-0" />
+                {t("library.danger.erase.name")}
+              </span>
+            </span>
+          )}
         </span>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={springs.snappy} className="shrink-0">
           <ChevronDown className="size-4 text-muted" />

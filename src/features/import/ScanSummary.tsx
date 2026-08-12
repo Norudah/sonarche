@@ -1,7 +1,7 @@
-import { HardDrive, Music } from "lucide-react";
+import { HardDrive, History, Music } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { ScanReport } from "@/features/import/api";
+import type { PreviousImport, ScanReport } from "@/features/import/api";
 import { formatBytes, hasAudio, unplayableFormats } from "@/features/import/summary";
 
 interface ScanSummaryProps {
@@ -53,7 +53,36 @@ export function ScanSummary({ report }: ScanSummaryProps) {
 
       {report.truncated && <p className="text-[0.8125rem] text-muted">{t("truncated")}</p>}
 
+      {report.previouslyImported && <AlreadyImported previous={report.previouslyImported} />}
+
       {report.unplayable > 0 && <UnplayableShare report={report} total={total} />}
+    </div>
+  );
+}
+
+/**
+ * This folder has been here before.
+ *
+ * beets skips the directories it has already taken on, so a second import adds
+ * only what is new — which is the right behaviour and an alarming one to watch
+ * in silence: a run that copies nothing looks exactly like a run that failed.
+ * Saying it up front turns "why did nothing happen" into "of course".
+ *
+ * A stopped run gets its own sentence. It is the common case now that imports
+ * can be stopped, and there the message is the opposite: relaunching is the
+ * thing to do, and only the part that never landed will be copied.
+ */
+function AlreadyImported({ previous }: { previous: PreviousImport }) {
+  const { t, i18n } = useTranslation("import");
+  const when = new Intl.DateTimeFormat(i18n.language, { dateStyle: "long" }).format(previous.finishedAt);
+
+  return (
+    <div className="flex gap-2.5 rounded-xl bg-surface-secondary px-3.5 py-3 text-[0.8125rem]">
+      <History className="mt-0.5 size-4 shrink-0 text-muted" />
+      <div className="flex flex-col gap-0.5">
+        <p className="font-medium">{t(previous.cancelled ? "again.stopped" : "again.done", { when })}</p>
+        <p className="text-muted">{t(previous.cancelled ? "again.stoppedHint" : "again.doneHint")}</p>
+      </div>
     </div>
   );
 }

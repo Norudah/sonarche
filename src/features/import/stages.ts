@@ -76,6 +76,15 @@ export function importRail(phase: ImportPhase, progress: ImportProgress | null):
       // cover pass is not drawn at all — it never got the chance.
       return { fills: [1, 0, 0], activeIndex: null, failedIndex: 1, tone: "danger", stage: "copy" };
 
+    case "importCancelled": {
+      // Stopped on purpose, so amber — the app's "not quite complete", never
+      // "failed". The copy segment holds how far it actually got: the outcome
+      // counts folders and the report knows the total. The cover pass did run
+      // over what landed, so its segment is full, not abandoned.
+      const copied = phase.report ? ratio(phase.outcome.folders, phase.report.albumFolders) : 0;
+      return { fills: [1, copied, 1], activeIndex: null, failedIndex: null, tone: "warning", stage: null };
+    }
+
     case "imported":
       return { fills: [1, 1, 1], activeIndex: null, failedIndex: null, tone: "success", stage: null };
   }

@@ -10,7 +10,8 @@ use tauri::{AppHandle, State};
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::identity;
-use crate::jobs::{Job, JobKind, JobsState};
+use crate::import_undo;
+use crate::jobs::{ForcedAlbum, Job, JobKind, JobsState};
 use crate::library_align::LibraryAlignState;
 use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_move;
@@ -22,6 +23,7 @@ use crate::player::{self, PlaybackStatus, PlayerState};
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
+use crate::remux::RemuxState;
 use crate::reset::{self, ResetTargets};
 use crate::settings::{self, ApiKeyStatus};
 use crate::sidecar::SidecarState;
@@ -33,6 +35,11 @@ const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
 /// longest entry ("Video Games"); it exists so a pasted essay never reaches the
 /// tag writer.
 const MAX_CATEGORY_CHARS: usize = 100;
+
+/// Bound on a forced album's title and artist. Same reasoning as the category —
+/// both land in a tag on every file the job writes — with the headroom real
+/// soundtrack names need ("… Original Motion Picture Soundtrack").
+const MAX_ALBUM_CHARS: usize = 300;
 
 #[tauri::command]
 pub async fn get_env_status(app: AppHandle) -> AppResult<EnvStatus> {
@@ -51,6 +58,7 @@ pub async fn enqueue_download(
     url: String,
     kind: Option<JobKind>,
     category: Option<String>,
+    forced_album: Option<ForcedAlbum>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -71,8 +79,46 @@ pub async fn enqueue_download(
         }
         other => other,
     };
+    // A forced album with no title is the toggle left on over an empty field —
+    // "no forced album", not a rejected download.
+    let forced_album = match forced_album {
+        Some(forced) => {
+            let title = forced.title.trim().to_string();
+            let artist = forced
+                .artist
+                .map(|a| a.trim().to_string())
+                .filter(|a| !a.is_empty());
+            if forced.album_id.is_some_and(|id| id <= 0) {
+                return Err(AppError::InvalidInput("invalid target album".into()));
+            }
+            if title.is_empty() {
+                None
+            } else if title.chars().count() > MAX_ALBUM_CHARS
+                || artist
+                    .as_ref()
+                    .is_some_and(|a| a.chars().count() > MAX_ALBUM_CHARS)
+            {
+                return Err(AppError::InvalidInput(
+                    "forced album name is too long".into(),
+                ));
+            } else {
+                Some(ForcedAlbum {
+                    title,
+                    artist,
+                    album_id: forced.album_id,
+                })
+            }
+        }
+        None => None,
+    };
     state
-        .enqueue(&app, url, kind.unwrap_or(JobKind::Single), category)
+        .enqueue(
+            &app,
+            url,
+            kind.unwrap_or(JobKind::Single),
+            category,
+            forced_album,
+        )
         .await
 }
 
@@ -81,9 +127,40 @@ pub async fn list_jobs(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
     Ok(state.list().await)
 }
 
+/// One page of the whole download archive, newest first. The limit is clamped
+/// rather than trusted — it is a UI constant, not something to validate a
+/// conversation over.
+#[tauri::command]
+pub async fn list_jobs_page(
+    state: State<'_, JobsState>,
+    offset: u64,
+    limit: u64,
+) -> AppResult<crate::jobs_store::JobsPage> {
+    state.page(offset, limit.clamp(1, 100)).await
+}
+
+/// The albums a download still in flight is bound for — the library's delete
+/// guard reads this. Deliberately a command of its own rather than something
+/// the frontend derives from `list_jobs`: the library must not have to know the
+/// shape of a job to refuse to delete its destination.
+#[tauri::command]
+pub async fn download_target_albums(state: State<'_, JobsState>) -> AppResult<Vec<i64>> {
+    Ok(state.target_albums().await)
+}
+
 #[tauri::command]
 pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) -> AppResult<Job> {
     state.retry(&app, &id).await
+}
+
+#[tauri::command]
+pub async fn cancel_job(
+    app: AppHandle,
+    state: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+    id: String,
+) -> AppResult<Job> {
+    state.cancel(&app, &sidecar, &id).await
 }
 
 #[tauri::command]
@@ -99,15 +176,30 @@ pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job
 pub async fn scan_import_folder(
     app: AppHandle,
     state: State<'_, LibraryImportState>,
+    jobs: State<'_, JobsState>,
     path: String,
 ) -> AppResult<ScanReport> {
     let root = PathBuf::from(&path);
-    library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_dir)?;
+    library_scan::ensure_outside_library(&root, &AppPaths::resolve(&app)?.library_root)?;
 
     let scanned = root.clone();
-    let report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
+    let mut report = tokio::task::spawn_blocking(move || library_scan::scan(&scanned))
         .await
         .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))??;
+
+    // Read after the walk rather than in it: the archive is ours, the walk is
+    // the disk's, and only one of the two belongs on a blocking thread.
+    report.previously_imported =
+        crate::library_import::overlapping_import(&jobs.list_imports().await, &root).map(
+            |record| library_scan::PreviousImport {
+                cancelled: matches!(
+                    record.status,
+                    crate::library_import::ImportStatus::Cancelled
+                ),
+                folder: record.folder,
+                finished_at: record.finished_at,
+            },
+        );
 
     // Kept so the import that follows can be archived with the counts this
     // process measured, rather than with counts handed back by the page.
@@ -124,8 +216,32 @@ pub async fn start_library_import(
     jobs: State<'_, JobsState>,
     state: State<'_, LibraryImportState>,
     folder: String,
+    grouping: Option<String>,
+    category: Option<String>,
 ) -> AppResult<ImportOutcome> {
-    state.run(&app, &sidecar, &jobs, &folder).await
+    let grouping = grouping.unwrap_or_else(|| "folder".into());
+    // Same bound and same freedom as the download path: the taxonomy the UI
+    // offers is a starter set, not a fence, but this string lands in a tag on
+    // every file the run takes on.
+    let category = match category
+        .map(|c| c.trim().to_string())
+        .filter(|c| !c.is_empty())
+    {
+        Some(c) if c.chars().count() > MAX_CATEGORY_CHARS => {
+            return Err(AppError::InvalidInput("category is too long".into()))
+        }
+        other => other,
+    };
+    state
+        .run(
+            &app,
+            &sidecar,
+            &jobs,
+            &folder,
+            &grouping,
+            category.as_deref(),
+        )
+        .await
 }
 
 /// Every finished library import, newest first. The archive of the other way
@@ -133,6 +249,39 @@ pub async fn start_library_import(
 #[tauri::command]
 pub async fn list_imports(jobs: State<'_, JobsState>) -> AppResult<Vec<ImportRecord>> {
     Ok(jobs.list_imports().await)
+}
+
+/// Stop the import in flight. The import itself resolves as cancelled through
+/// its own call — this only plants the signal.
+#[tauri::command]
+pub async fn cancel_library_import(state: State<'_, LibraryImportState>) -> AppResult<()> {
+    state.cancel().await
+}
+
+/// What undoing this run would take away. Counted from the library as it
+/// stands, so the confirmation states a fact rather than repeating what the
+/// run reported months ago.
+#[tauri::command]
+pub async fn preview_import_undo(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    id: String,
+) -> AppResult<import_undo::UndoPreview> {
+    import_undo::preview(&app, &sidecar, &jobs, &id).await
+}
+
+/// Take one import back out: its tracks, their files, the albums that empty,
+/// their covers, the playlist entries, and beets' memory of the folder.
+#[tauri::command]
+pub async fn undo_import(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    imports: State<'_, LibraryImportState>,
+    id: String,
+) -> AppResult<import_undo::UndoOutcome> {
+    import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 
 #[tauri::command]
@@ -143,6 +292,13 @@ pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
 #[tauri::command]
 pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus> {
     settings::set(name, value).await
+}
+
+/// Extensions the engine can decode, so the library can mark what it cannot.
+/// A constant for the life of the build — the caller caches it forever.
+#[tauri::command]
+pub fn playable_extensions() -> Vec<String> {
+    crate::audio_formats::playable_extensions()
 }
 
 #[tauri::command]
@@ -159,7 +315,7 @@ pub async fn list_library(
             "library_list",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
             }),
             QUERY_TIMEOUT,
         )
@@ -172,7 +328,19 @@ pub async fn reenrich_track(
     state: State<'_, ReenrichState>,
     id: i64,
 ) -> AppResult<Value> {
-    state.run(&app, id).await
+    let result = state.run(&app, id).await?;
+    // Re-enriching rewrites the tags, and beets files by tags: the track may
+    // have just moved out from under every M3U line naming it.
+    crate::playlists_mirror::sync_after_library_change(&app).await;
+    Ok(result)
+}
+
+/// Repair pass over the library: remux fragmented DASH m4a files (downloads
+/// made before ffmpeg shipped) into classic MP4s. Fired by the shell once per
+/// launch; a library with nothing to repair answers in seconds.
+#[tauri::command]
+pub async fn remux_library(app: AppHandle, state: State<'_, RemuxState>) -> AppResult<Value> {
+    state.run(&app).await
 }
 
 /// Play a library file now, replacing whatever was queued. Returns the decoded
@@ -183,7 +351,7 @@ pub async fn reenrich_track(
 /// audio thread, and the runtime's threads are not the ones to wait on it.
 #[tauri::command]
 pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>> {
-    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
     player::off_runtime(app, move |player| player.load(&path)).await
 }
 
@@ -191,7 +359,7 @@ pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>>
 /// calls this once it knows what comes next.
 #[tauri::command]
 pub async fn player_enqueue(app: AppHandle, path: String) -> AppResult<()> {
-    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.library_dir)?;
+    player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
     player::off_runtime(app, move |player| player.enqueue(&path)).await
 }
 
@@ -296,7 +464,9 @@ pub async fn library_align_apply(
     state: State<'_, LibraryAlignState>,
     plan: Value,
 ) -> AppResult<Value> {
-    state.apply(&app, plan).await
+    let result = state.apply(&app, plan).await?;
+    crate::playlists_mirror::sync_after_library_change(&app).await;
+    Ok(result)
 }
 
 /// Check an AcoustID key, so a typo is caught while the user still has the key
@@ -456,6 +626,7 @@ pub struct TrackUpdate {
 pub async fn update_tracks(
     app: AppHandle,
     state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
     updates: Vec<TrackUpdate>,
 ) -> AppResult<Value> {
     if updates.is_empty() {
@@ -478,14 +649,252 @@ pub async fn update_tracks(
     }
 
     let paths = AppPaths::resolve(&app)?;
-    state
+    let result = state
         .request(
             &app,
             "library_update",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "updates": wire,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await?;
+    // The write is the one moment old and new albumartist are both known: any
+    // rename it reported takes the artist's image (our asset, keyed by name)
+    // along. Best-effort — the edit itself already succeeded.
+    crate::artist_images::follow_renames(&app, &jobs, &result).await;
+    // An edit that changed artist or album moved the file, and every M3U line
+    // naming it is now a dead path.
+    crate::playlists_mirror::sync(&app, &jobs).await;
+    Ok(result)
+}
+
+/// The two things a record can be. Validated here rather than trusted from the
+/// webview: this crosses the IPC boundary, and the sidecar would otherwise be
+/// asked to write whatever string arrived.
+const ALBUM_KINDS: &[&str] = &["album", "collection"];
+
+/// A brand-new record to gather the moved tracks into.
+#[derive(Deserialize)]
+pub struct NewAlbum {
+    album: String,
+    albumartist: String,
+}
+
+/// One move request, whole: what goes where, as what, numbered how.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveSpec {
+    /// Order matters: it is the numbering order when `renumber` is on.
+    item_ids: Vec<i64>,
+    target_album_id: Option<i64>,
+    new_album: Option<NewAlbum>,
+    kind: Option<String>,
+    #[serde(default)]
+    renumber: bool,
+}
+
+/// Refile tracks onto another record — existing (`target_album_id`) or created
+/// on the spot (`new_album`). `kind` optionally declares the target's nature in
+/// the same pass; `renumber` stacks the arrivals after the target's own track
+/// numbers.
+#[tauri::command]
+pub async fn move_tracks(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    spec: MoveSpec,
+) -> AppResult<Value> {
+    if spec.item_ids.is_empty() {
+        return Err(AppError::InvalidInput("no tracks to move".into()));
+    }
+    if spec.target_album_id.is_some() == spec.new_album.is_some() {
+        return Err(AppError::InvalidInput(
+            "need exactly one of target_album_id and new_album".into(),
+        ));
+    }
+    let new_album = spec
+        .new_album
+        .map(|target| {
+            let album = target.album.trim().to_string();
+            let albumartist = target.albumartist.trim().to_string();
+            if album.is_empty() || albumartist.is_empty() {
+                return Err(AppError::InvalidInput(
+                    "a new album needs a title and an artist".into(),
+                ));
+            }
+            Ok(json!({ "album": album, "albumartist": albumartist }))
+        })
+        .transpose()?;
+    if let Some(kind) = spec.kind.as_deref() {
+        if !ALBUM_KINDS.contains(&kind) {
+            return Err(AppError::InvalidInput(format!(
+                "unknown album kind: {kind}"
+            )));
+        }
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    let result = state
+        .request(
+            &app,
+            "library_move_tracks",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "item_ids": spec.item_ids,
+                "target_album_id": spec.target_album_id,
+                "new_album": new_album,
+                "kind": spec.kind,
+                "renumber": spec.renumber,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await?;
+    // Every moved file is now a dead path in any M3U line naming it.
+    crate::playlists_mirror::sync(&app, &jobs).await;
+    Ok(result)
+}
+
+/// Say whether these albums are releases or someone's own gatherings.
+///
+/// Takes a list of beets album ids because the front groups by (artist, title):
+/// one card can stand for two album rows, and both have to move together.
+#[tauri::command]
+pub async fn set_album_kind(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_ids: Vec<i64>,
+    kind: String,
+) -> AppResult<Value> {
+    if !ALBUM_KINDS.contains(&kind.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unknown album kind: {kind}"
+        )));
+    }
+    if album_ids.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "album_kind_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "album_ids": album_ids,
+                "kind": kind,
+            }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
+/// The 13 browse families, by the display labels the sidecar's genre tree
+/// produces — the same strings the front uses as family keys. The sidecar
+/// validates them again; both sides say it so neither has to trust the other.
+const FAMILY_LABELS: &[&str] = &[
+    "Metal",
+    "Rock",
+    "Pop",
+    "Electronic",
+    "Hip-Hop",
+    "R&B, Soul & Funk",
+    "Jazz",
+    "Blues",
+    "Folk & Country",
+    "Classical",
+    "Reggae",
+    "Latin",
+    "World",
+];
+
+/// File a genre under a family of the user's choosing, or return it to the
+/// base tree (family = None). The placement is an opinion about the genre
+/// *name* — no track is touched; the read path rebuckets on its own.
+#[tauri::command]
+pub async fn set_genre_family(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    genre: String,
+    family: Option<String>,
+) -> AppResult<Value> {
+    if genre.trim().is_empty() {
+        return Err(AppError::InvalidInput("empty genre".into()));
+    }
+    if let Some(label) = family.as_deref() {
+        if !FAMILY_LABELS.contains(&label) {
+            return Err(AppError::InvalidInput(format!("unknown family: {label}")));
+        }
+    }
+    state
+        .request(
+            &app,
+            "genre_family_set",
+            json!({ "genre": genre, "family": family }),
+            QUERY_TIMEOUT,
+        )
+        .await
+}
+
+/// Every placement the user has made, for the front to mark overridden genres.
+#[tauri::command]
+pub async fn list_genre_overrides(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+) -> AppResult<Value> {
+    state
+        .request(&app, "genre_overrides_list", json!({}), QUERY_TIMEOUT)
+        .await
+}
+
+/// Checks a person may legitimately mean to leave as they are, per scope. The
+/// sidecar validates the same pair; both sides say it so neither has to trust
+/// the other. `suspect` and `tracklist` are deliberately absent — see
+/// `accepted.py` for why.
+const TRACK_CHECKS: &[&str] = &["year", "track", "genre", "duplicates"];
+const ALBUM_CHECKS: &[&str] = &["artwork"];
+
+/// Answer a check: "I have seen it, it is what I want" — or take that back.
+#[tauri::command]
+pub async fn set_check_accepted(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    scope: String,
+    ids: Vec<i64>,
+    check: String,
+    accepted: bool,
+) -> AppResult<Value> {
+    let valid = match scope.as_str() {
+        "track" => TRACK_CHECKS,
+        "album" => ALBUM_CHECKS,
+        other => return Err(AppError::InvalidInput(format!("unknown scope: {other}"))),
+    };
+    if !valid.contains(&check.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unknown {scope} check: {check}"
+        )));
+    }
+    if ids.is_empty() {
+        return Ok(json!({ "updated": 0 }));
+    }
+
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "accepted_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "scope": scope,
+                "ids": ids,
+                "check": check,
+                "accepted": accepted,
             }),
             QUERY_TIMEOUT,
         )
@@ -496,19 +905,210 @@ pub async fn update_tracks(
 pub async fn delete_track(
     app: AppHandle,
     state: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
     id: i64,
 ) -> AppResult<Value> {
     let paths = AppPaths::resolve(&app)?;
-    state
+    let result = state
         .request(
             &app,
             "library_remove",
             json!({
                 "beets_db": paths.beets_db.to_string_lossy(),
-                "library_dir": paths.library_dir.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
                 "id": id,
             }),
             QUERY_TIMEOUT,
+        )
+        .await?;
+    // No foreign key can span the two database files, so playlist memberships
+    // are pruned here — best-effort, the delete itself already succeeded.
+    if let Err(err) = jobs.remove_item_from_playlists(id).await {
+        eprintln!("[playlists] prune of item {id} failed: {err}");
+    }
+    crate::playlists_mirror::sync(&app, &jobs).await;
+    Ok(result)
+}
+
+/// Image formats a replacement cover may arrive in: what Pillow decodes, the
+/// webview previews, and the pipeline can archive. Deliberately short — HEIC
+/// and the like can join once each reader is proven, not before.
+const COVER_SOURCE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
+
+/// A user-picked image path, canonicalised and checked before anything trusts
+/// it: it must exist, be a file, and wear a whitelisted extension.
+pub(crate) async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
+    let canonical = tokio::fs::canonicalize(path)
+        .await
+        .map_err(|_| AppError::InvalidInput(format!("file not found: {path}")))?;
+    let extension = canonical
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+    if !COVER_SOURCE_EXTENSIONS.contains(&extension.as_str()) {
+        return Err(AppError::InvalidInput(format!(
+            "unsupported image type: .{extension}"
+        )));
+    }
+    let meta = tokio::fs::metadata(&canonical).await?;
+    if !meta.is_file() {
+        return Err(AppError::InvalidInput("not a file".into()));
+    }
+    Ok(canonical)
+}
+
+/// Let the webview preview a cover candidate that lives outside the library:
+/// the asset scope only covers the library and app data, so a picked file is
+/// admitted one path at a time. Returns its size for the modal's weight line.
+#[tauri::command]
+pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Value> {
+    use tauri::Manager;
+
+    let canonical = checked_cover_source(&path).await?;
+    let bytes = tokio::fs::metadata(&canonical).await?.len();
+    app.asset_protocol_scope()
+        .allow_file(&canonical)
+        .map_err(|err| AppError::InvalidInput(format!("could not admit the file: {err}")))?;
+    Ok(json!({ "path": canonical.to_string_lossy(), "bytes": bytes }))
+}
+
+/// The cover an album already wears, as a file the crop stage can reopen —
+/// what "reframe this one" needs, where every other road into the modal brings
+/// its own file.
+///
+/// Not simply the display cover: the two-file convention keeps the full-size
+/// image beside it as `cover-hq.*`, and cutting a tighter square out of the
+/// 500px rendition would archive that rendition as the new original. The
+/// archive is the source whenever there is one, the display cover otherwise.
+///
+/// `art_path` is beets' own artpath, which the library listing already handed
+/// the front. It is checked back to the library all the same — an IPC argument
+/// is never a fact — and only then admitted to the asset scope.
+#[tauri::command]
+pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<Value> {
+    use tauri::Manager;
+
+    let paths = AppPaths::resolve(&app)?;
+    let music_dir = tokio::fs::canonicalize(paths.music_dir())
+        .await
+        .unwrap_or_else(|_| paths.music_dir());
+    let art = checked_cover_source(&art_path).await?;
+    if !art.starts_with(&music_dir) {
+        return Err(AppError::InvalidInput("cover outside the library".into()));
+    }
+
+    let mut source = art.clone();
+    if let Some(dir) = art.parent() {
+        for extension in COVER_SOURCE_EXTENSIONS {
+            let archive = dir.join(format!("cover-hq.{extension}"));
+            if tokio::fs::metadata(&archive)
+                .await
+                .is_ok_and(|m| m.is_file())
+            {
+                source = archive;
+                break;
+            }
+        }
+    }
+
+    let bytes = tokio::fs::metadata(&source).await?.len();
+    app.asset_protocol_scope()
+        .allow_file(&source)
+        .map_err(|err| AppError::InvalidInput(format!("could not admit the file: {err}")))?;
+    Ok(json!({ "path": source.to_string_lossy(), "bytes": bytes }))
+}
+
+/// The square the sidecar should cut from the source image, in source pixels
+/// after EXIF orientation — the same frame the preview showed the user.
+#[derive(Deserialize)]
+pub struct CoverCrop {
+    pub(crate) left: u32,
+    pub(crate) top: u32,
+    pub(crate) size: u32,
+}
+
+/// Replace an album's cover: archive the image as cover-hq.*, write the 500px
+/// rendition as beets' artpath, embed it into the album's m4a files, and drop
+/// the provisional-cover flag. The image is either a local file (with an
+/// optional crop) or a Cover Art Archive upload picked from the candidates.
+#[tauri::command]
+pub async fn set_album_cover(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_id: i64,
+    source_path: Option<String>,
+    crop: Option<CoverCrop>,
+    candidate_url: Option<String>,
+) -> AppResult<Value> {
+    if album_id <= 0 {
+        return Err(AppError::InvalidInput(format!("bad album id: {album_id}")));
+    }
+    if source_path.is_some() == candidate_url.is_some() {
+        return Err(AppError::InvalidInput(
+            "exactly one of source_path / candidate_url is required".into(),
+        ));
+    }
+    if let Some(CoverCrop { size, .. }) = crop {
+        if size == 0 {
+            return Err(AppError::InvalidInput("empty crop".into()));
+        }
+    }
+    if let Some(url) = &candidate_url {
+        // Only what our own candidates listing handed out: the sidecar will
+        // fetch this URL, so nothing else may choose where it connects.
+        if !url.starts_with("https://coverartarchive.org/") {
+            return Err(AppError::InvalidInput(
+                "candidate URL outside the Cover Art Archive".into(),
+            ));
+        }
+    }
+    let source = match source_path {
+        Some(path) => Some(checked_cover_source(&path).await?),
+        None => None,
+    };
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "cover_set",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "album_id": album_id,
+                "source_path": source.map(|p| p.to_string_lossy().into_owned()),
+                "image_url": candidate_url,
+                "crop": crop.map(|c| json!({ "left": c.left, "top": c.top, "size": c.size })),
+            }),
+            // Downloading a full-size CAA upload can outlast a query.
+            Duration::from_secs(120),
+        )
+        .await
+}
+
+/// What the Cover Art Archive holds for this album — thumbnails inlined as
+/// data URLs (the webview's CSP allows no remote images).
+#[tauri::command]
+pub async fn list_cover_candidates(
+    app: AppHandle,
+    state: State<'_, SidecarState>,
+    album_id: i64,
+) -> AppResult<Value> {
+    if album_id <= 0 {
+        return Err(AppError::InvalidInput(format!("bad album id: {album_id}")));
+    }
+    let paths = AppPaths::resolve(&app)?;
+    state
+        .request(
+            &app,
+            "cover_candidates",
+            json!({
+                "beets_db": paths.beets_db.to_string_lossy(),
+                "library_dir": paths.music_dir().to_string_lossy(),
+                "album_id": album_id,
+            }),
+            // The index plus up to eight thumbnail fetches.
+            Duration::from_secs(90),
         )
         .await
 }

@@ -15,6 +15,8 @@ write it directly.
 import os
 import sqlite3
 
+import accepted
+
 from genre_tree import bucket_for
 
 # beets joins multi-valued tags with this in the DB, and formats them with "; "
@@ -27,6 +29,17 @@ _GENRE_FMT_DELIMITER = "; "
 # in item_attributes and is never read.
 _BONUS_SOURCE_KEY = "sonarche_bonus_source"
 _SUSPECT_KEY = "sonarche_suspect_match"
+_PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
+# On the *album* row, not the item: what this record is. Absent means an album
+# — a release with a tracklist, which can therefore be missing tracks. Set to
+# COLLECTION it means someone's own gathering of tracks, which has no tracklist
+# to be measured against and so cannot have holes in one. See `album_kind.py`.
+ALBUM_KIND_KEY = "sonarche_album_kind"
+COLLECTION = "collection"
+# On the *item*, and only ever on a singleton: where its own cover was written
+# out of its tags at import (see `_stage_singleton_covers`). Album tracks read
+# their album's `artpath` instead, which is one file for the whole record.
+ITEM_ART_KEY = "sonarche_item_art"
 
 _ITEM_COLUMNS = (
     "id, title, artist, album, albumartist, year, genres, track, tracktotal,"
@@ -94,6 +107,25 @@ def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     }
 
 
+def art_mtimes(art_by_album: dict[int, str | None]) -> dict[int, int]:
+    """Modification time of each resolved cover, whole seconds.
+
+    Surfaced so the front can version its cover URLs: `artpath` keeps the same
+    name when the picture behind it is replaced (a re-enrich, a user-chosen
+    cover), and the webview's image cache would happily keep showing the old
+    pixels forever. One stat per album, same budget as the resolve above.
+    """
+    mtimes: dict[int, int] = {}
+    for album_id, path in art_by_album.items():
+        if not path:
+            continue
+        try:
+            mtimes[album_id] = int(os.stat(path).st_mtime)
+        except OSError:
+            pass
+    return mtimes
+
+
 def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
     """One surfaced flexible attribute for the whole library — they live in
     item_attributes rather than columns. One indexed query per key instead of
@@ -108,7 +140,48 @@ def flex_attrs_by_item(conn, key: str) -> dict[int, str]:
     }
 
 
-def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: str) -> dict:
+def flex_attrs_by_album(conn, key: str) -> dict[int, str]:
+    """The album-row twin of `flex_attrs_by_item`. Separate table, same shape:
+    beets keeps album flexattrs in `album_attributes`, keyed by album id."""
+    return {
+        row["entity_id"]: row["value"]
+        for row in conn.execute(
+            "SELECT entity_id, value FROM album_attributes WHERE key = ?",
+            (key,),
+        )
+        if row["value"]
+    }
+
+
+class Lookups:
+    """Everything `track_row` needs that is not on the row itself.
+
+    One object rather than nine positional dicts: each surfaced attribute used
+    to add a parameter, so the signature grew to eleven and every call site —
+    tests included — became a row of anonymous braces nobody could read. Built
+    once per listing; the fields are plain dicts keyed by item or album id.
+    """
+
+    __slots__ = (
+        "art_by_album",
+        "art_mtime_by_album",
+        "bonus_by_item",
+        "suspect_by_item",
+        "provisional_cover_by_item",
+        "kind_by_album",
+        "art_by_item",
+        "accepted_by_item",
+        "accepted_by_album",
+    )
+
+    def __init__(self, **fields):
+        for name in self.__slots__:
+            setattr(self, name, fields.pop(name, None) or {})
+        if fields:
+            raise TypeError(f"unknown lookup: {', '.join(sorted(fields))}")
+
+
+def track_row(row, lookups: "Lookups", library_dir: str) -> dict:
     """One SQLite row -> the wire shape the front consumes."""
     genre = first_genre(row["genres"])
     return {
@@ -128,10 +201,15 @@ def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: st
         "format": row["format"],
         "path": expand_db_path(row["path"], library_dir),
         # Singletons carry no album_id and simply miss.
-        "art_path": art_by_album.get(row["album_id"]),
+        "album_id": row["album_id"] or None,
+        # An album's own cover, or — for a singleton, which has no album row to
+        # hang one on — the picture taken out of its tags at import.
+        "art_path": lookups.art_by_album.get(row["album_id"]) or lookups.art_by_item.get(row["id"]),
+        # Versions the cover URL: same artpath, new pixels -> new mtime.
+        "art_mtime": lookups.art_mtime_by_album.get(row["album_id"]),
         # Origin release of an adopted bonus track (deluxe/regional
         # edition filed with the main album), or None.
-        "bonus_source": bonus_by_item.get(row["id"]),
+        "bonus_source": lookups.bonus_by_item.get(row["id"]),
         # Empty string is beets' "no match" — surface it as null.
         "mb_trackid": row["mb_trackid"] or None,
         # The user's own axis (grouping tag): context, not musical style.
@@ -141,7 +219,16 @@ def track_row(row, art_by_album, bonus_by_item, suspect_by_item, library_dir: st
         "soundtrack": "soundtrack" in split_multi(row["albumtypes"]),
         # The match contradicts the download's own title (see suspect.py):
         # shown by the triage page as "to review".
-        "suspect_match": row["id"] in suspect_by_item,
+        "suspect_match": row["id"] in lookups.suspect_by_item,
+        # A forced album whose cover is the video's thumbnail, not real art:
+        # the right shape, the wrong picture, and worth replacing.
+        "provisional_cover": row["id"] in lookups.provisional_cover_by_item,
+        # What the record this track sits on *is* — null for a plain album.
+        "album_kind": lookups.kind_by_album.get(row["album_id"]),
+        # Checks whose verdict the owner has already answered (see accepted.py):
+        # the track's own, and the ones its album carries for the whole record.
+        "accepted": sorted(accepted.parse(lookups.accepted_by_item.get(row["id"]))),
+        "album_accepted": sorted(accepted.parse(lookups.accepted_by_album.get(row["album_id"]))),
         "added": row["added"],
     }
 
@@ -167,16 +254,31 @@ def handle(_request_id: str, params: dict) -> dict:
     conn.row_factory = sqlite3.Row
     try:
         art_by_album = art_paths_by_album(conn, library_dir)
+        art_mtime_by_album = art_mtimes(art_by_album)
         bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
+        provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
+        kind_by_album = flex_attrs_by_album(conn, ALBUM_KIND_KEY)
+        art_by_item = flex_attrs_by_item(conn, ITEM_ART_KEY)
+        accepted_by_item = flex_attrs_by_item(conn, accepted.KEY)
+        accepted_by_album = flex_attrs_by_album(conn, accepted.KEY)
         # Sorted in SQLite rather than in Python. COALESCE keeps a row with no
         # `added` at the bottom instead of letting NULL sort unpredictably.
         rows = conn.execute(
             f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC"
         )
-        tracks = [
-            track_row(r, art_by_album, bonus_by_item, suspect_by_item, library_dir) for r in rows
-        ]
+        lookups = Lookups(
+            art_by_album=art_by_album,
+            art_mtime_by_album=art_mtime_by_album,
+            bonus_by_item=bonus_by_item,
+            suspect_by_item=suspect_by_item,
+            provisional_cover_by_item=provisional_cover_by_item,
+            kind_by_album=kind_by_album,
+            art_by_item=art_by_item,
+            accepted_by_item=accepted_by_item,
+            accepted_by_album=accepted_by_album,
+        )
+        tracks = [track_row(r, lookups, library_dir) for r in rows]
     finally:
         conn.close()
 
@@ -296,14 +398,23 @@ def update(_request_id: str, params: dict) -> dict:
     # album to re-file.
     album_edits: dict[int, dict[str, str]] = {}
     solo: list = []
+    # Albumartist renames, old -> new, deduplicated in order. The write is the
+    # one moment both names are in scope, and Rust needs the pair to move the
+    # artist's image (our own asset, keyed by name) along with the rename.
+    artist_renames: dict[tuple[str, str], None] = {}
 
     for entry in params.get("updates") or []:
         item = lib.get_item(entry["id"])
         if item is None:
             continue
+        old_artist = (getattr(item, "albumartist", "") or "").strip()
         changed = _apply_fields(item, entry.get("fields") or {})
         if not changed:
             continue
+        if "albumartist" in changed:
+            new_artist = (item.albumartist or "").strip()
+            if old_artist and new_artist and old_artist != new_artist:
+                artist_renames[(old_artist, new_artist)] = None
         # These edits are the one provenance signal that cannot be
         # reconstructed later; record them in the same store.
         provenance.mark_edited(item, changed)
@@ -349,7 +460,10 @@ def update(_request_id: str, params: dict) -> dict:
     for album_id, old_dir in art_dirs.items():
         covers.follow_hq_cover(lib, lib.get_album(album_id), old_dir, _decode)
 
-    return {"updated": updated}
+    return {
+        "updated": updated,
+        "artist_renames": [{"old": old, "new": new} for old, new in artist_renames],
+    }
 
 
 def _album_art_dir(lib, album_id: int) -> str | None:

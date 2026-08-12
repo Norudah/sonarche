@@ -16,9 +16,7 @@
       "why": "Light is the original. Night is not its negative: black is never pure there, a blue veil runs through every surface, and the accent goes down rather than up. For bright screens and late sessions.",
       "light": "Light",
       "dark": "Night",
-      "system": "System",
-      "followingLight": "Your system is set to light, and the app follows.",
-      "followingDark": "Your system is set to dark, and the app switches to Night."
+      "system": "System"
     },
     "language": {
       "name": "Language",
@@ -27,6 +25,37 @@
     "launchWelcome": {
       "name": "Welcome at launch",
       "why": "Once the environment check is done, Sonarche takes a second to say hello before opening the window. Turn it off and the app goes straight in — the fade between the two stays either way."
+    },
+    "tour": {
+      "name": "Guided tour",
+      "why": "The interface's landmarks, in six steps. Replay it any time.",
+      "replay": "Replay the tour"
+    }
+  },
+  "adding": {
+    "category": "Adding",
+    "title": "Adding music",
+    "description": "How the two pages that fill the ark present themselves: what is already unfolded when you arrive, and what stays behind the chevron.",
+    "downloadOptions": {
+      "name": "Unfold the options when a link is pasted",
+      "why": "As soon as a link is recognised, the panel opens on the download's destination and category. Turn it off if you know your settings — the chevron is still there to open them case by case."
+    },
+    "importOptions": {
+      "name": "Unfold the options once a folder is scanned",
+      "why": "Once the folder is read, the panel opens on the import's grouping and category. Turn it off if you always import the same way."
+    }
+  },
+  "metadata": {
+    "category": "Metadata",
+    "title": "Metadata",
+    "description": "How the app mentions what it could still complete, and how carefully the automatic identification rewrites your tags.",
+    "badges": {
+      "name": "Badge on the Metadata tab",
+      "why": "Shows how many tracks and albums are left to complete in the sidebar — the same count the Metadata page delivers, and the page carries this switch too. Turn it off if you would rather visit the page at your own pace."
+    },
+    "rematchConfirm": {
+      "name": "Ask before a re-match",
+      "why": "A re-match queries MusicBrainz again and rewrites every tag it recognises, including your manual fixes. With this on, the app asks for confirmation before starting, on a track as on an album."
     }
   },
   "apiKeys": {
@@ -87,21 +116,22 @@
         "why": "On a playlist, tracks are fetched one by one. This pause spaces the requests out so long batches stay within the source's rate limits instead of triggering 403 errors. The real delay is randomised between this value and twice it.",
         "estimate": "For a {{count}}-track playlist, the pauses add about {{duration}}.",
         "warning": "Below one second the requests run back to back with almost no pause — which is exactly the behaviour that gets a client spotted and handed 403s halfway through a long playlist. Three seconds is the safe setting."
-      },
-      "acoustid": {
-        "name": "Delay between AcoustID requests",
-        "why": "Every imported track is identified by its acoustic fingerprint through AcoustID. The service allows 3 requests per second per key, and an album runs its lookups back to back — hence this pause.",
-        "estimate": "For a {{count}}-track album, the pauses add about {{duration}}.",
-        "warning": "Below one second a whole album goes out in a burst. AcoustID documents three requests per second per key: past that it is your key that gets throttled, and the service has no reason to warn you first."
-      },
-      "lastfm": {
-        "name": "Delay between Last.fm requests",
-        "why": "When a track has no MusicBrainz genre at all, the \"Recompute genres\" action queries Last.fm to find one. That API key is shared by every beets user in the world: a delay between requests keeps it from getting temporarily blocked for everyone.",
-        "estimate": "For {{count}} genre-less tracks at this pace: about {{duration}}.",
-        "warning": "Below one second we ask more of Last.fm than it invites — on a key shared by every beets user in the world. Getting it blocked blocks it for them too."
       }
     },
-    "impoliteTitle": "Not recommended."
+    "impoliteTitle": "Not recommended.",
+    "fixed": {
+      "title": "Metadata services' pace",
+      "body": "AcoustID and Last.fm are reached through keys every install shares: one rushed user can get the key throttled for everyone. The app sets the pace itself, and it is not adjustable.",
+      "perRequest": "{{delay}} between requests",
+      "acoustid": {
+        "name": "AcoustID",
+        "role": "fingerprint identification of tracks"
+      },
+      "lastfm": {
+        "name": "Last.fm",
+        "role": "fetching missing genres"
+      }
+    }
   },
   "updates": {
     "category": "Updates"
@@ -201,15 +231,16 @@
       },
       "erase": {
         "name": "Erase everything",
-        "why": "Puts the app back to how it was on first launch. Your audio files are deleted from the disk. There is no bin, no undo and no backup.",
+        "why": "Empties the whole library and restores default settings — the install and your AcoustID key stay in place. Your audio files are deleted from the disk. There is no bin, no undo and no backup.",
         "action": "Erase everything",
         "dialogTitle": "Erase all your data?",
         "dialogBody": "This is permanent. Here is what goes:",
         "itemFiles": "Every audio file in the library, deleted from the disk",
         "itemIndex": "The beets index: titles, albums, artists, genres, artwork",
-        "itemHistory": "The download and import history",
-        "itemKeys": "Your AcoustID key and every setting",
-        "keepsEngine": "The Python environment is kept, so the app is usable again straight away.",
+        "itemPlaylists": "Playlists and their M3U8 files, artist and playlist images",
+        "itemHistory": "The download and import history, and pending downloads",
+        "itemKeys": "Your settings, back to their defaults, and the diagnostic log",
+        "keepsEngine": "The Python environment and your AcoustID key are kept: the app is usable again straight away, no setup to redo.",
         "prompt": "Type {{phrase}} to confirm",
         "cancel": "Cancel",
         "confirm": "Erase permanently",

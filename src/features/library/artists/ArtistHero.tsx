@@ -1,3 +1,5 @@
+import { FilePen } from "lucide-react";
+import { motion } from "motion/react";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,13 +9,19 @@ import type { Artist } from "@/features/library/artists/artists";
 import { GenreChips } from "@/features/library/GenreChips";
 import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
+import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
+import { springs } from "@/shared/motion/tokens";
 
 interface ArtistHeroProps {
   artist: Artist;
+  /** The artist's own picture, when they have one. */
+  imageUrl: string | null;
   onPlay: () => void;
   onShuffle: () => void;
+  /** Opens the artist's edit modal, from the "Modifier" button. */
+  onEdit: () => void;
   /** The view switcher, in the same spot as on the genre and category heroes. */
   actions?: ReactNode;
   ref?: Ref<HTMLElement>;
@@ -29,7 +37,7 @@ interface ArtistHeroProps {
  * play counter exists; a hero that states a number nothing measures is worse
  * than a hero that states less.
  */
-export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHeroProps) {
+export function ArtistHero({ artist, imageUrl, onPlay, onShuffle, onEdit, actions, ref }: ArtistHeroProps) {
   const { t } = useTranslation("library");
 
   const span =
@@ -46,7 +54,7 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
   ].filter(Boolean);
 
   return (
-    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+    <header ref={ref} className="relative -mx-8 -mt-5 -mb-2 px-8 pt-5 pb-7">
       <HeroWash />
 
       <div className="relative">
@@ -61,8 +69,17 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
         <div className="mt-5 flex items-end gap-6">
           {/* Matches the album hero's 192px cover box, as a circle: the two
            * heroes share one baseline, the shape is the only tell of which one
-           * you are on. */}
-          <ArtistAvatar family={artist.family} className="size-48 shrink-0 glow-accent-deep" />
+           * you are on.
+           *
+           * Not a button any more. This page is for finding something to play,
+           * and a portrait that swallowed a click into an editor was a trapdoor
+           * in a corridor — worse, it was the *only* door to that editor, so
+           * the one thing changeable here hid in the one place nobody presses.
+           * "Modifier", below, carries it now: the app has a single word for
+           * "this opens a form", and it is that one. */}
+          <div className="relative size-48 shrink-0 overflow-hidden rounded-full glow-accent-deep">
+            <ArtistAvatar imageUrl={imageUrl} className="size-full" />
+          </div>
 
           {/* Capped rather than stretched: the album's text column is bounded on
            * its right by the completeness ring, so it never looks empty. This
@@ -91,8 +108,20 @@ export function ArtistHero({ artist, onPlay, onShuffle, actions, ref }: ArtistHe
              * No delete action, unlike the album page. "Delete this artist"
              * would wipe an unbounded number of albums behind one click, and
              * nothing here makes that scope visible before it happens. */}
-            <div className="mt-5">
+            <div className="mt-5 flex flex-wrap items-center gap-3.5">
               <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
+
+              <motion.button
+                type="button"
+                onClick={onEdit}
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }}
+                transition={springs.snappy}
+                className={`${HERO_BUTTON_SECONDARY} cursor-pointer`}
+              >
+                <FilePen className="size-4" />
+                {t("edit")}
+              </motion.button>
             </div>
           </div>
         </div>

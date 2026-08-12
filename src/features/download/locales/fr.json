@@ -15,11 +15,32 @@
     "title": "Options",
     "category": "Catégorie",
     "categoryHint": "Le contexte, pas le style : d'où vient la musique. Modifiable ensuite sur chaque morceau.",
-    "categoryNone": "Aucune"
+    "categoryNone": "Aucune",
+    "destination": {
+      "legend": "Album de destination",
+      "modeAuto": "Automatique",
+      "modeExisting": "Album existant",
+      "modeNew": "Nouvel album",
+      "autoHint": "Chaque morceau rejoint l'album de sa sortie d'origine — le chemin normal, et le bon pour presque tous les liens.",
+      "existingHint": "Ce qui arrive rejoint l'album choisi de ta bibliothèque, à la suite de ses pistes. L'album garde sa pochette et sa nature.",
+      "problem": "Une playlist assemblée à la main réunit des morceaux d'albums différents : rangés tels quels, chacun rejoint le sien. Cette option les range sous l'album que tu nommes, sans toucher à leur artiste ni à leur genre.",
+      "tryWithout": "Essaie d'abord sans : une bande originale déjà publiée comme album est reconnue toute seule. Forcer ne sert que si l'album n'existe pas.",
+      "newSingleHint": "Le morceau fonde ce nouvel album. Sans artiste nommé, il garde le sien.",
+      "without": "Sans",
+      "with": "Avec",
+      "title": "Titre de l'album",
+      "titlePlaceholder": "Nom du film, de la série, du jeu…",
+      "artist": "Artiste de l'album"
+    }
   },
   "activity": {
     "inFlight": "En cours",
-    "recent": "Récents",
+    "recent": "Historique récent",
+    "presence": {
+      "full": "Dans la bibliothèque",
+      "partial": "Retiré en partie",
+      "none": "Retiré de la bibliothèque"
+    },
     "expand": "Afficher le détail",
     "collapse": "Masquer le détail",
     "percent": "{{value}} %",
@@ -30,7 +51,8 @@
       "import": "Rangement",
       "enrich": "Identification",
       "done": "Terminé",
-      "failed": "Échec"
+      "failed": "Échec",
+      "cancelled": "Arrêté"
     },
     "verdict": {
       "matched": "Identifié",
@@ -38,13 +60,16 @@
       "guessed": "Tags devinés",
       "unmatched": "Non identifié",
       "lostTracks": "Partiel {{kept}}/{{total}}",
-      "failed": "Échec"
+      "failed": "Échec",
+      "cancelled": "Arrêté"
     },
     "detail": {
       "cover": "Pochette",
       "category": "Catégorie",
       "track": "Titre",
-      "attempts": "Tentatives"
+      "attempts": "Tentatives",
+      "unavailable_one": "{{count}} vidéo de la playlist n'a pas pu être récupérée : retirée, passée en privé ou bloquée. L'album n'est pas forcément incomplet pour autant — une playlist contient souvent des doublons, ou des ajouts que la personne qui l'a créée n'a jamais retirés. Compare la liste ci-dessous à l'album que tu attendais avant d'aller chercher ailleurs.",
+      "unavailable_other": "{{count}} vidéos de la playlist n'ont pas pu être récupérées : retirées, passées en privé ou bloquées. L'album n'est pas forcément incomplet pour autant — une playlist contient souvent des doublons, ou des ajouts que la personne qui l'a créée n'a jamais retirés. Compare la liste ci-dessous à l'album que tu attendais avant d'aller chercher ailleurs."
     },
     "empty": {
       "title": "Rien n'est encore passé par ici.",
@@ -95,7 +120,6 @@
     "partiallyInLibrary": "Partiel",
     "removedFromLibrary": "Retiré",
     "openInLibrary": "Ouvrir dans la bibliothèque",
-    "inspect": "Voir les métadonnées",
     "delete": "Supprimer le morceau",
     "moreActions": "Plus d'actions",
     "kindSingle": "Morceau",
@@ -103,13 +127,11 @@
     "trackCount_one": "{{count}} piste",
     "trackCount_other": "{{count}} pistes",
     "retry": "Réessayer",
+    "cancel": "Arrêter",
     "matched": "Correspondance trouvée",
     "matchNone": "Aucune",
     "duplicate": "Doublon ignoré",
     "noReport": "Pas de rapport",
-    "previousPage": "Page précédente",
-    "nextPage": "Page suivante",
-    "pageOf": "{{page}} / {{pageCount}}",
     "seeAll": "Tout l'historique",
     "clearHistory": "Vider l'historique",
     "clearHistoryTitle": "Vider l'historique ?",
@@ -122,6 +144,15 @@
     "clearHistoryImports_other": "{{count}} imports",
     "clearHistoryCancel": "Annuler",
     "clearHistoryConfirm": "Vider",
-    "clearHistoryFailed": "La suppression de l'historique a échoué."
+    "clearHistoryFailed": "La suppression de l'historique a échoué.",
+    "trackUnavailable": "Cette vidéo n'est plus disponible.",
+    "unavailableChip": "Indisponible",
+    "edit": "Modifier les métadonnées"
+  },
+  "toast": {
+    "view": "Voir",
+    "more": "+{{count}} en file",
+    "done": "Téléchargement terminé",
+    "failed": "Téléchargement en échec"
   }
 }

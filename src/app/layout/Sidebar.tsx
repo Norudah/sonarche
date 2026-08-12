@@ -1,26 +1,32 @@
 import { cn } from "@heroui/react";
+import type { LucideIcon } from "lucide-react";
 import {
-  ChevronLeft,
   Disc,
   Download,
   FileText,
   FolderInput,
   History,
   Layers,
+  LayoutGrid,
   Mic2,
   Music,
-  Settings,
+  Plus,
   Tags,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
-import { paths } from "@/app/routes";
+import { paths, playlistPath } from "@/app/routes";
+import { useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
+import { PlaylistMarkerGlyph } from "@/features/library/playlists/PlaylistGlyph";
+import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
+import { sidebarPlaylists } from "@/features/library/playlists/playlists";
+import { useTriageCount } from "@/features/library/triage/useTriageCount";
 import { settingsCategories } from "@/features/settings/categories";
+import { useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { isMacOS } from "@/shared/lib/platform";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { SonarcheMark } from "@/shared/ui/SonarcheMark";
@@ -29,13 +35,20 @@ function NavItem({
   to,
   label,
   icon: Icon,
+  glyph,
   end,
+  badge = 0,
   indicatorId = layoutIds.navIndicator,
 }: {
   to: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  /** Takes the icon's place when the entry has a face of its own — a playlist
+   * wearing its thumbnail or its colour. */
+  glyph?: ReactNode;
   end?: boolean;
+  /** A count worth a glance (things to fix behind this entry). Zero hides it. */
+  badge?: number;
   indicatorId?: string;
 }) {
   return (
@@ -60,21 +73,53 @@ function NavItem({
               className="absolute inset-0 rounded-lg bg-accent/15"
             />
           )}
-          <Icon className="relative size-4 shrink-0" />
-          <span className="relative">{label}</span>
+          {/* The wrapper carries the stacking and the 16px box, so a glyph only
+              has to fill it — an <img> and an <svg> would otherwise need two
+              different sets of classes at the call site. */}
+          {glyph ? (
+            <span className="relative flex size-4 shrink-0 items-center justify-center">{glyph}</span>
+          ) : (
+            Icon && <Icon className="relative size-4 shrink-0" />
+          )}
+          {/* min-w-0 + truncate: playlist names are user text and must clip
+              rather than bend the sidebar's column. */}
+          <span className="relative min-w-0 truncate">{label}</span>
+          {/* Amber, like the triage counts it echoes — accent would dissolve
+              into the active pill. Capped so a neglected library cannot bend
+              the sidebar's column. */}
+          {badge > 0 && (
+            <span className="relative ml-auto rounded-full bg-warning-soft px-1.5 py-px text-[0.6875rem] font-semibold text-warning tabular-nums">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
         </>
       )}
     </NavLink>
   );
 }
 
-function NavSection({ label, children }: { label: string; children: ReactNode }) {
+function NavSection({
+  label,
+  action,
+  tourId,
+  children,
+}: {
+  label: string;
+  action?: ReactNode;
+  /** Anchor for the guided tour's spotlight — see `app/tour`. */
+  tourId?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div data-tour={tourId} className="flex flex-col gap-1.5">
       {/* A shade lighter and a hair smaller than the items they head: these are
           signposts, and they should be found when looked for rather than read
-          on the way past. */}
-      <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">{label}</p>
+          on the way past. The optional action keeps to the same register — a
+          control found when looked for, not a button competing with the items. */}
+      <div className="flex items-center justify-between pr-2 pl-3">
+        <p className="text-[10px] font-semibold tracking-widest text-muted/70 uppercase">{label}</p>
+        {action}
+      </div>
       <nav className="flex flex-col gap-1">{children}</nav>
     </div>
   );
@@ -93,28 +138,117 @@ function Divider() {
 function MainNav() {
   const { t } = useTranslation("common");
   const { t: tLibrary } = useTranslation("library");
+  // Subscribing here also warms the library cache from app start, so the
+  // explorers open on data the sidebar already paid for.
+  const toFix = useTriageCount();
+  const badges = useNotificationBadges();
 
   return (
     <div className="flex flex-col">
-      <NavSection label={t("nav.sections.explorer")}>
+      <NavSection label={t("nav.sections.explorer")} tourId="explorer">
         <NavItem to={paths.download} label={t("nav.download")} icon={Download} end />
         {/* Directly under Downloads: the two ways music enters the ark, in the
             order most people meet them. */}
         <NavItem to={paths.import} label={t("nav.import")} icon={FolderInput} />
         <NavItem to={paths.history} label={t("nav.history")} icon={History} />
-        <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} />
+        <NavItem to={paths.metadata} label={t("nav.metadata")} icon={FileText} badge={badges ? toFix : 0} />
       </NavSection>
 
       <Divider />
 
-      <NavSection label={t("nav.sections.arche")}>
+      <NavSection label={t("nav.sections.arche")} tourId="arche">
         <NavItem to={paths.libraryTracks} label={tLibrary("views.tracks")} icon={Music} />
         <NavItem to={paths.libraryAlbums} label={tLibrary("views.albums")} icon={Disc} />
         <NavItem to={paths.libraryArtists} label={tLibrary("views.artists")} icon={Mic2} />
         <NavItem to={paths.libraryGenres} label={tLibrary("views.genres")} icon={Layers} />
         <NavItem to={paths.libraryCategories} label={tLibrary("views.categories")} icon={Tags} />
       </NavSection>
+
+      <Divider />
+
+      <PlaylistsNav />
     </div>
+  );
+}
+
+/**
+ * Its own section, not a shelf of the Arche: the shelves above catalogue what
+ * the library *is*, while a playlist is something the user made out of it —
+ * and each one is a destination, so each one gets a nav entry of its own.
+ *
+ * The "+" lives in the section header rather than as a pseudo-item in the
+ * list: an item that creates instead of navigating would be a button dressed
+ * as a destination, and it would sink below the fold as the list grows.
+ *
+ * Bounded on purpose. A user with forty playlists would otherwise turn this
+ * column into a scrolling directory, and navigation that has to be searched is
+ * no longer navigation: the sidebar names the eight lists you last touched
+ * (see `sidebarPlaylists`) and the shelf heading them holds every one of them.
+ */
+function PlaylistsNav() {
+  const { t: tLibrary } = useTranslation("library");
+  const navigate = useNavigate();
+  const playlists = usePlaylists();
+  const create = useCreatePlaylist();
+  const [creating, setCreating] = useState(false);
+
+  const all = playlists.data ?? [];
+  const shown = sidebarPlaylists(all);
+
+  return (
+    <NavSection
+      label={tLibrary("views.playlists")}
+      tourId="playlists"
+      action={
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          aria-label={tLibrary("playlists.create")}
+          title={tLibrary("playlists.create")}
+          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted/70 outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      }
+    >
+      {/* The shelf first, above the lists it holds — not below them as an
+          afterthought. It is where a playlist is found when its name is not on
+          screen, and a door at the bottom of a growing column is a door that
+          moves. No tally: the number of playlists is not a thing to keep in
+          your head, and the shelf is one click away from the exact answer.
+          Then favorites, always second — the app's own list, ahead of the
+          user's, in the seat it never leaves. */}
+      <NavItem to={paths.libraryPlaylists} label={tLibrary("playlists.all")} icon={LayoutGrid} end />
+
+      {shown.map((playlist) => (
+        <NavItem
+          key={playlist.id}
+          to={playlistPath(playlist.id)}
+          label={playlist.kind === "favorites" ? tLibrary("playlists.favorites") : playlist.name}
+          glyph={<PlaylistMarkerGlyph playlist={playlist} className="size-4" />}
+        />
+      ))}
+
+      <PlaylistNameDialog
+        isOpen={creating}
+        onClose={() => setCreating(false)}
+        title={tLibrary("playlists.create")}
+        confirmLabel={tLibrary("playlists.createConfirm")}
+        existing={all}
+        reservedNames={[tLibrary("playlists.favorites")]}
+        isPending={create.isPending}
+        onSubmit={(name) =>
+          create.mutate(name, {
+            onSuccess: (created) => {
+              setCreating(false);
+              // Straight into the new, empty list: its empty state says how to
+              // fill it, which is the next thing the user will want to know.
+              navigate(playlistPath(created.id));
+            },
+          })
+        }
+      />
+    </NavSection>
   );
 }
 
@@ -136,20 +270,9 @@ function SettingsNav() {
 
 export function Sidebar() {
   const { t } = useTranslation("common");
-  const { t: tSettings } = useTranslation("settings");
   const { pathname } = useLocation();
-  const navigate = useNavigate();
 
   const inSettings = pathname.startsWith(paths.settings);
-
-  // Where the back arrow returns to: the last place that wasn't settings. Kept
-  // in a ref and updated only while outside settings, so switching categories
-  // (all under /settings) never overwrites the exit target. An effect because
-  // it records navigation history — an external timeline, not render output.
-  const exitTarget = useRef<string>(paths.download);
-  useEffect(() => {
-    if (!inSettings) exitTarget.current = pathname;
-  }, [inSettings, pathname]);
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
@@ -184,7 +307,9 @@ export function Sidebar() {
       <div className="relative flex-1">
         <div
           className={cn(
-            "absolute inset-0 px-3 transition-opacity duration-200 ease-out",
+            // Scrolls: the playlists section grows with the user's lists, and
+            // the column must clip and scroll rather than push Settings out.
+            "absolute inset-0 overflow-y-auto px-3 pb-2 transition-opacity duration-200 ease-out",
             inSettings ? "pointer-events-none opacity-0" : "opacity-100",
           )}
           aria-hidden={inSettings}
@@ -202,33 +327,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* The bottom entry keeps its spot and only its face changes: the settings
-          link in the app, a back control in settings — same cross-fade as the
-          nav above. The link stays in flow to give the row its height; the back
-          button overlays it. */}
-      <div className="relative px-3 pt-2 pb-4">
-        <div
-          className={cn(
-            "transition-opacity duration-200 ease-out",
-            inSettings ? "pointer-events-none opacity-0" : "opacity-100",
-          )}
-          aria-hidden={inSettings}
-        >
-          <NavItem to={paths.settings} label={tSettings("title")} icon={Settings} />
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate(exitTarget.current)}
-          className={cn(
-            "group absolute inset-x-3 top-2 flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition-opacity duration-200 ease-out hover:bg-default/40",
-            inSettings ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          aria-hidden={!inSettings}
-        >
-          <ChevronLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
-          <span>{tSettings("back")}</span>
-        </button>
-      </div>
+      {/* No bottom entry any more: the way into settings, and back out of it, is
+          one control in the topbar — see `SettingsToggle`. The column ends where
+          the nav does, and the padding below belongs to the nav. */}
+      <div className="pb-2" />
     </aside>
   );
 }

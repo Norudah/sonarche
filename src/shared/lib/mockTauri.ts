@@ -25,6 +25,7 @@ function job(over: Record<string, unknown>) {
     report: null,
     tracks: [],
     downloadAttempts: 1,
+    forcedAlbum: null as { title: string; artist: string | null; albumId?: number | null } | null,
     createdAt: now,
     updatedAt: now,
     ...over,
@@ -78,6 +79,10 @@ const jobs = [
     thumbnail: thumb("#f0a", "#60c"),
     artist: "Various Artists",
     createdAt: now - 500,
+    // Bound for an existing record — album 1 is Skillet's "Awake", the first
+    // one `withAlbumIds` numbers. It is what makes the delete guard reachable
+    // in the preview: that album refuses to be deleted while this job runs.
+    forcedAlbum: { title: "Awake", artist: "Skillet", albumId: 1 },
     tracks: [
       albumTrack({
         index: 1,
@@ -170,6 +175,9 @@ const jobs = [
     title: "Awake",
     artist: "Skillet",
     thumbnail: thumb("#2c8", "#083"),
+    // Two dead playlist slots (deleted/private videos), skipped at probe:
+    // exercises the detail panel's "album may be incomplete" notice.
+    unavailable: 2,
     createdAt: now - 5500,
     tracks: [
       albumTrack({
@@ -228,6 +236,29 @@ const jobs = [
       albumTrack({ index: 4, videoId: "d4", title: "Sh-Boom", duration: 158, status: "done", itemId: 200 }),
     ],
   }),
+  // Stopped by the user mid-download: terminal without an error, retryable,
+  // and its tracks keep the resume markers a retry would pick up.
+  job({
+    kind: "album",
+    status: "cancelled",
+    url: "https://youtube.com/playlist?list=OLAK5uy_stopped",
+    title: "Random Access Memories",
+    artist: "Daft Punk",
+    thumbnail: thumb("#888", "#334"),
+    createdAt: now - 5900,
+    tracks: [
+      albumTrack({
+        index: 1,
+        videoId: "c1",
+        title: "Give Life Back to Music",
+        duration: 275,
+        status: "downloaded",
+        stagedPath: "/tmp/1.m4a",
+      }),
+      albumTrack({ index: 2, videoId: "c2", title: "The Game of Love", duration: 322 }),
+      albumTrack({ index: 3, videoId: "c3", title: "Giorgio by Moroder", duration: 544 }),
+    ],
+  }),
   job({
     status: "failed",
     failedStep: "download",
@@ -246,9 +277,11 @@ const jobs = [
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
+// The API delays mirror the backend's fixed defaults — `preferences.rs` stamps
+// them on every load, so the mock must never show a value the app can't hold.
 const preferences = {
   lastfmFetchDelaySeconds: 1,
-  acoustidLookupDelaySeconds: 0.5,
+  acoustidLookupDelaySeconds: 1,
   downloadDelaySeconds: 3,
 };
 
@@ -262,6 +295,26 @@ const preferenceFields: Record<string, keyof typeof preferences> = {
  * AAC, which is exactly what importing someone's existing collection produces.
  * A format the player refuses is a state the UI has to draw, so it needs to be
  * reachable by clicking a row rather than only in a real install. */
+const MOCK_RELEASE_BODY = `## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-08-12)
+
+### En bref
+
+* Un clic sur une pochette l'agrandit, et tu peux la recadrer sans la remplacer.
+* La langue se choisit dès l'installation.
+* Chaque suppression demande confirmation, partout.
+
+### Features
+
+* **library:** let a cover be recropped in place ([1a2b3c4](https://github.com/Norudah/sonarche/commit/1a2b3c4d))
+* **onboarding:** pick the language during setup ([5e6f7a8](https://github.com/Norudah/sonarche/commit/5e6f7a8b))
+* **shell:** name the two modes on the lens toggle ([8607459](https://github.com/Norudah/sonarche/commit/86074590))
+
+### Bug Fixes
+
+* **ui:** mark every delete as destructive ([9b8c7d6](https://github.com/Norudah/sonarche/commit/9b8c7d6e))
+* **shell:** keep the app's name on the Windows window ([f9d5943](https://github.com/Norudah/sonarche/commit/f9d59430))
+`;
+
 const UNPLAYABLE_TITLE = "Wait";
 
 /** Whether the mock engine would open this file. Mirrors the decoder's own
@@ -287,7 +340,7 @@ const libraryTracks = [
     length: 178,
     bitrate: 256000,
     format: "AAC",
-    path: "/Users/dev/Music/Sonarche/Skillet/Monster.m4a",
+    path: "/Users/dev/Music/Sonarche/Music/Skillet/Monster.m4a",
     // Square cover art: the queue swaps the 16:9 YouTube thumbnail for this
     // once the enrich step has filed the item.
     art_path: thumb("#334", "#112"),
@@ -361,7 +414,7 @@ const libraryTracks = [
     length,
     bitrate: 256000,
     format: title === UNPLAYABLE_TITLE ? "Opus" : "AAC",
-    path: `/Users/dev/Music/Sonarche/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
+    path: `/Users/dev/Music/Sonarche/Music/${artist}/${title}.${title === UNPLAYABLE_TITLE ? "opus" : "m4a"}`,
     art_path: cover ? thumb(cover.split("|")[0], cover.split("|")[1]) : null,
     bonus_source: null,
     mb_trackid: null,
@@ -397,11 +450,15 @@ const libraryTracks = [
     length,
     bitrate: 256000,
     format: "AAC",
-    path: `/Users/dev/Music/Sonarche/Various Artists/${title}.m4a`,
+    path: `/Users/dev/Music/Sonarche/Music/Various Artists/${title}.m4a`,
     art_path: thumb("#f43f5e", "#7c2d12"),
     bonus_source: null,
     mb_trackid: null,
     suspect_match: false,
+    // A forced album that found no artwork of its own and kept the video's
+    // thumbnail — the state the album panel's cover notice exists to report,
+    // and one nothing else in the mock could reach.
+    provisional_cover: true,
     // Categorized soundtrack: the Categories page's first card.
     category: "Video Games",
     soundtrack: true,
@@ -429,7 +486,7 @@ const libraryTracks = [
     length: 265,
     bitrate: 256000,
     format: "AAC",
-    path: `/Users/dev/Music/Sonarche/Bryan Adams/${title}.m4a`,
+    path: `/Users/dev/Music/Sonarche/Music/Bryan Adams/${title}.m4a`,
     art_path: thumb("#d97706", "#78350f"),
     bonus_source: null,
     mb_trackid: "rec-yctm",
@@ -467,6 +524,18 @@ function inflate<
           mb_trackid: null,
           suspect_match: false,
         };
+  });
+}
+
+/** beets album ids, assigned per (album artist, album) group — what the cover
+ * replacement keys its write on. */
+function withAlbumIds<T extends { album: string; album_artist: string }>(tracks: T[]): (T & { album_id: number })[] {
+  const ids = new Map<string, number>();
+  return tracks.map((track) => {
+    const key = `${track.album_artist}␟${track.album}`;
+    const id = ids.get(key) ?? ids.size + 1;
+    ids.set(key, id);
+    return { ...track, album_id: id };
   });
 }
 
@@ -532,9 +601,108 @@ function runMockSetup(): Promise<unknown> {
   });
 }
 
+/** Artist images this preview session set, name -> stand-in path. Starts
+ * empty on purpose: the generated motif is the shipped default. */
+const artistImages = new Map<string, string>();
+
+/**
+ * The playlists store, mutated in place as the Rust commands would. The
+ * favorites row is always there (the backend seeds it at startup); the user
+ * rows cover three shapes worth looking at: a mixed list long enough for the
+ * 2×2 mosaic, a single-album list (one cover, not four copies of it), and one
+ * carrying a dead item id — the pruned-library case the views must absorb.
+ */
+interface MockPlaylist {
+  id: number;
+  name: string;
+  kind: "user" | "favorites";
+  cover_path: string | null;
+  marker: string | null;
+  created_at: number;
+  updated_at: number;
+  item_ids: number[];
+}
+
+const mockPlaylists: MockPlaylist[] = [
+  {
+    id: 100,
+    name: "Favorites",
+    kind: "favorites",
+    cover_path: null,
+    marker: null,
+    created_at: now - 86_400_000 * 30,
+    updated_at: now - 86_400_000,
+    item_ids: isEmpty ? [] : [104, 112],
+  },
+  ...(isEmpty
+    ? []
+    : ([
+        {
+          id: 1,
+          name: "Sessions de nuit",
+          kind: "user",
+          cover_path: null,
+          // The three nav faces, one per row: a picked icon, a colour chip and
+          // the default glyph — so the sidebar shows all of them at once.
+          marker: "icon:moon",
+          created_at: now - 86_400_000 * 9,
+          updated_at: now - 3_600_000,
+          item_ids: [110, 106, 112, 116, 100, 2, 118],
+        },
+        {
+          id: 2,
+          name: "French touch",
+          kind: "user",
+          cover_path: null,
+          marker: "color:rose",
+          created_at: now - 86_400_000 * 4,
+          updated_at: now - 86_400_000,
+          item_ids: [103, 104, 105],
+        },
+        {
+          id: 4,
+          name: "Sport",
+          kind: "user",
+          // The thumbnail mode: a playlist with an image of its own, wearing it
+          // in the navigation.
+          cover_path: thumb("#f97316", "#7c2d12"),
+          marker: "cover",
+          created_at: now - 86_400_000 * 6,
+          updated_at: now - 5_400_000,
+          item_ids: [107, 108],
+        },
+        {
+          id: 3,
+          name: "Rétro console",
+          kind: "user",
+          cover_path: null,
+          marker: null,
+          created_at: now - 86_400_000 * 2,
+          updated_at: now - 7_200_000,
+          item_ids: [200, 201, 9999, 203],
+        },
+      ] as MockPlaylist[])),
+];
+let nextPlaylistId = 5;
+
+function mockPlaylist(id: unknown): MockPlaylist {
+  const playlist = mockPlaylists.find((row) => row.id === Number(id));
+  if (!playlist) throw "invalid input: playlist not found";
+  return playlist;
+}
+
+// The user's genre placements and, per touched genre, the bucket the seed had
+// before the first override — enough to make reset honest in the mock.
+const mockGenreOverrides = new Map<string, string>();
+const mockBaseBuckets = new Map<string, string | null>();
+
 const responses: Record<string, unknown> = {
   list_jobs: isEmpty ? [] : jobs,
-  list_library: { tracks: isEmpty ? [] : inflate(libraryTracks, requestedTracks) },
+  remux_library: { scanned: 0, fragmented: 0, remuxed: 0, failed: [] },
+  list_library: { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) },
+  // The compiled decoder's list. One track in the seed is a `.wma`, so the
+  // unplayable badge is reachable in the preview.
+  playable_extensions: ["mp3", "flac", "m4a", "m4b", "mp4", "aac", "ogg", "oga", "wav", "wave", "aiff", "aif", "aifc"],
   list_api_keys: apiKeys,
   get_preferences: preferences,
 };
@@ -577,6 +745,11 @@ function tickDownloadProgress() {
 
 export function installMockTauri() {
   tickDownloadProgress();
+  // @tauri-apps/api v2 routes `unlisten` through this internals object rather
+  // than an IPC call; without it every effect cleanup rejects in the console.
+  (window as unknown as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    unregisterListener: () => {},
+  };
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     transformCallback: (callback: (message: unknown) => void) => {
@@ -607,9 +780,183 @@ export function installMockTauri() {
         if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
         return key;
       }
-      // The OS folder picker, standing in for a choice that cannot be made in a
-      // browser. Always the same folder, so the summary below is about it.
-      if (cmd === "plugin:dialog|open") return MOCK_IMPORT_FOLDER;
+      // The OS picker, standing in for a choice that cannot be made in a
+      // browser. A folder request gets the import folder; a file request is the
+      // cover picker, and gets a stand-in image path.
+      if (cmd === "plugin:dialog|open") {
+        const options = payload?.options as { directory?: boolean } | undefined;
+        return options?.directory ? MOCK_IMPORT_FOLDER : "/Users/dev/Pictures/discovery-scan.jpg";
+      }
+      // The picked image, admitted for preview. Landscape on purpose, so the
+      // reframe slider — the modal's one real control — is exercised.
+      if (cmd === "allow_cover_preview") {
+        return { path: thumb("#0ea5e9", "#164e63"), bytes: 4_600_000 };
+      }
+      // The cover the album already wears, reopened for a tighter frame. Square
+      // here, the way a real archive is — the point being to check that the
+      // stage receives it, not the aspect ratio it arrives in.
+      if (cmd === "album_recrop_source") {
+        return { path: thumb("#f472b6", "#7c3aed"), bytes: 3_100_000 };
+      }
+      // The Cover Art Archive's uploads for a release: three plausible scans,
+      // front first, after a network-ish delay. `?nocandidates` previews the
+      // empty state, `?candidatesfail` the error one.
+      if (cmd === "list_cover_candidates") {
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        const search = new URLSearchParams(window.location.search);
+        if (search.has("candidatesfail")) throw new Error("caa unreachable");
+        if (search.has("nocandidates")) return { candidates: [] };
+        return {
+          candidates: [
+            {
+              id: "caa-1",
+              thumb: thumb("#7c3aed", "#312e81"),
+              image_url: "https://coverartarchive.org/release/mock/1.jpg",
+              front: true,
+              types: ["Front"],
+            },
+            {
+              id: "caa-2",
+              thumb: thumb("#0d9488", "#134e4a"),
+              image_url: "https://coverartarchive.org/release/mock/2.jpg",
+              front: false,
+              types: ["Back"],
+            },
+            {
+              id: "caa-3",
+              thumb: thumb("#b45309", "#78350f"),
+              image_url: "https://coverartarchive.org/release/mock/3.jpg",
+              front: false,
+              types: ["Medium"],
+            },
+          ],
+        };
+      }
+      if (cmd === "set_album_cover") {
+        const albumId = Number(payload?.albumId);
+        const { tracks } = responses.list_library as { tracks: { album_id: number }[] };
+        const fresh = thumb("#0ea5e9", "#164e63");
+        let embedded = 0;
+        for (const track of tracks as unknown as {
+          album_id: number;
+          art_path: string | null;
+          provisional_cover?: boolean;
+        }[]) {
+          if (track.album_id !== albumId) continue;
+          track.art_path = fresh;
+          track.provisional_cover = false;
+          embedded += 1;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        return { art_path: fresh, side: 180, embedded };
+      }
+      if (cmd === "list_artist_images") {
+        return {
+          images: [...artistImages].map(([name, path]) => ({ name, path, updated_at: 0 })),
+        };
+      }
+      if (cmd === "set_artist_image") {
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        artistImages.set(String(payload?.name), thumb("#7c3aed", "#312e81"));
+        return { name: payload?.name, filename: "mock.jpg" };
+      }
+      if (cmd === "remove_artist_image") {
+        return { removed: artistImages.delete(String(payload?.name)) };
+      }
+      // A pasted link: pretend the download landed in a temp file. Adoption
+      // then goes through allow_cover_preview, which serves the stand-in.
+      if (cmd === "fetch_artist_image_url") {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        if (new URLSearchParams(window.location.search).has("urlfail")) throw new Error("not an image");
+        return { path: "/tmp/mock-fetched.jpg", bytes: 2_400_000 };
+      }
+      // The clipboard path: a browser cannot serve the OS pasteboard, so the
+      // image read refuses and the text read hands back a copied image address
+      // — which exercises the whole clipboard→link→adopt chain above.
+      if (cmd === "plugin:clipboard-manager|read_image") throw new Error("no image on the mock clipboard");
+      if (cmd === "plugin:clipboard-manager|read_text") return "https://example.com/mock-copied-cover.jpg";
+      if (cmd === "save_pasted_image") {
+        return { path: "/tmp/mock-pasted.png", bytes: 1_000_000 };
+      }
+      if (cmd === "list_playlists") return { playlists: mockPlaylists.map((row) => ({ ...row })) };
+      if (cmd === "create_playlist") {
+        const name = String(payload?.name ?? "").trim();
+        if (name === "") throw "invalid input: empty playlist name";
+        if (mockPlaylists.some((row) => row.name.toLowerCase() === name.toLowerCase())) {
+          throw "invalid input: a playlist with this name already exists";
+        }
+        const row: MockPlaylist = {
+          id: nextPlaylistId++,
+          name,
+          kind: "user",
+          cover_path: null,
+          marker: null,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          item_ids: [],
+        };
+        mockPlaylists.push(row);
+        mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+        return { playlist: { ...row } };
+      }
+      if (cmd === "rename_playlist") {
+        const row = mockPlaylist(payload?.id);
+        if (row.kind === "favorites") throw "invalid input: the favorites playlist cannot be renamed";
+        row.name = String(payload?.name ?? "").trim();
+        mockPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+        return { ok: true };
+      }
+      if (cmd === "delete_playlist") {
+        if (mockPlaylist(payload?.id).kind === "favorites") {
+          throw "invalid input: the favorites playlist cannot be deleted";
+        }
+        const index = mockPlaylists.findIndex((row) => row.id === Number(payload?.id));
+        if (index >= 0) mockPlaylists.splice(index, 1);
+        return { ok: true };
+      }
+      if (cmd === "set_playlist_cover") {
+        const row = mockPlaylist(payload?.id);
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        row.cover_path = thumb("#0ea5e9", "#164e63");
+        row.updated_at = Date.now();
+        return { id: row.id, filename: "mock.jpg" };
+      }
+      if (cmd === "set_playlist_marker") {
+        const row = mockPlaylist(payload?.id);
+        row.marker = String(payload?.marker ?? "") || null;
+        row.updated_at = Date.now();
+        return { ok: true };
+      }
+      if (cmd === "remove_playlist_cover") {
+        const row = mockPlaylist(payload?.id);
+        const had = row.cover_path != null;
+        row.cover_path = null;
+        return { removed: had };
+      }
+      if (cmd === "add_playlist_tracks") {
+        const row = mockPlaylist(payload?.id);
+        const present = new Set(row.item_ids);
+        const incoming = (payload?.itemIds as number[]) ?? [];
+        const fresh = incoming.filter((id) => !present.has(id) && present.add(id));
+        row.item_ids.push(...fresh);
+        row.updated_at = Date.now();
+        return { added: fresh.length, skipped: incoming.length - fresh.length };
+      }
+      if (cmd === "remove_playlist_tracks") {
+        const row = mockPlaylist(payload?.id);
+        const doomed = new Set((payload?.positions as number[]) ?? []);
+        const before = row.item_ids.length;
+        row.item_ids = row.item_ids.filter((_, position) => !doomed.has(position));
+        row.updated_at = Date.now();
+        return { removed: before - row.item_ids.length };
+      }
+      if (cmd === "move_playlist_track") {
+        const row = mockPlaylist(payload?.id);
+        const [moved] = row.item_ids.splice(Number(payload?.from), 1);
+        if (moved != null) row.item_ids.splice(Number(payload?.to), 0, moved);
+        row.updated_at = Date.now();
+        return { ok: true };
+      }
       // What the Settings pane shows as the installed version. A browser has no
       // bundle to read one from. Kept equal to the `currentVersion` the check
       // below reports, so `?update` previews a coherent 0.8.0 → 0.9.0 and not a
@@ -617,16 +964,48 @@ export function installMockTauri() {
       if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
+      // The body is a faithful release-please changelog with the hand-written
+      // `En bref` section on top — the exact shape `parseReleaseNotes` is fed
+      // in production, so `?update` previews the notes modal too.
       if (cmd === "plugin:updater|check") {
         return new URLSearchParams(window.location.search).has("update")
-          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: null, rawJson: {} }
+          ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: MOCK_RELEASE_BODY, rawJson: {} }
           : null;
       }
       if (cmd === "plugin:updater|download_and_install") return null;
       if (cmd.startsWith("plugin:updater|") || cmd.startsWith("plugin:process|")) return null;
       if (cmd === "scan_import_folder") return mockScan(String(payload?.path ?? ""));
-      if (cmd === "start_library_import") return mockLibraryImport(String(payload?.folder ?? ""));
+      if (cmd === "start_library_import")
+        return mockLibraryImport(String(payload?.folder ?? ""), payload as Record<string, unknown>);
+      if (cmd === "cancel_library_import") {
+        mockImportCancelRequested = true;
+        return null;
+      }
+      if (cmd === "list_jobs_page") {
+        // Mirrors the backend: one slice of the whole archive plus the totals
+        // the history page paginates on.
+        const all = isEmpty ? [] : jobs;
+        const offset = Number(payload?.offset ?? 0);
+        const limit = Number(payload?.limit ?? 25);
+        const terminal = new Set(["done", "failed", "cancelled"]);
+        return {
+          jobs: all.slice(offset, offset + limit),
+          total: all.length,
+          terminalTotal: all.filter((job) => terminal.has(String(job.status))).length,
+        };
+      }
+      // Mirrors `JobsState::target_albums`: the destinations of whatever is
+      // still moving, which is what the library's delete guard reads.
+      if (cmd === "download_target_albums") {
+        const terminal = new Set(["done", "failed", "cancelled"]);
+        return (isEmpty ? [] : jobs)
+          .filter((job) => !terminal.has(String(job.status)))
+          .map((job) => job.forcedAlbum?.albumId)
+          .filter((id): id is number => id != null);
+      }
       if (cmd === "list_imports") return [...mockImports];
+      if (cmd === "preview_import_undo") return mockUndoPreview(String(payload?.id ?? ""));
+      if (cmd === "undo_import") return mockUndo(String(payload?.id ?? ""));
       if (cmd === "library_align_scan") return mockAlignScan();
       if (cmd === "library_align_apply") return mockAlignApply(payload);
       if (cmd === "get_env_status") {
@@ -696,6 +1075,8 @@ export function installMockTauri() {
         const queued = job({
           url: String(payload?.url ?? ""),
           kind: String(payload?.kind ?? "single"),
+          category: (payload?.category as string | null) ?? null,
+          forcedAlbum: (payload?.forcedAlbum as unknown) ?? null,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
@@ -707,7 +1088,7 @@ export function installMockTauri() {
       if (cmd === "clear_job_history") {
         for (let i = jobs.length - 1; i >= 0; i--) {
           const status = (jobs[i] as { status?: string }).status;
-          if (status === "done" || status === "failed") jobs.splice(i, 1);
+          if (status === "done" || status === "failed" || status === "cancelled") jobs.splice(i, 1);
         }
         mockImports.length = 0;
         return [...jobs];
@@ -716,6 +1097,15 @@ export function installMockTauri() {
         const target = jobs.find((j) => j.id === payload?.id);
         if (!target) return {};
         Object.assign(target, { status: "queued", error: null, failedStep: null });
+        return target;
+      }
+      if (cmd === "cancel_job") {
+        const target = jobs.find((j) => j.id === payload?.id);
+        if (!target) return {};
+        Object.assign(target, { status: "cancelled", error: null, failedStep: null });
+        for (const track of (target as { tracks: { status: string }[] }).tracks) {
+          if (track.status === "downloading") track.status = "pending";
+        }
         return target;
       }
       // Apply edits to the in-memory seed so a re-list reflects them — without
@@ -733,6 +1123,133 @@ export function installMockTauri() {
           updated += 1;
         }
         return { updated };
+      }
+      // Same in-memory seed, so declaring a collection actually silences the
+      // missing-track line on the metadata page rather than only redrawing the
+      // switch. Written on every track of the album, which is where the real
+      // listing surfaces the album row's own attribute.
+      if (cmd === "set_album_kind") {
+        const ids = new Set((payload?.albumIds as number[]) ?? []);
+        const kind = payload?.kind === "collection" ? "collection" : null;
+        // The already-built listing, like `set_album_cover`: `list_library`'s
+        // rows are copies made once at module load, so writing to the seed
+        // behind them would change nothing anyone reads.
+        const { tracks } = responses.list_library as { tracks: { album_id: number; album_kind?: string | null }[] };
+        let updated = 0;
+        for (const track of tracks) {
+          if (!ids.has(track.album_id)) continue;
+          track.album_kind = kind;
+          updated += 1;
+        }
+        return { updated };
+      }
+      // The classify verb, on the same built listing: every track carrying the
+      // genre gets rebucketed, so the shelves reorganize in the browser. The
+      // base bucket is remembered at first override — that is what "original
+      // placement" restores.
+      if (cmd === "set_genre_family") {
+        const genre = String(payload?.genre ?? "").trim();
+        const family = (payload?.family as string | null) ?? null;
+        const key = genre.toLowerCase();
+        const { tracks } = responses.list_library as {
+          tracks: { genre: string | null; genre_bucket: string | null }[];
+        };
+        const matching = tracks.filter((track) => (track.genre ?? "").toLowerCase() === key);
+        if (!mockBaseBuckets.has(key)) mockBaseBuckets.set(key, matching[0]?.genre_bucket ?? null);
+        const target = family ?? mockBaseBuckets.get(key) ?? null;
+        for (const track of matching) track.genre_bucket = target;
+        if (family == null || family === mockBaseBuckets.get(key)) mockGenreOverrides.delete(key);
+        else mockGenreOverrides.set(key, family);
+        return { genre, family: target, overridden: mockGenreOverrides.has(key) };
+      }
+      if (cmd === "list_genre_overrides") {
+        return { overrides: [...mockGenreOverrides].map(([genre, family]) => ({ genre, family })) };
+      }
+      // The move verb, on the same built listing: tracks re-filed onto the
+      // target row (or a fresh one), numbered onward when asked — so both
+      // pickers, the kind proposal and the undo toast all run in the browser.
+      if (cmd === "move_tracks") {
+        const spec = payload?.spec as {
+          itemIds: number[];
+          targetAlbumId?: number;
+          newAlbum?: { album: string; albumartist: string };
+          kind?: string;
+          renumber?: boolean;
+        };
+        const { tracks } = responses.list_library as { tracks: Record<string, unknown>[] };
+        const created = spec.targetAlbumId == null;
+        const targetAlbumId = created
+          ? Math.max(0, ...tracks.map((track) => Number(track.album_id) || 0)) + 1
+          : Number(spec.targetAlbumId);
+        const residents = tracks.filter((track) => track.album_id === targetAlbumId);
+        if (!created && residents.length === 0) throw new Error("album not found");
+        const album = created ? spec.newAlbum!.album : String(residents[0].album);
+        const albumArtist = created ? spec.newAlbum!.albumartist : String(residents[0].album_artist ?? "");
+        const targetKind = spec.kind
+          ? spec.kind === "collection"
+            ? "collection"
+            : null
+          : created
+            ? null
+            : ((residents[0]?.album_kind as string | null) ?? null);
+        const targetArt = created ? null : ((residents[0]?.art_path as string | null) ?? null);
+
+        let next = spec.renumber ? Math.max(0, ...residents.map((track) => Number(track.track) || 0)) : 0;
+        const sources = new Set<number>();
+        let moved = 0;
+        let skipped = 0;
+        for (const id of spec.itemIds) {
+          const track = tracks.find((candidate) => candidate.id === id);
+          if (!track) continue;
+          if (track.album_id === targetAlbumId) {
+            skipped += 1;
+            continue;
+          }
+          if (track.album_id != null) sources.add(track.album_id as number);
+          track.album_id = targetAlbumId;
+          track.album = album;
+          track.album_artist = albumArtist;
+          track.art_path = targetArt;
+          if (spec.renumber) {
+            track.track = ++next;
+            track.track_total = null;
+          }
+          moved += 1;
+        }
+        for (const track of tracks) {
+          if (track.album_id === targetAlbumId) track.album_kind = targetKind;
+        }
+        const sourcesRemoved = [...sources].filter(
+          (sourceId) => !tracks.some((track) => track.album_id === sourceId),
+        ).length;
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        return { moved, skipped, created, target_album_id: targetAlbumId, sources_removed: sourcesRemoved };
+      }
+      // Answered checks, on the same built listing as `set_album_kind`: the
+      // point of the mock here is that accepting really does close the line.
+      if (cmd === "set_check_accepted") {
+        const ids = new Set((payload?.ids as number[]) ?? []);
+        const check = String(payload?.check);
+        const on = Boolean(payload?.accepted);
+        const isAlbum = payload?.scope === "album";
+        const scope = isAlbum ? "album_accepted" : "accepted";
+        const { tracks } = responses.list_library as { tracks: Record<string, unknown>[] };
+        let updated = 0;
+        for (const track of tracks) {
+          const key = isAlbum ? (track.album_id as number) : (track.id as number);
+          if (!ids.has(key)) continue;
+          const current = new Set((track[scope] as string[]) ?? []);
+          if (on) current.add(check);
+          else current.delete(check);
+          track[scope] = [...current].sort();
+          updated += 1;
+        }
+        return { updated };
+      }
+      // Re-match: a slow yes, so the album loop's progress bar and its Stop
+      // button are observable here (the real call is a network round-trip).
+      if (cmd === "reenrich_track") {
+        return new Promise((resolve) => window.setTimeout(() => resolve({ matched: true }), 1200));
       }
       // The Rust engine owns playback, so a browser preview has none. A fake
       // playhead is what keeps the player bar, the seek bar and the queue panel
@@ -785,6 +1302,8 @@ function mockScan(path: string): unknown {
       unplayable: 0,
       unplayableByExtension: {},
       unplayableExamples: [],
+      albumFolders: 0,
+      largestFolder: 0,
       bytes: 0,
       truncated: false,
     };
@@ -796,6 +1315,12 @@ function mockScan(path: string): unknown {
     unplayableByExtension: { wma: 19, opus: 6 },
     unplayableExamples: [`${path}/Old Rips/track01.wma`, `${path}/Podcasts/ep-114.opus`],
     albumFolders: MOCK_IMPORT_FOLDERS.length,
+    // Past `CROWDED_FOLDER`, so the preview shows the suggestion doing its job.
+    largestFolder: 214,
+    // The archive knows this folder: the preview shows the re-import notice,
+    // in its stopped flavour — the one that matters now that imports can be
+    // stopped.
+    previouslyImported: { folder: path, finishedAt: now - 86_400_000, cancelled: true },
     bytes: 31_400_000_000,
     truncated: false,
   };
@@ -835,6 +1360,8 @@ const mockImports: unknown[] = [
     id: "import-seed-2",
     folder: "/Volumes/Backup/archive/2019/Soundtracks",
     status: "done",
+    grouping: "folder",
+    category: "Video Games",
     error: null,
     scan: { playable: 312, unplayable: 0, unplayableByExtension: {}, bytes: 2_100_000_000, albumFolders: 14 },
     folders: 14,
@@ -869,61 +1396,107 @@ const mockImports: unknown[] = [
   },
 ];
 
+/** Armed by `cancel_library_import`, consumed by the next copy tick — the
+ * same file-on-disk handshake the real sidecar uses, minus the disk. */
+let mockImportCancelRequested = false;
+
 /**
  * An import that takes visible time.
  *
  * Instant would hide the one state worth previewing. `?failImport` stops it
  * partway instead — the failure has to be drawable too, and it is the state
- * nobody thinks to look at.
+ * nobody thinks to look at. The stop button works for real: it arms the flag
+ * above, and the copy loop breaks on the next tick, exactly one album late,
+ * like the real watchdog's half-second.
  */
-async function mockLibraryImport(folder: string): Promise<unknown> {
+async function mockLibraryImport(folder: string, options: Record<string, unknown>): Promise<unknown> {
   const failAt = new URLSearchParams(window.location.search).has("failImport") ? 3 : Infinity;
+  mockImportCancelRequested = false;
 
+  let copied = 0;
   for (const [index, album] of MOCK_IMPORT_FOLDERS.entries()) {
     await new Promise((resolve) => window.setTimeout(resolve, 700));
+    if (mockImportCancelRequested) break;
     if (index + 1 === failAt) {
       throw `beet import failed (exit 1): could not read ${folder}/${album}`;
     }
+    copied = index + 1;
     emitMockEvent("sidecar:event", {
       event: "library_import_progress",
-      data: { folders: index + 1, folder: `${folder}/${album}` },
+      data: { folders: copied, folder: `${folder}/${album}` },
     });
   }
+  const cancelled = mockImportCancelRequested;
 
   // The cover pass that follows the copy: a second count of different things,
-  // which the bar has to restart for rather than crawl the last inch.
-  for (let done = 1; done <= MOCK_IMPORT_FOLDERS.length; done += 1) {
+  // which the bar has to restart for rather than crawl the last inch. On a
+  // cancel it still runs — over what landed, like the real pass.
+  for (let done = 1; done <= copied; done += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     emitMockEvent("sidecar:event", {
       event: "library_covers_progress",
-      data: { done, total: MOCK_IMPORT_FOLDERS.length, renditions: Math.ceil(done / 2) },
+      data: { done, total: copied, renditions: Math.ceil(done / 2) },
     });
   }
 
   const record = {
     id: `import-${Date.now()}`,
     folder,
-    status: "done" as const,
+    status: cancelled ? ("cancelled" as const) : ("done" as const),
     error: null,
     scan: mockScanCounts(),
-    folders: MOCK_IMPORT_FOLDERS.length,
-    renditions: Math.ceil(MOCK_IMPORT_FOLDERS.length / 2),
-    recap: {
-      tracks: 118,
-      albums: MOCK_IMPORT_FOLDERS.length,
-      withoutYear: 12,
-      withoutGenre: 41,
-      offTree: 3,
-      albumsWithoutArt: 2,
-      albumsWithGaps: 1,
-    },
+    folders: copied,
+    renditions: Math.ceil(copied / 2),
+    // Archived alongside the result, as the backend does: the row has to be
+    // able to say what it was asked for.
+    grouping: (options?.grouping as string) ?? "folder",
+    category: (options?.category as string | null) ?? null,
+    recap:
+      copied === 0
+        ? null
+        : {
+            tracks: Math.round((118 * copied) / MOCK_IMPORT_FOLDERS.length),
+            albums: copied,
+            withoutYear: 12,
+            withoutGenre: 41,
+            offTree: 3,
+            albumsWithoutArt: 2,
+            albumsWithGaps: 1,
+          },
     finishedAt: Date.now(),
   };
   // The archive gains a row the moment an import ends, exactly as the backend
   // does it — so the History page has something to show after a preview import.
   mockImports.unshift(record);
 
-  return { folders: record.folders, renditions: record.renditions, recap: record.recap };
+  return { folders: record.folders, renditions: record.renditions, recap: record.recap, cancelled };
+}
+
+/** What one archived run still has in the library, read off its own recap —
+ * the real preview counts the library, but the mock has no library to count. */
+function mockUndoPreview(id: string): unknown {
+  const record = mockImports.find((row) => (row as { id: string }).id === id) as
+    { recap: { tracks: number; albums: number } | null } | undefined;
+  const tracks = record?.recap?.tracks ?? 0;
+  const albums = record?.recap?.albums ?? 0;
+  return {
+    tracks,
+    // One album of the run kept, so the preview shows the sentence nobody
+    // expects — the import had added to a record already on the shelf.
+    albumsRemoved: Math.max(0, albums - 1),
+    albumsKept: albums > 0 ? 1 : 0,
+    playlistEntries: tracks > 0 ? 3 : 0,
+  };
+}
+
+/** Stamp the row undone, as the backend does. The archive keeps it: a run that
+ * was taken back out is two things that happened. */
+function mockUndo(id: string): unknown {
+  const record = mockImports.find((row) => (row as { id: string }).id === id) as
+    { undoneAt?: number; recap: { tracks: number } | null } | undefined;
+  if (!record) return { removed: 0, foreign: 0, playlistEntries: 0 };
+  record.undoneAt = Date.now();
+  return { removed: record.recap?.tracks ?? 0, foreign: 0, playlistEntries: 3 };
 }
 
 /** The align pass, at preview pace: a few progress ticks, then a small plan

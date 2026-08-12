@@ -125,7 +125,17 @@ jobs:
             tag=$(gh release list --limit 1 --json tagName,isDraft \
                   --jq '[.[] | select(.isDraft == false)][0].tagName')
           fi
-          echo "id=$(gh release view "$tag" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
+          release=$(gh release view "$tag" --json databaseId,body)
+          echo "id=$(jq -r .databaseId <<<"$release")" >> "$GITHUB_OUTPUT"
+          # The release body, for `latest.json`: tauri-action fills `notes`
+          # from its `releaseBody` input, not from the release it uploads to —
+          # left unset, installed apps get an update with no story to tell.
+          # The in-app "what's new" modal parses exactly this text.
+          {
+            echo 'body<<SONARCHE_RELEASE_BODY'
+            jq -r .body <<<"$release"
+            echo 'SONARCHE_RELEASE_BODY'
+          } >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -160,6 +170,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           releaseId: ${{ steps.release.outputs.id }}
+          releaseBody: ${{ steps.release.outputs.body }}
           args: --target ${{ matrix.target }}
           # The manifest installed apps poll. Every runner writes it; each one
           # merges its platform into the file the previous ones uploaded.

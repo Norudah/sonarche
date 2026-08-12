@@ -58,7 +58,7 @@ export function CategoryHero({
   ];
 
   return (
-    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+    <header ref={ref} className="relative -mx-8 -mt-5 -mb-2 px-8 pt-5 pb-7">
       <HeroWash />
 
       <div className="relative">

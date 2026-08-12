@@ -1,50 +1,107 @@
+import { Switch } from "@heroui/react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { HeroWash } from "@/features/library/HeroWash";
+import { ChecksMenu } from "@/features/library/triage/ChecksMenu";
+import type { CheckKey } from "@/features/library/triage/enabledChecks";
+import type { TriageLine, TriageTally } from "@/features/library/triage/queue";
+import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 
 interface TriageHeroProps {
   /** Null while the library is still loading, or when there is none. */
-  toFix: number | null;
+  tally: TriageTally | null;
+  /** The full queue, disabled lines included — the menu lists them all. */
+  queue: TriageLine[];
+  disabled: CheckKey[];
   trackCount: number;
   albumCount: number;
   artistCount: number;
 }
 
 /**
- * The triage post's band.
+ * The badge switch, at the top right of the page the badge is about.
  *
- * This page was the last one in the app still opening on a bare `<h1>` on the
- * page ground, with its headline count exiled to an amber pill floating at the
- * far right — the one number the page exists to deliver, parked as far from the
- * title as the row allowed.
- *
- * So the verdict *is* the headline: "26 choses à corriger", or "Rien à
- * corriger" when there is nothing. The eyebrow carries the section name, the
- * way the album and download heroes do, and the library's own size drops to the
- * quiet line underneath where it belongs — it is context, not the message.
- *
- * The pill's other job was scrolling down to the queue. The queue now starts
- * directly under this band, so there is nothing left to scroll to.
+ * It already existed in Settings, and that was the wrong place for it: the
+ * annoyance is felt here, on the page the number sends you to, and a preference
+ * you have to go hunting for is one you resent instead of turning off. Same
+ * store as the settings card — one `useSyncExternalStore`, so flipping it here
+ * drops the sidebar badge on the spot and the settings page already agrees.
  */
-export function TriageHero({ toFix, trackCount, albumCount, artistCount }: TriageHeroProps) {
-  const { t } = useTranslation(["metadata", "library"]);
-
-  const headline = toFix == null ? t("title") : toFix > 0 ? t("toFix", { count: toFix }) : t("allClear");
+function BadgeSwitch() {
+  const { t } = useTranslation("metadata");
+  const badges = useNotificationBadges();
 
   return (
-    <header className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+    <Switch size="sm" isSelected={badges} onChange={storeNotificationBadges} className="shrink-0">
+      <Switch.Content className="flex-row-reverse gap-2">
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+        <span className="text-[0.8125rem] text-muted">{t("badgeSwitch")}</span>
+      </Switch.Content>
+    </Switch>
+  );
+}
+
+/**
+ * The triage post's band.
+ *
+ * `pt-10`, like the download and import bands and unlike the library heroes'
+ * `pt-5`: Metadata sits in the sidebar's Explorer section with those two, so it
+ * should open on the same air. It once had a second reason — the page's own drag
+ * strip owned the top 2rem and swallowed the switch's clicks until this padding
+ * pushed it clear — which died with the strip when the topbar took over dragging.
+ *
+ * The verdict *is* the headline — but it names what it counts. "64 choses à
+ * corriger" was two lies in one line: the lines were summed, so a track missing
+ * both a year and a genre was owned twice, and *corriger* framed a missing tag
+ * as a mistake the user had made. It now says how many tracks and how many
+ * albums Sonarche could still complete, each counted once, and offers rather
+ * than scolds. The library's own size stays on the quiet line underneath: it is
+ * context, not the message.
+ */
+export function TriageHero({ tally, queue, disabled, trackCount, albumCount, artistCount }: TriageHeroProps) {
+  const { t } = useTranslation(["metadata", "library"]);
+
+  return (
+    <header className="relative -mx-8 -mt-5 px-8 pt-10 pb-6">
       <HeroWash />
 
-      <div className="relative">
-        <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{headline}</h1>
-        {toFix != null && (
-          <p className="mt-1.5 text-[0.8125rem] text-muted">
-            {t("library:trackCount", { count: trackCount })} · {t("library:albumCount", { count: albumCount })} ·{" "}
-            {t("library:artistCount", { count: artistCount })}
-          </p>
-        )}
+      <div className="relative flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">{t("eyebrow")}</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{headlineOf(tally, t)}</h1>
+          {tally != null && (
+            <p className="mt-1.5 text-[0.8125rem] text-muted">
+              {t("library:trackCount", { count: trackCount })} · {t("library:albumCount", { count: albumCount })} ·{" "}
+              {t("library:artistCount", { count: artistCount })}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <ChecksMenu queue={queue} disabled={disabled} />
+          <BadgeSwitch />
+        </div>
       </div>
     </header>
   );
+}
+
+/**
+ * Both kinds in one sentence when both are present, and a single sentence when
+ * only one is — "2 albums à compléter" beats "0 titre et 2 albums", which reads
+ * as a scoreboard. The two counts are borrowed from the library namespace so a
+ * track is named the same word here as everywhere else in the app.
+ */
+function headlineOf(tally: TriageTally | null, t: TFunction<["metadata", "library"]>): string {
+  if (tally == null) return t("title");
+  if (tally.total === 0) return t("allClear");
+  if (tally.tracks > 0 && tally.albums > 0)
+    return t("toFill.both", {
+      tracks: t("library:trackCount", { count: tally.tracks }),
+      albums: t("library:albumCount", { count: tally.albums }),
+    });
+  return tally.tracks > 0 ? t("toFill.tracks", { count: tally.tracks }) : t("toFill.albums", { count: tally.albums });
 }

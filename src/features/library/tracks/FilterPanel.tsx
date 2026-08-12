@@ -60,6 +60,7 @@ function panelFilterCount(state: TrackFilterState): number {
   return [
     triage.decade != null,
     triage.missingYear,
+    triage.missingTrackNumber,
     triage.genre === GENRE_MISSING || triage.genre === GENRE_OFF_TREE,
     triage.suspectMatch,
     triage.duplicateRecording,
@@ -121,6 +122,15 @@ export function FilterPanel({ state }: { state: TrackFilterState }) {
               onPress={() => setParam("missing", triage.missingYear ? null : "year")}
             >
               {t("triage.missingYear")}
+            </ToggleChip>
+            {/* Same `missing` param as the year, so turning one on turns the
+                other off — the toggles say so by construction. */}
+            <ToggleChip
+              tone="fix"
+              isActive={triage.missingTrackNumber}
+              onPress={() => setParam("missing", triage.missingTrackNumber ? null : "track")}
+            >
+              {t("triage.missingTrackNumber")}
             </ToggleChip>
             {ownsGenre && (
               <>

@@ -4,14 +4,17 @@ import { Link } from "react-router";
 
 import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
+import { extensionOf, unplayableTest, usePlayableExtensions } from "@/features/library/playable";
+import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 import { RowActions } from "@/features/library/tracks/RowActions";
+import { NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
 import { TrackIndexCell } from "@/features/library/tracks/TrackIndexCell";
 import { formatDuration } from "@/shared/lib/format";
 import { usePlayer } from "@/shared/player/PlayerContext";
 import { TrackThumb } from "@/shared/ui/TrackThumb";
 
-const CELL = "px-3 py-2 text-[0.8125rem] text-muted";
+const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 
 /* Underline on hover only. A row holds two of these and permanently underlined
  * text would turn the table into a page of links; the pointer plus the reveal is
@@ -32,8 +35,10 @@ interface TrackRowProps {
   /** Launch playback at this row, in the list's own context. The table owns
    * the list, so the table decides what the queue is. */
   onPlay: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
+  onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
 }
 
 export function TrackRow({
@@ -43,8 +48,10 @@ export function TrackRow({
   style,
   guestOwner,
   onPlay,
-  onInspect,
+  onEdit,
   onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
 }: TrackRowProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
@@ -61,6 +68,7 @@ export function TrackRow({
   const artistLink = owner === track.artist.trim() && owner !== "" ? artistPath(owner) : null;
   const albumLink = track.album.trim() !== "" ? albumPath(owner, track.album) : null;
   const isGuest = guestOwner != null && owner !== guestOwner;
+  const isUnplayable = unplayableTest(usePlayableExtensions().data)(track);
 
   return (
     <tr
@@ -98,6 +106,17 @@ export function TrackRow({
           >
             {track.title || t("unknownTitle")}
           </span>
+          {/* The import takes these in on purpose — an unplayable file still
+              has tags and still holds its place in its album — but nothing said
+              so afterwards, and the news arrived as an error the one time
+              somebody pressed play. */}
+          {isUnplayable && (
+            <ActionHelp text={t("unplayable.why", { format: extensionOf(track.path).toUpperCase() })}>
+              <span className="shrink-0 rounded bg-warning-soft px-1 text-[0.625rem] font-semibold text-warning uppercase">
+                {t("unplayable.badge")}
+              </span>
+            </ActionHelp>
+          )}
         </div>
       </td>
 
@@ -143,7 +162,7 @@ export function TrackRow({
 
       {/* Wrapped in a span, not raw text: the row cascade animates each cell's
        * child element, and a bare text node has nothing to animate. */}
-      <td className={`${CELL} w-16 text-right tabular-nums`}>
+      <td className={`${CELL} w-20 ${NUMERIC} text-right`}>
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
@@ -152,9 +171,15 @@ export function TrackRow({
        * opacity for the length of the entrance — every row would flash its icons
        * on arrival. The animation lands on this div; the hover layer sits a
        * level deeper. `pl-6` is the breathing room from the duration column. */}
-      <td className={`${CELL} w-28 pl-6`}>
+      <td className={`${CELL} w-36 pl-6`}>
         <div>
-          <RowActions onInspect={onInspect} onDelete={onDelete} />
+          <RowActions
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddToPlaylist={onAddToPlaylist}
+            onMoveToAlbum={onMoveToAlbum}
+            favoriteId={track.id}
+          />
         </div>
       </td>
     </tr>

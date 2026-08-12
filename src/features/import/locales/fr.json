@@ -20,7 +20,8 @@
   "verdict": {
     "ready": "Prêt",
     "done": "Importé",
-    "failed": "Échec"
+    "failed": "Échec",
+    "cancelled": "Arrêté"
   },
   "scanning": "Lecture du dossier…",
   "scanFailed": "Impossible de lire ce dossier",
@@ -44,6 +45,10 @@
   "progress": "Dossier {{done, number}} sur {{total, number}}",
   "importFailed": "L'import s'est arrêté",
   "retry": "Réessayer",
+  "stop": "Arrêter",
+  "cancelled": "Import arrêté",
+  "cancelledDetail": "Arrêté en cours de copie. Déjà dans l'arche : {{landed}}.",
+  "cancelledNothing": "Arrêté avant que quoi que ce soit n'entre. La bibliothèque n'a pas changé.",
   "done": "Import terminé",
   "doneDetail_one": "{{count, number}} dossier ajouté à l'arche.",
   "doneDetail_other": "{{count, number}} dossiers ajoutés à l'arche.",
@@ -53,7 +58,28 @@
   "doneRenditions_one": "{{count, number}} pochette a reçu une version d'affichage.",
   "doneRenditions_other": "{{count, number}} pochettes ont reçu une version d'affichage.",
   "history": {
-    "heading": "Imports"
+    "heading": "Imports",
+    "last": "Dernier import",
+    "seeAll": "Tout l'historique"
+  },
+  "how": {
+    "label": "Ce qui va se passer",
+    "scan": {
+      "name": "Analyse",
+      "body": "Ton dossier est lu, jamais modifié. Sonarche compte ce qu'il sait lire et te montre le bilan avant de commencer — rien ne part sans ton accord."
+    },
+    "copy": {
+      "name": "Copie",
+      "body": "Chaque piste est copiée dans l'arche et rangée par artiste et album, d'après ses tags. Quand un titre manque dans les tags, Sonarche le reprend du nom du fichier plutôt que de le perdre."
+    },
+    "covers": {
+      "name": "Pochettes",
+      "body": "La pochette vient du dossier, ou de l'image embarquée dans les fichiers eux-mêmes. Les images trop grandes reçoivent une version d'affichage, l'originale est conservée à côté."
+    },
+    "after": {
+      "name": "Et ensuite",
+      "body": "L'import n'invente rien : tes tags existants sont gardés tels quels, sans recherche en ligne. Pour identifier les albums et combler année, genre ou pochette manquants, lance l'alignement — proposé en bas de cette page."
+    }
   },
   "recap": {
     "albums_one": "{{count, number}} album",
@@ -62,16 +88,81 @@
     "folders_other": "{{count, number}} dossiers",
     "unplayable_one": "{{count, number}} fichier illisible ({{formats}}) — importé quand même",
     "unplayable_other": "{{count, number}} fichiers illisibles ({{formats}}) — importés quand même",
+    "collections_one": "{{count, number}} dossier est entré comme collection : ses morceaux ne s'accordaient sur aucun disque, aucune tracklist ne lui est réclamée. Modifiable sur sa fiche.",
+    "collections_other": "{{count, number}} dossiers sont entrés comme collections : leurs morceaux ne s'accordaient sur aucun disque, aucune tracklist ne leur est réclamée. Modifiable sur leur fiche.",
     "tagState": "État des tags à l'arrivée",
     "clean": "Tout est renseigné : année, genre, pochette, tracklist.",
     "withoutYear": "Année manquante",
     "withoutGenre": "Genre manquant",
-    "offTree": "Genre hors arbre",
+    "offTree": "Genre sans famille",
     "albumsWithoutArt": "Albums sans pochette",
     "albumsWithGaps": "Tracklists à trous",
-    "alignHint": "Ces albums arrivent sans identité MusicBrainz. Dans Métadonnées, l'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",
-    "openMetadata": "Ouvrir Métadonnées",
+    "alignHint": "Ces albums arrivent sans identité MusicBrainz. L'alignement peut les identifier et combler les trous — année, genre et pochettes comprises.",
+    "openAlign": "Aller à l'alignement",
     "expand": "Voir le détail de l'import",
     "collapse": "Replier le détail de l'import"
+  },
+  "grouping": {
+    "label": "Ce qui fait un album",
+    "intro": "Sonarche doit décider quels morceaux forment un même disque. À toi de dire ce qui en décide.",
+    "folder": "Le dossier",
+    "tags": "Les tags",
+    "tracks": "Rien",
+    "folderAnswer": "Chaque dossier devient un album",
+    "folderWhy": "Les tags ne comptent pas : un dossier de 40 titres d'artistes différents fera un seul disque, portant le nom du dossier — rangé comme collection, donc sans tracklist à respecter.",
+    "folderFor": "Pour une collection déjà rangée disque par disque.",
+    "tagsAnswer": "Le tag « album » décide",
+    "tagsWhy": "Un dossier qui mélange deux disques en fera deux. Mais si les fichiers n'ont pas de tag album, tout se regroupe quand même et le résultat rejoint le premier choix.",
+    "tagsFor": "Pour un dossier fourre-tout dont les fichiers sont bien tagués.",
+    "tracksAnswer": "Aucun album n'est créé",
+    "tracksWhy": "Chaque fichier entre seul, avec son titre, son artiste et sa pochette. Le seul choix qui n'invente pas de disque.",
+    "tracksFor": "Pour des titres glanés un par un.",
+    "suggested": "Suggéré ici : un dossier contient {{count}} morceaux — plus qu'un disque n'en compte."
+  },
+  "again": {
+    "done": "Ce dossier a déjà été importé le {{when}}.",
+    "doneHint": "Les dossiers déjà pris ne seront pas repris : seuls les ajouts entreront. Rien ne sera dupliqué.",
+    "stopped": "Un import de ce dossier a été arrêté le {{when}}.",
+    "stoppedHint": "Reprends quand tu veux : ce qui était déjà entré est conservé, seul le reste sera copié."
+  },
+  "category": {
+    "label": "Catégorie",
+    "hint": "Appliquée à tout ce que cet import fait entrer. C'est le contexte — bande originale de jeu, de film — pas le style musical.",
+    "none": "Aucune"
+  },
+  "options": {
+    "title": "Options"
+  },
+  "undo": {
+    "action": "Retirer cet import de l'arche",
+    "title": "Retirer « {{name}} » de l'arche ?",
+    "counting": "Décompte de ce que cet import a encore dans l'arche…",
+    "countFailed": "Impossible de compter ce que cet import a encore dans l'arche. Réessaie dans un instant.",
+    "tracks_one": "{{count, number}} morceau sera supprimé de l'arche, fichier compris.",
+    "tracks_other": "{{count, number}} morceaux seront supprimés de l'arche, fichiers compris.",
+    "albumsRemoved_one": "{{count, number}} album disparaît entièrement, avec sa pochette.",
+    "albumsRemoved_other": "{{count, number}} albums disparaissent entièrement, avec leurs pochettes.",
+    "albumsKept_one": "{{count, number}} album perd une partie de ses morceaux et reste sur l'étagère.",
+    "albumsKept_other": "{{count, number}} albums perdent une partie de leurs morceaux et restent sur l'étagère.",
+    "playlistEntries_one": "{{count, number}} entrée de playlist part avec eux.",
+    "playlistEntries_other": "{{count, number}} entrées de playlist partent avec eux.",
+    "edits": "Ce qui a été fait sur ces morceaux depuis — tags corrigés, pochettes remplacées, genres, place dans une playlist — ne revient pas.",
+    "originals": "Tes fichiers d'origine ne sont pas touchés : l'import n'a fait qu'en copier. Tu pourras réimporter ce dossier quand tu veux.",
+    "nothingLeft": "Cet import n'a plus rien dans l'arche. Le retirer ne supprimera donc rien — le dossier sera simplement oublié.",
+    "keep": "Garder",
+    "confirm": "Retirer de l'arche",
+    "doneToast_one": "{{count, number}} morceau retiré de « {{name}} »",
+    "doneToast_other": "{{count, number}} morceaux retirés de « {{name}} »",
+    "failedToast": "Le retrait n'a pas abouti",
+    "verdict": "Retiré",
+    "subtitle": "Retiré de l'arche : plus rien de cet import n'est dans la bibliothèque."
+  },
+  "toast": {
+    "view": "Voir",
+    "title": "Import du dossier",
+    "folders": "Dossier {{count, number}}",
+    "done": "Import terminé",
+    "cancelled": "Import arrêté",
+    "failed": "Import en échec"
   }
 }

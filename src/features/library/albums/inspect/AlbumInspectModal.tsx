@@ -1,16 +1,17 @@
 import { Modal } from "@heroui/react";
-import { X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Album } from "@/features/library/albums/albums";
+import { groupAlbums, type Album } from "@/features/library/albums/albums";
 import { albumCompletion } from "@/features/library/albums/albumCompletion";
 import {
   buildAlbumUpdates,
   changeSummary,
   commonBaseline,
+  commonOrigins,
   distinctCommonCount,
-  draftGenreCell,
+  draftRowCell,
   rowOrigins,
   toAlbumDraft,
   type AlbumCommonBaseline,
@@ -20,13 +21,26 @@ import {
   type TrackRowValues,
 } from "@/features/library/albums/albumFields";
 import { fillArtistOffer, pendingOffers, renumbered, type Offer } from "@/features/library/albums/albumOffers";
+import { findArtist, groupArtists } from "@/features/library/artists/artists";
+import { ArtistImageButton } from "@/features/library/artists/ArtistImageButton";
+import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
+import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
+import { RematchConfirmDialog } from "@/features/library/metadata/RematchConfirmDialog";
+import { readRematchConfirm } from "@/shared/lib/rematchConfirm";
 import { IdentityColumn } from "@/features/library/albums/inspect/IdentityColumn";
 import { InspectFooter, type SaveFeedback } from "@/features/library/albums/inspect/InspectFooter";
 import { PendingBadge } from "@/features/library/metadata/PendingBadge";
 import { Tracklist } from "@/features/library/albums/inspect/Tracklist";
 import { applyTrackFilter, type TrackFilter } from "@/features/library/albums/inspect/trackFilter";
-import { useReenrichAlbum, useUpdateTracks } from "@/features/library/hooks";
+import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
+import {
+  useArtistImages,
+  useLibrary,
+  useReenrichAlbum,
+  useSetAlbumKind,
+  useUpdateTracks,
+} from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 
 /**
@@ -42,9 +56,22 @@ import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlacehold
  * visible is not "can you type here" but "what have you changed" — the accent
  * rules on moved fields, and the count in the footer that adds them up.
  */
-function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) {
+function InspectBody({
+  album,
+  onClose,
+  requestCloseRef,
+}: {
+  album: Album;
+  onClose: () => void;
+  /** Where the Modal's own dismiss gestures (backdrop, Escape) find the
+   * guard-aware close — only this body knows whether a draft is at stake. */
+  requestCloseRef: RefObject<() => void>;
+}) {
   const { t } = useTranslation("library");
   const update = useUpdateTracks();
+  // Its own mutation, not part of the draft: the kind is not a tag, so it does
+  // not belong in the batch the footer saves.
+  const setKind = useSetAlbumKind();
   const rematch = useReenrichAlbum();
 
   const baseline = useMemo(() => commonBaseline(album.tracks), [album.tracks]);
@@ -61,6 +88,26 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
   const [filter, setFilter] = useState<TrackFilter | null>(null);
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isCoverOpen, setIsCoverOpen] = useState(false);
+  const [isArtistOpen, setIsArtistOpen] = useState(false);
+  const [isRematchConfirmOpen, setIsRematchConfirmOpen] = useState(false);
+
+  const startRematch = () => rematch.mutate(album.tracks.map((track) => track.id));
+  // The dialog is the default; the preference (or its own switch) silences it.
+  const requestRematch = () => {
+    if (readRematchConfirm()) setIsRematchConfirmOpen(true);
+    else startRematch();
+  };
+
+  // The record's artist, resolved on the shelf — their disc sits beside the
+  // cover in the header and opens the same image modal as the artist page.
+  const { data: libraryTracks } = useLibrary();
+  const artistImages = useArtistImages();
+  const artist = useMemo(
+    () => findArtist(groupArtists(groupAlbums(libraryTracks ?? [])), album.artist),
+    [libraryTracks, album.artist],
+  );
+  const artistImageUrl = (artist && artistImages.data?.get(artist.name)) ?? null;
 
   const summary = changeSummary(album.tracks, baseline, draft);
 
@@ -88,16 +135,21 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
         ? offers.find((offer) => offer.trackId === activeRow)
         : undefined) ?? null;
 
-  // Genre is read off the rows rather than held beside them, so the common field
-  // and the column can never show two different answers.
-  const genreCell = draftGenreCell(album.tracks, draft);
-  const shownCommon: AlbumCommonValues = { ...draft.common, genre: genreCell.value };
-  const shownBaseline: AlbumCommonBaseline = { ...baseline, genre: { value: genreCell.value, mixed: genreCell.mixed } };
+  // Genre and year are read off the rows rather than held beside them, so the
+  // common field and the column can never show two different answers.
+  const genreCell = draftRowCell(album.tracks, draft, "genre");
+  const yearCell = draftRowCell(album.tracks, draft, "year");
+  const shownCommon: AlbumCommonValues = { ...draft.common, genre: genreCell.value, year: yearCell.value };
+  const shownBaseline: AlbumCommonBaseline = {
+    ...baseline,
+    genre: { value: genreCell.value, mixed: genreCell.mixed },
+    year: { value: yearCell.value, mixed: yearCell.mixed },
+  };
   const distinctCounts: Partial<Record<AlbumCommonField, number>> = {
     genre: genreCell.distinct,
+    year: yearCell.distinct,
     album: distinctCommonCount(album.tracks, "album"),
     albumartist: distinctCommonCount(album.tracks, "albumartist"),
-    year: distinctCommonCount(album.tracks, "year"),
     grouping: distinctCommonCount(album.tracks, "grouping"),
   };
 
@@ -106,25 +158,15 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
   const families = new Set(album.tracks.map((track) => track.genreBucket ?? "").filter(Boolean));
   const genreFamily = families.size === 1 ? [...families][0] : "";
 
-  const commonOrigins: Partial<AlbumCommonValues> = {};
-  for (const field of Object.keys(draft.common) as AlbumCommonField[]) {
-    if (field === "genre") {
-      // Moved when the rows no longer read as they did — including into "mixed".
-      if (!baseline.genre.mixed && (genreCell.mixed || genreCell.value !== baseline.genre.value)) {
-        commonOrigins.genre = baseline.genre.value;
-      }
-    } else if (!baseline[field].mixed && draft.common[field] !== baseline[field].value) {
-      commonOrigins[field] = baseline[field].value;
-    }
-  }
+  const origins = commonOrigins(album.tracks, baseline, draft);
 
   const setCommon = (field: AlbumCommonField, value: string) => {
-    // Writing the shared genre *is* writing every row's genre — the field is a
-    // shortcut into the column, not a value of its own.
-    if (field === "genre") {
+    // Writing the shared genre or year *is* writing every row's — the field is
+    // a shortcut into the column, not a value of its own.
+    if (field === "genre" || field === "year") {
       setDraft((prev) => {
         const rows = { ...prev.rows };
-        for (const id of Object.keys(rows)) rows[Number(id)] = { ...rows[Number(id)], genre: value };
+        for (const id of Object.keys(rows)) rows[Number(id)] = { ...rows[Number(id)], [field]: value };
         return { ...prev, rows };
       });
       setActiveRow(null);
@@ -213,20 +255,39 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
     else onClose();
   };
 
+  // The backdrop click lands on the Modal, outside this body; hand it the
+  // current requestClose so that gesture meets the same guard as the ✕.
+  // Escape rides the same effect: on macOS a button click leaves focus on the
+  // body — outside both this tree and react-aria's overlay — so an element
+  // handler misses the key. One document listener owns it instead; overlays
+  // that answer Escape themselves (help popovers, the guard) preventDefault
+  // first, and `isKeyboardDismissDisabled` keeps react-aria from competing.
+  const escapeRef = useRef(() => {});
+  useEffect(() => {
+    requestCloseRef.current = requestClose;
+    escapeRef.current = () => {
+      // An open suggestion is the innermost thing on screen, so it goes first.
+      if (activeOffer) answerOffer(activeOffer);
+      else requestClose();
+    };
+  });
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) escapeRef.current();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, []);
+
   const shown = applyTrackFilter(album.tracks, filter);
   const completeIds = useMemo(() => {
     const incomplete = new Set(completion.incompleteIds);
     return new Set(album.tracks.map((track) => track.id).filter((id) => !incomplete.has(id)));
   }, [album.tracks, completion.incompleteIds]);
 
-  /** Escape asks to leave (so the guard can speak); ⌘S writes without leaving. */
+  /** ⌘S writes without leaving. Escape lives on the document, above. */
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      // An open suggestion is the innermost thing on screen, so it goes first.
-      if (activeOffer) answerOffer(activeOffer);
-      else requestClose();
-    } else if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       save();
     }
@@ -235,14 +296,29 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
   return (
     <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
       <header className="flex shrink-0 items-center gap-4 border-b border-separator panel-wash px-5 py-3.5">
-        {album.artUrl ? (
-          <img
-            src={album.artUrl}
-            alt=""
-            className="size-11 shrink-0 rounded-lg object-cover ring-1 ring-artwork-edge"
+        {/* The cover is the way to the cover: hover says so, and the same
+            modal is reachable from the provisional-cover notice below. */}
+        <button
+          type="button"
+          onClick={() => setIsCoverOpen(true)}
+          aria-label={t("albumMetadata.cover.title")}
+          className="group relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none ring-1 ring-artwork-edge focus-visible:ring-2 focus-visible:ring-accent/60"
+        >
+          {album.artUrl ? (
+            <img src={album.artUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <ArtworkPlaceholder className="size-full" />
+          )}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <ImagePlus className="size-4 text-white" />
+          </span>
+        </button>
+        {artist && (
+          <ArtistImageButton
+            imageUrl={artistImageUrl}
+            label={t("artists.image.title")}
+            onClick={() => setIsArtistOpen(true)}
           />
-        ) : (
-          <ArtworkPlaceholder className="size-11 shrink-0 rounded-lg ring-1 ring-artwork-edge" />
         )}
         <div className="min-w-0 flex-1">
           <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">
@@ -272,15 +348,20 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
           completion={completion}
           baseline={shownBaseline}
           values={shownCommon}
-          origins={commonOrigins}
+          origins={origins}
           distinctCounts={distinctCounts}
           genreFamily={genreFamily}
           trackCount={album.tracks.length}
           soundtrack={album.tracks.some((track) => track.soundtrack)}
+          kind={album.albumIds.length > 0 ? album.kind : null}
+          isKindPending={setKind.isPending}
+          onKindChange={(kind) => setKind.mutate({ albumIds: album.albumIds, kind })}
+          hasProvisionalCover={album.tracks.some((track) => track.provisionalCover)}
           filter={filter}
           onFilter={setFilter}
           onChange={setCommon}
           onRevert={(field) => setCommon(field, baseline[field].value)}
+          onReplaceCover={() => setIsCoverOpen(true)}
         />
 
         <Tracklist
@@ -320,8 +401,14 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
         summary={summary}
         feedback={feedback}
         isSaving={update.isPending}
+        isCollection={album.kind === "collection"}
         rematchProgress={rematch.progress}
-        onRematch={() => rematch.mutate(album.tracks.map((track) => track.id))}
+        rematchOutcome={
+          rematch.isError ? { kind: "failed" } : rematch.isSuccess ? { kind: "finished", ...rematch.data } : null
+        }
+        isCancellingRematch={rematch.isCancelling}
+        onRematch={requestRematch}
+        onCancelRematch={rematch.cancel}
         onDiscard={discard}
         onSave={save}
         onDismissFeedback={() => setFeedback(null)}
@@ -337,24 +424,53 @@ function InspectBody({ album, onClose }: { album: Album; onClose: () => void }) 
         }}
         onSave={save}
       />
+
+      <RematchConfirmDialog
+        scope="album"
+        isOpen={isRematchConfirmOpen}
+        onClose={() => setIsRematchConfirmOpen(false)}
+        onConfirm={() => {
+          setIsRematchConfirmOpen(false);
+          startRematch();
+        }}
+      />
+
+      <CoverReplaceModal album={album} isOpen={isCoverOpen} onClose={() => setIsCoverOpen(false)} />
+      {artist && (
+        <ArtistImageModal
+          artist={artist}
+          imageUrl={artistImageUrl}
+          isOpen={isArtistOpen}
+          onClose={() => setIsArtistOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 export function AlbumInspectModal({ album, onClose }: { album: Album | null; onClose: () => void }) {
+  // `isOpen` is controlled, so react-aria can never close this on its own
+  // terms: Escape and the backdrop click only *request* it, and the body
+  // answers — straight close, or the exit guard when a draft is at stake.
+  const requestCloseRef = useRef(onClose);
   return (
-    // `onOpenChange` deliberately does nothing: react-aria would close on its
-    // own terms, and only the body knows whether a draft is at stake. Every way
-    // out — the ✕, Escape, the guard's own buttons — calls `onClose` itself.
-    <Modal isOpen={album != null} onOpenChange={() => {}}>
-      {/* An outside click cannot close this one either. Losing a draft to a
-          stray press on the page behind is the very accident the guard exists
-          for, and an editing surface is the one place where "click away to
-          dismiss" is not worth its cost. */}
-      <Modal.Backdrop isDismissable={false} isKeyboardDismissDisabled>
+    <Modal
+      isOpen={album != null}
+      onOpenChange={(open) => {
+        if (!open) requestCloseRef.current();
+      }}
+    >
+      {/* Keyboard dismiss stays off: Escape is handled by the body's own
+          document listener (react-aria's would miss it whenever focus sits on
+          the body, and would double-handle it whenever it does not). */}
+      <Modal.Backdrop isKeyboardDismissDisabled>
         <Modal.Container>
-          <Modal.Dialog className="flex h-[92vh] max-h-[54rem] w-[96vw] max-w-[74rem] flex-col overflow-hidden p-0!">
-            {album && <InspectBody key={album.key} album={album} onClose={onClose} />}
+          <Modal.Dialog className="flex h-[94vh] max-h-[58rem] w-[97vw] max-w-[80rem] flex-col overflow-hidden p-0!">
+            {album && (
+              <MetadataSuggestionsProvider>
+                <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />
+              </MetadataSuggestionsProvider>
+            )}
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

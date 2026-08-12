@@ -37,3 +37,103 @@ class WorkFieldsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CandidateSortKeyTest(unittest.TestCase):
+    """The Real Gone regression: one fingerprint, two linked recordings, and
+    the wrong one first by AcoustID submission count. The video title is the
+    signal that survives, so it must outrank the release type."""
+
+    STUDIO = {"status": "Official", "release_group": {"primary_type": "Album"}, "date": "2005"}
+    SOUNDTRACK = {
+        "status": "Official",
+        "release_group": {"primary_type": "Album", "secondary_types": ["Soundtrack"]},
+        "date": "2006",
+    }
+
+    def test_the_title_the_video_names_beats_a_better_ranked_release(self):
+        from enrich import candidate_sort_key
+
+        hint = "Sheryl Crow - Real Gone (Cars Soundtrack)"
+        # The mislinked recording resolves to a clean studio album; the right
+        # one only lives on the soundtrack. The old order picked the wrong song.
+        wrong = candidate_sort_key(hint, "Sleepin' on the Foldout", self.STUDIO)
+        right = candidate_sort_key(hint, "Real Gone", self.SOUNDTRACK)
+        self.assertLess(right, wrong)
+
+    def test_release_rank_still_arbitrates_between_agreeing_titles(self):
+        from enrich import candidate_sort_key
+
+        hint = "Real Gone"
+        album = candidate_sort_key(hint, "Real Gone", self.STUDIO)
+        compilation = candidate_sort_key(hint, "Real Gone", self.SOUNDTRACK)
+        self.assertLess(album, compilation)
+
+    def test_a_junk_hint_changes_nothing(self):
+        from enrich import candidate_sort_key
+
+        # Both sides reduce to noise: every candidate is neutral, the release
+        # rank decides — the pre-hint behavior, exactly.
+        album = candidate_sort_key("(Official Video) [HD]", "Live Edit", self.STUDIO)
+        soundtrack = candidate_sort_key("(Official Video) [HD]", "Remix", self.SOUNDTRACK)
+        self.assertEqual(album[0], soundtrack[0])
+        self.assertLess(album, soundtrack)
+
+    def test_settles_early_only_when_the_video_vouches_for_it(self):
+        from enrich import candidate_sort_key, is_settled
+
+        hint = "Real Gone"
+        vouched = candidate_sort_key(hint, "Real Gone", self.STUDIO)
+        contradicted = candidate_sort_key(hint, "Sleepin' on the Foldout", self.STUDIO)
+        self.assertTrue(is_settled(vouched, hint))
+        # A perfect release whose title the video denies must not end the scan:
+        # the right song may still be a later candidate.
+        self.assertFalse(is_settled(contradicted, hint))
+
+    def test_settles_on_rank_alone_when_the_hint_is_junk(self):
+        from enrich import candidate_sort_key, is_settled
+
+        hint = "(Official Video) [HD]"
+        key = candidate_sort_key(hint, "Some Song", self.STUDIO)
+        self.assertTrue(is_settled(key, hint))
+
+
+class CollectionGuardTest(unittest.TestCase):
+    """A track filed in a collection must be refused by the per-track chain:
+    a match would re-file it onto its release's album row (`_album_row_for`),
+    ripping it out of the record its owner placed it in."""
+
+    def test_refuses_a_track_sitting_on_a_collection(self):
+        import os
+        import shutil
+        import tempfile
+
+        from beets.library import Item, Library
+
+        import enrich
+        import library
+
+        root = tempfile.mkdtemp()
+        try:
+            path = os.path.join(root, "Mine", "1 Kept.mp3")
+            os.makedirs(os.path.dirname(path))
+            with open(path, "wb") as fh:
+                fh.write(b"audio")
+            lib = Library(os.path.join(root, "library.db"), directory=root)
+            album = lib.add_album([Item(path=path.encode(), title="Kept", album="Mine")])
+            album[library.ALBUM_KIND_KEY] = library.COLLECTION
+            album.store(inherit=False)
+            item_id = next(iter(album.items())).id
+            lib._close()
+
+            with self.assertRaises(RuntimeError):
+                enrich.handle(
+                    "req",
+                    {
+                        "beets_db": os.path.join(root, "library.db"),
+                        "library_dir": root,
+                        "item_id": item_id,
+                    },
+                )
+        finally:
+            shutil.rmtree(root, ignore_errors=True)

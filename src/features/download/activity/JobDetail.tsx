@@ -7,7 +7,7 @@ import { JobTrackRow, TRACK_GRID } from "@/features/download/activity/JobTrackRo
 import type { EnrichStage } from "@/features/download/hooks";
 import { AttemptDots } from "@/features/download/activity/StepMarkers";
 import { jobAttempts } from "@/features/download/queue/attempts";
-import { albumPresence, type LibraryPresence } from "@/features/download/queue/library";
+import { jobPresence, type LibraryPresence } from "@/features/download/queue/library";
 import { formatTags, jobTags } from "@/features/download/queue/tags";
 import type { LibraryTrack } from "@/features/library/api";
 // The taxonomy the download composer offers is the library's own axis, and its
@@ -36,7 +36,7 @@ interface JobDetailProps {
   isInLibrary: (itemId: number) => boolean;
   isLibraryLoaded: boolean;
   enrichStages: Record<number, EnrichStage>;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
@@ -55,7 +55,7 @@ export function JobDetail({
   isInLibrary,
   isLibraryLoaded,
   enrichStages,
-  onInspect,
+  onEdit,
   onDelete,
 }: JobDetailProps) {
   const { t } = useTranslation("download");
@@ -63,15 +63,7 @@ export function JobDetail({
   const isAlbum = job.kind === "album" && job.tracks.length > 0;
   const tags = jobTags(job);
 
-  const presence = isLibraryLoaded
-    ? isAlbum
-      ? albumPresence(job, isInLibrary)
-      : job.report?.itemId != null
-        ? isInLibrary(job.report.itemId)
-          ? "full"
-          : "none"
-        : null
-    : null;
+  const presence = isLibraryLoaded ? jobPresence(job, isInLibrary) : null;
 
   const source = isAlbum
     ? job.tracks.find((track) => track.report?.source)?.report?.source
@@ -122,6 +114,17 @@ export function JobDetail({
         {job.category && <Fact label={t("activity.detail.category")}>{categoryLabel(job.category)}</Fact>}
       </dl>
 
+      {/* Slots YouTube kept as dead placeholders (deleted/private/claimed):
+          skipped before download, but the set has holes the listing cannot
+          even name — so the one honest move is to say so and hand the search
+          back to the user. */}
+      {job.unavailable > 0 && (
+        <p className="flex items-start gap-2 rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2.5 text-[0.75rem] leading-snug text-warning">
+          <TriangleAlert className="mt-px size-3.5 shrink-0" />
+          {t("activity.detail.unavailable", { count: job.unavailable })}
+        </p>
+      )}
+
       {isAlbum && (
         <div className="flex flex-col">
           <div
@@ -140,7 +143,7 @@ export function JobDetail({
               track={track}
               libraryTrack={libraryTrackFor(track.status === "done" ? track.itemId : null)}
               isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
-              onInspect={onInspect}
+              onEdit={onEdit}
               onDelete={onDelete}
             />
           ))}

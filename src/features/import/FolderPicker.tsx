@@ -1,4 +1,3 @@
-import { Button } from "@heroui/react";
 import { ArrowRight, FolderOpen, FolderSearch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -6,42 +5,36 @@ import { paths } from "@/app/routes";
 import type { ImportPhase } from "@/features/import/phase";
 import { shortenPath } from "@/features/import/summary";
 import { Swap } from "@/shared/motion/Swap";
-import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
 import { ActionLink } from "@/shared/ui/ActionLink";
 
 interface FolderPickerProps {
   folder: string | null;
   phase: ImportPhase;
   onChoose: () => void;
-  onStart: () => void;
 }
 
 /**
- * The one control this page exists for, built to the download composer's
- * grammar: a lifted panel holding the whole decision, a field on the left, the
- * commit point on the right, and a tinted strip underneath.
+ * Naming the folder, and only that.
+ *
+ * It used to carry the Import button too, on the composer's grammar — field on
+ * the left, commit point on the right. But the composer commits a *link*, which
+ * has no life of its own, while an import is a thing that then happens on a card
+ * further down the page: pressing here started something the eye had to go find,
+ * and the card that owned the run was the one place with no way to start it. The
+ * button moved there. What is left is the field, which is the choice this panel
+ * is actually about.
  *
  * The field is a button because the path cannot be typed — the OS panel is the
  * only way to name a folder — but it reads as a field on purpose: the two ways
- * music enters the ark should feel like the same gesture, and a page whose only
- * affordance was a lone "Choisir un dossier…" button read as a dialog that had
- * lost its dialog.
+ * music enters the ark should feel like the same gesture.
  */
-export function FolderPicker({ folder, phase, onChoose, onStart }: FolderPickerProps) {
+export function FolderPicker({ folder, phase, onChoose }: FolderPickerProps) {
   const { t } = useTranslation("import");
 
-  const canStart = phase.kind === "scanned" || phase.kind === "importFailed";
   const busy = phase.kind === "importing";
-  // Same treatment as the composer's Download button: it swells the moment the
-  // form becomes submittable. On the wrapper rather than the Button, because
-  // `usePopOnActivate` writes a transform and HeroUI's Button owns its own.
-  const startRef = usePopOnActivate<HTMLDivElement>(canStart);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40">
-      {/* `items-stretch`, not `items-center`: the field's height comes from its
-          own padding and the button's from its size variant, and the two never
-          matched. */}
       <div className="flex items-stretch gap-2 p-2">
         <button
           type="button"
@@ -70,19 +63,6 @@ export function FolderPicker({ folder, phase, onChoose, onStart }: FolderPickerP
             {t("chooseHint")}
           </span>
         </button>
-
-        <div ref={startRef} className="flex shrink-0">
-          <Button
-            type="button"
-            variant="primary"
-            onPress={onStart}
-            isDisabled={!canStart}
-            isPending={busy}
-            className="h-full rounded-xl px-5 transition-transform active:scale-[0.97]"
-          >
-            {phase.kind === "importFailed" ? t("retry") : t("start")}
-          </Button>
-        </div>
       </div>
 
       {/* The strip the composer uses for its options. There is nothing to
@@ -90,7 +70,9 @@ export function FolderPicker({ folder, phase, onChoose, onStart }: FolderPickerP
           originals are not touched — and, once the copy has landed, the way on. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-separator/60 bg-panel px-4 py-2.5">
         <p className="text-xs text-muted">{t("hint")}</p>
-        {phase.kind === "imported" && (
+        {/* A cancelled run keeps the door too: whatever landed before the stop
+            is browsable, and this link is how the user goes and sees it. */}
+        {(phase.kind === "imported" || (phase.kind === "importCancelled" && phase.outcome.folders > 0)) && (
           <ActionLink to={paths.libraryTracks} trailingIcon={ArrowRight}>
             {t("seeLibrary")}
           </ActionLink>

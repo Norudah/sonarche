@@ -6,16 +6,30 @@ import type { LibraryTrack } from "@/features/library/api";
  * question does not apply yet (nothing imported). */
 export type LibraryPresence = "full" | "partial" | "none";
 
-/** An album has no item of its own, so it reports on its tracks: all still
- * there, some pulled out, or the whole set gone. Dropped duplicates never had
- * an item and are excluded. */
-export function albumPresence(job: DownloadJob, isInLibrary: (itemId: number) => boolean): LibraryPresence | null {
-  const imported = job.tracks.filter(
-    (track) => track.itemId != null && track.duplicateOf == null && track.status === "done",
-  );
-  if (imported.length === 0) return null;
-  const present = imported.filter((track) => isInLibrary(track.itemId as number)).length;
-  if (present === imported.length) return "full";
+/**
+ * Whether what a finished job put in the library is still there: all of it,
+ * part of it, or none. `null` while the job is running — mid-run items are
+ * transient, and the question only settles once the job does — and on a job
+ * that never imported anything (a failed download has nothing to be present).
+ *
+ * Every item id counts, whatever step its track stopped at: an id means beets
+ * filed the file, and a job cancelled between import and enrich has put real
+ * tracks in the library. Dropped duplicates are excluded — the enrich step
+ * removed theirs on purpose, in favour of the item it kept.
+ */
+export function jobPresence(job: DownloadJob, isInLibrary: (itemId: number) => boolean): LibraryPresence | null {
+  if (job.status !== "done" && job.status !== "failed" && job.status !== "cancelled") return null;
+  const itemIds =
+    job.kind === "album"
+      ? job.tracks
+          .filter((track) => track.itemId != null && track.duplicateOf == null)
+          .map((track) => track.itemId as number)
+      : job.report?.itemId != null
+        ? [job.report.itemId]
+        : [];
+  if (itemIds.length === 0) return null;
+  const present = itemIds.filter(isInLibrary).length;
+  if (present === itemIds.length) return "full";
   return present === 0 ? "none" : "partial";
 }
 

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { EnqueueRequest, JobKind } from "@/features/download/api";
 import { ComposerSettings } from "@/features/download/ComposerSettings";
+import { AUTO_DESTINATION, toForcedAlbum, type Destination } from "@/features/download/DestinationChoice";
 import { readLastCategory, writeLastCategory } from "@/features/download/lastCategory";
 import { detectUrlKind } from "@/features/download/urlKind";
 import { Swap } from "@/shared/motion/Swap";
@@ -33,12 +34,17 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   // invalidates it, no effect needed.
   const [choice, setChoice] = useState<{ url: string; kind: JobKind } | null>(null);
   const [category, setCategory] = useState<string | null>(readLastCategory);
+  // Deliberately not remembered across sessions, unlike the category: "this
+  // playlist is the Inception soundtrack" is true of one download, where "I
+  // file game music under Video Games" is a standing habit.
+  const [destination, setDestination] = useState<Destination>(AUTO_DESTINATION);
   const [lastReset, setLastReset] = useState(resetToken);
 
   if (resetToken !== lastReset) {
     setLastReset(resetToken);
     setUrl("");
     setChoice(null);
+    setDestination(AUTO_DESTINATION);
   }
 
   const detected = detectUrlKind(url);
@@ -54,7 +60,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
   return (
-    <div className="relative -mx-8 -mt-8 overflow-hidden px-8 pt-10 pb-6">
+    <div className="relative -mx-8 -mt-5 overflow-hidden px-8 pt-10 pb-6">
       {/* The same accent wash every library hero sits on — `accent-soft` fading
        * to the page background — so this landing band reads as one family with
        * the album, artist and genre headers rather than a screen of its own.
@@ -81,7 +87,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
             event.preventDefault();
-            if (canSubmit) onSubmit({ url: url.trim(), kind, category });
+            if (canSubmit) onSubmit({ url: url.trim(), kind, category, forcedAlbum: toForcedAlbum(destination) });
           }}
         >
           {/* `items-stretch`, not `items-center`: the input's height comes from
@@ -137,6 +143,8 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               setCategory(next);
               writeLastCategory(next);
             }}
+            destination={destination}
+            onDestinationChange={setDestination}
           />
         </form>
       </div>

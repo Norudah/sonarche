@@ -2,11 +2,11 @@ import { Button } from "@heroui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { CircleCheck, Disc3 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Album } from "@/features/library/albums/albums";
-import { libraryKey } from "@/features/library/hooks";
+import { groupAlbums } from "@/features/library/albums/albums";
+import { libraryKey, useLibrary } from "@/features/library/hooks";
 import {
   type AlignPlan,
   type AlignResult,
@@ -73,15 +73,25 @@ function ProgressBar({ progress }: { progress: AlignProgress | null }) {
 
 /**
  * The align pass (docs: one MusicBrainz search per album, fills blank fields
- * only) as a module of the triage post. One card whose content changes phase —
- * idle → scanning → verdict → applying → done — the geometry stays put, only
- * the words move; the import card taught us what remounting rows does.
+ * only). One card whose content changes phase — idle → scanning → verdict →
+ * applying → done — the geometry stays put, only the words move; the import
+ * card taught us what remounting rows does.
  *
- * Accent, not amber: the queue rows above name defects, this one is a remedy.
+ * Accent, not amber: where triage rows name defects, this one is a remedy.
+ *
+ * Self-sufficient — it reads the library itself rather than taking albums as
+ * a prop, because it no longer has one home: it sits on the Import page (the
+ * app layer composes it there), where the albums it counts are the ones the
+ * import just landed. The query behind `useLibrary` is cached, so a second
+ * subscriber costs nothing.
  */
-export function AlignSection({ albums }: { albums: Album[] }) {
+export function AlignSection() {
   const { t } = useTranslation("metadata");
   const queryClient = useQueryClient();
+  const library = useLibrary();
+  // Memoised like every other consumer of the grouping: this section rerenders
+  // on each progress tick, and the library underneath is thousands of tracks.
+  const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
   const [plan, setPlan] = useState<AlignPlan | null>(null);
   const [result, setResult] = useState<AlignResult | null>(null);
 

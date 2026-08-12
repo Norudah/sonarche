@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSaveAcoustidKey } from "@/features/onboarding/hooks";
+import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 import { ActionButton } from "@/shared/ui/ActionLink";
 
 /**
@@ -53,7 +54,7 @@ export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean;
   const canSubmit = key.trim().length > 0 && !save.isPending;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-surface p-4 shadow-sm">
+    <div className={`${PANEL_CARD} gap-4`}>
       <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("steps.acoustid.body")}</p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl bg-panel">
@@ -87,7 +88,7 @@ export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean;
               className="py-2.5"
             />
           </InputGroup.Root>
-          <Button type="submit" variant="primary" className="shrink-0 rounded-xl px-4" isDisabled={!canSubmit}>
+          <Button type="submit" variant="primary" className="shrink-0 px-4" isDisabled={!canSubmit}>
             {save.isPending && <Loader2 className="size-4 animate-spin" />}
             {save.isPending ? t("steps.acoustid.checking") : t("steps.acoustid.check")}
           </Button>

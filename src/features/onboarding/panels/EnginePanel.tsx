@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { useSetupEnv, useSetupLogs } from "@/features/onboarding/hooks";
 import { installPhase } from "@/features/onboarding/installPhase";
+import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 import { springs } from "@/shared/motion/tokens";
 import { Swap } from "@/shared/motion/Swap";
 
@@ -51,7 +52,7 @@ export function EnginePanel({ isInstalled, isBundled }: EnginePanelProps) {
       : t(`steps.engine.phase.${phase.kind}`);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-sm">
+    <div className={`${PANEL_CARD} gap-3`}>
       <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">
         {t(isBundled ? "steps.engine.bodyBundled" : "steps.engine.body")}
       </p>

@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 export interface TriageChip {
   key: string;
   label: string;
-  /** "fix" (default) is a correction filter; "browse" is plain navigation
-   * arriving from a genre or family page — same chip, different colour. */
-  tone?: "fix" | "browse";
+  /** "filter" (default) is browsing — a decade, a genre, a family. "correction"
+   * is a filter that names something wrong or missing. */
+  tone?: "filter" | "correction";
   onRemove: () => void;
 }
 
@@ -24,14 +24,20 @@ interface TriageChipsProps {
  * remove button: the filter has no other state to toggle, and a separate ×
  * hit-zone at this size is a misclick trap.
  *
- * Amber for a correction filter: it means "something to fix" — the same warning
- * wash the Metadata queue's doors wear — where indigo is the colour of plain
- * navigation. Arriving from a genre or family page is navigation, so that chip
- * keeps the accent: the colour states which of the two errands the list is on.
+ * Two tones, and the split is what the filter is *about*. Browsing a decade or
+ * a family narrows a list and wears the accent. Arriving from the Metadata page
+ * is a correction — the list is exactly the set of holes that page counted — and
+ * wears amber, the one colour this app uses for a hole, from the lit cells of
+ * the inspection table to the album's own dots.
+ *
+ * The chips did briefly go all-accent, on the reasoning that a filtered list is
+ * a filtered list whichever door opened it. That was the wrong lesson from the
+ * right complaint: what made the app punitive was scoring music nobody asked it
+ * to score, not naming a problem on a page you opened by clicking the problem.
  */
 const CHIP_TONE = {
-  fix: "bg-warning-soft text-warning",
-  browse: "bg-accent-soft text-accent",
+  filter: "bg-accent-soft text-accent",
+  correction: "bg-warning-soft text-warning",
 } as const;
 
 export function TriageChips({ chips, countLabel }: TriageChipsProps) {
@@ -47,7 +53,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("triage.clearFilter", { filter: chip.label })}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "fix"]}`}
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "filter"]}`}
         >
           {chip.label}
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />

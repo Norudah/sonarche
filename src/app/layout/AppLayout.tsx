@@ -1,12 +1,18 @@
 import { useRef, useState } from "react";
 import { Outlet } from "react-router";
 
+import { JobProgressToasts } from "@/app/layout/JobProgressToasts";
 import { RouteTransition } from "@/app/layout/RouteTransition";
+import { HomeTourHost } from "@/app/tour/HomeTourHost";
 import { Sidebar } from "@/app/layout/Sidebar";
+import { Topbar } from "@/app/layout/Topbar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
+import { InspectModeProvider } from "@/features/library/inspect/inspectMode";
+import { LibraryRepair } from "@/features/library/LibraryRepair";
+import { FavoriteCurrentButton } from "@/features/library/playlists/FavoriteButton";
 import { SetupGate } from "@/features/onboarding/SetupGate";
 import { readLaunchWelcome } from "@/features/settings/launchWelcome";
-import { useUpdatePrompt } from "@/features/update/useUpdatePrompt";
+import { UpdatePrompt } from "@/features/update/UpdatePrompt";
 import { HistoryDepthProvider } from "@/shared/navigation/historyDepth";
 import { PlayerBar } from "@/shared/player/PlayerBar";
 import { ToastViewport } from "@/shared/toast/ToastViewport";
@@ -17,8 +23,6 @@ export function AppLayout() {
   // is ours to do; nothing upstream resets or restores it.
   const scrollRef = useRef<HTMLElement>(null);
   useScrollRestoration(scrollRef);
-  // Inside the shell, so the prompt has the toast viewport below it to land in.
-  useUpdatePrompt();
 
   // Read here rather than in the gate, because `features` do not import each
   // other and this preference belongs to Settings; the shell is the one place
@@ -37,34 +41,52 @@ export function AppLayout() {
           environment check is in flight no route can render, so a live sidebar
           would only let the user click nav items that appear to do nothing. */}
       <SetupGate welcome={welcome}>
-        <div className="flex h-full flex-col">
-          <div className="flex min-h-0 flex-1">
-            <Sidebar />
-            {/* `min-w-0` so a page with a wide, horizontally scrollable child (the
-                download queue's table) scrolls that child instead of forcing the
-                whole content column — and the viewport — wider than the window. */}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {/* No padding here: this is the scrollport, and `sticky top-0`
-                  resolves against its padding box. Padding on the scrollport
-                  would offset every sticky child by 2rem and let content scroll
-                  visibly through the gap above it. Pages own their padding via
-                  PageContainer, which keeps the scrollport edge available. */}
-              <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
-                <ScrollportProvider value={scrollRef}>
-                  <RouteTransition>
-                    <Outlet />
-                  </RouteTransition>
-                </ScrollportProvider>
-              </main>
+        {/* Outside every page: the lens is a way of looking at the library, so
+            it has to survive opening an album and coming back — state mounted
+            per route would be reset by the very navigation it exists to
+            outlast. */}
+        <InspectModeProvider>
+          {/* Inside the gate: the repair pass needs a healthy environment, and
+              the gate opening is exactly that signal. */}
+          <LibraryRepair />
+          <JobProgressToasts />
+          {/* Inside the gate, so the offer never lands on top of onboarding —
+              and the toast viewport it needs is only mounted in here anyway. */}
+          <UpdatePrompt />
+          <HomeTourHost />
+          <div className="flex h-full flex-col">
+            <div className="flex min-h-0 flex-1">
+              <Sidebar />
+              {/* `min-w-0` so a page with a wide, horizontally scrollable child (the
+                  download queue's table) scrolls that child instead of forcing the
+                  whole content column — and the viewport — wider than the window. */}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                {/* Above the scrollport, not inside it: the bar belongs to the
+                    column, not to the page, so it must not scroll away with
+                    whatever page happens to be open. */}
+                <Topbar />
+                {/* No padding here: this is the scrollport, and `sticky top-0`
+                    resolves against its padding box. Padding on the scrollport
+                    would offset every sticky child by 2rem and let content scroll
+                    visibly through the gap above it. Pages own their padding via
+                    PageContainer, which keeps the scrollport edge available. */}
+                <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
+                  <ScrollportProvider value={scrollRef}>
+                    <RouteTransition>
+                      <Outlet />
+                    </RouteTransition>
+                  </ScrollportProvider>
+                </main>
+              </div>
             </div>
+            <PlayerBar accessory={<FavoriteCurrentButton />} />
+            {/* Mounted beside the player bar, not above it in the tree: the
+                viewport is positioned against the bar, and the two only ever
+                appear together — the onboarding walkthrough replaces this whole
+                chrome and speaks for itself. */}
+            <ToastViewport />
           </div>
-          <PlayerBar />
-          {/* Mounted beside the player bar, not above it in the tree: the
-              viewport is positioned against the bar, and the two only ever
-              appear together — the onboarding walkthrough replaces this whole
-              chrome and speaks for itself. */}
-          <ToastViewport />
-        </div>
+        </InspectModeProvider>
       </SetupGate>
     </HistoryDepthProvider>
   );

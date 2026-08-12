@@ -80,6 +80,21 @@ class SummarizeTest(unittest.TestCase):
         info["channel"] = "Rammstein - Topic"
         self.assertEqual(summarize(info, max_entries=10)["artist"], "Rammstein - Topic")
 
+    def test_a_blocked_video_is_kept_because_the_listing_cannot_tell(self):
+        # Measured on a real playlist: a video YouTube has blocked is listed
+        # with a full title, duration, channel and view count, exactly like a
+        # healthy one. Guessing here would drop real music; the truth only
+        # exists at download time (see download.py's unavailable classifier).
+        info = _playlist([_entry("a1", "Route 66"), _entry("a2", "Real Gone")])
+        out = summarize(info, max_entries=10)
+        self.assertEqual(out["count"], 2)
+
+    def test_a_real_video_with_missing_fields_is_never_dropped(self):
+        # Flat extraction omits duration on real videos too: absence of
+        # metadata must never read as absence of the video.
+        info = _playlist([{"id": "a1", "title": "Track 1"}])
+        self.assertEqual(summarize(info, max_entries=10)["count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

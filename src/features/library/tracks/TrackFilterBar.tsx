@@ -15,6 +15,8 @@ interface TrackFilterBarProps {
   /** Rendered first, before the filters — the view-mode switch on a scoped page.
    * A slot and not a prop because what goes there is a whole control. */
   leading?: ReactNode;
+  /** Forwarded to `ExplorerBar` — see its own `pinned`. */
+  pinned?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface TrackFilterBarProps {
  * The chips are for the panel's filters, which are otherwise invisible with the
  * panel closed.
  */
-export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
+export function TrackFilterBar({ state, leading, pinned }: TrackFilterBarProps) {
   const { t } = useTranslation("library");
   const familyLabelOf = useFamilyLabel();
   const categoryLabelOf = useCategoryLabel();
@@ -43,32 +45,53 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
     chips.push({
       key: "decade",
       label: t("filters.decadeValue", { decade: triage.decade }),
-      tone: "browse",
       onRemove: () => setParam("decade", null),
     });
+  // Amber from here down. Each of these arrives from the Metadata page and the
+  // list it opens is a set of holes, so the chip says so in the colour the rest
+  // of the app uses for one.
   if (triage.missingYear)
-    chips.push({ key: "missingYear", label: t("triage.missingYear"), onRemove: () => setParam("missing", null) });
+    chips.push({
+      key: "missingYear",
+      label: t("triage.missingYear"),
+      tone: "correction",
+      onRemove: () => setParam("missing", null),
+    });
+  if (triage.missingTrackNumber)
+    chips.push({
+      key: "missingTrackNumber",
+      label: t("triage.missingTrackNumber"),
+      tone: "correction",
+      onRemove: () => setParam("missing", null),
+    });
   if (triage.genre === GENRE_MISSING || triage.genre === GENRE_OFF_TREE)
     chips.push({
       key: "genre",
       label: t(triage.genre === GENRE_MISSING ? "triage.genreMissing" : "triage.genreOffTree"),
+      tone: "correction",
       onRemove: () => setParam("genre", null),
     });
-  // A plain genre name keeps the browsing tone: it is a place someone navigated
-  // to, not something to correct.
+  // A plain genre name is browsing, not a correction — the same param, the
+  // other tone.
   else if (triage.genre != null)
-    chips.push({ key: "genre", label: triage.genre, tone: "browse", onRemove: () => setParam("genre", null) });
+    chips.push({ key: "genre", label: triage.genre, onRemove: () => setParam("genre", null) });
   if (triage.suspectMatch)
-    chips.push({ key: "suspect", label: t("triage.suspectMatch"), onRemove: () => setParam("suspect", null) });
+    chips.push({
+      key: "suspect",
+      label: t("triage.suspectMatch"),
+      tone: "correction",
+      onRemove: () => setParam("suspect", null),
+    });
   if (triage.duplicateRecording)
     chips.push({
       key: "duplicates",
       label: t("triage.duplicateRecording"),
+      tone: "correction",
       onRemove: () => setParam("duplicates", null),
     });
 
   return (
-    <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={scopeSize}>
+    <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={scopeSize} pinned={pinned}>
       {leading}
 
       {axes.includes("family") && (

@@ -2,10 +2,10 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import type { DownloadJob } from "@/features/download/api";
 import { JobCard, type LibraryLookup } from "@/features/download/activity/JobCard";
-import { type EnrichStage, useRetryJob } from "@/features/download/hooks";
+import { type EnrichStage, useCancelJob, useRetryJob } from "@/features/download/hooks";
 import { useNewJobIds } from "@/features/download/queue/useNewJobIds";
 import type { LibraryTrack } from "@/features/library/api";
-import { type AlbumDeletion, DeleteAlbumDialog } from "@/features/library/DeleteAlbumDialog";
+import { type AlbumDeletion, DeleteAlbumDialog, useAlbumDeleteGuard } from "@/features/library/DeleteAlbumDialog";
 import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
@@ -60,7 +60,9 @@ interface JobDeckProps {
  */
 export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProps) {
   const retry = useRetryJob();
+  const cancel = useCancelJob();
   const libraryQuery = useLibrary();
+  const mayDelete = useAlbumDeleteGuard();
   const [inspected, setInspected] = useState<LibraryTrack | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [deletingAlbum, setDeletingAlbum] = useState<AlbumDeletion | null>(null);
@@ -87,23 +89,33 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
   );
 
   const onRetry = useCallback((id: string) => retry.mutate(id), [retry]);
-  const onDeleteAlbum = useCallback((job: DownloadJob) => {
-    setDeletingAlbum({
-      title: job.title ?? "",
-      trackIds: job.tracks
+  const onCancel = useCallback((id: string) => cancel.mutate(id), [cancel]);
+  const onDeleteAlbum = useCallback(
+    (job: DownloadJob) => {
+      const trackIds = job.tracks
         .filter((track) => track.duplicateOf == null)
         .map((track) => track.itemId)
-        .filter((itemId): itemId is number => itemId != null),
-    });
-  }, []);
+        .filter((itemId): itemId is number => itemId != null);
+      // The deck deletes by item, so the records those items belong to have to
+      // be resolved before the guard can recognise a download's destination.
+      const albumIds = [
+        ...new Set(trackIds.map((id) => trackById.get(id)?.albumId).filter((id): id is number => id != null)),
+      ];
+      if (!mayDelete(albumIds)) return;
+      setDeletingAlbum({ title: job.title ?? "", trackIds });
+    },
+    [mayDelete, trackById],
+  );
 
   const cardProps = {
     library,
-    onInspect: setInspected,
+    onEdit: setInspected,
     onDelete: setDeleting,
     onDeleteAlbum,
     onRetry,
     isRetrying: retry.isPending,
+    onCancel,
+    isCancelling: cancel.isPending,
   };
 
   return (

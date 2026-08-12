@@ -30,8 +30,12 @@ export const paths = {
   libraryGenre: "/library/genres/:family",
   libraryCategories: "/library/categories",
   libraryCategory: "/library/categories/:category",
+  libraryPlaylists: "/library/playlists",
+  libraryPlaylist: "/library/playlists/:id",
   settings: "/settings",
   settingsAppearance: "/settings/appearance",
+  settingsAdding: "/settings/adding",
+  settingsMetadata: "/settings/metadata",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",
   settingsLibrary: "/settings/library",
@@ -50,14 +54,32 @@ export const paths = {
  * in, kept with the same meaning here; `missing` and `off-tree` are sentinel
  * values no real genre uses.
  */
+/**
+ * The lens's entrance — `?vue=inspection`, which hands the arriving page over in
+ * inspection mode. It is not where the mode is stored (see `inspectMode`): it is
+ * consumed on arrival, so a door from the Metadata page opens on the table that
+ * shows what the door was about.
+ *
+ * Declared here with the rest of the URL contract, and here rather than in the
+ * feature so this module stays the dependency-free leaf it is.
+ */
+export const INSPECT_PARAM = "vue";
+export const INSPECT_VALUE = "inspection";
+
+/** Appended to the track doors only: the albums shelf shows cards, and the lens
+ * has nothing to change there yet. */
+const LENS = `${INSPECT_PARAM}=${INSPECT_VALUE}`;
+
 export const triagePaths = {
-  missingYear: `${paths.libraryTracks}?missing=year`,
-  genreMissing: `${paths.libraryTracks}?genre=missing`,
-  genreOffTree: `${paths.libraryTracks}?genre=off-tree`,
+  missingYear: `${paths.libraryTracks}?missing=year&${LENS}`,
+  missingTrackNumber: `${paths.libraryTracks}?missing=track&${LENS}`,
+  genreMissing: `${paths.libraryTracks}?genre=missing&${LENS}`,
+  genreOffTree: `${paths.libraryTracks}?genre=off-tree&${LENS}`,
   missingArtwork: `${paths.libraryAlbums}?missing=artwork`,
   tracklistGaps: `${paths.libraryAlbums}?tracklist=gaps`,
-  suspectMatch: `${paths.libraryTracks}?suspect=match`,
-  duplicateRecording: `${paths.libraryTracks}?duplicates=recording`,
+  suspectMatch: `${paths.libraryTracks}?suspect=match&${LENS}`,
+  duplicateRecording: `${paths.libraryTracks}?duplicates=recording&${LENS}`,
+  artistImageMissing: `${paths.libraryArtists}?missing=image`,
 } as const;
 
 /**
@@ -110,4 +132,10 @@ export function genrePath(family: string, genre?: string): string {
 export function categoryPath(category: string, genre?: string): string {
   const base = `${paths.libraryCategories}/${encodeURIComponent(category)}`;
   return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
+}
+
+/** The store's numeric id, not the name: a playlist is freely renameable, and
+ * a URL built on the name would die with every rename. */
+export function playlistPath(id: number): string {
+  return `${paths.libraryPlaylists}/${id}`;
 }

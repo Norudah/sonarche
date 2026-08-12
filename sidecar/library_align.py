@@ -20,6 +20,7 @@ import os
 import time
 
 import enrich
+import library
 import metadata
 import protocol
 import provenance
@@ -172,7 +173,16 @@ def scan(request_id: str, params: dict) -> dict:
     )
     lib = Library(params["beets_db"], directory=params["library_dir"])
 
-    targets = [album for album in lib.albums() if blank(album.get("mb_albumid"))]
+    # Collections are skipped, not merely likely to fail: a gathering of tracks
+    # has no release to be matched against, and searching for one either finds
+    # nothing (a scan that got slower for no one) or finds the album one of its
+    # tracks came from and offers to rewrite the whole thing into it.
+    targets = [
+        album
+        for album in lib.albums()
+        if blank(album.get("mb_albumid"))
+        and album.get(library.ALBUM_KIND_KEY) != library.COLLECTION
+    ]
     total = len(targets)
     protocol.log(f"library_align: scanning {total} album(s) without a release id")
     entries = []

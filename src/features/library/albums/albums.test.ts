@@ -11,20 +11,6 @@ import {
 } from "@/features/library/albums/albums";
 import { track } from "@/features/library/testFixtures";
 
-/** Every tracked metadata field filled — the completeness baseline. */
-function complete(over: Parameters<typeof track>[0] = {}) {
-  return track({
-    title: "T",
-    artist: "A",
-    albumArtist: "A",
-    album: "Album",
-    year: 2000,
-    track: 1,
-    genre: "Rock",
-    ...over,
-  });
-}
-
 describe("albumKey", () => {
   it("distinguishes two albums that share a title", () => {
     expect(albumKey("Queen", "Greatest Hits")).not.toBe(albumKey("ABBA", "Greatest Hits"));
@@ -96,6 +82,31 @@ describe("groupAlbums", () => {
     expect(groupAlbums([track({ album: "   ", artist: "A" })])).toEqual([]);
   });
 
+  describe("record kind", () => {
+    const of = (...tracks: Parameters<typeof track>[0][]) =>
+      groupAlbums(tracks.map((over, i) => track({ id: i + 1, album: "X", artist: "A", ...over })))[0];
+
+    it("reads as an album until every row behind the card says otherwise", () => {
+      expect(of({}, {}).kind).toBe("album");
+      expect(of({ albumKind: "collection" }, {}).kind).toBe("album");
+      expect(of({ albumKind: "collection" }, { albumKind: "collection" }).kind).toBe("collection");
+    });
+
+    /** What a kind change has to be applied to: one card can be two beets
+     * albums (same artist and title, filed twice), and both must move. */
+    it("carries the beets rows behind the card, deduped and ordered", () => {
+      expect(of({ albumId: 4 }, { albumId: 2 }, { albumId: 4 }).albumIds).toEqual([2, 4]);
+    });
+
+    /** A group of singletons has no album row to hang a kind on, so it can
+     * never be a collection — and the panel shows it no switch. */
+    it("stays an album with no rows at all", () => {
+      const album = of({ albumId: null }, { albumId: null });
+      expect(album.albumIds).toEqual([]);
+      expect(album.kind).toBe("album");
+    });
+  });
+
   it("hands the same array back the same grouping, so a second surface pays nothing", () => {
     const tracks = [track({ id: 1, album: "X" })];
 
@@ -156,16 +167,9 @@ describe("groupAlbums", () => {
     expect(album.formats).toEqual(["AAC", "FLAC"]);
   });
 
-  it("scores a fully-tagged album as complete", () => {
-    const [album] = groupAlbums([complete({ id: 1 }), complete({ id: 2 })]);
-    expect(album.completeness).toBe(1);
-  });
-
-  it("counts partial completeness per field, not per track", () => {
-    // 2 tracks × 7 fields = 14 cells; one missing genre = 13/14.
-    const [album] = groupAlbums([complete({ id: 1 }), complete({ id: 2, genre: null })]);
-    expect(album.completeness).toBeCloseTo(13 / 14);
-  });
+  // What used to be scored here — a ratio of filled cells — is gone: an album
+  // is now measured by the checks the owner actually asked for. See
+  // `triage/attention.test.ts`.
 });
 
 describe("sortAlbums", () => {

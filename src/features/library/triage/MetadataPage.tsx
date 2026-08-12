@@ -6,9 +6,16 @@ import { useTranslation } from "react-i18next";
 import { groupAlbums } from "@/features/library/albums/albums";
 import { groupArtists } from "@/features/library/artists/artists";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
-import { useLibrary } from "@/features/library/hooks";
-import { AlignSection } from "@/features/library/triage/AlignSection";
-import { buildTriageQueue, countToFix } from "@/features/library/triage/queue";
+import { useArtistImages, useLibrary, useSetCheckAccepted } from "@/features/library/hooks";
+import { AcceptedNotice } from "@/features/library/triage/AcceptedNotice";
+import { enabledLines, useDisabledChecks } from "@/features/library/triage/enabledChecks";
+import {
+  acceptedTargets,
+  buildSystemQueue,
+  buildTriageQueue,
+  tallyToFix,
+  type AcceptTarget,
+} from "@/features/library/triage/queue";
 import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
 import { PageContainer } from "@/shared/ui/PageContainer";
@@ -31,17 +38,35 @@ export function MetadataPage() {
   const tracks = useMemo(() => library.data ?? [], [library.data]);
   const albums = useMemo(() => groupAlbums(tracks), [tracks]);
   const queue = useMemo(() => buildTriageQueue(tracks, albums), [tracks, albums]);
-  const artistCount = useMemo(() => groupArtists(albums).length, [albums]);
+  // The queue minus the checks this person switched off: what the page counts,
+  // queues and badges. The full queue still goes to the menu, which lists every
+  // check with the count it would report.
+  const disabled = useDisabledChecks();
+  const watched = useMemo(() => enabledLines(queue, disabled), [queue, disabled]);
+  const answered = useMemo(() => acceptedTargets(tracks, albums), [tracks, albums]);
+  const accept = useSetCheckAccepted();
+  const answer = (target: AcceptTarget, accepted: boolean) =>
+    accept.mutate({ scope: target.scope, ids: target.ids, check: target.check, accepted });
 
-  const lines = queue.filter((line) => line.count > 0);
+  // The Sonarche-side gaps — not metadata, so they queue under their own
+  // heading and stay out of the headline tally and the sidebar badge.
+  const artists = useMemo(() => groupArtists(albums), [albums]);
+  const artistImages = useArtistImages();
+  const systemQueue = useMemo(() => buildSystemQueue(artists, artistImages.data), [artists, artistImages.data]);
+  const watchedSystem = useMemo(() => enabledLines(systemQueue, disabled), [systemQueue, disabled]);
+
+  const lines = watched.filter((line) => line.count > 0);
+  const systemLines = watchedSystem.filter((line) => line.count > 0);
 
   return (
     <PageContainer>
       <TriageHero
-        toFix={tracks.length > 0 ? countToFix(queue) : null}
+        tally={tracks.length > 0 ? tallyToFix(watched) : null}
+        queue={[...queue, ...systemQueue]}
+        disabled={disabled}
         trackCount={tracks.length}
         albumCount={albums.length}
-        artistCount={artistCount}
+        artistCount={artists.length}
       />
 
       {library.isPending && (
@@ -65,7 +90,7 @@ export function MetadataPage() {
 
       {tracks.length > 0 && (
         <section className="flex flex-col gap-2">
-          {lines.length === 0 ? (
+          {lines.length === 0 && systemLines.length === 0 ? (
             <div className="flex items-center gap-3 rounded-xl bg-success-soft px-4 py-5">
               <CircleCheck className="size-5 shrink-0 text-success" />
               <div>
@@ -81,14 +106,40 @@ export function MetadataPage() {
               <QueueLine
                 key={line.key}
                 line={line}
+                isPending={accept.isPending}
+                onAccept={(target) => answer(target, true)}
                 style={{ "--row-stagger": `${position * 0.04}s` } as CSSProperties}
               />
             ))
           )}
+
+          {/* Not metadata, so not in the same stack: the files above are
+              missing facts about themselves, these artists are only missing
+              their portrait in the app. The heading is what keeps a mixed
+              reading — "one more defect line" — from happening. */}
+          {systemLines.length > 0 && (
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
+                  {t("system.heading")}
+                </h2>
+                <p className="text-xs text-muted">{t("system.hint")}</p>
+              </div>
+              {systemLines.map((line, position) => (
+                <QueueLine
+                  key={line.key}
+                  line={line}
+                  isPending={accept.isPending}
+                  onAccept={(target) => answer(target, true)}
+                  style={{ "--row-stagger": `${(lines.length + position) * 0.04}s` } as CSSProperties}
+                />
+              ))}
+            </div>
+          )}
+
+          <AcceptedNotice targets={answered} isPending={accept.isPending} onUndo={(target) => answer(target, false)} />
         </section>
       )}
-
-      {tracks.length > 0 && <AlignSection albums={albums} />}
     </PageContainer>
   );
 }

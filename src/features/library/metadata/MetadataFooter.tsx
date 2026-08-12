@@ -1,10 +1,13 @@
 import { Check, Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 import { useReenrichTrack } from "@/features/library/hooks";
+import { RematchConfirmDialog } from "@/features/library/metadata/RematchConfirmDialog";
+import { readRematchConfirm } from "@/shared/lib/rematchConfirm";
 import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 import { ActionHelp } from "@/shared/ui/FieldHelp";
 import { springs } from "@/shared/motion/tokens";
@@ -39,6 +42,18 @@ export function MetadataFooter({
   const { t } = useTranslation("library");
   const rematch = useReenrichTrack();
   const isDirty = changed > 0;
+  // A track filed in a collection stays where its owner put it: the per-track
+  // chain re-files a matched item onto its release's album row, which would
+  // rip it out of the gathering. The sidecar refuses too; here we say why.
+  const isCollection = track.albumKind === "collection";
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  const startRematch = () => rematch.mutate(track.id);
+  // The dialog is the default; the preference (or its own switch) silences it.
+  const requestRematch = () => {
+    if (readRematchConfirm()) setIsConfirmOpen(true);
+    else startRematch();
+  };
 
   // A save's own feedback owns the line; the re-match result takes it back once
   // there is nothing pending.
@@ -110,11 +125,19 @@ export function MetadataFooter({
         {/* The reason rides a tooltip rather than a paragraph beside the button:
             spelled out in a 31rem drawer it wrapped onto six lines and pushed
             the actions off the bottom. */}
-        <ActionHelp text={isDirty ? t("albumMetadata.rematch.blocked") : t("metadata.help.rematch")}>
+        <ActionHelp
+          text={
+            isCollection
+              ? t("metadata.help.rematchCollection")
+              : isDirty
+                ? t("albumMetadata.rematch.blocked")
+                : t("metadata.help.rematch")
+          }
+        >
           <button
             type="button"
-            disabled={isDirty || rematch.isPending}
-            onClick={() => rematch.mutate(track.id)}
+            disabled={isDirty || rematch.isPending || isCollection}
+            onClick={requestRematch}
             className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
           >
             {rematch.isPending ? (
@@ -150,6 +173,16 @@ export function MetadataFooter({
           </PrimaryButton>
         </div>
       </div>
+
+      <RematchConfirmDialog
+        scope="track"
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          setIsConfirmOpen(false);
+          startRematch();
+        }}
+      />
     </footer>
   );
 }

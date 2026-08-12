@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import import_recap
+import library
 
 # The three columns of beets' schema this module reads, and nothing else. Built
 # by hand rather than by running beets: the interesting cases (a delimited genre
@@ -17,6 +18,7 @@ CREATE TABLE items (
 );
 CREATE TABLE albums (id INTEGER PRIMARY KEY, artpath BLOB);
 CREATE TABLE item_attributes (entity_id INTEGER, key TEXT, value TEXT);
+CREATE TABLE album_attributes (entity_id INTEGER, key TEXT, value TEXT);
 """
 
 
@@ -34,6 +36,13 @@ class RecapTest(unittest.TestCase):
 
     def _album(self, album_id: int, artpath: bytes | None) -> None:
         self.conn.execute("INSERT INTO albums (id, artpath) VALUES (?, ?)", (album_id, artpath))
+
+    def _collection(self, album_id: int) -> None:
+        self.conn.execute(
+            "INSERT INTO album_attributes (entity_id, key, value) VALUES (?, ?, ?)",
+            (album_id, library.ALBUM_KIND_KEY, library.COLLECTION),
+        )
+        self.conn.commit()
 
     def _item(self, batch: str | None = "run-1", **fields) -> int:
         self.next_id += 1
@@ -133,6 +142,16 @@ class RecapTest(unittest.TestCase):
         self._item(track=3, tracktotal=3)
 
         self.assertEqual(import_recap.build(self.db, "run-1")["albumsWithGaps"], 1)
+
+    def test_a_collection_has_no_tracklist_to_have_holes_in(self):
+        """Same rule as the albums view: whatever a collection holds is what its
+        owner put in it, so the recap must not report it as missing anything."""
+        self._album(1, b"/music/a/cover.jpg")
+        self._collection(1)
+        self._item(track=1, tracktotal=3)
+        self._item(track=3, tracktotal=3)
+
+        self.assertEqual(import_recap.build(self.db, "run-1")["albumsWithGaps"], 0)
 
 
 class GapsTest(unittest.TestCase):

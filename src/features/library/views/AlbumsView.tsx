@@ -4,17 +4,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 
-import {
-  ALBUM_SORTS,
-  filterAlbums,
-  findAlbumLike,
-  groupAlbums,
-  sortAlbums,
-  type Album,
-  type AlbumSort,
-} from "@/features/library/albums/albums";
-import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
-import { AlbumInspectModal } from "@/features/library/albums/inspect/AlbumInspectModal";
+import { ALBUM_SORTS, filterAlbums, groupAlbums, sortAlbums, type AlbumSort } from "@/features/library/albums/albums";
+import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
@@ -32,7 +23,6 @@ export function AlbumsView() {
   const { playOrdered } = usePlayQueue();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
-  const [inspectedKey, setInspectedKey] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
@@ -41,16 +31,6 @@ export function AlbumsView() {
   const albums = groupAlbums(library.data ?? []);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
-
-  // Derived from the live list, not a snapshot — a re-enrich refetch must update
-  // the open panel, not a stale copy. Held across a rename: editing the album or its artist changes the very key
-  // this lookup uses, and dropping the panel mid-save is not what "you renamed
-  // it" should look like. The record is found again by its tracks.
-  const [heldInspect, setHeldInspect] = useState<Album | null>(null);
-  const byKey = inspectedKey != null ? (albums.find((album) => album.key === inspectedKey) ?? null) : null;
-  const inspected = byKey ?? (inspectedKey != null && heldInspect ? findAlbumLike(albums, heldInspect) : null);
-  if (inspected && inspected !== heldInspect) setHeldInspect(inspected);
-  if (inspected && inspected.key !== inspectedKey) setInspectedKey(inspected.key);
 
   // Removing a filter refines the entry we are on, it is not a new place —
   // same reasoning as the genre chips' `replace`.
@@ -62,9 +42,19 @@ export function AlbumsView() {
 
   const chips: TriageChip[] = [];
   if (triage.missingArtwork)
-    chips.push({ key: "missingArtwork", label: t("triage.missingArtwork"), onRemove: () => clearParam("missing") });
+    chips.push({
+      key: "missingArtwork",
+      label: t("triage.missingArtwork"),
+      tone: "correction",
+      onRemove: () => clearParam("missing"),
+    });
   if (triage.tracklistGaps)
-    chips.push({ key: "tracklistGaps", label: t("triage.tracklistGaps"), onRemove: () => clearParam("tracklist") });
+    chips.push({
+      key: "tracklistGaps",
+      label: t("triage.tracklistGaps"),
+      tone: "correction",
+      onRemove: () => clearParam("tracklist"),
+    });
 
   return (
     <PageContainer>
@@ -110,15 +100,15 @@ export function AlbumsView() {
       )}
 
       {visible.length > 0 && (
-        <AlbumGrid
+        <AlbumShelf
           albums={visible}
+          // The unfiltered list: the drawer must keep hold of a record whose
+          // edit drops it out of the current filter or sort.
+          pool={albums}
           animationKey={`${params.toString()}:${query}:${sort}`}
           onPlay={(album) => playOrdered(album.tracks)}
-          onInspect={(album) => setInspectedKey(album.key)}
         />
       )}
-
-      <AlbumInspectModal album={inspected} onClose={() => setInspectedKey(null)} />
     </PageContainer>
   );
 }

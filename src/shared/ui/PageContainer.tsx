@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
-
 interface PageContainerProps {
   children: ReactNode;
   /**
@@ -26,15 +24,22 @@ interface PageContainerProps {
 
 /**
  * Owns the page padding, which <main> deliberately does not — see AppLayout.
+ *
+ * Less air above than on the other three sides: the page no longer opens on the
+ * window's edge but under the topbar, and a full 2rem under a bar reads as the
+ * page having come loose from it. The heroes cancel this padding to bleed their
+ * wash edge to edge, so their `-mt-5` has to keep matching whatever is set here.
+ *
+ * No `WindowDragStrip` any more. It existed because the overlay title bar left
+ * nothing to grab at the top of the window; the topbar is that band now, and the
+ * strip was an invisible 2rem layer over the top of every page — it had already
+ * cost the Metadata page's switch its clicks (see `TriageHero`).
  */
 export function PageContainer({ children, sticky }: PageContainerProps) {
   return (
     <>
       {sticky && <div className="sticky top-0 z-20 h-0">{sticky}</div>}
-      <div className="relative flex flex-col gap-6 p-8">
-        <WindowDragStrip />
-        {children}
-      </div>
+      <div className="relative flex flex-col gap-6 px-8 pt-5 pb-8">{children}</div>
     </>
   );
 }

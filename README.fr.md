@@ -10,8 +10,8 @@ Une bibliothèque musicale de bureau qui range, tague et joue ta collection — 
 la garde en fichiers bien à toi, longtemps après la disparition de l'application
 qui les a produits.
 
-[![Version](https://img.shields.io/badge/version-0.9.1-6163f2)](CHANGELOG.md)
-[![Plateformes](https://img.shields.io/badge/plateformes-macOS%20%7C%20Windows-6163f2)](#installation)
+[![Version](https://img.shields.io/badge/version-2.0.0-157c4f)](CHANGELOG.md)
+[![Plateformes](https://img.shields.io/badge/plateformes-macOS%20%7C%20Windows-70727f)](#installation)
 [![Licence](https://img.shields.io/badge/licence-MIT-6163f2)](LICENSE)
 
 [English](README.md) · **Français**

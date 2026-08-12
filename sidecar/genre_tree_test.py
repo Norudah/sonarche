@@ -15,7 +15,6 @@ class BucketForTest(unittest.TestCase):
         self.assertEqual(bucket_for("thrash metal"), "Metal")
         self.assertEqual(bucket_for("crossover thrash"), "Metal")
         self.assertEqual(bucket_for("bossa nova"), "Latin")
-        self.assertEqual(bucket_for("neo soul"), "Soul & Funk")
         self.assertEqual(bucket_for("gangsta rap"), "Hip-Hop")
 
     def test_guitar_industrial_is_metal_not_electronic(self):
@@ -36,13 +35,35 @@ class BucketForTest(unittest.TestCase):
         self.assertEqual(bucket_for("post-metal"), "Rock")
         self.assertEqual(bucket_for("stoner rock"), "Metal")
         self.assertEqual(bucket_for("synthcore"), "Electronic")
-        self.assertEqual(bucket_for("contemporary r&b"), "Blues")
-        self.assertEqual(bucket_for("new jack swing"), "Hip-Hop")
         self.assertEqual(bucket_for("ska"), "Reggae")
         self.assertEqual(bucket_for("ska punk"), "Rock")
 
+    def test_rnb_is_a_family_not_a_blues_footnote(self):
+        # 2026-08 audit: contemporary r&b browsed under Blues and new jack
+        # swing under Hip-Hop — musically wrong for forty years.
+        self.assertEqual(bucket_for("r&b"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("contemporary r&b"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("new jack swing"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("hip hop soul"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("neo soul"), "R&B, Soul & Funk")
+        self.assertEqual(bucket_for("funk"), "R&B, Soul & Funk")
+
+    def test_folk_and_country_are_one_shelf(self):
+        for g in ("folk", "country", "indie folk", "bluegrass", "rockabilly", "chanson"):
+            self.assertEqual(bucket_for(g), "Folk & Country", g)
+
+    def test_world_catches_the_regional_sections(self):
+        # These used to rot in Other: african/asian resolved to no family.
+        for g in ("afrobeat", "highlife", "raï", "bhangra", "worldbeat", "african"):
+            self.assertEqual(bucket_for(g), "World", g)
+
+    def test_modern_pop_industries_are_pop_not_world(self):
+        # Genre first, geography second: j-pop is pop the way french pop is.
+        for g in ("j-pop", "k-pop", "cantopop", "indian pop"):
+            self.assertEqual(bucket_for(g), "Pop", g)
+
     def test_non_family_sections_have_no_bucket(self):
-        for g in ("afrobeat", "j-pop", "soundtrack", "lo-fi"):
+        for g in ("soundtrack", "lo-fi", "stand-up", "lounge music"):
             self.assertIsNone(bucket_for(g), g)
 
     def test_case_insensitive_and_trimmed(self):
@@ -64,7 +85,7 @@ class TreeConsistencyTest(unittest.TestCase):
         # The whitelist drives what lastgenre may store; the tree drives the
         # bucket. They must stay in sync: every tree node is whitelisted
         # (fabricated family roots excepted) and nothing else is.
-        fabricated = {"soul & funk"}
+        fabricated = {"folk & country"}
         with open(WHITELIST_PATH, encoding="utf-8") as f:
             whitelist = {
                 line.strip().lower()

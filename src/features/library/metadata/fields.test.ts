@@ -5,6 +5,7 @@ import {
   COMPLETENESS_KEYS,
   countFilled,
   diffFields,
+  effectiveEdit,
   formatBitrate,
   toFieldValues,
 } from "@/features/library/metadata/fields";
@@ -26,13 +27,18 @@ function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     format: "AAC",
     path: "/music/monster.m4a",
     audioUrl: "asset://music/monster.m4a",
+    albumId: 1,
     artUrl: null,
     artPath: null,
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
+    provisionalCover: false,
     category: null,
     soundtrack: false,
+    albumKind: null,
+    accepted: [],
+    albumAccepted: [],
     ...over,
   };
 }
@@ -102,6 +108,41 @@ describe("diffFields", () => {
   it("ships a category edit under beets' grouping key", () => {
     const live = toFieldValues(track());
     expect(diffFields(live, { ...live, category: "Video Games" })).toEqual({ grouping: "Video Games" });
+  });
+
+  // Regression: the sidecar trims on write, so a whitespace-only difference
+  // survived its own save as a phantom pending change.
+  it("ignores a whitespace-only difference — the sidecar would not store it", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, title: " Monster " })).toEqual({});
+  });
+
+  it("trims the value it ships, matching what will be stored", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, title: " New Title " })).toEqual({ title: "New Title" });
+  });
+
+  // Regression: the sidecar skips a non-numeric int, so the "saved" draft kept
+  // differing from the store and the exit guard fired after every save.
+  it("ignores a non-numeric year or track — the sidecar would skip it", () => {
+    const live = toFieldValues(track());
+    expect(diffFields(live, { ...live, year: "20a9", track: "x" })).toEqual({});
+  });
+});
+
+describe("effectiveEdit", () => {
+  it("compares int fields as numbers — '07' does not move a stored 7", () => {
+    expect(effectiveEdit("track", "07", "7")).toBeNull();
+    expect(effectiveEdit("year", "0", "")).toBeNull(); // beets stores 0 for "absent"
+  });
+
+  it("clears an int field through an emptied value", () => {
+    expect(effectiveEdit("year", "", "2009")).toBe("");
+  });
+
+  it("treats a real move as one, trimmed", () => {
+    expect(effectiveEdit("genre", " Post-Rock ", "Rock")).toBe("Post-Rock");
+    expect(effectiveEdit("year", "2010", "2009")).toBe("2010");
   });
 });
 

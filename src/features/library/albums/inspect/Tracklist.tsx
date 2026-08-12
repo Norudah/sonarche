@@ -167,6 +167,7 @@ export function Tracklist({
         <span className={`${CAPTION} text-center`}>{t("columns.number")}</span>
         <span className={CAPTION}>{t("columns.title")}</span>
         <span className={CAPTION}>{t("columns.artist")}</span>
+        <span className={`${CAPTION} text-center`}>{t("columns.year")}</span>
         <span className={CAPTION}>{t("columns.genre")}</span>
         <span />
       </div>

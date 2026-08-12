@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Sonarche",
+        "maximized": true,
         "width": 1360,
         "height": 860,
         "minWidth": 1080,
@@ -54,7 +55,8 @@
     "resources": {
       "../sidecar": "sidecar",
       "resources/python.tar.gz": "python.tar.gz",
-      "resources/wheels": "wheels"
+      "resources/wheels": "wheels",
+      "resources/tools": "tools"
     }
   },
   "plugins": {

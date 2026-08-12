@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams, useSearchParams } from "react-router";
 
-import { paths } from "@/app/routes";
+import { genrePath, paths } from "@/app/routes";
 import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
-import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
 import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
 import {
@@ -15,9 +15,12 @@ import {
   findFamily,
   findGenre,
   groupFamilies,
+  isFamilyRootGenre,
   listGenres,
 } from "@/features/library/genres/genres";
+import { ClassifyGenreMenu } from "@/features/library/genres/ClassifyGenreMenu";
 import { GenreHero } from "@/features/library/genres/GenreHero";
+import { useClassifyGenre, useGenreOverrides } from "@/features/library/genres/useClassifyGenre";
 import { GenreSelect } from "@/features/library/GenreSelect";
 import { SubGenreChips } from "@/features/library/genres/SubGenreChips";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
@@ -49,11 +52,14 @@ export function GenreDetailView() {
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
   const labelOf = useFamilyLabel();
+  const overrides = useGenreOverrides();
+  const classify = useClassifyGenre();
 
-  const { family, genre } = useMemo(() => {
+  const { families, family, genre } = useMemo(() => {
     const tracks = library.data ?? [];
     const families = groupFamilies(tracks, groupAlbums(tracks));
     return {
+      families,
       family: findFamily(families, key),
       genre: genreName == null ? null : findGenre(listGenres(families, tracks.length), key, genreName),
     };
@@ -100,18 +106,39 @@ export function GenreDetailView() {
     );
   }
 
+  // Classifying the genre moved it to another shelf and the refetch just
+  // landed: this route stopped matching, but the genre is still there. Find
+  // where it files now and send the route after it — the AlbumDetailView
+  // rename move. Before the family guard, because the move can also have
+  // emptied the family this route names (its only genre left). `replace` so
+  // Back does not walk into the dead placement.
+  if (genreName != null && !genre) {
+    const movedTo = families.find((candidate) => candidate.subs.some((sub) => sub.name === genreName));
+    if (movedTo) return <Navigate to={genrePath(movedTo.key, genreName)} replace />;
+    return <Navigate to={paths.libraryGenres} replace />;
+  }
   // Same reasoning as the album and artist pages: a recompute can empty a
   // family out from under an open page. `replace` so Back does not walk
   // straight into the dead route again.
   if (!family) return <Navigate to={paths.libraryGenres} replace />;
-  // A genre that no longer exists falls back to its family rather than all the
-  // way out — the family is still a valid answer to what the user asked for.
-  if (genreName != null && !genre) return <Navigate to={paths.libraryGenres} replace />;
 
   const subject = genre ?? family;
   // What the hero starts is what the page is showing: the whole subject in the
   // overview, the filtered list in the tracks mode.
   const queue = () => (isTracks ? explorer.visible : subjectTracks);
+
+  // Genre depth only — a family is a shelf, not a thing to refile — and never
+  // for a genre that *is* a family root, which the sidecar refuses to move.
+  const override = genre != null ? (overrides.data?.get(genre.name.toLowerCase()) ?? null) : null;
+  const classifyMenu =
+    genre != null && !isFamilyRootGenre(genre.name) ? (
+      <ClassifyGenreMenu
+        currentKey={family.key}
+        override={override}
+        onClassify={(target) => classify.run(genre.name, target, override)}
+        isPending={classify.isPending}
+      />
+    ) : undefined;
 
   return (
     <PageContainer>
@@ -126,6 +153,7 @@ export function GenreDetailView() {
         onPlay={() => playOrdered(queue())}
         onShuffle={() => playShuffled(queue())}
         actions={<ViewModeSwitch overviewLabel={t("genres.overviewMode")} tracksLabel={t("views.tracks")} />}
+        classify={classifyMenu}
       />
 
       {/* The chips belong above a shelf. In the tracks mode the same choice
@@ -155,7 +183,12 @@ export function GenreDetailView() {
            * actually differ and leaves the rest where they are. */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
-            <AlbumGrid albums={albums} animationKey={family.key} onPlay={(album) => playOrdered(album.tracks)} />
+            <AlbumShelf
+              albums={albums}
+              pool={groupAlbums(library.data ?? [])}
+              animationKey={family.key}
+              onPlay={(album) => playOrdered(album.tracks)}
+            />
           </section>
 
           <section className="flex flex-col gap-3">

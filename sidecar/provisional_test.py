@@ -52,6 +52,21 @@ class GuessFieldsTest(unittest.TestCase):
         self.assertNotIn("track", fields)
 
 
+class ClearTest(unittest.TestCase):
+    def test_lowers_the_flag_and_says_so(self):
+        item = _Item()
+        provisional.apply(item, {"title": "A"})
+        self.assertTrue(provisional.clear(item))
+        self.assertNotIn(provisional.FLAG, item)
+
+    def test_a_clean_item_stays_untouched(self):
+        # Re-match clears unconditionally on every real match; most items never
+        # carried the flag and must not gain history from the clearing.
+        item = _Item()
+        self.assertFalse(provisional.clear(item))
+        self.assertNotIn(provisional.FLAG, item)
+
+
 class ApplyTest(unittest.TestCase):
     def test_writes_fields_and_raises_the_flag(self):
         item = _Item()

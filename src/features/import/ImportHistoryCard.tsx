@@ -1,11 +1,13 @@
-import { ChevronDown, FolderInput, FolderX } from "lucide-react";
+import { ChevronDown, FolderInput, FolderX, Square, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ImportRecord } from "@/features/import/api";
 import { ImportRecapPanel } from "@/features/import/ImportRecapPanel";
+import { ImportUndoAction } from "@/features/import/ImportUndoAction";
 import { shortenPath } from "@/features/import/summary";
+import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 import { Verdict } from "@/shared/ui/Verdict";
@@ -31,11 +33,16 @@ function nameOf(folder: string): string {
  */
 export function ImportHistoryCard({ record }: { record: ImportRecord }) {
   const { t, i18n } = useTranslation("import");
+  const categoryLabel = useCategoryLabel();
   const [isOpen, setIsOpen] = useState(false);
 
   const failed = record.status === "failed";
+  const cancelled = record.status === "cancelled";
+  // Taken back out. It outranks the status on the closed row: what a run
+  // brought in stops being the point once none of it is in the library.
+  const undone = record.undoneAt != null;
   const headline = useImportHeadline(record.folders, record.scan, record.recap);
-  const subtitle = failed ? record.error : headline;
+  const subtitle = failed ? record.error : undone ? t("undo.subtitle") : headline;
 
   return (
     <article
@@ -47,24 +54,52 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         <div
           className={
             "flex size-9 shrink-0 items-center justify-center rounded-lg " +
-            (failed ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent")
+            (undone
+              ? "bg-default text-muted"
+              : failed
+                ? "bg-danger-soft text-danger"
+                : cancelled
+                  ? "bg-warning-soft text-warning"
+                  : "bg-accent-soft text-accent")
           }
         >
-          {failed ? <FolderX className="size-4" /> : <FolderInput className="size-4" />}
+          {undone ? (
+            <Undo2 className="size-4" />
+          ) : failed ? (
+            <FolderX className="size-4" />
+          ) : cancelled ? (
+            <Square className="size-4" />
+          ) : (
+            <FolderInput className="size-4" />
+          )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="min-w-0 truncate text-sm font-semibold">{nameOf(record.folder)}</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="min-w-0 truncate text-sm font-semibold">{nameOf(record.folder)}</p>
+            {/* The answer, on the closed row. What an import produced only makes
+                sense next to what it was asked for, and "did I pick the wrong
+                one" should not need a click to answer. */}
+            {record.grouping && (
+              <span className="shrink-0 rounded-full bg-default/70 px-2 py-0.5 text-[0.625rem] font-medium text-muted">
+                {t(`grouping.${record.grouping}`)}
+              </span>
+            )}
+          </div>
           <p className={"min-w-0 truncate text-xs " + (failed ? "text-danger" : "text-muted")} title={subtitle ?? ""}>
             {subtitle}
           </p>
         </div>
 
-        <div className="flex w-28 shrink-0 justify-end">
-          <Verdict tone={failed ? "danger" : "success"}>{t(failed ? "verdict.failed" : "verdict.done")}</Verdict>
+        {/* The verdict sits next to the chevron rather than in a fixed column
+            with an empty one beside it: that spacer aligned this row with the
+            download cards it no longer shares a page with, and left a hand's
+            width of nothing between "Importé" and the edge. */}
+        <div className="flex shrink-0 items-center gap-3">
+          <Verdict tone={undone ? "accent" : failed ? "danger" : cancelled ? "warning" : "success"}>
+            {t(undone ? "undo.verdict" : failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
+          </Verdict>
         </div>
-
-        <div className="w-32 shrink-0" />
 
         <div className="flex shrink-0 items-center">
           <button
@@ -107,11 +142,33 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
                 </p>
               </div>
 
+              {/* Spelled out where there is room for it: the short chip above
+                  names the answer, this says which question it answered. */}
+              {(record.grouping || record.category) && (
+                <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+                  {record.grouping && (
+                    <div className="flex gap-1.5">
+                      <dt className="text-muted">{t("grouping.label")}</dt>
+                      <dd>{t(`grouping.${record.grouping}Answer`)}</dd>
+                    </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <dt className="text-muted">{t("category.label")}</dt>
+                    <dd>{record.category ? categoryLabel(record.category) : t("category.none")}</dd>
+                  </div>
+                </dl>
+              )}
+
               {failed ? (
                 <p className="text-[0.8125rem] break-words text-danger">{record.error}</p>
               ) : (
-                <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} />
+                <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} alignDoor />
               )}
+
+              {/* The way out lives here, where the panel has already said what
+                  the run brought in — and never on the closed row, one click
+                  from a feed of them. */}
+              {!undone && <ImportUndoAction id={record.id} name={nameOf(record.folder)} />}
             </div>
           </motion.div>
         )}

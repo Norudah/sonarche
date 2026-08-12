@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { PythonInfo } from "@/features/onboarding/api";
+import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 
 /**
  * The one step the app cannot take for the user — for now.
@@ -30,7 +31,7 @@ export function PythonPanel({ python, onRecheck, isChecking }: PythonPanelProps)
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-sm">
+    <div className={`${PANEL_CARD} gap-3`}>
       <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("steps.python.body")}</p>
 
       {/* Re-read after the fact, the question is no longer "how do I install it"

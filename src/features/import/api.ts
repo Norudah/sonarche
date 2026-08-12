@@ -14,10 +14,26 @@ export interface ScanReport {
   /** Folders holding at least one audio file — the progress denominator, since
    * beets imports a tree folder by folder and names each one as it goes. */
   albumFolders: number;
+  /** Audio files in the fullest single folder — the hint behind the suggested
+   * grouping. See `suggestGrouping`. */
+  largestFolder: number;
   /** Total bytes of every audio file found. */
   bytes: number;
   /** The walk hit its ceiling: every count above is a floor. */
   truncated: boolean;
+  /** An earlier import covering the same ground, if the archive knows of one.
+   * Not a refusal: beets skips the directories it has already taken on, and
+   * this is how the screen says so rather than letting a second run look like
+   * a failure. */
+  previouslyImported?: PreviousImport;
+}
+
+export interface PreviousImport {
+  folder: string;
+  finishedAt: number;
+  /** A stopped run — the case worth naming, since part of the folder is
+   * already in and finishing is the obvious next move. */
+  cancelled: boolean;
 }
 
 export function scanImportFolder(path: string): Promise<ScanReport> {
@@ -45,6 +61,10 @@ export interface ImportRecap {
   offTree: number;
   albumsWithoutArt: number;
   albumsWithGaps: number;
+  /** Rows the import filed as collections rather than albums, because their
+   * tracks never agreed on being one release (`sidecar/auto_collection.py`).
+   * Absent on runs archived before the import made that call. */
+  collections?: number;
 }
 
 /** What the import did, once it is over. */
@@ -55,6 +75,9 @@ export interface ImportOutcome {
    * kept beside them as `cover-hq.*`. */
   renditions: number;
   recap: ImportRecap | null;
+  /** The user stopped the copy. Not a failure: everything taken on by then is
+   * in the library, and the counts above describe it. */
+  cancelled: boolean;
 }
 
 /** The scan's counts as the archive keeps them — the report itself is not
@@ -77,12 +100,19 @@ export interface ImportScanCounts {
 export interface ImportRecord {
   id: string;
   folder: string;
-  status: "done" | "failed";
+  status: "done" | "failed" | "cancelled";
   error: string | null;
   scan: ImportScanCounts;
   folders: number;
   renditions: number;
+  /** What the run was asked to do. Absent on runs archived before the import
+   * had options — those were all made under beets' one default behaviour. */
+  grouping?: Grouping;
+  category?: string | null;
   recap: ImportRecap | null;
+  /** When the run was taken back out of the library, epoch milliseconds. Null
+   * while it stands — which is every row until someone undoes one. */
+  undoneAt?: number | null;
   /** Epoch milliseconds. */
   finishedAt: number;
 }
@@ -91,10 +121,69 @@ export function listImports(): Promise<ImportRecord[]> {
   return invoke<ImportRecord[]>("list_imports");
 }
 
+/**
+ * What undoing a run would take away.
+ *
+ * Counted from the library as it stands now, not from what the run reported
+ * when it ended: tracks may have been deleted by hand since, and an album the
+ * import merely added to may have grown.
+ */
+export interface ImportUndoPreview {
+  tracks: number;
+  /** Albums that disappear with their tracks. */
+  albumsRemoved: number;
+  /** Albums that only lose some — the import had added to a record that was
+   * already there. Its own number because it is the consequence nobody
+   * expects. */
+  albumsKept: number;
+  /** Playlist entries that go with the tracks. */
+  playlistEntries: number;
+}
+
+export interface ImportUndoOutcome {
+  removed: number;
+  /** Rows dropped whose file sat outside the library, left on disk. Nothing an
+   * import created can be there, so this is only ever a sign something else
+   * went wrong earlier. */
+  foreign: number;
+  playlistEntries: number;
+}
+
+export function previewImportUndo(id: string): Promise<ImportUndoPreview> {
+  return invoke<ImportUndoPreview>("preview_import_undo", { id });
+}
+
+/** Remove everything one import brought in: the tracks, their files, the
+ * albums that empty, their covers, the playlist entries, and beets' memory of
+ * the folder — so the same folder can be imported again. */
+export function undoImport(id: string): Promise<ImportUndoOutcome> {
+  return invoke<ImportUndoOutcome>("undo_import", { id });
+}
+
+/** How the import decides what an album is.
+ *
+ * beets makes one album per *directory*, always. `folder` keeps that, which is
+ * right for a ripped or bought library. `tags` re-groups each directory by the
+ * album tag its files carry, for a folder holding several records at once.
+ * `tracks` says there are no albums here — every file lands on its own, which
+ * is what a folder of one-shot rips really is, and the only mode that does not
+ * invent a record named after the folder to file unrelated artists under. */
+export type Grouping = "folder" | "tags" | "tracks";
+
 /** Copy a folder's music into the library. Resolves when beets is done, which
  * on a real collection is minutes away. */
-export function startLibraryImport(folder: string): Promise<ImportOutcome> {
-  return invoke<ImportOutcome>("start_library_import", { folder });
+export function startLibraryImport(
+  folder: string,
+  grouping: Grouping,
+  category: string | null,
+): Promise<ImportOutcome> {
+  return invoke<ImportOutcome>("start_library_import", { folder, grouping, category });
+}
+
+/** Stop the import in flight. Fire-and-forget: the import's own call is what
+ * resolves — as cancelled — once beets has actually stopped. */
+export function cancelLibraryImport(): Promise<void> {
+  return invoke<void>("cancel_library_import");
 }
 
 /**

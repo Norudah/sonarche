@@ -63,6 +63,7 @@ describe("jobPipeline", () => {
     });
     expect(canRetry(partial)).toBe(true);
     expect(canRetry(job({ status: "failed" }))).toBe(true);
+    expect(canRetry(job({ status: "cancelled" }))).toBe(true);
     expect(canRetry(job({ kind: "album", status: "done", tracks: [albumTrack({ status: "done" })] }))).toBe(false);
   });
 

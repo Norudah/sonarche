@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SuggestInput } from "@/features/library/metadata/SuggestInput";
+import type { SuggestKind } from "@/features/library/metadata/suggestions";
+
 /**
  * A tracklist cell: plain text until you reach it, a real input once you do.
  *
@@ -20,6 +23,7 @@ export function EditableCell({
   label,
   align = "left",
   missingLabel,
+  suggest,
   onChange,
 }: {
   value: string;
@@ -31,6 +35,8 @@ export function EditableCell({
   align?: "left" | "center";
   /** What an empty cell should say, when leaving it empty is a problem. */
   missingLabel?: string;
+  /** Pool to suggest from while typing — only mounted with the input itself. */
+  suggest?: SuggestKind;
   onChange: (value: string) => void;
 }) {
   const { t } = useTranslation("library");
@@ -43,14 +49,14 @@ export function EditableCell({
 
   if (isActive) {
     return (
-      <input
+      <SuggestInput
         // The cell just took focus as a button; without this, swapping it for
         // the input would drop that focus on the floor.
         autoFocus
-        type="text"
         aria-label={label}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        suggest={suggest}
+        onChange={onChange}
         onBlur={() => setIsActive(false)}
         className={`${box} border border-accent bg-surface text-foreground ring-2 ring-accent/25`}
       />

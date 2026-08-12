@@ -11,6 +11,7 @@ function paramsOf(path: string): URLSearchParams {
 function triage(over: Partial<TrackTriage> = {}): TrackTriage {
   return {
     missingYear: false,
+    missingTrackNumber: false,
     genre: null,
     family: null,
     category: null,
@@ -31,6 +32,7 @@ const library = [
 describe("parseTrackTriage", () => {
   it("round-trips the published deep links", () => {
     expect(parseTrackTriage(paramsOf(triagePaths.missingYear))).toEqual(triage({ missingYear: true }));
+    expect(parseTrackTriage(paramsOf(triagePaths.missingTrackNumber))).toEqual(triage({ missingTrackNumber: true }));
     expect(parseTrackTriage(paramsOf(triagePaths.genreMissing))).toEqual(triage({ genre: "missing" }));
     expect(parseTrackTriage(paramsOf(triagePaths.genreOffTree))).toEqual(triage({ genre: "off-tree" }));
     expect(parseTrackTriage(paramsOf(triagePaths.suspectMatch))).toEqual(triage({ suspectMatch: true }));
@@ -63,6 +65,18 @@ describe("applyTrackTriage", () => {
 
   it("keeps only tracks with no year", () => {
     expect(applyTrackTriage(library, triage({ missingYear: true })).map((t) => t.id)).toEqual([2, 4]);
+  });
+
+  /** beets writes an absent position as 0, so the predicate has to refuse both
+   * shapes or every untagged file passes for numbered. */
+  it("keeps tracks with no position, null and zero alike", () => {
+    const rows = [
+      track({ id: 1, track: 1 }),
+      track({ id: 2, track: null }),
+      track({ id: 3, track: 0 }),
+      track({ id: 4, track: null, accepted: ["track"] }),
+    ];
+    expect(applyTrackTriage(rows, triage({ missingTrackNumber: true })).map((t) => t.id)).toEqual([2, 3]);
   });
 
   it("treats an empty genre like a missing one, matching the genres page", () => {

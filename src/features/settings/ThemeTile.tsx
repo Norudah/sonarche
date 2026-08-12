@@ -60,19 +60,25 @@ export function ThemeTile({
   const isSelected = selected === value;
 
   return (
-    <Radio.Root value={value} className="group relative mt-0 flex cursor-pointer flex-col gap-2">
-      {/* `w-full` is load-bearing: HeroUI's `.radio` aligns its children to
-          flex-start, so an aspect-ratio box with only absolute content inside
-          shrinks to 3×2 actual pixels. */}
-      <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border border-separator shadow-xs">
-        {value !== "dark" && <Miniature tone="light" />}
-        {value === "dark" && <Miniature tone="dark" />}
-        {value === "system" && (
-          <div className="theme-tile__split absolute inset-0">
-            <Miniature tone="dark" />
-          </div>
-        )}
-      </div>
+    <Radio.Root value={value} className="group relative mt-0">
+      {/* Radio.Content is the actual react-aria RadioButton — the label the
+          click handler lives on — so the drawing sits inside it: a press
+          anywhere on the tile selects the theme, not just on the caption. */}
+      <Radio.Content className="flex w-full cursor-pointer flex-col gap-2 text-[0.8125rem] font-medium text-muted transition-colors group-hover:text-foreground data-[selected]:text-accent">
+        {/* `w-full` is load-bearing: HeroUI's `.radio` aligns its children to
+            flex-start, so an aspect-ratio box with only absolute content inside
+            shrinks to 3×2 actual pixels. */}
+        <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border border-separator shadow-xs">
+          {value !== "dark" && <Miniature tone="light" />}
+          {value === "dark" && <Miniature tone="dark" />}
+          {value === "system" && (
+            <div className="theme-tile__split absolute inset-0">
+              <Miniature tone="dark" />
+            </div>
+          )}
+        </div>
+        <span className="self-center">{label}</span>
+      </Radio.Content>
 
       {/* Outside the clipped frame so the ring is not shaved off by the
           overflow, and carrying the shared layoutId so it travels between
@@ -84,10 +90,6 @@ export function ThemeTile({
           className="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2] rounded-xl ring-2 ring-accent"
         />
       )}
-
-      <Radio.Content className="justify-center text-[0.8125rem] font-medium text-muted transition-colors group-hover:text-foreground data-[selected]:text-accent">
-        {label}
-      </Radio.Content>
     </Radio.Root>
   );
 }

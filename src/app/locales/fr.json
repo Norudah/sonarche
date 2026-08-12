@@ -10,5 +10,43 @@
       "arche": "Arche"
     }
   },
-  "settings": "Paramètres"
+  "settings": "Paramètres",
+  "guide": {
+    "open": "Ouvrir le guide"
+  },
+  "pagination": {
+    "previous": "Page précédente",
+    "next": "Page suivante",
+    "pageOf": "{{page}} / {{pageCount}}"
+  },
+  "tour": {
+    "back": "Précédent",
+    "next": "Suivant",
+    "finish": "Terminer",
+    "openGuide": "Ouvrir le guide",
+    "explorer": {
+      "title": "L'Explorer",
+      "body": "C'est par ici que la musique entre : un téléchargement depuis une adresse, ou l'import d'un dossier déjà à toi. L'historique et les métadonnées racontent ce qui est arrivé."
+    },
+    "arche": {
+      "title": "L'Arche",
+      "body": "Ta bibliothèque, rangée sur cinq étagères : titres, albums, artistes, genres et catégories. Tout ce qui entre finit ici."
+    },
+    "playlists": {
+      "title": "Les playlists",
+      "body": "Tes listes à toi, à côté de ce que la bibliothèque range d'elle-même. Le + en crée une nouvelle."
+    },
+    "chrome": {
+      "title": "Aide et réglages",
+      "body": "Le point d'interrogation ouvre le guide dans ton navigateur ; l'engrenage ouvre les réglages — et te ramène ensuite où tu étais."
+    },
+    "player": {
+      "title": "Le lecteur",
+      "body": "La lecture vit en bas, sur toutes les pages : le morceau en cours, la file d'attente, l'aléatoire et la répétition."
+    },
+    "finale": {
+      "title": "C'est tout !",
+      "body": "Tu peux revoir cette visite depuis Réglages → Apparence. Et pour aller plus loin, le guide t'attend sur le site."
+    }
+  }
 }

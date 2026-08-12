@@ -75,7 +75,13 @@ def handle(request_id: str, params: dict) -> dict:
     # the YouTube title, emoji and all. `replace` because a byte we cannot read
     # should cost a garbled log line, never the import.
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300
+        cmd,
+        stdin=subprocess.DEVNULL,  # same guard as library_import: beets must never read our protocol pipe
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
     )
     for line in (proc.stdout + proc.stderr).splitlines():
         if line.strip():

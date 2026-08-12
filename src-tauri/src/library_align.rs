@@ -82,7 +82,7 @@ async fn request(app: &AppHandle, cmd: &str, extra: Value, timeout: Duration) ->
     let paths = AppPaths::resolve(app)?;
     let mut params = json!({
         "beets_db": paths.beets_db.to_string_lossy(),
-        "library_dir": paths.library_dir.to_string_lossy(),
+        "library_dir": paths.music_dir().to_string_lossy(),
     });
     if let (Some(params), Some(extra)) = (params.as_object_mut(), extra.as_object()) {
         for (key, value) in extra {

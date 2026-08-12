@@ -1,5 +1,5 @@
 import { Dropdown } from "@heroui/react";
-import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
+import { FilePen, FolderInput, ListMusic, ListPlus, MoreHorizontal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +18,17 @@ const ICON_PILL = HERO_BUTTON_ICON;
  * nobody performs twice, and buys back the row for the two things you actually
  * came here to do.
  */
-function OverflowMenu({ onDelete }: { onDelete: () => void }) {
+function OverflowMenu({
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+}: {
+  onDelete: () => void;
+  onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
+}) {
   const { t } = useTranslation("library");
 
   return (
@@ -30,12 +40,26 @@ function OverflowMenu({ onDelete }: { onDelete: () => void }) {
         <MoreHorizontal className="size-4 shrink-0" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu onAction={onDelete}>
-          <Dropdown.Item id="delete" textValue={t("deleteAlbum.action")}>
-            <span className="flex items-center gap-2 text-danger">
-              <Trash2 className="size-4" />
-              {t("deleteAlbum.action")}
-            </span>
+        <Dropdown.Menu>
+          <Dropdown.Item id="add-to-playlist" textValue={t("playlists.addTo")} onAction={onAddToPlaylist}>
+            <ListMusic className="size-4" />
+            {t("playlists.addTo")}
+          </Dropdown.Item>
+          {/* The pull half of refiling: stand on your record, fetch the tracks
+           * you actually like from the rest of the shelf. */}
+          <Dropdown.Item id="add-tracks" textValue={t("move.addTracksAction")} onAction={onAddTracks}>
+            <ListPlus className="size-4" />
+            {t("move.addTracksAction")}
+          </Dropdown.Item>
+          {/* The whole record at once — how two albums become one, and how a
+           * hand-made collection absorbs a release it grew out of. */}
+          <Dropdown.Item id="move-to-album" textValue={t("move.menuAction")} onAction={onMoveToAlbum}>
+            <FolderInput className="size-4" />
+            {t("move.menuAction")}
+          </Dropdown.Item>
+          <Dropdown.Item id="delete" variant="danger" textValue={t("deleteAlbum.action")} onAction={onDelete}>
+            <Trash2 className="size-4" />
+            {t("deleteAlbum.action")}
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -46,11 +70,22 @@ function OverflowMenu({ onDelete }: { onDelete: () => void }) {
 interface AlbumActionsProps {
   onPlay: () => void;
   onShuffle: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
+  onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
 }
 
-export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumActionsProps) {
+export function AlbumActions({
+  onPlay,
+  onShuffle,
+  onEdit,
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+}: AlbumActionsProps) {
   const { t } = useTranslation("library");
 
   return (
@@ -62,22 +97,28 @@ export function AlbumActions({ onPlay, onShuffle, onInspect, onDelete }: AlbumAc
       <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
       <div className="flex items-center gap-2">
-        {/* Same FileText icon as the per-track inspect control in the tables,
-         * one scope up: this opens the album's own metadata drawer. Same press
-         * feedback as the play button beside it — the row moves as one family. */}
+        {/* "Modifier", not "Inspecter": what opens is a form you write in, and
+         * a page-with-a-pen says so where a bare page only promised reading.
+         * The same pair — this icon, this word — is the app's one door to
+         * editing anything, from a track row to an artist to a playlist. */}
         <motion.button
           type="button"
-          onClick={onInspect}
+          onClick={onEdit}
           whileTap={{ scale: 0.96 }}
           whileHover={{ scale: 1.03 }}
           transition={springs.snappy}
           className={`${SECONDARY} cursor-pointer`}
         >
-          <FileText className="size-4" />
-          {t("albums.inspectAction")}
+          <FilePen className="size-4" />
+          {t("edit")}
         </motion.button>
 
-        <OverflowMenu onDelete={onDelete} />
+        <OverflowMenu
+          onDelete={onDelete}
+          onAddToPlaylist={onAddToPlaylist}
+          onMoveToAlbum={onMoveToAlbum}
+          onAddTracks={onAddTracks}
+        />
       </div>
     </div>
   );

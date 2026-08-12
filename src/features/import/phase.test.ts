@@ -9,6 +9,7 @@ const report: ScanReport = {
   unplayableByExtension: {},
   unplayableExamples: [],
   albumFolders: 2,
+  largestFolder: 0,
   bytes: 100,
   truncated: false,
 };
@@ -58,9 +59,17 @@ describe("importPhase", () => {
    * finished import is what the screen is about — but it carries the report
    * along, because the recap is about the two together. */
   it("prefers the outcome over the scan it came from, and keeps that scan", () => {
-    const outcome = { folders: 2, renditions: 1, recap: null };
+    const outcome = { folders: 2, renditions: 1, recap: null, cancelled: false };
 
     expect(importPhase(input({ report, outcome }))).toEqual({ kind: "imported", outcome, report });
+  });
+
+  /** A stop is the user's own act, not a failure — the outcome resolves, and
+   * the phase has to say "stopped" rather than wear the success face. */
+  it("reads a cancelled outcome as its own phase", () => {
+    const outcome = { folders: 1, renditions: 0, recap: null, cancelled: true };
+
+    expect(importPhase(input({ report, outcome }))).toEqual({ kind: "importCancelled", outcome, report });
   });
 
   it("keeps the report when the import fails, so a retry needs no rescan", () => {

@@ -2,8 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { triagePaths } from "@/app/paths";
 import { groupAlbums } from "@/features/library/albums/albums";
+import { groupArtists } from "@/features/library/artists/artists";
 import { track } from "@/features/library/testFixtures";
-import { buildTriageQueue, countToFix, type TriageLine } from "@/features/library/triage/queue";
+import {
+  acceptedTargets,
+  buildSystemQueue,
+  buildTriageQueue,
+  tallyToFix,
+  type TriageLine,
+} from "@/features/library/triage/queue";
 
 function lineOf(queue: TriageLine[], key: TriageLine["key"]): TriageLine {
   const line = queue.find((entry) => entry.key === key);
@@ -93,16 +100,20 @@ describe("buildTriageQueue", () => {
   });
 
   it("points the review lines at their deep links, with track examples", () => {
-    expect(lineOf(queue, "suspect").doors).toEqual([{ key: "suspectMatch", count: 1, to: triagePaths.suspectMatch }]);
+    expect(lineOf(queue, "suspect").doors).toEqual([
+      { key: "suspectMatch", count: 1, subjects: ["t:6"], to: triagePaths.suspectMatch },
+    ]);
     expect(lineOf(queue, "suspect").examples).toEqual(["Sound the Bugle"]);
     expect(lineOf(queue, "duplicates").doors).toEqual([
-      { key: "duplicateRecording", count: 2, to: triagePaths.duplicateRecording },
+      { key: "duplicateRecording", count: 2, subjects: ["t:6", "t:7"], to: triagePaths.duplicateRecording },
     ]);
     expect(lineOf(queue, "duplicates").examples).toEqual(["Sound the Bugle", "You Can't Take Me"]);
   });
 
   it("points every door at its contract deep link", () => {
-    expect(lineOf(queue, "year").doors).toEqual([{ key: "missingYear", count: 1, to: triagePaths.missingYear }]);
+    expect(lineOf(queue, "year").doors).toEqual([
+      { key: "missingYear", count: 1, subjects: ["t:2"], to: triagePaths.missingYear },
+    ]);
     expect(lineOf(queue, "genre").doors.map((door) => door.to)).toEqual([
       triagePaths.genreMissing,
       triagePaths.genreOffTree,
@@ -137,9 +148,62 @@ describe("buildTriageQueue", () => {
   });
 });
 
-describe("countToFix", () => {
-  it("adds tracks and albums together — N things, not N tracks", () => {
-    expect(countToFix(queue)).toBe(8);
+describe("accepting a check", () => {
+  /** The point of the whole mechanism: the count comes down without a single
+   * tag having been rewritten. */
+  it("takes an answered track out of its line and out of the tally", () => {
+    const answered = tracks.map((item) => (item.id === 2 ? { ...item, accepted: ["year" as const] } : item));
+    const queue = buildTriageQueue(answered, groupAlbums(answered));
+
+    expect(lineOf(queue, "year").count).toBe(0);
+    // Still on the genre line: the answer was about its year, and nothing else.
+    expect(lineOf(queue, "genre").count).toBe(2);
+    expect(tallyToFix(queue).total).toBe(5);
+  });
+
+  it("answers a cover on the album, for every beets row behind the card", () => {
+    const answered = tracks.map((item) => ({ ...item, albumAccepted: ["artwork" as const] }));
+    const queue = buildTriageQueue(answered, groupAlbums(answered));
+
+    expect(lineOf(queue, "artwork").count).toBe(0);
+  });
+
+  /** Two lines cannot be answered away: a flagged match is a question about
+   * what the audio is, and a gapped tracklist is answered by declaring the
+   * record a collection. */
+  it("offers no answer where accepting would be the wrong verb", () => {
+    expect(lineOf(queue, "suspect").accept).toBeNull();
+    expect(lineOf(queue, "tracklist").accept).toBeNull();
+    expect(lineOf(queue, "year").accept).toEqual({ scope: "track", check: "year", ids: [2] });
+  });
+
+  it("lists what has been answered, so it can be taken back", () => {
+    const answered = tracks.map((item) => (item.id === 2 ? { ...item, accepted: ["year" as const] } : item));
+
+    expect(acceptedTargets(answered, groupAlbums(answered))).toEqual([{ scope: "track", check: "year", ids: [2] }]);
+  });
+});
+
+describe("tallyToFix", () => {
+  /**
+   * The regression the headline was built on: track 2 is on the year line *and*
+   * the genre line, track 6 is suspect *and* duplicated, and "Holes" is both
+   * artless and gapped. Summing the lines owned those three twice — 8 for what
+   * is really 4 tracks and 1 album.
+   */
+  it("counts each thing once, however many lines name it", () => {
+    expect(queue.reduce((sum, line) => sum + line.count, 0)).toBe(8);
+    expect(tallyToFix(queue)).toEqual({ tracks: 4, albums: 1, total: 5 });
+  });
+
+  /** Tracks and albums are counted apart, so the hero can name both kinds
+   * rather than hand over one figure made of two different things. */
+  it("keeps the two kinds separate", () => {
+    const artless = buildTriageQueue(
+      [],
+      albums.map((album) => ({ ...album, artUrl: null })),
+    );
+    expect(tallyToFix(artless)).toEqual({ tracks: 0, albums: 2, total: 2 });
   });
 
   it("is zero on a clean library", () => {
@@ -155,6 +219,26 @@ describe("countToFix", () => {
         artUrl: "asset://a.jpg",
       }),
     ];
-    expect(countToFix(buildTriageQueue(clean, groupAlbums(clean)))).toBe(0);
+    expect(tallyToFix(buildTriageQueue(clean, groupAlbums(clean))).total).toBe(0);
+  });
+});
+
+describe("buildSystemQueue", () => {
+  const artists = groupArtists(albums);
+
+  it("counts only the artists still wearing the generated motif", () => {
+    const images = new Map([["Artist", "asset://artist.jpg"]]);
+    expect(buildSystemQueue(artists, images)[0].count).toBe(0);
+
+    const line = buildSystemQueue(artists, new Map())[0];
+    expect(line.key).toBe("artistImage");
+    expect(line.count).toBe(artists.length);
+    expect(line.doors[0].to).toBe(triagePaths.artistImageMissing);
+    // No beets row to write "c'est voulu" on — the controls menu is the out.
+    expect(line.accept).toBeNull();
+  });
+
+  it("raises nothing while the image map is still loading", () => {
+    expect(buildSystemQueue(artists, undefined)).toEqual([]);
   });
 });

@@ -100,12 +100,10 @@
   --danger: oklch(0.545 0.145 25);
   --danger-foreground: var(--snow);
 
-  /* Artist genre avatar — the plate sinks with the paper, or it would end up
-     lighter than the surface carrying it; the picked-out detail leaves
-     graphite for the axis. */
+  /* Artist initial avatar — the plate sinks with the paper, or it would end
+     up lighter than the surface carrying it. */
   --artist-avatar-bg: oklch(0.948 0.02 279);
   --artist-avatar-ink: var(--accent);
-  --artist-avatar-accent: oklch(0.44 0.025 279);
 
   /* Genre family identity tones — one fixed colour per browse family (the 13
      roots of the sidecar's genre tree; a closed, curated set, which is what
@@ -123,9 +121,9 @@
   --family-hip-hop: oklch(0.55 0.1 322);
   --family-jazz: oklch(0.55 0.1 76);
   --family-blues: oklch(0.55 0.1 240);
-  --family-soul-funk: oklch(0.55 0.1 54);
-  --family-folk: oklch(0.55 0.1 126);
-  --family-country: oklch(0.55 0.1 100);
+  --family-rnb: oklch(0.55 0.1 54);
+  --family-folk-country: oklch(0.55 0.1 126);
+  --family-world: oklch(0.55 0.1 100);
   --family-reggae: oklch(0.55 0.1 152);
   --family-latin: oklch(0.55 0.1 12);
   --family-classical: oklch(0.55 0.1 300);
@@ -141,6 +139,24 @@
   --category-anime: oklch(0.55 0.1 350);
   --category-cartoon: oklch(0.55 0.1 40);
   --category-musical: oklch(0.55 0.1 316);
+
+  /* Playlist markers — the eight tones a playlist may wear in the navigation
+     when the user picks a colour rather than an icon or a thumbnail.
+     Same doctrine as the family tones above — one value, one chroma, the hue
+     alone carrying identity — but not the same numbers. Those are washes at
+     4–22%, where 0.1 of chroma is plenty; these are drawn *solid* at 16px, and
+     at 0.1 the rose chip read as a brown smudge rather than as a colour anyone
+     would pick on purpose. Up to 0.14, which is still under the accent's 0.185:
+     eight chips down the sidebar must not out-shout the active pill they sit
+     under. Consumed only through playlists/marker.ts. */
+  --playlist-indigo: oklch(0.58 0.14 277);
+  --playlist-violet: oklch(0.58 0.14 310);
+  --playlist-rose: oklch(0.58 0.14 350);
+  --playlist-amber: oklch(0.58 0.14 40);
+  --playlist-moss: oklch(0.58 0.14 130);
+  --playlist-teal: oklch(0.58 0.14 175);
+  --playlist-sky: oklch(0.58 0.14 215);
+  --playlist-blue: oklch(0.58 0.14 250);
 
   /* Metadata drawer header — a decorative gradient, same hue as the accent but
      starting darker so it resolves into it rather than sitting flat on it.
@@ -280,7 +296,6 @@
 
   --artist-avatar-bg: oklch(0.3 0.03 279);
   --artist-avatar-ink: oklch(0.82 0.09 279);
-  --artist-avatar-accent: oklch(0.68 0.015 279);
 
   /* One chroma and one value for all twenty, the hue alone carrying identity.
      At the 4–22% these are actually used at, a chroma difference does not read
@@ -298,9 +313,9 @@
   --family-hip-hop: oklch(0.74 0.095 322);
   --family-jazz: oklch(0.74 0.095 76);
   --family-blues: oklch(0.74 0.095 240);
-  --family-soul-funk: oklch(0.74 0.095 54);
-  --family-folk: oklch(0.74 0.095 126);
-  --family-country: oklch(0.74 0.095 100);
+  --family-rnb: oklch(0.74 0.095 54);
+  --family-folk-country: oklch(0.74 0.095 126);
+  --family-world: oklch(0.74 0.095 100);
   --family-reggae: oklch(0.74 0.095 152);
   --family-latin: oklch(0.74 0.095 12);
   --family-classical: oklch(0.74 0.095 300);
@@ -312,6 +327,15 @@
   --category-anime: oklch(0.74 0.095 350);
   --category-cartoon: oklch(0.74 0.095 40);
   --category-musical: oklch(0.74 0.095 316);
+
+  --playlist-indigo: oklch(0.7 0.13 277);
+  --playlist-violet: oklch(0.7 0.13 310);
+  --playlist-rose: oklch(0.7 0.13 350);
+  --playlist-amber: oklch(0.7 0.13 40);
+  --playlist-moss: oklch(0.7 0.13 130);
+  --playlist-teal: oklch(0.7 0.13 175);
+  --playlist-sky: oklch(0.7 0.13 215);
+  --playlist-blue: oklch(0.7 0.13 250);
 
   --metadata-header-from: oklch(0.26 0.12 277);
   --metadata-header-to: var(--accent);
@@ -366,10 +390,9 @@
 
 /* --- Artist genre avatar -------------------------------------------------- */
 
-/* A line-art genre motif on a coloured disc, standing in for the artist photo
-   we deliberately don't fetch (see genreArt.tsx). Fully token-driven so the
-   whole set re-tints from three variables (defined per theme above): `ink` is
-   the primary stroke via currentColor, `accent` the one picked-out detail. */
+/* The artist's initial on a coloured disc, standing in for the photo we
+   deliberately don't fetch — a slot waiting for the user's own picture (the
+   image modal makes the invitation explicit). Token-driven per theme above. */
 .artist-avatar {
   background: var(--artist-avatar-bg);
   color: var(--artist-avatar-ink);
@@ -394,6 +417,47 @@
   }
 }
 
+/* --- Button shape --------------------------------------------------------- */
+
+/* The app's rule, stated once instead of at every call site.
+   HeroUI ships buttons at `rounded-3xl` — 24px on a 36px control, which is a
+   pill in everything but name, and a phone's alert language rather than this
+   app's. Sonarche's own controls (Récupérer, Importer, Enregistrer, the album
+   hero's row) have always been `rounded-xl`, and half a dozen call sites had
+   already pinned that by hand on a HeroUI button; those patches are gone now
+   that the default agrees with them.
+   In `components` on purpose: Tailwind's utilities layer comes after, so a
+   button that means to be round — the play control, the icon pills — still
+   says `rounded-full` at its call site and still wins. */
+@layer components {
+  .button {
+    border-radius: var(--radius-xl);
+  }
+
+  /* …except when there is no text in it. The rule above is about a *label* in
+     a box, and it caught the player's transport on the way past: five round
+     glyph controls turned into rounded squares, the play disc worst of all —
+     the one accent-filled control on screen, and the one place a circle is not
+     decoration but the shape of the thing. An icon-only button is a glyph with
+     a hit area around it, so it is round everywhere in the app. */
+  .button--icon-only {
+    border-radius: calc(infinity * 1px);
+  }
+}
+
+/* --- Destructive menu items ----------------------------------------------- */
+
+/* HeroUI's `variant="danger"` only reddens what it finds in the `label` slot,
+   and every menu in this app hands its items a plain icon + word. So the
+   colour is taken up one level, onto the item itself: the icon and the label
+   inherit it, and a delete looks like a delete in every menu without each call
+   site remembering to paint its own children. */
+@layer components {
+  .menu-item--danger {
+    color: var(--danger);
+  }
+}
+
 /* --- Toast viewport ------------------------------------------------------- */
 
 /* HeroUI's `bottom end` region is pinned to `bottom-4`, which puts a toast on
@@ -403,6 +467,185 @@
    Imported after @heroui/styles, so this wins at equal specificity. */
 .toast-region-lifted {
   bottom: calc(var(--spacing-player) + 1rem);
+}
+
+/* A toast is the quietest thing the app says: it reports something that already
+   happened, to someone who is looking elsewhere. HeroUI's is built the other
+   way — a 32px corner, 14px text at both levels and a full-height button, which
+   at the bottom of the window read as a dialog that had escaped its backdrop.
+   So: the app's own corner, one step down in type at each level, and a control
+   sized like a chip. The padding does not shrink with the text — the point is
+   that less is said, with more room around it, not that the box gets tighter. */
+@layer components {
+  .toast {
+    border-radius: var(--radius-xl);
+    padding: 0.875rem 1rem;
+    gap: 0.625rem;
+  }
+
+  /* Optically centred on the title's cap height rather than its line box —
+     a 14px glyph beside a 13px line sits a hair low without it. */
+  .toast__indicator {
+    padding: 0;
+    margin-top: 0.0625rem;
+
+    [data-slot="toast-default-icon"],
+    [data-slot="spinner"],
+    [data-slot="spinner-icon"] {
+      width: calc(var(--spacing) * 3.5);
+      height: calc(var(--spacing) * 3.5);
+    }
+  }
+
+  .toast__title {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  /* The job-progress toast puts a truncating title and a full-width rail in
+     the content slot. A flex item's floor is its min-content — the title's
+     whole untruncated line — so without this the slot refuses to shrink and
+     pushes its own row out of the box. */
+  .toast__content {
+    min-width: 0;
+  }
+
+  .toast__description {
+    margin-top: 0.1875rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  /* Chip-sized, and set apart from the sentence it answers: the gap is what
+     keeps a one-word button from reading as the end of the text. */
+  .toast__action {
+    height: calc(var(--spacing) * 7);
+    align-self: center;
+    margin-left: 0.5rem;
+    padding-inline: 0.625rem;
+    font-size: 0.75rem;
+    /* One step under the toast's own corner: HeroUI's radius scale has no
+       `lg`, and `--radius` is its base 8px. */
+    border-radius: var(--radius);
+  }
+}
+
+/* --- Guided tour (driver.js) ---------------------------------------------- */
+
+/* driver.js ships a plain white popover with bordered buttons; this redresses
+   it in the app's own clothes. Everything reads the raw theme vars, so the
+   dark theme follows without a second block. The arrow is a bordered square —
+   its colour is per-side, hence the four lines. */
+.driver-popover.sonarche-tour {
+  max-width: 20rem;
+  padding: 1.25rem;
+  border: 1px solid var(--separator);
+  border-radius: 1rem;
+  background-color: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--elevation-xl);
+  font-family: var(--font-sans);
+}
+
+.sonarche-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--surface);
+}
+.sonarche-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--surface);
+}
+.sonarche-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--surface);
+}
+.sonarche-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--surface);
+}
+
+.sonarche-tour .driver-popover-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.sonarche-tour .driver-popover-description {
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.sonarche-tour .driver-popover-progress-text {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sonarche-tour .driver-popover-footer {
+  margin-top: 1rem;
+  gap: 0.5rem;
+  /* The closing stop carries three buttons plus the progress text; better a
+     clean second row than a button folded onto three lines. */
+  flex-wrap: wrap;
+}
+
+.sonarche-tour .driver-popover-navigation-btns {
+  gap: 0.5rem;
+}
+
+.sonarche-tour .driver-popover-footer button {
+  all: unset;
+  cursor: pointer;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: opacity 120ms var(--ease-out-fluid, ease-out);
+}
+
+/* One class deeper than the `all: unset` reset above, so these win. */
+.sonarche-tour .driver-popover-footer .driver-popover-next-btn {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+.sonarche-tour .driver-popover-footer .driver-popover-next-btn:hover {
+  opacity: 0.9;
+}
+
+.sonarche-tour .driver-popover-footer .driver-popover-prev-btn,
+.sonarche-tour .driver-popover-footer .sonarche-tour-guide {
+  color: var(--muted);
+}
+.sonarche-tour .driver-popover-footer .driver-popover-prev-btn:hover,
+.sonarche-tour .driver-popover-footer .sonarche-tour-guide:hover {
+  color: var(--foreground);
+}
+
+/* driver.js disables "previous" on the first stop; unset stripped its face. */
+.sonarche-tour .driver-popover-footer .driver-popover-btn-disabled {
+  cursor: default;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* The × keeps driver's placement, dressed down to a quiet glyph. */
+.sonarche-tour .driver-popover-close-btn {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  top: 0.625rem;
+  right: 0.75rem;
+  padding: 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.sonarche-tour .driver-popover-close-btn:hover {
+  color: var(--foreground);
 }
 
 /* --- Theme preview tiles -------------------------------------------------- */
@@ -566,6 +809,13 @@
   --color-metadata-header-to: var(--metadata-header-to);
   --color-artwork-edge: var(--artwork-edge);
 
+  /* The elevation edge as a *border* colour, for the cards that cannot use
+     the shadow: a 1px spread shadow is drawn outside the box, so anything
+     boxed by an `overflow-hidden` parent of its own size (the walkthrough's
+     collapsing steps) loses three of its four sides. A border is inside the
+     box and survives the clip. Same value, so the two read as one edge. */
+  --color-elevation-edge: var(--elevation-edge);
+
   /* Tailwind's own shadow scale, rerouted through the theme blocks. Overriding
      the scale rather than introducing an `elevation-*` utility on purpose:
      roughly thirty call sites already say `shadow-sm` or `shadow-lg`, they all
@@ -626,6 +876,21 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  /* Genres arrange mode — the iOS home-screen tremble, the one motion idiom
+     everyone already reads as "these are loose now". Rotation only, a hair
+     over a degree: the chips are text, and a translate makes labels swim. */
+  --animate-chip-jiggle: sonarche-chip-jiggle 0.34s ease-in-out infinite;
+
+  @keyframes sonarche-chip-jiggle {
+    0%,
+    100% {
+      transform: rotate(-1.1deg);
+    }
+    50% {
+      transform: rotate(1.3deg);
     }
   }
 
@@ -795,6 +1060,15 @@
   animation-fill-mode: backwards;
 }
 
+/** A genre chip while the Genres page is in arrange mode. The phase offsets
+    per chip (set inline as `--jiggle-phase`) so the shelf shivers rather than
+    marches — thirteen chips rocking in lockstep read as one animation applied
+    thirteen times, not as thirteen loose objects. */
+@utility chip-jiggle {
+  animation: var(--animate-chip-jiggle);
+  animation-delay: var(--jiggle-phase, 0s);
+}
+
 /* MotionProvider's `reducedMotion="user"` only governs Motion components; these
    two are plain CSS and have to opt out on their own. Opacity is kept (it reads
    as responsive without moving anything), only the travel is dropped. */
@@ -805,6 +1079,13 @@
   .row-cascade > th > *,
   .cascade-item,
   .card-reveal {
+    animation: none;
+  }
+
+  /* The tremble is the one signal that chips are draggable, so its absence
+     must not leave the mode mute: the chips keep their arrange-mode dashed
+     outline (set in the markup), which says "loose" without moving. */
+  .chip-jiggle {
     animation: none;
   }
 

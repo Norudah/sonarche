@@ -17,7 +17,7 @@ import { formatDuration } from "@/shared/lib/format";
  * the width `RowActions` reserves for its largest set, which is also why the
  * rows here do not pass `dense`.
  */
-export const TRACK_GRID = "grid grid-cols-[1.75rem_1fr_4.5rem_7rem_3rem_6.5rem] items-center gap-3";
+export const TRACK_GRID = "grid grid-cols-[1.75rem_1fr_4.5rem_7rem_3rem_4.5rem] items-center gap-3";
 
 interface JobTrackRowProps {
   track: AlbumTrackJob;
@@ -25,7 +25,7 @@ interface JobTrackRowProps {
   libraryTrack: LibraryTrack | undefined;
   /** This track's enrich event has landed, for the job currently identifying. */
   isEnriched: boolean;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
@@ -37,23 +37,34 @@ interface JobTrackRowProps {
  * table, because a card cannot host a `<table>` without inheriting its column
  * widths from the rest of the feed.
  */
-export function JobTrackRow({ track, libraryTrack, isEnriched, onInspect, onDelete }: JobTrackRowProps) {
+export function JobTrackRow({ track, libraryTrack, isEnriched, onEdit, onDelete }: JobTrackRowProps) {
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
   const isDropped = track.duplicateOf != null;
+  const isGone = track.status === "unavailable";
 
   return (
     <div
-      className={`${TRACK_GRID} rounded-lg px-2 py-1.5 transition-colors hover:bg-default/50 ${isDropped ? "opacity-60" : ""}`}
+      className={`${TRACK_GRID} rounded-lg px-2 py-1.5 transition-colors hover:bg-default/50 ${isDropped || isGone ? "opacity-60" : ""}`}
     >
       <span className="text-right text-xs tabular-nums text-muted">{track.index}</span>
 
       <div className="min-w-0">
-        <p className="truncate text-[0.8125rem]">{track.title ?? track.url}</p>
-        {track.status === "failed" && track.error && (
-          <p className="truncate text-[0.6875rem] text-danger" title={track.error}>
-            {track.error}
-          </p>
+        <p className={`truncate text-[0.8125rem] ${isGone ? "text-muted line-through" : ""}`}>
+          {track.title ?? track.url}
+        </p>
+        {/* A gone video gets one plain sentence, not yt-dlp's stack of prose:
+            nothing here is actionable inside the app, so the row says what
+            happened and stops. */}
+        {isGone ? (
+          <p className="truncate text-[0.6875rem] text-muted">{t("queue.trackUnavailable")}</p>
+        ) : (
+          track.status === "failed" &&
+          track.error && (
+            <p className="truncate text-[0.6875rem] text-danger" title={track.error}>
+              {track.error}
+            </p>
+          )
         )}
       </div>
 
@@ -73,7 +84,7 @@ export function JobTrackRow({ track, libraryTrack, isEnriched, onInspect, onDele
         {track.duration != null ? formatDuration(track.duration) : ""}
       </span>
 
-      <RowActions track={libraryTrack} sourceUrl={track.url} onInspect={onInspect} onDelete={onDelete} />
+      <RowActions track={libraryTrack} sourceUrl={track.url} onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 }

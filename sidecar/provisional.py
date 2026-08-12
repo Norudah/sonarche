@@ -59,6 +59,16 @@ def guess_fields(
     return fields
 
 
+def clear(item) -> bool:
+    """Lower the flag once a real match lands: the tags stop being guesses the
+    moment MusicBrainz vouches for them. Mutates the in-memory item only — the
+    caller owns the store. Returns whether the flag was up."""
+    if item.get(FLAG):
+        del item[FLAG]
+        return True
+    return False
+
+
 def apply(item, fields: dict) -> bool:
     """Write the guessed tags and raise the flag. Returns False when there was
     nothing to guess: an item with no hints at all stays untouched rather than

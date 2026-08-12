@@ -102,4 +102,14 @@ export const layoutIds = {
   languageChoice: "sonarche-language-choice",
   /** The follow/manual pill in the lyrics panel's footer. */
   lyricsFollow: "sonarche-lyrics-follow",
+  /** The album/collection pill in the inspect panel's identity column. */
+  recordKind: "sonarche-record-kind",
+  /** The grouping pill under the import page's folder picker. */
+  grouping: "sonarche-grouping",
+  /** The auto/existing/new pill in the composer's destination control. Its own
+   * id: it lives one line under the kind pill, which must not tween into it. */
+  destinationChoice: "sonarche-destination-choice",
+  /** The Écoute/Inspection pill in the topbar. Its own id: a library page can
+   * show the view-mode switch below this one, and the two must not tween. */
+  inspectLens: "sonarche-inspect-lens",
 } as const;

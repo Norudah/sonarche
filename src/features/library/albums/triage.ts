@@ -21,8 +21,14 @@ export function parseAlbumTriage(params: URLSearchParams): AlbumTriage {
  * track total when any track carries one, else the highest number present. An
  * album with no numbered track at all has no sequence to have holes in — that
  * is a missing-tags problem, not a gapped tracklist.
+ *
+ * And a collection has no tracklist at all. Whatever it holds is what its owner
+ * chose to put in it, so "track 7 is missing" is not a defect but a
+ * misunderstanding of the record — the check does not apply and never fires.
  */
 export function hasTracklistGaps(album: Album): boolean {
+  if (album.kind === "collection") return false;
+
   const numbers = new Set<number>();
   let expected = 0;
   for (const track of album.tracks) {
@@ -41,7 +47,8 @@ export function hasTracklistGaps(album: Album): boolean {
 /** Same composition rule as `applyTrackTriage`: every active filter narrows. */
 export function applyAlbumTriage(albums: Album[], triage: AlbumTriage): Album[] {
   let result = albums;
-  if (triage.missingArtwork) result = result.filter((album) => album.artUrl == null);
+  if (triage.missingArtwork)
+    result = result.filter((album) => album.artUrl == null && !album.accepted.includes("artwork"));
   if (triage.tracklistGaps) result = result.filter(hasTracklistGaps);
   return result;
 }

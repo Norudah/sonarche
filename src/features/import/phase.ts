@@ -24,6 +24,11 @@ export type ImportPhase =
    * it. Absent only if an outcome somehow arrived without a scan preceding it,
    * which the page cannot produce. */
   | { kind: "imported"; outcome: ImportOutcome; report: ScanReport | null }
+  /** Stopped by the user mid-copy. Its own kind rather than a flag on
+   * `imported`: the card wears a different face, verdict and rail for it, and
+   * a boolean would put that fork in every consumer instead of here. What
+   * landed before the stop is in the library, and the outcome counts it. */
+  | { kind: "importCancelled"; outcome: ImportOutcome; report: ScanReport | null }
   /** Failed mid-copy. The report is kept so the card can still say what the
    * folder held, and so trying again does not need a second scan. */
   | { kind: "importFailed"; message: string; report: ScanReport };
@@ -46,7 +51,9 @@ export function importPhase(input: PhaseInput): ImportPhase {
   // The import's own states come first: once it has run, a stale scan result
   // sitting beside it is not what the screen is about any more.
   if (importing && report != null) return { kind: "importing", report };
-  if (outcome != null) return { kind: "imported", outcome, report };
+  if (outcome != null) {
+    return outcome.cancelled ? { kind: "importCancelled", outcome, report } : { kind: "imported", outcome, report };
+  }
   if (importError != null && report != null) return { kind: "importFailed", message: importError, report };
 
   // A fresh scan overrides an older one's failure, and vice versa — whichever

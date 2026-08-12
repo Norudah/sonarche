@@ -22,17 +22,25 @@ def _handle_ping(_request_id: str, _params: dict) -> dict:
 
 
 def _handlers():
+    import accepted
     import acoustid_key
+    import album_kind
+    import artist_image
+    import cover_set
     import download
     import enrich
     import enrich_album
+    import genre_overrides
     import genres
     import importer
     import library
+    import import_undo
     import library_align
     import library_import
     import lyrics
+    import move_tracks
     import probe
+    import remux
     import services
 
     return {
@@ -41,14 +49,26 @@ def _handlers():
         "download": download.handle,
         "import": importer.handle,
         "library_import": library_import.handle,
+        "library_import_undo_preview": import_undo.preview,
+        "library_import_undo": import_undo.handle,
         "library_align_scan": library_align.scan,
         "library_align_apply": library_align.apply,
         "enrich": enrich.handle,
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
+        "library_remux": remux.handle,
         "library_remove": library.remove,
         "library_update": library.update,
+        "library_move_tracks": move_tracks.handle,
+        "album_kind_set": album_kind.handle,
+        "accepted_set": accepted.handle,
+        "cover_set": cover_set.handle,
+        "cover_candidates": cover_set.candidates,
+        "artist_image_set": artist_image.handle,
+        "artist_image_fetch": artist_image.fetch,
         "genres_recompute": genres.recompute,
+        "genre_family_set": genre_overrides.handle_set,
+        "genre_overrides_list": genre_overrides.handle_list,
         "lyrics_fetch": lyrics.fetch,
         "acoustid_key_check": acoustid_key.handle,
         "services_check": services.check,
@@ -57,6 +77,12 @@ def _handlers():
 
 def main() -> None:
     handlers = _handlers()
+    # Before anything loads beets: the config's lastgenre section names the
+    # derived tree/whitelist, and the bundled base may have changed since
+    # they were last written (app update).
+    import genre_overrides
+
+    genre_overrides.ensure_derived()
     protocol.log("sidecar ready")
     for line in sys.stdin:
         line = line.strip()

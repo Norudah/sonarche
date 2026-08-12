@@ -2,7 +2,10 @@ import type { AlbumCompletion } from "@/features/library/albums/albumCompletion"
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
 import { CommonFields } from "@/features/library/albums/inspect/CommonFields";
 import { CompletionCard } from "@/features/library/albums/inspect/CompletionCard";
+import { ProvisionalCoverNotice } from "@/features/library/albums/inspect/ProvisionalCoverNotice";
+import { RecordKindChoice } from "@/features/library/albums/inspect/RecordKindChoice";
 import type { TrackFilter } from "@/features/library/albums/inspect/trackFilter";
+import type { AlbumKind } from "@/features/library/api";
 
 /**
  * The record itself: how whole it is, and what it shares.
@@ -24,10 +27,15 @@ export function IdentityColumn({
   genreFamily,
   trackCount,
   soundtrack,
+  kind,
+  isKindPending,
+  onKindChange,
+  hasProvisionalCover,
   filter,
   onFilter,
   onChange,
   onRevert,
+  onReplaceCover,
 }: {
   completion: AlbumCompletion;
   baseline: AlbumCommonBaseline;
@@ -37,16 +45,33 @@ export function IdentityColumn({
   genreFamily: string;
   trackCount: number;
   soundtrack: boolean;
+  /** What the record is. Null for a group with no beets album behind it — a
+   * pile of singletons has no record to be a kind of, so no switch is shown. */
+  kind: AlbumKind | null;
+  isKindPending: boolean;
+  onKindChange: (kind: AlbumKind) => void;
+  /** The cover is a stand-in the user should replace — see the notice. */
+  hasProvisionalCover: boolean;
   filter: TrackFilter | null;
   onFilter: (filter: TrackFilter | null) => void;
   onChange: (field: AlbumCommonField, value: string) => void;
   onRevert: (field: AlbumCommonField) => void;
+  onReplaceCover: () => void;
 }) {
   return (
     <div className="flex w-[21rem] shrink-0 flex-col gap-4 overflow-y-auto border-r border-separator bg-panel px-5 py-4 xl:w-[23rem]">
       <CompletionCard completion={completion} filter={filter} onFilter={onFilter} />
 
+      {hasProvisionalCover && <ProvisionalCoverNotice onReplace={onReplaceCover} />}
+
       <hr className="border-separator" />
+
+      {kind != null && (
+        <>
+          <RecordKindChoice kind={kind} isPending={isKindPending} onChange={onKindChange} />
+          <hr className="border-separator" />
+        </>
+      )}
 
       <CommonFields
         baseline={baseline}

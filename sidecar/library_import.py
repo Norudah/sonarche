@@ -14,14 +14,44 @@ Two flags carry the whole doctrine:
 - ``-A`` (noautotag). The import is as-is: existing tags are kept, and no
   MusicBrainz call is made. Matching a whole library against MusicBrainz is a
   different job with a different cost, and it is not this one.
+
+The third flag is the caller's: how to group what it finds. beets makes one
+album per *directory* and has no opinion about whether that directory is an
+album — which is right for a ripped collection and wrong for a folder of
+one-shots, where it produced a single record named after the folder and filed
+fourteen unrelated artists under it. See `GROUPINGS`.
 """
 
 import os
 import subprocess
+import threading
+import time
 
+import auto_collection
 import import_recap
 import protocol
 from importer import beet_bin
+
+# How long a terminated beets gets to die on its own before being killed
+# outright. SIGTERM lets it finish the SQLite transaction it is in; a process
+# that ignores it for this long is not going to honour it at all.
+_CANCEL_GRACE_SECONDS = 5.0
+
+# How to decide what an album is, and the beets flags each answer means.
+#
+# `folder` is beets' own behaviour and the right answer for a library that was
+# ripped or bought: one directory, one release. `tags` (`-g`) re-groups each
+# directory by the album tag its files carry, which rescues a folder holding
+# several albums at once. `tracks` (`-s`) says there are no albums here at all:
+# every file is imported on its own, which is what a folder of one-shot rips
+# actually is — and the only mode that does not invent a record named after the
+# folder to file unrelated artists under.
+GROUPINGS = {
+    "folder": [],
+    "tags": ["-g"],
+    "tracks": ["-s"],
+}
+DEFAULT_GROUPING = "folder"
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -35,9 +65,23 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.isdir(folder):
         raise RuntimeError(f"folder not found: {folder}")
 
+    grouping = params.get("grouping") or DEFAULT_GROUPING
+    if grouping not in GROUPINGS:
+        raise RuntimeError(f"unknown grouping: {grouping}")
+
+    # The context axis (Video Games, Film…), beets' `grouping` tag. Set on the
+    # way in rather than corrected afterwards: someone importing a folder of
+    # game soundtracks knows that before the copy starts, and the alternative is
+    # editing four hundred tracks by hand.
+    category = (params.get("category") or "").strip()
+    marks = [f"--set={import_recap.BATCH_FIELD}={batch}"]
+    if category:
+        marks.append(f"--set=grouping={category}")
+
     cmd = [beet_bin(), "--config", config_path, "import",
            "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
-           f"--set={import_recap.BATCH_FIELD}={batch}", folder]
+           *GROUPINGS[grouping], *marks, folder]
+    protocol.log(f"library_import: grouping={grouping}")
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
 
@@ -51,6 +95,13 @@ def handle(request_id: str, params: dict) -> dict:
     # line lands where is not a contract we should depend on.
     proc = subprocess.Popen(
         cmd,
+        # Closed on purpose. Without it beets inherits the sidecar's stdin —
+        # the NDJSON protocol pipe — and its resume prompt ("Import was
+        # interrupted. Resume?") would read a protocol line, or hang on one
+        # that never comes, until the 6 h timeout. `resume: no` in the config
+        # is the first guard; this is the one that holds if beets ever asks
+        # anything else.
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -63,6 +114,21 @@ def handle(request_id: str, params: dict) -> dict:
         errors="replace",
         bufsize=1,
     )
+
+    # The sidecar reads one request at a time, so a cancel can never arrive as
+    # a protocol message while this one runs. It arrives as a file instead: the
+    # app writes `cancel_file` and this thread, the only part of the process
+    # with nothing else to do, notices and terminates beets. beets commits
+    # album by album, so a SIGTERM between commits leaves a consistent library
+    # holding everything imported so far — at worst one file copied but not
+    # yet recorded, which a later import of the same folder re-copies.
+    cancelled = threading.Event()
+    cancel_file = params.get("cancel_file")
+    if cancel_file:
+        _forget_cancel(cancel_file)
+        threading.Thread(
+            target=_watch_cancel, args=(proc, cancel_file, cancelled), daemon=True
+        ).start()
 
     folders = 0
     tail: list[str] = []
@@ -87,35 +153,187 @@ def handle(request_id: str, params: dict) -> dict:
         protocol.send_event(request_id, "library_import_progress", {"folders": folders, "folder": line})
 
     code = proc.wait()
-    if code != 0:
+    if cancel_file:
+        _forget_cancel(cancel_file)
+    if code != 0 and not cancelled.is_set():
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
 
-    # The recap is read before the cover pass, not after: the pass touches every
-    # album in the library, and holding a write-capable Library open while a
-    # read-only connection counts the same rows is a lock we do not need. The
-    # counts it reports are about tags, which the cover pass cannot change.
+    # On a cancel everything below still runs: the albums that landed are in
+    # the library for good, and they deserve their repaired tags, their covers
+    # and an honest recap just as much as a full run's. All three passes are
+    # bounded by what is already on disk — the open-ended part, the copy, is
+    # what the cancel stopped.
+    _write_repaired_tags(params, batch)
+    _stage_singleton_covers(params, batch)
+
+    # Before the recap, like the cover pass and for the same reason: a row this
+    # names a collection has no tracklist to have holes in, and counting it as
+    # a gapped album would report a defect the import has just decided is not
+    # one.
+    collections = auto_collection.mark(params["beets_db"], params["library_dir"], batch)
+
+    # The cover pass runs first, sequentially, and the recap reads after it —
+    # the pass can now *change* what the recap counts (an album whose cover it
+    # recovered from the file tags is no longer "without art"), and counting
+    # before it ran would report defects that were already repaired.
+    renditions = _shrink_covers(request_id, params, batch)
     recap = import_recap.build(params["beets_db"], batch)
+    if recap is not None:
+        # Carried inside the recap rather than beside it: the recap is what the
+        # archive stores as one JSON blob and what both the live page and the
+        # history read, so a fact about this run's arrival belongs in it.
+        recap["collections"] = collections
 
     return {
         "folders": folders,
-        "renditions": _shrink_covers(request_id, params),
+        "renditions": renditions,
         "recap": recap,
+        "cancelled": cancelled.is_set(),
     }
 
 
-def _shrink_covers(request_id: str, params: dict) -> int:
-    """Give every oversized cover a small rendition to be drawn from.
+def _watch_cancel(proc, cancel_file: str, cancelled: threading.Event) -> None:
+    """Poll for the cancel file while beets runs; terminate it on sight.
 
-    An imported album keeps whatever cover its folder had — 5000x5000 is
-    ordinary — and that file lands in the slot the interface reads. Drawing it
-    means decoding it whole: 100 MB of pixels for a 40 px thumbnail. A
-    downloaded album never pays that because the download path writes a 500 px
-    rendition; imports had no such step, so this is it.
+    A poll rather than a watcher: half a second of latency on a deliberate
+    stop is imperceptible, and polling has no platform-specific failure
+    modes. Sets the event *before* terminating, so the reader loop knows the
+    non-zero exit it is about to see was asked for.
+    """
+    while proc.poll() is None:
+        if os.path.exists(cancel_file):
+            cancelled.set()
+            protocol.log("library_import: cancel requested, stopping beets")
+            proc.terminate()
+            try:
+                proc.wait(timeout=_CANCEL_GRACE_SECONDS)
+            except subprocess.TimeoutExpired:
+                protocol.log("library_import: beets ignored the term, killing it")
+                proc.kill()
+            return
+        time.sleep(0.5)
 
-    Over every album, not only the ones just imported: beets records nothing
-    about which those were, the check is a header read, and an album already
-    holding a rendition costs one image header to skip. Re-running is a no-op,
-    which is what makes it safe to do after each import.
+
+def _forget_cancel(cancel_file: str) -> None:
+    """Remove the cancel file, so a stale one cannot stop the next run."""
+    try:
+        os.remove(cancel_file)
+    except OSError:
+        pass
+
+
+def _write_repaired_tags(params: dict, batch: str) -> None:
+    """Put what the repair plugin recovered into the copies' own tags.
+
+    An as-is import never writes tags — beets only writes when the autotagger
+    changed metadata — so a title `sonarche_import` read from the filename
+    exists in the database and nowhere else, and the copy would still say
+    nothing to any other player. The copies are ours to write; the originals
+    were never touched. One header read per item, a write only where the
+    repair actually landed: on a library that needed no repair this pass
+    costs reads and writes nothing.
+    """
+    import mediafile
+    from beets.library import Library
+
+    import enrich
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    written = 0
+    try:
+        for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}"):
+            path = enrich._decode(item.path)
+            try:
+                current = mediafile.MediaFile(path)
+            except Exception:  # an unreadable copy keeps its tags; the DB has the truth
+                continue
+            # The plugin fills artist/track only when the title was empty, so
+            # the title check covers them; the year check covers the unpacking.
+            repaired = (item.title and not current.title) or (
+                item.year and current.year != item.year
+            )
+            if repaired and item.try_write():
+                written += 1
+    finally:
+        lib._close()
+    if written:
+        protocol.log(f"import: repaired tags written into {written} file(s)")
+
+
+def _stage_singleton_covers(params: dict, batch: str) -> None:
+    """Give an album-less track the picture it already carries.
+
+    Cover art is an album property everywhere else in this app: the listing
+    resolves `artpath` per album, and a singleton has no album row to hang one
+    on. Which would mean the one grouping mode meant for a folder of one-shots
+    — the mode whose whole point is *not* to invent an album — produced a
+    library of grey squares, while the picture sat inside every file.
+
+    So the embedded image is written out beside the track, and its path is
+    remembered on the item itself. Remembered rather than probed: the listing
+    reads flexible attributes in one indexed query, where checking the disk
+    would be one `stat` per singleton on every refresh.
+
+    Album tracks are skipped — `_shrink_covers` already serves them, at album
+    granularity, which is one file instead of twelve identical ones.
+    """
+    import mediafile
+    from beets.library import Library
+
+    import enrich
+    import library
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    staged = 0
+    try:
+        for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}"):
+            if item.album_id:
+                continue
+            path = enrich._decode(item.path)
+            try:
+                images = mediafile.MediaFile(path).images or []
+            except Exception:  # an unreadable copy simply keeps no cover
+                continue
+            if not images:
+                continue
+            image = images[0]
+            ext = ".png" if "png" in (image.mime_type or "") else ".jpg"
+            art = os.path.splitext(path)[0] + ext
+            try:
+                with open(art, "wb") as fh:
+                    fh.write(image.data)
+            except OSError as exc:  # a missing cover is a defect, not a failure
+                protocol.log(f"import: could not stage a cover for {path}: {exc}")
+                continue
+            item[library.ITEM_ART_KEY] = art
+            item.store()
+            staged += 1
+    finally:
+        lib._close()
+    if staged:
+        protocol.log(f"import: {staged} singleton cover(s) taken out of the files")
+
+
+def _shrink_covers(request_id: str, params: dict, batch: str) -> int:
+    """Give every album a cover the interface can draw.
+
+    Two repairs in one walk. An album with no art file gets the image its own
+    tracks carry (`_adopt_embedded_cover`) — a hand-fed library often has its
+    cover *inside* the files and nothing beside them, and the interface only
+    ever reads the folder's file. Then every oversized cover gets a small
+    rendition: an imported cover is whatever the folder had, 5000x5000 is
+    ordinary, and drawing it means decoding 100 MB of pixels for a 40 px
+    thumbnail. The download path never pays either cost because it writes its
+    own 500 px file; imports had no such step, so this is it.
+
+    Over the albums this run touched, and only those. It used to walk the whole
+    library on the theory that both checks are cheap and re-running is a no-op —
+    true per album, and false in aggregate: importing three tracks re-read five
+    thousand albums, and the progress rail's third segment counted the library
+    rather than the import, so it announced work nobody had asked for and moved
+    at a speed that meant nothing. beets records no batch of its own, but our
+    items carry the run's mark, and their albums are exactly the set that can
+    have changed — including an album the import merged new tracks into.
     """
     from beets.library import Library
 
@@ -124,17 +342,70 @@ def _shrink_covers(request_id: str, params: dict) -> int:
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
     try:
-        albums = [a for a in lib.albums() if a.artpath]
+        touched = {
+            item.album_id
+            for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}")
+            if item.album_id
+        }
+        albums = [album for album in (lib.get_album(album_id) for album_id in sorted(touched)) if album]
         total = len(albums)
         made = 0
+        adopted = 0
         for index, album in enumerate(albums, start=1):
-            if covers.ensure_display_rendition(enrich._decode(album.artpath)):
+            art = enrich._decode(album.artpath) if album.artpath else None
+            if (art is None or not os.path.exists(art)) and _adopt_embedded_cover(album):
+                adopted += 1
+                art = enrich._decode(album.artpath)
+            if art is not None and covers.ensure_display_rendition(art):
                 made += 1
             protocol.send_event(
                 request_id,
                 "library_covers_progress",
                 {"done": index, "total": total, "renditions": made},
             )
+        if adopted:
+            protocol.log(f"import: {adopted} cover(s) recovered from file tags")
         return made
     finally:
         lib._close()
+
+
+def _adopt_embedded_cover(album) -> bool:
+    """Give an artless album the image its own tracks carry, if any do.
+
+    First image of the first item holding one: embedded copies are the same
+    picture in the overwhelming case, and the album has exactly one art slot.
+    Staged beside the tracks and handed to `set_art`, which files it under
+    beets' own `cover.*` name — the slot the interface reads — and records it
+    as the album's artpath.
+    """
+    import mediafile
+
+    import enrich
+
+    for item in album.items():
+        path = enrich._decode(item.path)
+        try:
+            images = mediafile.MediaFile(path).images or []
+        except Exception:  # one unreadable file must not cost the album its shot
+            continue
+        if not images:
+            continue
+        image = images[0]
+        ext = ".png" if "png" in (image.mime_type or "") else ".jpg"
+        staged = os.path.join(os.path.dirname(path), f".sonarche-embedded{ext}")
+        try:
+            with open(staged, "wb") as fh:
+                fh.write(image.data)
+            album.set_art(staged, copy=True)
+            album.store()
+        except Exception as exc:  # a missing cover is a defect, not a failure
+            protocol.log(f"import: embedded cover adoption failed for album {album.id}: {exc}")
+            return False
+        finally:
+            try:
+                os.remove(staged)
+            except OSError:
+                pass
+        return True
+    return False

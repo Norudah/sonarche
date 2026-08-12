@@ -18,13 +18,18 @@ export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
     format: "AAC",
     path: "",
     audioUrl: "",
+    albumId: 1,
     artUrl: null,
     artPath: null,
     bonusSource: null,
     mbTrackId: null,
     suspectMatch: false,
+    provisionalCover: false,
     category: null,
     soundtrack: false,
+    albumKind: null,
+    accepted: [],
+    albumAccepted: [],
     ...over,
   };
 }

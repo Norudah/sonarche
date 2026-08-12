@@ -12,13 +12,12 @@ import type { ReactNode } from "react";
  * is one, sits in `alternative` where it reads as a way out rather than the
  * obvious next click.
  *
- * The shapes are the app's, not HeroUI's defaults: its buttons are pills and
- * its dialog corner is 32 px, both of which belong to a phone alert. Here the
- * buttons take the same `rounded-xl` as Récupérer, Importer and Enregistrer —
- * the app's rule is that a rectangular press acts on the library, and every
- * button in this dialog does — and the frame comes down to `rounded-2xl`: still
- * softer than the `rounded-xl` cards it floats over, no longer a different
- * design language.
+ * The shapes are the app's, not HeroUI's defaults: its dialog corner is 32 px,
+ * which belongs to a phone alert, so the frame comes down to `rounded-2xl` —
+ * still softer than the `rounded-xl` cards it floats over, no longer a
+ * different design language. The buttons used to be corrected here too; the
+ * theme layer now hands every button the app's own corner (see `.button` in
+ * theme.css), so there is nothing left to say about them.
  */
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -41,8 +40,6 @@ export interface ConfirmDialogProps {
    */
   alternative?: { label: string; onPress: () => void; isDanger?: boolean };
 }
-
-const ACTION = "rounded-xl";
 
 export function ConfirmDialog({
   isOpen,
@@ -75,25 +72,20 @@ export function ConfirmDialog({
             </AlertDialog.Header>
             <AlertDialog.Body className="text-sm leading-relaxed text-muted">{children}</AlertDialog.Body>
             <AlertDialog.Footer>
-              <Button variant="secondary" className={ACTION} onPress={onClose} isDisabled={isPending}>
+              <Button variant="secondary" onPress={onClose} isDisabled={isPending}>
                 {cancelLabel}
               </Button>
               {alternative && (
                 <Button
                   variant="tertiary"
-                  className={alternative.isDanger ? `${ACTION} text-danger` : ACTION}
+                  className={alternative.isDanger ? "text-danger" : undefined}
                   onPress={alternative.onPress}
                   isDisabled={isPending}
                 >
                   {alternative.label}
                 </Button>
               )}
-              <Button
-                variant={status === "danger" ? "danger" : "primary"}
-                className={ACTION}
-                onPress={onConfirm}
-                isDisabled={isPending}
-              >
+              <Button variant={status === "danger" ? "danger" : "primary"} onPress={onConfirm} isDisabled={isPending}>
                 {confirmLabel}
               </Button>
             </AlertDialog.Footer>

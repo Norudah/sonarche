@@ -1,4 +1,4 @@
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, Square } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,7 @@ import { JobVerdict } from "@/features/download/activity/JobVerdict";
 import { jobProgress, STAGE_WEIGHTS } from "@/features/download/activity/progress";
 import { useProgressLabel } from "@/features/download/activity/useProgressLabel";
 import type { EnrichStage } from "@/features/download/hooks";
-import { jobDestination } from "@/features/download/queue/library";
+import { jobDestination, jobPresence } from "@/features/download/queue/library";
 import { canRetry } from "@/features/download/queue/pipeline";
 import { AlbumRowActions, RowActions } from "@/features/download/queue/RowActions";
 import type { LibraryTrack } from "@/features/library/api";
@@ -38,11 +38,13 @@ export interface JobCardProps {
   library: LibraryLookup;
   /** Queued while the user was watching — it announces itself on arrival. */
   isNew: boolean;
-  onInspect: (track: LibraryTrack) => void;
+  onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
   onDeleteAlbum: (job: DownloadJob) => void;
   onRetry: (id: string) => void;
   isRetrying: boolean;
+  onCancel: (id: string) => void;
+  isCancelling: boolean;
 }
 
 /** Cover art the enrich step produced, once any of the job's items carries one;
@@ -62,11 +64,13 @@ function JobCardImpl({
   enrichStages,
   library,
   isNew,
-  onInspect,
+  onEdit,
   onDelete,
   onDeleteAlbum,
   onRetry,
   isRetrying,
+  onCancel,
+  isCancelling,
 }: JobCardProps) {
   const { t } = useTranslation("download");
   const labelOf = useProgressLabel();
@@ -75,6 +79,10 @@ function JobCardImpl({
   const isAlbum = job.kind === "album";
   const outcome = jobOutcome(job);
   const href = jobDestination(job, library.trackFor);
+  /** Whether what this job filed is still in the library — the one fact the
+   * history rows kept behind a click, and the reason people read "recent" as
+   * "in my library". Settled jobs only; silent until the library has loaded. */
+  const presence = library.isLoaded ? jobPresence(job, library.has) : null;
   /** The single's own library item — what its row actions act on. */
   const landed = isAlbum ? undefined : library.trackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
 
@@ -218,44 +226,75 @@ function JobCardImpl({
           )}
         </div>
 
-        {/* Two reserved columns, and that is the whole point of them: a single
-            offers play and inspect where an album offers neither, and a failed
-            job offers a retry. Sized to their widest set and right-aligned, so
-            the status of every row lands on the same two vertical lines instead
-            of sliding around with whatever actions that row happens to have. */}
-        <div className="flex w-28 shrink-0 justify-end">
-          {/* One slot, two readings: a finished job states its verdict, a job
-              still in line states what it is waiting on. Never both, and never
-              nothing — the right edge is where the eye goes to find out where a
-              row stands. The card in flight says it under its rail instead. */}
-          {outcome ? (
-            <JobVerdict outcome={outcome} source={outcome.kind === "matched" ? outcome.source : null} />
-          ) : (
-            !isActive && (
+        {/* The status rail: a fixed right-aligned column, so every row's answer
+            to "where does this stand" lands on the same vertical line whatever
+            actions the row happens to carry. Hidden on the card in flight — it
+            says all this under its own rail. */}
+        {!isActive && (
+          <div className="flex w-40 shrink-0 flex-col items-end gap-0.5">
+            {/* One slot, two readings: a finished job states its verdict, a job
+                still in line states what it is waiting on. */}
+            {outcome ? (
+              <JobVerdict outcome={outcome} source={outcome.kind === "matched" ? outcome.source : null} />
+            ) : (
               <span className="text-[0.8125rem] whitespace-nowrap text-muted">
                 {t(`activity.phase.${progress.phase}`)}
               </span>
-            )
-          )}
-        </div>
+            )}
+            {/* The verdict says how the download went; this says whether its
+                result is still in the library. The rows are a history — they
+                stay whatever happens to the files — so the presence has to be
+                readable without unfolding anything. */}
+            {presence && (
+              <span className="text-[0.6875rem] whitespace-nowrap text-muted">
+                {t(`activity.presence.${presence}`)}
+              </span>
+            )}
+          </div>
+        )}
 
-        <div className="flex w-32 shrink-0 items-center justify-end gap-1">
-          {canRetry(job) && (
+        {/* Sized to its widest set per register: the stop button while the job
+            can still be stopped, play + menu once it is settled. Fixed, so the
+            menus and chevrons of a section land on one vertical line. */}
+        <div
+          className={"flex shrink-0 items-center justify-end gap-1 " + (isActive || !outcome ? "w-32" : "w-[4.5rem]")}
+        >
+          {/* Queued or working: the one thing the user can still change about
+              this job is whether it keeps going. Inline where every other verb
+              moved into the menu, because a stop is reached for while something
+              is happening — it cannot sit behind a click. */}
+          {(job.status === "queued" || isActive) && (
             <button
               type="button"
-              onClick={() => onRetry(job.id)}
-              disabled={isRetrying}
+              onClick={() => onCancel(job.id)}
+              disabled={isCancelling}
               className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-40"
             >
-              <RotateCcw className="size-3.5" />
-              {t("queue.retry")}
+              <Square className="size-3.5" />
+              {t("queue.cancel")}
             </button>
           )}
 
           {isAlbum ? (
-            <AlbumRowActions dense trackIds={albumTrackIds} sourceUrl={job.url} onDelete={() => onDeleteAlbum(job)} />
+            <AlbumRowActions
+              dense
+              trackIds={albumTrackIds}
+              sourceUrl={job.url}
+              libraryHref={href}
+              onDelete={() => onDeleteAlbum(job)}
+              onRetry={canRetry(job) ? () => onRetry(job.id) : undefined}
+              isRetrying={isRetrying}
+            />
           ) : (
-            <RowActions dense track={landed} sourceUrl={job.url} onInspect={onInspect} onDelete={onDelete} />
+            <RowActions
+              dense
+              track={landed}
+              sourceUrl={job.url}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onRetry={canRetry(job) ? () => onRetry(job.id) : undefined}
+              isRetrying={isRetrying}
+            />
           )}
         </div>
 
@@ -292,7 +331,7 @@ function JobCardImpl({
                 isInLibrary={library.has}
                 isLibraryLoaded={library.isLoaded}
                 enrichStages={enrichStages}
-                onInspect={onInspect}
+                onEdit={onEdit}
                 onDelete={onDelete}
               />
             </div>

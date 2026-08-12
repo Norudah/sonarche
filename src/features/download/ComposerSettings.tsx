@@ -3,61 +3,15 @@ import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { JobKind } from "@/features/download/api";
+import { DestinationChoice, type Destination } from "@/features/download/DestinationChoice";
 import { KindChoice } from "@/features/download/KindChoice";
 import type { DetectedUrlKind } from "@/features/download/urlKind";
 // The taxonomy the composer offers is the library's own axis, and its canonical
 // values must not exist twice — a second list would drift out of step with the
 // one the Categories page groups by on the first addition.
-import { CATEGORY_TAXONOMY } from "@/features/library/categories/categories";
+import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
-
-const CHIP =
-  "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
-const CHIP_ON = "bg-accent text-accent-foreground";
-const CHIP_OFF = "bg-surface text-muted hover:bg-surface-tertiary hover:text-foreground";
-
-/**
- * The context axis, chosen before the download rather than corrected after it.
- *
- * "Aucune" is a chip of its own rather than un-picking the active one: leaving
- * the axis blank is a real answer here — it is what the app did until now — and
- * a choice you can only express by clicking the same thing twice is a choice
- * nobody finds.
- */
-function CategoryChoice({ value, onChange }: { value: string | null; onChange: (next: string | null) => void }) {
-  const { t } = useTranslation("download");
-  const labelOf = useCategoryLabel();
-
-  return (
-    <fieldset className="flex flex-col gap-1.5">
-      <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
-        {t("options.category")}
-      </legend>
-      <p className="text-xs text-muted">{t("options.categoryHint")}</p>
-      <div className="mt-0.5 flex flex-wrap gap-1.5">
-        {CATEGORY_TAXONOMY.map((canonical) => (
-          <button
-            key={canonical}
-            type="button"
-            aria-pressed={value === canonical}
-            onClick={() => onChange(canonical)}
-            className={`${CHIP} ${value === canonical ? CHIP_ON : CHIP_OFF}`}
-          >
-            {labelOf(canonical)}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={value === null}
-          onClick={() => onChange(null)}
-          className={`${CHIP} ${value === null ? CHIP_ON : CHIP_OFF}`}
-        >
-          {t("options.categoryNone")}
-        </button>
-      </div>
-    </fieldset>
-  );
-}
+import { useAutoExpand } from "@/shared/lib/optionPanels";
 
 interface ComposerSettingsProps {
   kind: JobKind;
@@ -65,6 +19,16 @@ interface ComposerSettingsProps {
   onKindChange: (kind: JobKind) => void;
   category: string | null;
   onCategoryChange: (next: string | null) => void;
+  destination: Destination;
+  onDestinationChange: (next: Destination) => void;
+}
+
+/** What the folded strip can say about the destination — the picked album's
+ * title, the typed one, or nothing while the choice is still automatic. */
+function destinationSummary(destination: Destination): string {
+  if (destination.mode === "existing") return destination.target?.title ?? "";
+  if (destination.mode === "new") return destination.title.trim();
+  return "";
 }
 
 /**
@@ -75,13 +39,39 @@ interface ComposerSettingsProps {
  * track, and the tag it will be filed under; the rest folds away, because the
  * defaults are right for almost every link. The summary chip stays visible when
  * folded: an option nobody can see is an option nobody trusts.
+ *
+ * The panel opens itself the moment a link is recognised — the same
+ * data-driven reveal as the import options on a scanned folder. Options only a
+ * chevron ever surfaced were options nobody knew existed; a recognised link is
+ * the moment they are about to matter. Folding it back stays the user's call
+ * for as long as that link is in the field, and someone who has made that call
+ * a hundred times can settle it for good in Settings — the reveal is a good
+ * default, not a conviction.
  */
-export function ComposerSettings({ kind, detected, onKindChange, category, onCategoryChange }: ComposerSettingsProps) {
+export function ComposerSettings({
+  kind,
+  detected,
+  onKindChange,
+  category,
+  onCategoryChange,
+  destination,
+  onDestinationChange,
+}: ComposerSettingsProps) {
   const { t } = useTranslation("download");
   const labelOf = useCategoryLabel();
+  const autoExpand = useAutoExpand("download");
+  const forcedTitle = destinationSummary(destination);
 
   return (
-    <Disclosure className="border-t border-separator/60 bg-panel px-3 py-2">
+    <Disclosure
+      // Re-keyed on recognition so `defaultExpanded` gets to answer again:
+      // pasting a link opens the panel, clearing the field folds it back. The
+      // preference is in the key too, so flipping the switch in Settings shows
+      // on the composer at once instead of after the next paste.
+      key={`${detected != null ? "recognised" : "idle"}:${autoExpand}`}
+      defaultExpanded={autoExpand && detected != null}
+      className="border-t border-separator/60 bg-panel px-3 py-2"
+    >
       {/* No `Disclosure.Heading`: the switch sits on the same line as the
           trigger, and a radio group nested inside a heading element is a lie
           about the document's structure. */}
@@ -95,15 +85,33 @@ export function ComposerSettings({ kind, detected, onKindChange, category, onCat
               <ChevronDown className="size-3.5" />
             </Disclosure.Indicator>
           </span>
-          <span className="rounded-full bg-default/70 px-2 py-0.5 text-[0.6875rem] font-medium text-foreground">
-            {category ? labelOf(category) : t("options.categoryNone")}
+          <span className="flex items-center gap-1">
+            {/* The destination leads the summary when there is one: it is the
+                louder of the two decisions, and the one nobody expects to be on
+                by accident. */}
+            {forcedTitle && (
+              <span className="max-w-40 truncate rounded-full bg-accent-soft px-2 py-0.5 text-[0.6875rem] font-medium text-accent">
+                {forcedTitle}
+              </span>
+            )}
+            <span className="rounded-full bg-default/70 px-2 py-0.5 text-[0.6875rem] font-medium text-foreground">
+              {category ? labelOf(category) : t("options.categoryNone")}
+            </span>
           </span>
         </Disclosure.Trigger>
       </div>
 
       <Disclosure.Content>
-        <Disclosure.Body className="px-1 pt-3">
-          <CategoryChoice value={category} onChange={onCategoryChange} />
+        <Disclosure.Body className="flex flex-col gap-4 px-1 pt-3">
+          <CategoryChoice
+            value={category}
+            label={t("options.category")}
+            hint={t("options.categoryHint")}
+            noneLabel={t("options.categoryNone")}
+            onChange={onCategoryChange}
+          />
+          <hr className="border-separator/70" />
+          <DestinationChoice value={destination} kind={kind} onChange={onDestinationChange} />
         </Disclosure.Body>
       </Disclosure.Content>
     </Disclosure>

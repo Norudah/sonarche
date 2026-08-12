@@ -6,7 +6,6 @@ import { artistPath, paths } from "@/app/routes";
 import { AlbumActions } from "@/features/library/albums/AlbumActions";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCover } from "@/features/library/albums/AlbumCover";
-import { AlbumCompleteness } from "@/features/library/albums/AlbumCompleteness";
 import { GenreChips } from "@/features/library/GenreChips";
 import { genreFamilyIndex } from "@/features/library/genres/genres";
 import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
@@ -39,8 +38,11 @@ interface AlbumHeroProps {
   album: Album;
   onPlay: () => void;
   onShuffle: () => void;
-  onInspect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
+  onAddToPlaylist: () => void;
+  onMoveToAlbum: () => void;
+  onAddTracks: () => void;
   ref?: Ref<HTMLElement>;
 }
 
@@ -53,10 +55,20 @@ interface AlbumHeroProps {
  * construction rather than by a hand-tuned offset that would drift the moment a
  * title wraps to two lines.
  *
- * `-mx-8 -mt-8` cancels the scroll area's padding. The page owns that padding,
+ * `-mx-8 -mt-5` cancels the scroll area's padding. The page owns that padding,
  * so a full-bleed child has to reach back through it.
  */
-export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }: AlbumHeroProps) {
+export function AlbumHero({
+  album,
+  onPlay,
+  onShuffle,
+  onEdit,
+  onDelete,
+  onAddToPlaylist,
+  onMoveToAlbum,
+  onAddTracks,
+  ref,
+}: AlbumHeroProps) {
   const { t } = useTranslation("library");
 
   const meta = [
@@ -67,7 +79,7 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }
   ].filter(Boolean);
 
   return (
-    <header ref={ref} className="relative -mx-8 -mt-8 -mb-2 px-8 pt-5 pb-7">
+    <header ref={ref} className="relative -mx-8 -mt-5 -mb-2 px-8 pt-5 pb-7">
       <HeroWash />
 
       <div className="relative">
@@ -83,8 +95,10 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }
 
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <div className="min-w-0">
+              {/* The record says what it is: a declared collection stops
+               * announcing itself as an album the moment its owner said so. */}
               <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
-                {t("albums.eyebrow")}
+                {t(album.kind === "collection" ? "albums.eyebrowCollection" : "albums.eyebrow")}
               </p>
               <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight">{album.title}</h1>
               <p className="mt-1.5 truncate text-[0.8125rem] text-muted">
@@ -98,10 +112,16 @@ export function AlbumHero({ album, onPlay, onShuffle, onInspect, onDelete, ref }
               <GenreChips genres={album.genres} families={genreFamilyIndex(album.tracks)} />
             </div>
 
-            <AlbumActions onPlay={onPlay} onShuffle={onShuffle} onInspect={onInspect} onDelete={onDelete} />
+            <AlbumActions
+              onPlay={onPlay}
+              onShuffle={onShuffle}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAddToPlaylist={onAddToPlaylist}
+              onMoveToAlbum={onMoveToAlbum}
+              onAddTracks={onAddTracks}
+            />
           </div>
-
-          <AlbumCompleteness album={album} />
         </div>
       </div>
     </header>

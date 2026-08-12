@@ -5,7 +5,8 @@
     "albums": "Albums",
     "artists": "Artists",
     "genres": "Genres",
-    "categories": "Categories"
+    "categories": "Categories",
+    "playlists": "Playlists"
   },
   "categories": {
     "back": "Categories",
@@ -49,16 +50,25 @@
     "moreSubs_other": "+{{count}} more",
     "albums": "Albums",
     "artists": "Artists",
-    "sort": {
-      "size": "Size",
-      "name": "Name"
-    },
     "noAlbums": "No whole album falls under this genre — its tracks are a minority on albums filed elsewhere.",
     "noResults": "No genre matches “{{query}}”.",
     "recompute": "Recompute genres",
     "recomputing": "Recomputing…",
     "recomputeDone": "{{updated}} track(s) updated out of {{total}}.",
     "recomputeFailed": "Recompute failed, try again in a moment.",
+    "classify": "File under…",
+    "classifyReset": "Original placement",
+    "classifyDoneToast": "Filed “{{genre}}” under {{family}}",
+    "classifyResetToast": "“{{genre}}” back to its original placement",
+    "classifyUndoneToast": "Filing undone",
+    "classifyFailedToast": "Filing failed",
+    "classifyUndo": "Undo",
+    "arrange": {
+      "enter": "Rearrange",
+      "done": "Done",
+      "hint": "Drag a genre onto the family it belongs to.",
+      "emptyFamily": "No tracks — drop a genre here"
+    },
     "overviewMode": "Albums & artists",
     "empty": {
       "title": "No genres yet",
@@ -67,15 +77,13 @@
   },
   "albums": {
     "eyebrow": "Album",
+    "eyebrowCollection": "Collection",
     "back": "Albums",
-    "inspect": "Inspect album metadata",
     "empty": {
       "title": "No albums yet",
       "body": "Albums arrive with their cover and their tags as soon as a download or an import finishes."
     },
     "noResults": "No album matches “{{query}}”.",
-    "completeness": "{{percent}}%",
-    "completenessHint": "Incomplete metadata on this album",
     "bonusFrom": "Bonus — “{{source}}”",
     "sort": {
       "artist": "Artist",
@@ -85,13 +93,15 @@
     "rematch": "Re-match",
     "rematching": "Re-matching…",
     "rematchDone": "{{matched}}/{{total}} tracks identified",
-    "edit": "Edit",
-    "inspectAction": "Inspect",
     "moreActions": "More actions",
-    "tagScoreHint": "Metadata fields filled in on this track",
-    "stats": {
-      "taggedCount": "{{tagged}}/{{total}} tracks complete",
-      "tracksComplete": "tracks complete"
+    "editMetadata": "Edit album metadata",
+    "attention": {
+      "suspectMatch": "Match to review",
+      "duplicateRecording": "Duplicate",
+      "missingYear": "Missing year",
+      "missingTrackNumber": "Missing track number",
+      "genreMissing": "Missing genre",
+      "genreOffTree": "Genre without a family"
     }
   },
   "artists": {
@@ -111,7 +121,25 @@
       "tracks": "Tracks"
     },
     "overviewMode": "Discography",
-    "guest": "Guest"
+    "guest": "Guest",
+    "image": {
+      "title": "Replace the artist image",
+      "current": "Current",
+      "next": "New",
+      "hasCurrent": "The image you chose for this artist.",
+      "noCurrent": "No image yet — a mic stands in until you pick one.",
+      "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
+      "unreadable": "This image can't be read.",
+      "failed": "The change failed — try again in a moment.",
+      "tooSmall": "Smaller than the 500 px display size — it will be used as-is, but may look soft.",
+      "replace": "Use this image",
+      "remove": "Remove the image",
+      "help": {
+        "title": "Where the image lives",
+        "storage": "The image lives in your library's Artwork folder, under the artist's own name — readable and copyable, while the Music folder stays exactly as beets filed it.",
+        "display": "It is stored as a 500 px square and drawn as the artist's disc everywhere: the artists shelf, this page, the compact bar."
+      }
+    }
   },
   "albumCount_one": "{{count}} album",
   "albumCount_other": "{{count}} albums",
@@ -129,9 +157,18 @@
     "artist": "Artist",
     "album": "Album",
     "genre": "Genre",
+    "year": "Year",
+    "family": "Family",
+    "category": "Category",
     "duration": "Duration",
     "actions": "Actions",
-    "tags": "Tags"
+    "attention": "Needs attention"
+  },
+  "inspect": {
+    "modeListening": "Listening",
+    "modeInspecting": "Inspecting",
+    "switchLabel": "Listening or inspecting",
+    "offTree": "“{{genre}}” belongs to no family: nothing is missing, but this track falls under Other."
   },
   "search": {
     "placeholder": "Search…",
@@ -155,13 +192,15 @@
   "triage": {
     "missingYear": "Missing year",
     "genreMissing": "Missing genre",
-    "genreOffTree": "Genre outside the tree",
+    "genreOffTree": "Genre without a family",
     "missingArtwork": "Missing artwork",
-    "tracklistGaps": "Gapped tracklist",
+    "tracklistGaps": "Tracks missing from the album",
     "clearFilter": "Remove the “{{filter}}” filter",
     "noResults": "Nothing matches the active filter.",
     "suspectMatch": "Match to review",
-    "duplicateRecording": "Duplicate tracks"
+    "duplicateRecording": "Duplicate tracks",
+    "missingTrackNumber": "Missing track number",
+    "artistImageMissing": "No image"
   },
   "loadFailed": "Unable to load the library",
   "empty": {
@@ -174,7 +213,6 @@
   "metadata": {
     "title": "Metadata",
     "eyebrow": "Track",
-    "inspect": "Inspect metadata",
     "changeArtwork": "Change image",
     "reenrich": "Re-run auto-match",
     "reenriching": "Matching…",
@@ -184,6 +222,11 @@
     "comingSoon": "Coming soon",
     "emptyValue": "—",
     "bonusFrom": "Bonus track from “{{source}}”, filed with the main album.",
+    "suggest": {
+      "count_one": "{{count}} track",
+      "count_other": "{{count}} tracks",
+      "newValue": "New value"
+    },
     "fields": {
       "title": "Title",
       "artist": "Artist",
@@ -209,10 +252,10 @@
       "category": "What this album is: music, a game soundtrack, a film score… It keeps soundtracks apart from the rest when browsing. Leaving it empty doesn't hurt completion.",
       "track": "The track's position in the album: this is what sets playback order. Two tracks sharing a number end up in an arbitrary order.",
       "completion": "The share of this album's metadata fields already filled. Optional fields are left out of it.",
-      "rematch": "Re-runs the automatic identification: Sonarche queries MusicBrainz again from the files' acoustic fingerprint and rewrites the tags it recognises. Do this before your manual corrections, not after."
+      "rematch": "Re-runs the automatic identification: Sonarche queries MusicBrainz again from the files' acoustic fingerprint and rewrites the tags it recognises. Do this before your manual corrections, not after.",
+      "rematchCollection": "This track sits in a collection — your own selection. Re-identifying would send it back to its original record, so it stays off here."
     },
     "close": "Close",
-    "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving…",
@@ -224,10 +267,18 @@
     "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category.",
     "missingFields_one": "{{fields}} missing",
     "missingFields_other": "{{fields}} missing",
-    "filedUnder": "album filed under {{artist}}"
+    "filedUnder": "album filed under {{artist}}",
+    "editMetadata": "Edit metadata"
   },
   "albumMetadata": {
     "eyebrow": "Album · metadata",
+    "kind": {
+      "label": "What this record is",
+      "album": "Album",
+      "collection": "Collection",
+      "albumWhy": "A release, with its tracklist: Sonarche flags the tracks it is missing and offers to identify it on MusicBrainz.",
+      "collectionWhy": "Your own gathering of tracks. No tracklist to live up to: no more missing-track flags, and the alignment leaves it alone."
+    },
     "completion": {
       "heading_one": "{{count}} of {{total}} tracks is complete",
       "heading_other": "{{count}} of {{total}} tracks are complete",
@@ -249,6 +300,7 @@
       "heading_other": "{{count}} tracks",
       "filedUnder": "Filed under {{artist}} — the Artist column says who plays each title.",
       "missing": "to fill in",
+      "missingShort": "missing",
       "filtered": "Filter: {{label}} · {{count}} of {{total}}",
       "clearFilter": "Clear filter",
       "cell": "{{field}} — {{title}}",
@@ -313,8 +365,81 @@
     "retry": "Try again",
     "rematch": {
       "blocked": "Unavailable while changes are pending — a re-match would overwrite the tags.",
-      "progress": "{{done}} / {{total}} tracks · {{matched}} identified"
+      "collection": "Off for a collection: your own selection has no MusicBrainz release to look up, and re-identifying would send each track back to its original record.",
+      "progress": "{{done}} / {{total}} tracks · {{matched}} identified",
+      "confirmTitle": "Re-run the identification?",
+      "confirmBodyTrack": "Sonarche will query MusicBrainz again from the track's acoustic fingerprint and rewrite every tag it recognises — including the ones you fixed by hand.",
+      "confirmBodyAlbum": "Sonarche will query MusicBrainz again from each track's acoustic fingerprint and rewrite every tag it recognises — including the ones you fixed by hand.",
+      "confirmSkip": "Don't ask me again",
+      "confirmSkipWhere": "The confirmation can be turned back on in Settings → Metadata.",
+      "stop": "Stop",
+      "stopping": "Stopping…",
+      "stopped": "Re-match stopped — {{done}}/{{total}} tracks processed, {{matched}} identified.",
+      "failed": "The re-match failed — try again in a moment."
+    },
+    "provisionalCover": "The cover is the video's thumbnail, not real artwork — replace it once you have the media's own image.",
+    "cover": {
+      "title": "Replace the cover",
+      "filterName": "Images",
+      "current": "Current",
+      "next": "New",
+      "drop": "Drop or paste ({{chord}}) an image here, or click to choose a file",
+      "formats": "JPEG, PNG or WebP",
+      "reframe": "Reframe",
+      "zoom": "Crop zoom",
+      "reframeHint": "Move the frame, or zoom, to choose the square that stays.",
+      "notSquare": "The frame runs past the picture — the cover would not come out square. Zoom back in until it fits inside.",
+      "sourceLine": "Chosen image:",
+      "archiveLine": "Archived square at {{side}}×{{side}} px (cover-hq, once).",
+      "currentEmbedded_one": "Embedded in {{count}} track — {{total}} in the file.",
+      "currentEmbedded_other": "Embedded in {{count}} tracks — ≈ {{total}} across the album.",
+      "nextEmbedded_one": "Will be embedded at ≈ {{each}} in {{count}} track.",
+      "nextEmbedded_other": "Will be embedded at ≈ {{each}} × {{count}} tracks — ≈ {{total}} across the album.",
+      "nextEmbeddedUnknown_one": "Will be embedded at 500 px in {{count}} track.",
+      "nextEmbeddedUnknown_other": "Will be embedded at 500 px in {{count}} tracks.",
+      "candidateNote": "From the Cover Art Archive: the full-size upload is downloaded, archived (cover-hq) and embedded at 500 px.",
+      "noCurrent": "No cover yet.",
+      "mb": "MB",
+      "kb": "KB",
+      "tooSmall": "Smaller than the 500 px display size — it will be used as-is, but may look soft.",
+      "unreadable": "This image can't be read.",
+      "failed": "The replacement failed — try again in a moment.",
+      "cancel": "Cancel",
+      "replace": "Replace the cover",
+      "help": {
+        "title": "What replacing the cover writes",
+        "embed": "Audio files carry their cover inside the file itself — that's how other players and devices show it. Sonarche embeds the image into each track of the album.",
+        "weight": "The embedded copy is capped at 500×500 px. That's the whole point: a 3000×3000 scan embedded as-is would add several MB to every single track, where the 500 px rendition adds a few dozen KB.",
+        "archive": "Your full image isn't lost: it's archived once next to the album (cover-hq) and stays available the day a full-size view needs it."
+      },
+      "candidates": {
+        "heading": "Online proposals",
+        "hint": "From the Cover Art Archive, via the album's MusicBrainz identification.",
+        "search": "Search for proposals",
+        "loading": "Looking for covers…",
+        "empty": "No online proposal for this album.",
+        "failed": "Couldn't fetch the proposals.",
+        "retry": "Try again",
+        "front": "Front"
+      }
     }
+  },
+  "imageUrl": {
+    "placeholder": "https://… direct link to an image",
+    "fetch": "Fetch",
+    "failed": "The link didn't return a readable image."
+  },
+  "imageSource": {
+    "heading": "Source",
+    "hint": "A file, a link, or a copied image — your pick.",
+    "browse": "Browse…",
+    "pasteLink": "Paste a link",
+    "clipboard": "Clipboard",
+    "recrop": "Reframe the current image",
+    "recropFailed": "The current image could not be reopened.",
+    "clipboardEmpty": "The clipboard holds neither an image nor a link.",
+    "clipboardTooLarge": "The copied image is outsized — go through a file instead.",
+    "clipboardUnreadable": "The copied image could not be read."
   },
   "delete": {
     "action": "Delete track",
@@ -328,13 +453,171 @@
     "title": "Delete this album?",
     "body_one": "“{{title}}” and its track will be removed from your library and the file deleted from disk. This cannot be undone.",
     "body_other": "“{{title}}” and its {{count}} tracks will be removed from your library and the files deleted from disk. This cannot be undone.",
-    "action": "Delete album"
+    "action": "Delete album",
+    "lockedTitle": "A download is filing into this album",
+    "lockedBody": "Tracks are on their way to this record. Wait for the download to finish — or stop it from Downloads — before deleting it."
   },
   "sort": {
     "label": "Sort by",
     "byColumn": "Sort by {{column}}"
   },
   "breadcrumb": "Breadcrumb",
+  "edit": "Edit",
   "back": "Back",
-  "goToImport": "Import a folder"
+  "goToImport": "Import a folder",
+  "move": {
+    "menuAction": "Move to an album",
+    "title": "Move to an album",
+    "searchPlaceholder": "Search albums…",
+    "alreadyThere": "Already there",
+    "pickerEmpty": "No album matches.",
+    "moreResults_one": "{{count}} more album — narrow the search",
+    "moreResults_other": "{{count}} more albums — narrow the search",
+    "newCollection": "New collection",
+    "newCollectionHint": "A record of your own, filed in its own folder",
+    "newTitlePlaceholder": "Collection name",
+    "newArtistPlaceholder": "Artist (the folder to file it under)",
+    "newHint": "The collection is filed under this artist, like any record. Each track keeps its own artist.",
+    "createConfirm_one": "Create and move {{count}} track",
+    "createConfirm_other": "Create and move {{count}} tracks",
+    "confirmBody_one": "The file joins the “{{name}}” folder on disk. The track's artist, genre and year stay as they are.",
+    "confirmBody_other": "All {{count}} files join the “{{name}}” folder on disk. Each track's artist, genre and year stay as they are.",
+    "asCollection": "Treat “{{name}}” as a collection",
+    "asCollectionHint": "A personal gathering rather than a release: Sonarche stops counting its missing tracks, and arrivals are numbered onward.",
+    "alreadyCollection": "“{{name}}” is a collection: arrivals are numbered onward.",
+    "confirm_one": "Move {{count}} track",
+    "confirm_other": "Move {{count}} tracks",
+    "confirmEmpty": "Move",
+    "doneToast_one": "Moved to “{{name}}”",
+    "doneToast_other": "{{count}} tracks moved to “{{name}}”",
+    "undo": "Undo",
+    "undoneToast": "Move undone — every track is back home.",
+    "undoFailedToast": "The move could not be undone.",
+    "failedToast": "The move failed.",
+    "addTracksAction": "Add tracks",
+    "addTracksTitle": "Add to “{{name}}”",
+    "addTracksSubtitle": "Picked tracks leave their record for this one.",
+    "addTracksSearchPlaceholder": "Search a track, an artist, an album…",
+    "addTracksEmpty": "No track matches.",
+    "moreTracks_one": "{{count}} more track — narrow the search",
+    "moreTracks_other": "{{count}} more tracks — narrow the search",
+    "selectedCount_one": "{{count}} track selected",
+    "selectedCount_other": "{{count}} tracks selected",
+    "selectHint": "Tick the tracks to bring in here."
+  },
+  "playlists": {
+    "eyebrow": "Playlist",
+    "back": "Playlists",
+    "all": "All playlists",
+    "count_one": "{{count}} playlist",
+    "count_other": "{{count}} playlists",
+    "create": "New playlist",
+    "createConfirm": "Create",
+    "createPlaceholder": "New playlist…",
+    "namePlaceholder": "Playlist name",
+    "duplicateName": "A playlist already has this name",
+    "cancel": "Cancel",
+    "delete": {
+      "action": "Delete playlist",
+      "title": "Delete “{{name}}”?",
+      "body_one": "The playlist and its order go; its {{count}} track stays in the library.",
+      "body_other": "The playlist and its order go; its {{count}} tracks stay in the library.",
+      "body_zero": "The playlist is empty; nothing else goes with it.",
+      "confirm": "Delete"
+    },
+    "addTo": "Add to a playlist",
+    "removeFrom": "Remove from playlist",
+    "alreadyThere": "Already there",
+    "pickerEmpty": "No playlist yet — name one above to start it.",
+    "addedToast_one": "Added to “{{name}}”",
+    "addedToast_other": "{{count}} tracks added to “{{name}}”",
+    "nothingAddedToast": "Already in “{{name}}”",
+    "skippedToast_one": "{{count}} track was already there",
+    "skippedToast_other": "{{count}} tracks were already there",
+    "dragToReorder": "Drag to reorder",
+    "empty": {
+      "title": "No playlist yet",
+      "body": "A playlist gathers tracks from anywhere in the ark, in the order you choose."
+    },
+    "emptyDetail": {
+      "title": "This playlist is empty",
+      "body": "Add tracks from any row's menu — in the library, an album or an artist page."
+    },
+    "favorites": "Favorites",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "emptyFavorites": {
+      "title": "No favorites yet",
+      "body": "Press the heart on any track — here, in the library or from the player bar."
+    },
+    "image": {
+      "title": "Playlist image",
+      "replace": "Use this image",
+      "remove": "Remove image",
+      "current": "Current image",
+      "next": "New image",
+      "hasCurrent": "Your image, shown on every shelf.",
+      "noCurrent": "Built from the first covers in the list.",
+      "drop": "Drop an image, click to browse, or paste ({{chord}})",
+      "unreadable": "This file could not be read as an image.",
+      "failed": "The image could not be saved.",
+      "help": {
+        "title": "Where this image lives",
+        "storage": "The image lives in your library's Artwork folder, named after the playlist — it travels with your library, and the Music folder stays clean.",
+        "display": "Without an image of yours, the playlist wears a mosaic of its first covers."
+      }
+    },
+    "marker": {
+      "title": "Navigation icon",
+      "subtitle": "What this playlist shows in the sidebar.",
+      "icons": "Icons",
+      "image": "Image",
+      "imageCell": "Image thumbnail",
+      "noImage": "Give the playlist an image to use it here",
+      "colors": "Colors",
+      "reset": "Default icon",
+      "icon": {
+        "list-music": "Playlist",
+        "disc": "Disc",
+        "headphones": "Headphones",
+        "guitar": "Guitar",
+        "mic": "Mic",
+        "radio": "Radio",
+        "waves": "Waves",
+        "sparkles": "Sparkles",
+        "heart": "Heart",
+        "star": "Star",
+        "flame": "Flame",
+        "zap": "Bolt",
+        "sun": "Sun",
+        "moon": "Moon",
+        "dumbbell": "Dumbbell",
+        "car": "Car"
+      },
+      "color": {
+        "indigo": "Indigo",
+        "violet": "Violet",
+        "rose": "Rose",
+        "amber": "Amber",
+        "moss": "Moss",
+        "teal": "Teal",
+        "sky": "Sky",
+        "blue": "Blue"
+      }
+    },
+    "edit": {
+      "title": "Edit playlist",
+      "name": "Name",
+      "changeImage": "Change image",
+      "save": "Save",
+      "failed": "The changes could not be saved."
+    }
+  },
+  "unplayable": {
+    "badge": "no audio",
+    "why": "Sonarche cannot decode the {{format}} format. The file is in the ark with its tags and its place in the album — it just cannot be played here."
+  },
+  "albumSelect": {
+    "clear": "Remove this album"
+  }
 }

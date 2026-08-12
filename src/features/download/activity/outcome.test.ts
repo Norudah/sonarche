@@ -10,6 +10,10 @@ describe("jobOutcome", () => {
     }
   });
 
+  it("reports a stopped job as cancelled, whatever it had reached", () => {
+    expect(jobOutcome(job({ status: "cancelled" }))).toEqual({ kind: "cancelled" });
+  });
+
   it("reports a matched single with the source that answered", () => {
     const done = job({ status: "done", report: report({ mbMatched: true, source: "MusicBrainz" }) });
     expect(jobOutcome(done)).toEqual({ kind: "matched", source: "MusicBrainz" });

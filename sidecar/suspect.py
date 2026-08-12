@@ -56,6 +56,12 @@ def titles_agree(hint_title: str | None, other_title: str | None) -> bool:
     return bool(hint and other and hint & other)
 
 
+def has_words(text: str | None) -> bool:
+    """Whether the text carries any real word once noise and digits are folded
+    out — i.e. whether it can serve as evidence at all."""
+    return bool(_tokens(text))
+
+
 def mark(item, hint_title: str | None) -> bool:
     """Set or clear the review flag on a freshly *matched* item, comparing the
     download's title hint against the title the match applied. Mutates the

@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
+import { DerivedField } from "@/features/library/metadata/DerivedField";
 import { EditableField } from "@/features/library/metadata/EditableField";
+import type { SuggestKind } from "@/features/library/metadata/suggestions";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
@@ -12,6 +14,14 @@ const FIELD_LABEL: Record<AlbumCommonField, string> = {
   year: "year",
   genre: "genre",
   grouping: "category",
+};
+
+/** Suggestion pool per common tag — the album artist draws from the same name
+ * pool as the track artist, since either field may already know the spelling. */
+const FIELD_SUGGEST: Partial<Record<AlbumCommonField, SuggestKind>> = {
+  album: "album",
+  albumartist: "artist",
+  genre: "genre",
 };
 
 /**
@@ -58,6 +68,7 @@ export function CommonFields({
         value={values[name]}
         origin={origins[name]}
         help={extra?.help}
+        suggest={FIELD_SUGGEST[name]}
         mixedCount={baseline[name].mixed ? (distinctCounts[name] ?? trackCount) : undefined}
         onChange={(value) => onChange(name, value)}
         onRevert={() => onRevert(name)}
@@ -118,24 +129,22 @@ export function CommonFields({
         })}
       </div>
 
-      {baseline.genre.mixed && values.genre.trim() === "" && (
+      {((baseline.genre.mixed && values.genre.trim() === "") || (baseline.year.mixed && values.year.trim() === "")) && (
         <p className="-mt-1.5 text-[0.6875rem] leading-snug text-muted/85">
           {t("albumMetadata.mixed.hint", { count: trackCount })}
         </p>
       )}
 
-      {/* Derived from the genre, never written — flat and grey so it reads as a
-          consequence rather than as a field someone forgot to fill. */}
-      <div className="-mt-2 flex items-center gap-1.5 text-[0.6875rem] text-muted/85">
-        <span>
-          {t("metadata.fields.genreBucket")} ·{" "}
-          <span className="font-medium text-muted">{genreFamily || t("metadata.emptyValue")}</span>
-        </span>
-        <FieldHelp
-          label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
-          text={t("metadata.help.genreBucket")}
-        />
-      </div>
+      <DerivedField
+        label={t("metadata.fields.genreBucket")}
+        value={genreFamily}
+        help={
+          <FieldHelp
+            label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
+            text={t("metadata.help.genreBucket")}
+          />
+        }
+      />
 
       {/* Chips only, no free-text input: the taxonomy writes canonical English
           values while showing translated labels, and a typed value would break

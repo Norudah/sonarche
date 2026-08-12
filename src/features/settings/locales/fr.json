@@ -16,9 +16,7 @@
       "why": "Le thème clair est celui d'origine. Nuit n'est pas son négatif : le noir n'y est jamais pur, un voile bleuté traverse chaque surface et l'accent y descend au lieu de monter. Pour les écrans trop lumineux et les sessions tardives.",
       "light": "Clair",
       "dark": "Nuit",
-      "system": "Système",
-      "followingLight": "Ton système est en clair, l'app suit.",
-      "followingDark": "Ton système est en sombre, l'app passe en Nuit."
+      "system": "Système"
     },
     "language": {
       "name": "Langue",
@@ -27,6 +25,37 @@
     "launchWelcome": {
       "name": "Mot de bienvenue au lancement",
       "why": "Une fois l'environnement vérifié, Sonarche prend une seconde pour se présenter avant d'ouvrir la fenêtre. Désactive-le et l'application entre directement — le fondu entre les deux, lui, reste."
+    },
+    "tour": {
+      "name": "Visite guidée",
+      "why": "Les repères de l'interface, en six étapes. À revoir quand tu veux.",
+      "replay": "Revoir la visite"
+    }
+  },
+  "adding": {
+    "category": "Ajouts",
+    "title": "Ajouter de la musique",
+    "description": "Comment se présentent les deux pages qui remplissent l'arche : ce que tu vois déjà déplié en arrivant, et ce qui reste sous le chevron.",
+    "downloadOptions": {
+      "name": "Déplier les options au collage d'un lien",
+      "why": "Dès qu'un lien est reconnu, le panneau s'ouvre sur la destination et la catégorie du téléchargement. Désactive-le si tu connais tes réglages : le chevron reste là pour les rouvrir au cas par cas."
+    },
+    "importOptions": {
+      "name": "Déplier les options après l'analyse d'un dossier",
+      "why": "Une fois le dossier lu, le panneau s'ouvre sur le regroupement et la catégorie de l'import. Désactive-le si tu importes toujours de la même façon."
+    }
+  },
+  "metadata": {
+    "category": "Métadonnées",
+    "title": "Métadonnées",
+    "description": "Comment l'app te signale ce qu'elle pourrait encore compléter, et la prudence avec laquelle l'identification automatique réécrit tes tags.",
+    "badges": {
+      "name": "Pastille sur l'onglet Métadonnées",
+      "why": "Affiche dans la barre latérale le nombre de titres et d'albums à compléter, le même que celui de la page Métadonnées — qui porte le même interrupteur. Désactive-la si tu préfères consulter la page à ton rythme."
+    },
+    "rematchConfirm": {
+      "name": "Confirmation avant un re-match",
+      "why": "Le re-match ré-interroge MusicBrainz et réécrit tous les tags reconnus, y compris tes corrections manuelles. Avec cette option, l'app demande confirmation avant de lancer, sur un morceau comme sur un album."
     }
   },
   "apiKeys": {
@@ -87,21 +116,22 @@
         "why": "Sur une playlist, les pistes sont récupérées une par une. Cette pause espace les requêtes pour que les longs lots restent dans les limites de débit de la source au lieu de déclencher des erreurs 403. Le délai réel est tiré au hasard entre cette valeur et son double.",
         "estimate": "Pour une playlist de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
         "warning": "Sous une seconde, les requêtes s'enchaînent quasiment sans pause — c'est exactement le comportement qui fait repérer un client et renvoyer des erreurs 403 au milieu d'une longue playlist. Trois secondes reste le réglage sûr."
-      },
-      "acoustid": {
-        "name": "Délai entre les requêtes AcoustID",
-        "why": "Chaque piste importée est identifiée par son empreinte acoustique via AcoustID. Le service autorise 3 requêtes par seconde et par clef : sur un album, les recherches s'enchaînent, d'où cette pause.",
-        "estimate": "Pour un album de {{count}} pistes, les pauses ajoutent environ {{duration}}.",
-        "warning": "Sous une seconde, l'album entier part en rafale. AcoustID documente trois requêtes par seconde et par clef : au-delà, c'est ta clef qui est bridée, et le service n'a aucune raison de prévenir avant."
-      },
-      "lastfm": {
-        "name": "Délai entre les requêtes Last.fm",
-        "why": "Quand un morceau n'a aucun genre MusicBrainz, l'action « Recalculer les genres » interroge Last.fm pour le retrouver. Cette clef API est partagée par tous les utilisateurs de beets dans le monde : un délai entre chaque requête évite de la faire bloquer temporairement pour tout le monde.",
-        "estimate": "Pour {{count}} titres sans genre à ce rythme : environ {{duration}}.",
-        "warning": "Sous une seconde, on sollicite Last.fm plus vite qu'elle ne le demande — avec une clef partagée par tous les utilisateurs de beets dans le monde. La faire bloquer la bloque pour eux aussi."
       }
     },
-    "impoliteTitle": "Réglage déconseillé."
+    "impoliteTitle": "Réglage déconseillé.",
+    "fixed": {
+      "title": "Délais des services de métadonnées",
+      "body": "AcoustID et Last.fm sont interrogés avec des clefs partagées par toutes les installations : un seul utilisateur trop pressé peut faire brider la clef pour tout le monde. Le rythme est donc fixé par l'app, et ne se règle pas.",
+      "perRequest": "{{delay}} entre deux requêtes",
+      "acoustid": {
+        "name": "AcoustID",
+        "role": "identification des morceaux par empreinte acoustique"
+      },
+      "lastfm": {
+        "name": "Last.fm",
+        "role": "récupération des genres manquants"
+      }
+    }
   },
   "updates": {
     "category": "Mises à jour"
@@ -201,15 +231,16 @@
       },
       "erase": {
         "name": "Tout effacer",
-        "why": "Remet l'app à l'état de sa première ouverture. Tes fichiers audio sont supprimés du disque. Il n'y a pas de corbeille, pas d'annulation, pas de sauvegarde.",
+        "why": "Vide entièrement la bibliothèque et remet les réglages d'origine — l'installation et ta clef AcoustID restent en place. Tes fichiers audio sont supprimés du disque. Il n'y a pas de corbeille, pas d'annulation, pas de sauvegarde.",
         "action": "Tout effacer",
         "dialogTitle": "Effacer toutes tes données ?",
         "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
         "itemFiles": "Tous les fichiers audio de la bibliothèque, supprimés du disque",
         "itemIndex": "L'index beets : titres, albums, artistes, genres, pochettes",
-        "itemHistory": "L'historique des téléchargements et des imports",
-        "itemKeys": "Ta clef AcoustID et tous tes réglages",
-        "keepsEngine": "L'environnement Python est conservé : l'app sera de nouveau utilisable tout de suite.",
+        "itemPlaylists": "Les playlists et leurs fichiers M3U8, les images d'artistes et de playlists",
+        "itemHistory": "L'historique des téléchargements et des imports, les téléchargements en attente",
+        "itemKeys": "Tes réglages, remis à leurs valeurs d'origine, et le journal de diagnostic",
+        "keepsEngine": "L'environnement Python et ta clef AcoustID sont conservés : l'app est de nouveau utilisable tout de suite, sans refaire l'installation.",
         "prompt": "Tape {{phrase}} pour confirmer",
         "cancel": "Annuler",
         "confirm": "Effacer définitivement",
