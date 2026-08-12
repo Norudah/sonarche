@@ -77,6 +77,10 @@ export function useImports() {
   return useQuery<ImportRecord[]>({ queryKey: importsKey, queryFn: listImports });
 }
 
+/** Names the running import in the mutation cache, so the shell can see it
+ * from any page (the global progress toast) without the page lifting a thing. */
+export const importRunKey = ["library-import-run"] as const;
+
 /**
  * Run the import. Two caches go stale the moment it ends, and one of them on a
  * failure too: the library gained tracks, and the archive gained a row either
@@ -86,6 +90,7 @@ export function useLibraryImport() {
   const queryClient = useQueryClient();
 
   return useMutation<ImportOutcome, unknown, { folder: string; grouping: Grouping; category: string | null }>({
+    mutationKey: importRunKey,
     mutationFn: ({ folder, grouping, category }) => startLibraryImport(folder, grouping, category),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: libraryKey }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: importsKey }),

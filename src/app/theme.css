@@ -479,6 +479,14 @@
     line-height: 1.35;
   }
 
+  /* The job-progress toast puts a truncating title and a full-width rail in
+     the content slot. A flex item's floor is its min-content — the title's
+     whole untruncated line — so without this the slot refuses to shrink and
+     pushes its own row out of the box. */
+  .toast__content {
+    min-width: 0;
+  }
+
   .toast__description {
     margin-top: 0.1875rem;
     font-size: 0.75rem;

@@ -148,5 +148,11 @@
     "trackUnavailable": "This video is no longer available.",
     "unavailableChip": "Unavailable",
     "edit": "Edit metadata"
+  },
+  "toast": {
+    "view": "View",
+    "more": "+{{count}} queued",
+    "done": "Download finished",
+    "failed": "Download failed"
   }
 }

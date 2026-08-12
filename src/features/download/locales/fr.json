@@ -148,5 +148,11 @@
     "trackUnavailable": "Cette vidéo n'est plus disponible.",
     "unavailableChip": "Indisponible",
     "edit": "Modifier les métadonnées"
+  },
+  "toast": {
+    "view": "Voir",
+    "more": "+{{count}} en file",
+    "done": "Téléchargement terminé",
+    "failed": "Téléchargement en échec"
   }
 }

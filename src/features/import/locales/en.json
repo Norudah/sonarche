@@ -156,5 +156,13 @@
     "failedToast": "The removal did not go through",
     "verdict": "Taken out",
     "subtitle": "Taken back out: nothing from this import is in the library any more."
+  },
+  "toast": {
+    "view": "View",
+    "title": "Folder import",
+    "folders": "Folder {{count, number}}",
+    "done": "Import finished",
+    "cancelled": "Import stopped",
+    "failed": "Import failed"
   }
 }

@@ -156,5 +156,13 @@
     "failedToast": "Le retrait n'a pas abouti",
     "verdict": "Retiré",
     "subtitle": "Retiré de l'arche : plus rien de cet import n'est dans la bibliothèque."
+  },
+  "toast": {
+    "view": "Voir",
+    "title": "Import du dossier",
+    "folders": "Dossier {{count, number}}",
+    "done": "Import terminé",
+    "cancelled": "Import arrêté",
+    "failed": "Import en échec"
   }
 }
