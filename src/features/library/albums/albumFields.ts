@@ -177,12 +177,20 @@ export function buildAlbumUpdates(
  * Each row contributes what a save would actually store — an edit the sidecar
  * would skip (whitespace, a non-numeric year) reads as the stored value — so
  * the cell can never claim a change the save would not write.
+ *
+ * That settled reading decides *whether* the rows agree, never what the field
+ * shows while it is being typed in: it is trimmed, and the common field is a
+ * controlled input reading straight off it. Handing back the trimmed text ate
+ * the space at the caret on every keystroke — "Hip Hop" could not be typed.
+ * So when every row carries the same draft text, that raw text is what comes
+ * back, spaces and all.
  */
 export function draftRowCell(
   tracks: LibraryTrack[],
   draft: AlbumDraft,
   field: RowCarriedField,
 ): CommonCell & { distinct: number } {
+  const raw = tracks.map((track) => draft.rows[track.id]?.[field] ?? fieldOf(track, field));
   const values = new Set(
     tracks.map((track) => {
       const live = fieldOf(track, field);
@@ -190,7 +198,10 @@ export function draftRowCell(
       return (effectiveEdit(field, row, live) ?? live).trim();
     }),
   );
-  if (values.size <= 1) return { value: [...values][0] ?? "", mixed: false, distinct: values.size };
+  if (values.size <= 1) {
+    const typed = new Set(raw);
+    return { value: (typed.size === 1 ? [...typed][0] : [...values][0]) ?? "", mixed: false, distinct: values.size };
+  }
   return { value: "", mixed: true, distinct: values.size };
 }
 

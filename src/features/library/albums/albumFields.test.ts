@@ -327,6 +327,18 @@ describe("draftRowCell", () => {
     expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "Post-Rock", mixed: false, distinct: 1 });
   });
 
+  /** The common field is a controlled input reading off this cell: a trimmed
+   * answer erased the space at the caret on every keystroke, and "Hip Hop"
+   * could not be typed. */
+  it("hands back the space being typed while every row still agrees", () => {
+    const tracks = [track({ id: 1 }), track({ id: 2 })];
+    const draft = toAlbumDraft(tracks, commonBaseline(tracks));
+    draft.rows[1].genre = "Hip ";
+    draft.rows[2].genre = "Hip ";
+
+    expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "Hip ", mixed: false, distinct: 1 });
+  });
+
   it("reads the shared year off the rows, in the string form the inputs edit", () => {
     const tracks = [track({ id: 1, year: 2009 }), track({ id: 2, year: 2009 })];
     const draft = toAlbumDraft(tracks, commonBaseline(tracks));
