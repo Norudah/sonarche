@@ -3,7 +3,7 @@ import { initReactI18next } from "react-i18next";
 
 import commonEn from "@/app/locales/en.json";
 import commonFr from "@/app/locales/fr.json";
-import { applyDocumentLanguage, initialLanguage } from "@/features/settings/language";
+import { applyDocumentLanguage, initialLanguage } from "@/shared/i18n/language";
 import downloadEn from "@/features/download/locales/en.json";
 import downloadFr from "@/features/download/locales/fr.json";
 import importEn from "@/features/import/locales/en.json";

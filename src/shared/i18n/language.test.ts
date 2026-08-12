@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { matchLanguage, parseLanguage } from "@/features/settings/language";
+import { matchLanguage, parseLanguage } from "@/shared/i18n/language";
 
 describe("parseLanguage", () => {
   it("accepts the two languages the app ships", () => {

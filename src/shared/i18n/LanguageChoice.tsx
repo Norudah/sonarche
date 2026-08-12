@@ -1,8 +1,8 @@
 import { Radio, RadioGroup } from "@heroui/react";
 import { motion } from "motion/react";
 
-import { LANGUAGES, type Language } from "@/features/settings/language";
-import { useLanguage } from "@/features/settings/useLanguage";
+import { LANGUAGES, type Language } from "@/shared/i18n/language";
+import { useLanguage } from "@/shared/i18n/useLanguage";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
 /* The segmented grammar the theme control used to wear, and the shape this

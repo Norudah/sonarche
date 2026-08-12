@@ -10,6 +10,7 @@ import { EnginePanel } from "@/features/onboarding/panels/EnginePanel";
 import { PythonPanel } from "@/features/onboarding/panels/PythonPanel";
 import { StepRow, StepSummary } from "@/features/onboarding/StepRow";
 import { buildSetupSteps, canFinishSetup, type SetupStepId } from "@/features/onboarding/steps";
+import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { fade, springs } from "@/shared/motion/tokens";
 import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
 
@@ -91,12 +92,22 @@ export function SetupWalkthrough({
         <div className="pointer-events-none absolute inset-x-0 top-0 h-80 hero-wash" />
 
         <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-9 px-8 pt-20 pb-16">
-          <header>
-            <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
-              {t("walkthrough.eyebrow")}
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("walkthrough.title")}</h1>
-            <p className="mt-2.5 max-w-prose text-[0.9375rem] leading-relaxed text-muted">{t("walkthrough.lead")}</p>
+          <header className="flex items-start justify-between gap-8">
+            <div className="min-w-0">
+              <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
+                {t("walkthrough.eyebrow")}
+              </p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("walkthrough.title")}</h1>
+              <p className="mt-2.5 max-w-prose text-[0.9375rem] leading-relaxed text-muted">{t("walkthrough.lead")}</p>
+            </div>
+            {/* The first screen is also the first thing to be *read*, and until
+                now the only way to change the language was three screens past
+                it, in Settings. Beside the title rather than in a step: this is
+                not a task to complete, it is which words the rest of the page
+                is written in. */}
+            <div className="w-40 shrink-0">
+              <LanguageChoice label={t("walkthrough.language")} />
+            </div>
           </header>
 
           <ol className="flex flex-col">

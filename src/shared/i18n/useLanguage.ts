@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { applyDocumentLanguage, parseLanguage, storeLanguage, type Language } from "@/features/settings/language";
+import { applyDocumentLanguage, parseLanguage, storeLanguage, type Language } from "@/shared/i18n/language";
 
 /**
  * The live language, and the choice behind it.

@@ -3,7 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { LanguageChoice } from "@/features/settings/LanguageChoice";
+import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { readLaunchWelcome, storeLaunchWelcome } from "@/features/settings/launchWelcome";
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
