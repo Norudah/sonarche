@@ -433,6 +433,16 @@
   .button {
     border-radius: var(--radius-xl);
   }
+
+  /* …except when there is no text in it. The rule above is about a *label* in
+     a box, and it caught the player's transport on the way past: five round
+     glyph controls turned into rounded squares, the play disc worst of all —
+     the one accent-filled control on screen, and the one place a circle is not
+     decoration but the shape of the thing. An icon-only button is a glyph with
+     a hit area around it, so it is round everywhere in the app. */
+  .button--icon-only {
+    border-radius: calc(infinity * 1px);
+  }
 }
 
 /* --- Destructive menu items ----------------------------------------------- */

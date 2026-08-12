@@ -44,7 +44,7 @@ const ICONS: Record<TriageLine["key"], LucideIcon> = {
 };
 
 /**
- * Amber is spent on one row only.
+ * Amber is spent on one glyph only.
  *
  * Every glyph used to wear it, which put a warning colour on "missing year" —
  * an absence in someone's own files, not an alarm — and made the page read as
@@ -52,9 +52,25 @@ const ICONS: Record<TriageLine["key"], LucideIcon> = {
  * where *we* may have written the wrong thing into a track, so it keeps the
  * warning tone and now owns it alone. The rest are neutral: still a queue,
  * still doors, no longer a scolding.
+ *
+ * The *counts* are amber again, though — see `COUNT` below. The glyph says what
+ * kind of line this is and has no business shouting; the number is the part
+ * that means "there is something here to do".
  */
 const SUSPECT_TONE = "bg-warning-soft text-warning";
 const NEUTRAL_TONE = "bg-surface-secondary text-muted";
+
+/**
+ * The number wears the app's "something is missing" colour.
+ *
+ * It was neutralised along with the glyphs, back when a count you could not
+ * silence was a permanent grade on the user's collection. That is no longer
+ * what these numbers are: a check can be switched off in the menu, and a line
+ * can be accepted as it stands — so a number that survives both is one the user
+ * has left standing on purpose, and amber is exactly what it means. Zero is
+ * reachable, which is what earns the colour back.
+ */
+const COUNT = "text-lg font-semibold text-warning tabular-nums";
 
 /** "Neon Slumber, Half Light +19" — what the count is made of, in plain
  * muted text (not individually clickable in v1; the door opens the list). */
@@ -156,7 +172,7 @@ export function QueueLine({
         {label}
         {accept}
         <span className="flex shrink-0 items-center gap-2">
-          <span className="text-lg font-semibold tabular-nums">{line.count}</span>
+          <span className={COUNT}>{line.count}</span>
           <ChevronRight className="size-4 text-muted transition-transform group-hover/line:translate-x-0.5" />
         </span>
       </Link>
@@ -173,10 +189,13 @@ export function QueueLine({
           <Link
             key={door.key}
             to={door.to}
-            className="group/door flex items-center gap-1 rounded-full bg-surface-secondary px-3 py-1 text-[0.8125rem] tabular-nums outline-none transition-colors hover:bg-surface-tertiary focus-visible:ring-2 focus-visible:ring-accent/40"
+            // Amber like the single-door rows' count: the pill *is* the number
+            // here — the label interpolates it — so tinting the digits alone
+            // would leave the fused genre row the only pale line on the page.
+            className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {t(`queue.${door.key}`, { count: door.count })}
-            <ChevronRight className="size-3.5 text-muted transition-transform group-hover/door:translate-x-0.5" />
+            <ChevronRight className="size-3.5 transition-transform group-hover/door:translate-x-0.5" />
           </Link>
         ))}
       </span>
