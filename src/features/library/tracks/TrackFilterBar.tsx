@@ -15,6 +15,8 @@ interface TrackFilterBarProps {
   /** Rendered first, before the filters — the view-mode switch on a scoped page.
    * A slot and not a prop because what goes there is a whole control. */
   leading?: ReactNode;
+  /** Forwarded to `ExplorerBar` — see its own `pinned`. */
+  pinned?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface TrackFilterBarProps {
  * The chips are for the panel's filters, which are otherwise invisible with the
  * panel closed.
  */
-export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
+export function TrackFilterBar({ state, leading, pinned }: TrackFilterBarProps) {
   const { t } = useTranslation("library");
   const familyLabelOf = useFamilyLabel();
   const categoryLabelOf = useCategoryLabel();
@@ -89,7 +91,7 @@ export function TrackFilterBar({ state, leading }: TrackFilterBarProps) {
     });
 
   return (
-    <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={scopeSize}>
+    <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={scopeSize} pinned={pinned}>
       {leading}
 
       {axes.includes("family") && (

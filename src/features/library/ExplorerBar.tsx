@@ -15,6 +15,10 @@ interface ExplorerBarProps {
   /** How many there are without them. The count only shows when the two differ:
    * unfiltered, it repeats the number the title block already carries. */
   total: number;
+  /** Pinned to the top of the scrollport. Off on a page that already pins a bar
+   * of its own — the album's sticky header sits exactly here, and the two would
+   * cover each other. */
+  pinned?: boolean;
 }
 
 /**
@@ -37,15 +41,17 @@ interface ExplorerBarProps {
  * page even at the top where there is nothing to separate. Over the page
  * background it is invisible until something scrolls into it.
  */
-export function ExplorerBar({ children, query, onQueryChange, shown, total }: ExplorerBarProps) {
+export function ExplorerBar({ children, query, onQueryChange, shown, total, pinned = true }: ExplorerBarProps) {
   const { t } = useTranslation("library");
 
   return (
     <div
       className={
-        "sticky top-0 z-10 -mx-8 -my-1 flex flex-wrap items-center gap-2 bg-background px-8 py-3 " +
-        "after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-2 " +
-        "after:bg-gradient-to-b after:from-background after:to-transparent"
+        "-mx-8 -my-1 flex flex-wrap items-center gap-2 bg-background px-8 py-3 " +
+        (pinned
+          ? "sticky top-0 z-10 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-2 " +
+            "after:bg-gradient-to-b after:from-background after:to-transparent"
+          : "")
       }
     >
       {children}

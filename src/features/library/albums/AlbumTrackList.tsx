@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,11 +11,13 @@ import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 import { useLensHere } from "@/features/library/inspect/inspectMode";
 import { InspectTable } from "@/features/library/inspect/InspectTable";
 import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
-import { nextSort, sortTracks, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
+import type { TrackSortKey } from "@/features/library/tracks/sort";
 import { useAlbumAttention } from "@/features/library/triage/attention";
 import { SortableColumn } from "@/features/library/tracks/SortableColumn";
 import { HEADER, NUMERIC, PAD } from "@/features/library/tracks/tableGrid";
+import type { TrackFilterState } from "@/features/library/tracks/useTrackFilter";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { fade } from "@/shared/motion/tokens";
 
 // No alignment in the base: `${COLUMN} text-center` looks like it wins, but
 // Tailwind resolves conflicts by stylesheet order, not by class-string order,
@@ -34,15 +37,17 @@ const COLUMN = `${PAD} ${HEADER}`;
  * surfaces differ by exactly one column, because the whole point of that table
  * is that every field has the same place on every page.
  */
-export function AlbumTrackList({ album }: { album: Album }) {
+export function AlbumTrackList({ album, state }: { album: Album; state: TrackFilterState }) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
   const [moving, setMoving] = useState<LibraryTrack[] | null>(null);
-  // A way of reading the record, not a change to it: the album keeps its own
-  // order, and dropping the sort (third click) returns to it.
-  const [sort, setSort] = useState<TrackSort | null>(null);
+  // Sort, search and filters all live in the page's explorer now, so the hero's
+  // play button queues exactly what the list shows. They stay ways of *reading*
+  // the record: the album keeps its own order, and dropping the sort (third
+  // click on a header) returns to it.
+  const { visible, sort, toggleSort, query, scopeSize } = state;
   const { playFrom } = usePlayQueue();
   const inspecting = useLensHere();
   // The Metadata page's verdict, narrowed to this record: a row is dotted here
@@ -50,25 +55,29 @@ export function AlbumTrackList({ album }: { album: Album }) {
   // table asks for its own, over the same predicates.)
   const attention = useAlbumAttention(album);
 
-  const visible = sortTracks(album.tracks, sort);
-
   // Derived from the live album, so a re-enrich refetch updates the open drawer.
   const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
   const column = (key: TrackSortKey, label: string, className: string, align?: "left" | "right") => (
-    <SortableColumn
-      column={key}
-      label={label}
-      className={className}
-      align={align}
-      sort={sort}
-      onSort={(clicked) => setSort(nextSort(sort, clicked))}
-    />
+    <SortableColumn column={key} label={label} className={className} align={align} sort={sort} onSort={toggleSort} />
   );
 
   return (
     <>
-      {inspecting ? (
+      {visible.length === 0 && scopeSize > 0 ? (
+        // Filtered or searched down to nothing. Fades in rather than replacing
+        // the table in one frame — the search is live, so this state appears
+        // mid-keystroke. Standing here rather than in an early return so the
+        // dialogs below stay mounted whatever the list is showing.
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={fade}
+          className="py-16 text-center text-sm text-muted"
+        >
+          {query ? t("search.noResults", { query }) : t("triage.noResults")}
+        </motion.p>
+      ) : inspecting ? (
         // The record's own tracklist under the lens. Same table as the
         // explorer's, minus the Album column: on a page whose header is the
         // album, that column would repeat one title down the whole list.
@@ -77,7 +86,7 @@ export function AlbumTrackList({ album }: { album: Album }) {
           tracks={visible}
           animationKey={album.key}
           sort={sort}
-          onSort={(clicked) => setSort(nextSort(sort, clicked))}
+          onSort={toggleSort}
           onPlay={(index) => playFrom(visible, index)}
           onEdit={(track) => setInspectedId(track.id)}
           onDelete={setDeleting}
