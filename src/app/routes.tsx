@@ -20,6 +20,7 @@ import { PlaylistDetailView } from "@/features/library/views/PlaylistDetailView"
 import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
 import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
+import { AddingSection } from "@/features/settings/AddingSection";
 import { AppearanceSection } from "@/features/settings/AppearanceSection";
 import { DeveloperSection } from "@/features/settings/DeveloperSection";
 import { MetadataSection } from "@/features/settings/MetadataSection";
@@ -74,6 +75,7 @@ export const router = createMemoryRouter(
           children: [
             { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
             { path: paths.settingsAppearance, element: <AppearanceSection /> },
+            { path: paths.settingsAdding, element: <AddingSection /> },
             { path: paths.settingsMetadata, element: <MetadataSection /> },
             { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
             { path: paths.settingsRateLimits, element: <RateLimitsSection /> },

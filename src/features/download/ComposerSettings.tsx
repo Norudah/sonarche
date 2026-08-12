@@ -11,6 +11,7 @@ import type { DetectedUrlKind } from "@/features/download/urlKind";
 // one the Categories page groups by on the first addition.
 import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
+import { useAutoExpand } from "@/shared/lib/optionPanels";
 
 interface ComposerSettingsProps {
   kind: JobKind;
@@ -43,7 +44,9 @@ function destinationSummary(destination: Destination): string {
  * data-driven reveal as the import options on a scanned folder. Options only a
  * chevron ever surfaced were options nobody knew existed; a recognised link is
  * the moment they are about to matter. Folding it back stays the user's call
- * for as long as that link is in the field.
+ * for as long as that link is in the field, and someone who has made that call
+ * a hundred times can settle it for good in Settings — the reveal is a good
+ * default, not a conviction.
  */
 export function ComposerSettings({
   kind,
@@ -56,14 +59,17 @@ export function ComposerSettings({
 }: ComposerSettingsProps) {
   const { t } = useTranslation("download");
   const labelOf = useCategoryLabel();
+  const autoExpand = useAutoExpand("download");
   const forcedTitle = destinationSummary(destination);
 
   return (
     <Disclosure
       // Re-keyed on recognition so `defaultExpanded` gets to answer again:
-      // pasting a link opens the panel, clearing the field folds it back.
-      key={detected != null ? "recognised" : "idle"}
-      defaultExpanded={detected != null}
+      // pasting a link opens the panel, clearing the field folds it back. The
+      // preference is in the key too, so flipping the switch in Settings shows
+      // on the composer at once instead of after the next paste.
+      key={`${detected != null ? "recognised" : "idle"}:${autoExpand}`}
+      defaultExpanded={autoExpand && detected != null}
       className="border-t border-separator/60 bg-panel px-3 py-2"
     >
       {/* No `Disclosure.Heading`: the switch sits on the same line as the

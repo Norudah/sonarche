@@ -32,6 +32,19 @@
       "replay": "Revoir la visite"
     }
   },
+  "adding": {
+    "category": "Ajouts",
+    "title": "Ajouter de la musique",
+    "description": "Comment se présentent les deux pages qui remplissent l'arche : ce que tu vois déjà déplié en arrivant, et ce qui reste sous le chevron.",
+    "downloadOptions": {
+      "name": "Déplier les options au collage d'un lien",
+      "why": "Dès qu'un lien est reconnu, le panneau s'ouvre sur la destination et la catégorie du téléchargement. Désactive-le si tu connais tes réglages : le chevron reste là pour les rouvrir au cas par cas."
+    },
+    "importOptions": {
+      "name": "Déplier les options après l'analyse d'un dossier",
+      "why": "Une fois le dossier lu, le panneau s'ouvre sur le regroupement et la catégorie de l'import. Désactive-le si tu importes toujours de la même façon."
+    }
+  },
   "metadata": {
     "category": "Métadonnées",
     "title": "Métadonnées",

@@ -34,6 +34,7 @@ export const paths = {
   libraryPlaylist: "/library/playlists/:id",
   settings: "/settings",
   settingsAppearance: "/settings/appearance",
+  settingsAdding: "/settings/adding",
   settingsMetadata: "/settings/metadata",
   settingsApiKeys: "/settings/api-keys",
   settingsRateLimits: "/settings/rate-limits",

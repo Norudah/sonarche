@@ -32,6 +32,19 @@
       "replay": "Replay the tour"
     }
   },
+  "adding": {
+    "category": "Adding",
+    "title": "Adding music",
+    "description": "How the two pages that fill the ark present themselves: what is already unfolded when you arrive, and what stays behind the chevron.",
+    "downloadOptions": {
+      "name": "Unfold the options when a link is pasted",
+      "why": "As soon as a link is recognised, the panel opens on the download's destination and category. Turn it off if you know your settings — the chevron is still there to open them case by case."
+    },
+    "importOptions": {
+      "name": "Unfold the options once a folder is scanned",
+      "why": "Once the folder is read, the panel opens on the import's grouping and category. Turn it off if you always import the same way."
+    }
+  },
   "metadata": {
     "category": "Metadata",
     "title": "Metadata",

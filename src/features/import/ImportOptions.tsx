@@ -6,6 +6,7 @@ import type { Grouping, ScanReport } from "@/features/import/api";
 import { GroupingChoice } from "@/features/import/GroupingChoice";
 import { CategoryChoice } from "@/features/library/categories/CategoryChoice";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
+import { useAutoExpand } from "@/shared/lib/optionPanels";
 
 interface ImportOptionsProps {
   grouping: Grouping;
@@ -31,7 +32,8 @@ interface ImportOptionsProps {
  * Closed until a folder is in hand, then opened by the scan itself. An import
  * is not the passive act a download is — something *is* being decided here, and
  * a panel that stays shut lets the user press Import without ever learning
- * that. It reopens on each new folder (the key), and closes again by hand.
+ * that. It reopens on each new folder (the key), and closes again by hand —
+ * or for good, from Settings, once the answer has stopped being a question.
  *
  * Readable with no folder at all, too: someone wondering what an import even
  * does can open it and find out, which is the other half of what the help mark
@@ -51,13 +53,16 @@ export function ImportOptions({
 }: ImportOptionsProps) {
   const { t } = useTranslation("import");
   const labelOf = useCategoryLabel();
+  const autoExpand = useAutoExpand("import");
 
   return (
     <Disclosure
       // Remounted per folder so a new scan re-opens the panel: the decision is
       // about *this* folder, and the last one's answer was reviewed already.
-      key={report?.largestFolder ?? "none"}
-      defaultExpanded={report != null}
+      // The preference joins the key so flipping it in Settings shows here at
+      // once rather than after the next scan.
+      key={`${report?.largestFolder ?? "none"}:${autoExpand}`}
+      defaultExpanded={autoExpand && report != null}
       className="border-t border-separator/60 bg-panel px-3 py-2"
     >
       <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-1 py-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40">
