@@ -339,7 +339,10 @@ export function LyricsPanel() {
       <Popover.Trigger aria-label={t("lyrics.title")} className={BAR_TRIGGER}>
         <MicVocal className="size-4" />
       </Popover.Trigger>
-      <Popover.Content placement="top end" className="w-96 p-0">
+      {/* `overflow-hidden` on the element that owns the corner: the header
+       * below carries a wash of its own, and a filled block inside a rounded
+       * box squares its two top corners off unless the box clips. */}
+      <Popover.Content placement="top end" className="w-96 overflow-hidden p-0">
         <Popover.Dialog aria-label={t("lyrics.title")} className="p-0">
           {/* The drawers' object header, at popover scale: the record on the
            * left, an accent eyebrow naming the panel, then the track. Same wash

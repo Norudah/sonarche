@@ -786,6 +786,13 @@
   --color-metadata-header-to: var(--metadata-header-to);
   --color-artwork-edge: var(--artwork-edge);
 
+  /* The elevation edge as a *border* colour, for the cards that cannot use
+     the shadow: a 1px spread shadow is drawn outside the box, so anything
+     boxed by an `overflow-hidden` parent of its own size (the walkthrough's
+     collapsing steps) loses three of its four sides. A border is inside the
+     box and survives the clip. Same value, so the two read as one edge. */
+  --color-elevation-edge: var(--elevation-edge);
+
   /* Tailwind's own shadow scale, rerouted through the theme blocks. Overriding
      the scale rather than introducing an `elevation-*` utility on purpose:
      roughly thirty call sites already say `shadow-sm` or `shadow-lg`, they all

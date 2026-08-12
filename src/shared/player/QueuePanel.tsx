@@ -122,7 +122,9 @@ export function QueuePanel() {
       <Popover.Trigger aria-label={t("queue")} className={BAR_TRIGGER}>
         <ListMusic className="size-4" />
       </Popover.Trigger>
-      <Popover.Content placement="top end" className="w-96 p-0">
+      {/* Clipped to its own corner: the list runs to the bottom edge, and a
+       * row lighting up under the cursor would square the two corners off. */}
+      <Popover.Content placement="top end" className="w-96 overflow-hidden p-0">
         <Popover.Dialog aria-label={t("queue")} className="p-0">
           {/* The header is its own room: title and count on one baseline, a
            * separator underneath — the list below scrolls, this line never. */}
