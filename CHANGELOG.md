@@ -1,5 +1,122 @@
 # Changelog
 
+## [2.0.0](https://github.com/Norudah/sonarche/compare/sonarche-v1.0.0...sonarche-v2.0.0) (2026-08-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **shell:** list_jobs no longer returns the full archive; readers of the whole history must go through list_jobs_page.
+* **library:** family labels changed (Soul & Funk -> R&B, Soul & Funk; Folk + Country -> Folk & Country; World added); stored genres rebucket on the next launch, no data migration needed.
+* **library:** zoned library root with silent launch migration
+
+### Features
+
+* **download:** force a playlist into one album ([14bcc33](https://github.com/Norudah/sonarche/commit/14bcc33eb6d13c56e04fba34e0067f21776bf67c))
+* **download:** let the user stop a job and resume it later ([c8884f4](https://github.com/Norudah/sonarche/commit/c8884f4d9f6292fa4e58f2532ad5eaace9dfa171))
+* **download:** pick the destination album before the download starts ([da518ea](https://github.com/Norudah/sonarche/commit/da518eae462ccf1f7c930d5550cc80208cfd4bd0))
+* **download:** report playlist entries that could not be fetched ([0cba80b](https://github.com/Norudah/sonarche/commit/0cba80bac22dde4a23f8301d4f559de780ca9f99))
+* **library:** align from the import page, explain what an import does ([8fe9deb](https://github.com/Norudah/sonarche/commit/8fe9deb5e8af991299b6843219fb6969bad90687))
+* **library:** archive what an import was asked for, not only what it did ([238c0e5](https://github.com/Norudah/sonarche/commit/238c0e51d7836ee18a0db7ef0d06c6721ca4232f))
+* **library:** close the metadata panels with Escape or a click outside ([74cf8d5](https://github.com/Norudah/sonarche/commit/74cf8d596b9c77f614c21b4e7c8a301f02320914))
+* **library:** confirm a re-match before it rewrites, and let it be stopped ([9c7daff](https://github.com/Norudah/sonarche/commit/9c7daff0686e2dfc1ff22b38ae8478b8fc6d7448))
+* **library:** create the whole folder layout up front ([6b25a41](https://github.com/Norudah/sonarche/commit/6b25a4186936e358fc13ce2c47f14909f59f274f))
+* **library:** edit an artist's image straight from the artists grid ([6353947](https://github.com/Norudah/sonarche/commit/63539478888a1dc3ab3fa6dddbc28d37ee089abb))
+* **library:** favorites playlist, per-playlist covers and locked built-in ([df38b02](https://github.com/Norudah/sonarche/commit/df38b02c2b50f63d0230af626a721612388b0594))
+* **library:** fetch an album cover from a pasted link ([b5c1871](https://github.com/Norudah/sonarche/commit/b5c1871618ad483e965133cdff680cddcde3954a))
+* **library:** fetch an artist image from a pasted link, export them named ([f998ad3](https://github.com/Norudah/sonarche/commit/f998ad3fdaf93f36e344c8190b724d4fe497b2f5))
+* **library:** flag artists without an image, on Sonarche's side of the queue ([ef7a5d4](https://github.com/Norudah/sonarche/commit/ef7a5d4ac10dabc65c7f50eadce6304dd68fab70))
+* **library:** give a playlist one door to edit itself ([7dcb5d1](https://github.com/Norudah/sonarche/commit/7dcb5d1eb025d2944e9f8b9d4498644d5c763c00))
+* **library:** give an artist an image of their own ([87904ad](https://github.com/Norudah/sonarche/commit/87904ad3aab5e559e2eba69be72fcbdcda75bd78))
+* **library:** keep the import's promises after the copy ([d8e5252](https://github.com/Norudah/sonarche/commit/d8e52526e0330dc94357066cd230929d58b13646))
+* **library:** let a check be switched off, not only answered ([c364143](https://github.com/Norudah/sonarche/commit/c364143e44dc69ba971464a6c7f47d21511bde74))
+* **library:** let a record and a playlist be inspected too ([6962c8d](https://github.com/Norudah/sonarche/commit/6962c8d4e1ffe08f2b3f81a0d6b5a99f0f2e0f85))
+* **library:** let a record say it is a collection, not an album ([478c7a6](https://github.com/Norudah/sonarche/commit/478c7a60c9e9b06237fba3104267b3f2d4600ad4))
+* **library:** let an import be taken back out of the ark ([0f80b14](https://github.com/Norudah/sonarche/commit/0f80b147d44d7ad102584d4c273a478f64b64de1))
+* **library:** let genres be refiled into another family ([ae723ff](https://github.com/Norudah/sonarche/commit/ae723ff52ae9c743f4359d6654a20abe86a9d7a1))
+* **library:** let the import say a folder is a collection, not an album ([40f31f0](https://github.com/Norudah/sonarche/commit/40f31f027c1c0ae9af2c7c6aae51f5ced44bb324))
+* **library:** let the import say what counts as an album ([2c5df5e](https://github.com/Norudah/sonarche/commit/2c5df5e6029dc86150529ee119128101486218c2))
+* **library:** let the user answer a check instead of only obeying it ([0b467af](https://github.com/Norudah/sonarche/commit/0b467af6733fe5f0debd3e1580c449217d5030c7))
+* **library:** let tracks be refiled onto another record ([83bc6c0](https://github.com/Norudah/sonarche/commit/83bc6c0f06957198742c4e0bde5593c7ee91f584))
+* **library:** make a second import safe, and give untagged rips a home ([0dab45f](https://github.com/Norudah/sonarche/commit/0dab45f53affa9cd6a33e544999db274599bcd34))
+* **library:** mirror playlists as M3U8 in the library root ([c94b1e1](https://github.com/Norudah/sonarche/commit/c94b1e131d8a33de31635d95d6e770b993594595))
+* **library:** move tracks between records from the shelf ([2bb0f7f](https://github.com/Norudah/sonarche/commit/2bb0f7fd0f955ef701092f42f4b91fa0e3f2d7e4))
+* **library:** paste a cover or artist image from the clipboard ([20b6999](https://github.com/Norudah/sonarche/commit/20b69998699e20463271abe2a1294ec421a898cd))
+* **library:** per-track year column in the album inspect panel ([e76bea1](https://github.com/Norudah/sonarche/commit/e76bea1db3b5c38cf91dea271b339d911df99bff))
+* **library:** playlist nav marker, index shelf and sidebar cap ([02b4217](https://github.com/Norudah/sonarche/commit/02b42174282613ea972a1907d59b40621b453455))
+* **library:** playlist storage, commands and delete-time pruning ([07e17e2](https://github.com/Norudah/sonarche/commit/07e17e2980e43a781acbb4702f351eaff78299e8))
+* **library:** playlists nav section, column sorts, favorite hearts and image modal ([da27e30](https://github.com/Norudah/sonarche/commit/da27e30d818813db2413593cb34fc329b6bc26b4))
+* **library:** playlists views, add-to-playlist picker and drag reorder ([080fd30](https://github.com/Norudah/sonarche/commit/080fd3052c4d653dac56d7d1d370551780a92fdf))
+* **library:** reach the artist image from the track and album editors ([2b94af6](https://github.com/Norudah/sonarche/commit/2b94af68c673cab29c778bb30bfca05278124f6c))
+* **library:** reach the cover replacement from the track drawer ([b0d8eed](https://github.com/Norudah/sonarche/commit/b0d8eed96e574e7aa69303f14b0d0c3a3d2955cc))
+* **library:** rearrange the genre tree by dragging chips onto family cards ([72a3ad3](https://github.com/Norudah/sonarche/commit/72a3ad32c0e685b52c592c6ceb9b0ce45a1f89a4))
+* **library:** rebuild the default genre families on the 2026 audit ([755dfe3](https://github.com/Norudah/sonarche/commit/755dfe386d7a5318d6d19257edbc425ee9692c98))
+* **library:** reframe the image already in place ([bda6123](https://github.com/Norudah/sonarche/commit/bda612366a3f551f8805de33a4eee6987cd6ea56))
+* **library:** refuse to delete an album a download is filing into ([ed846f2](https://github.com/Norudah/sonarche/commit/ed846f2ed102a1a1df6e050b7ba90fb3afdae0af))
+* **library:** replace an album cover from a local image ([af84208](https://github.com/Norudah/sonarche/commit/af842089a74f21be04cf468f76f5018aecfb8020))
+* **library:** search and filter a record's tracklist ([fa24655](https://github.com/Norudah/sonarche/commit/fa2465570c02ff5889a7a12a47dc509fae8b7629))
+* **library:** show the genre family, on one grid for every track table ([85f4845](https://github.com/Norudah/sonarche/commit/85f4845249f17ba4948acd4ad23919df38e62954))
+* **library:** size the crop frame, not just move it ([e5086ee](https://github.com/Norudah/sonarche/commit/e5086ee3ed85f3eb16931d04b82f6927f09e0593))
+* **library:** state the cover swap as a before/after, with online proposals ([8af78a7](https://github.com/Norudah/sonarche/commit/8af78a7fd340d6c0da667b549558832790b3301d))
+* **library:** stop a running import ([a60cabf](https://github.com/Norudah/sonarche/commit/a60cabf2fc843519fb33a0d0eaab5aa7ab1de2bb))
+* **library:** stop grading albums, and finish the one barème ([15eedbc](https://github.com/Norudah/sonarche/commit/15eedbcf85110511963ebb2a4f5f7dae6f463e46))
+* **library:** stop the metadata page from overstating what is wrong ([c9b26a9](https://github.com/Norudah/sonarche/commit/c9b26a97cababbadf56126f13af5ceb59a26371a))
+* **library:** suggest existing values while editing metadata ([39d6344](https://github.com/Norudah/sonarche/commit/39d634435e756759ae32870b73b9e882bc66baf9))
+* **library:** switch re-identify off on collections ([0dbd2ed](https://github.com/Norudah/sonarche/commit/0dbd2edc48916db0f93abe2c340ff7ef26a4e718))
+* **library:** unify the image modals behind one shell and source bar ([3ae4f2b](https://github.com/Norudah/sonarche/commit/3ae4f2bde5107b2081b6de17e5ab97450d1ce221))
+* **library:** zoned library root with silent launch migration ([12151bf](https://github.com/Norudah/sonarche/commit/12151bf4f5d4bf693dcf88c63802f54ec21d0272))
+* **onboarding:** pick the language during setup ([1a1db8b](https://github.com/Norudah/sonarche/commit/1a1db8b249646346185859e08d78e5e5691cef0c))
+* **settings:** gather the adding options in their own section ([313d6f5](https://github.com/Norudah/sonarche/commit/313d6f554ad1b7dbf105a8cf111866d23b1164cc))
+* **settings:** give metadata its own category, and badge the sidebar with what it holds ([d688591](https://github.com/Norudah/sonarche/commit/d6885917a61887b951f3b28a09608a9bfb783814))
+* **shell:** first-run home tour on driver.js ([a6730ed](https://github.com/Norudah/sonarche/commit/a6730edfb1560c3fb1f902752d99927b1bbe68f0))
+* **shell:** fix the AcoustID and Last.fm delays instead of exposing dials ([82d9406](https://github.com/Norudah/sonarche/commit/82d94069840cde1a136faac0a46d2640fd8410a5))
+* **shell:** follow downloads and imports from any page ([2b22443](https://github.com/Norudah/sonarche/commit/2b22443d75f00180e21fb3e1f34037c4e4f0574c))
+* **shell:** guide button to the website ([ccfa01b](https://github.com/Norudah/sonarche/commit/ccfa01b5b9db32f91ad8b331d2541502da6261e8))
+* **shell:** name the two modes on the lens toggle ([8607459](https://github.com/Norudah/sonarche/commit/86074594ddad7c7af56ec190ec9b17611782aa52))
+* **shell:** open the window maximized ([74af2e0](https://github.com/Norudah/sonarche/commit/74af2e0da24e78dba9ee117c94379694a76b2033))
+* **shell:** show what an update changes before it installs ([16cee14](https://github.com/Norudah/sonarche/commit/16cee1434ebf1ad274d4e5b84d43c77de355c99e))
+* **ui:** inspect the library instead of grading it ([f5bd7cc](https://github.com/Norudah/sonarche/commit/f5bd7ccdd31bb6e4906c5ea97c62c7f5241726f6))
+* **ui:** show the derived genre family as a real field ([a8f6309](https://github.com/Norudah/sonarche/commit/a8f630992535dabdd5d90960b3be8b14729081fa))
+
+
+### Bug Fixes
+
+* **build:** bundle fpcalc at build time instead of downloading at runtime ([c58fc69](https://github.com/Norudah/sonarche/commit/c58fc691ed117f4fbc54752905c0e7fda817166e))
+* **download:** stop retrying videos the source will never serve ([1aaef4f](https://github.com/Norudah/sonarche/commit/1aaef4f230ee06eae189b35e092ccf7429ca1025))
+* **library:** album card actions no longer stay lit after closing the drawer ([f8cb802](https://github.com/Norudah/sonarche/commit/f8cb802c0c64b303bba864f2d7af48c13df7bcf2))
+* **library:** drop the caption under the album completeness gauge ([2b3f466](https://github.com/Norudah/sonarche/commit/2b3f46633efbe7787742d53aa8e3aa6baa1a3b29))
+* **library:** fetch online cover proposals only on request ([790570b](https://github.com/Norudah/sonarche/commit/790570ba77d10cae24d929e1db9de121c753bfb6))
+* **library:** keep a moved track out of Compilations, and take its old row with it ([d1d996f](https://github.com/Norudah/sonarche/commit/d1d996fea57f505313c8166ea8e7228f4f813014))
+* **library:** keep spaces typable in an album's shared genre ([327e494](https://github.com/Norudah/sonarche/commit/327e4941f97125d0328adea4bb2228fa34dd2c83))
+* **library:** keep the crop stage still while zooming ([b2b8731](https://github.com/Norudah/sonarche/commit/b2b873125f2261d685d1f3c9ce6dcdcecafb9618))
+* **library:** let an erased library forget which folders it imported ([22a88ed](https://github.com/Norudah/sonarche/commit/22a88ed06afe7bc76174b280c43b734a4c03f4fd))
+* **library:** make the full erase cover the zoned root era ([667f6ef](https://github.com/Norudah/sonarche/commit/667f6ef1ad5ded695c15c343c61fefcaf1cae044))
+* **library:** read what untagged rips actually carry at import ([a56b851](https://github.com/Norudah/sonarche/commit/a56b85150aa9c7087ac62d137b892f85b582c6e6))
+* **library:** remux DASH m4a downloads and repair existing files ([ae9d947](https://github.com/Norudah/sonarche/commit/ae9d947dc216d0399f55389b914b2db95087b620))
+* **library:** row actions no longer stay lit after closing the metadata drawer ([358fa33](https://github.com/Norudah/sonarche/commit/358fa3392ea15230018e32e7f8405e69666e5ddd))
+* **library:** stop calling a genre missing when it is only off-tree ([5e60eb2](https://github.com/Norudah/sonarche/commit/5e60eb21124a18273307b6b66bd874e1cbaca054))
+* **library:** stop phantom pending changes from wiping album tags ([1bdf25d](https://github.com/Norudah/sonarche/commit/1bdf25d81866b1015aaf7aaea3959cedfb206cd7))
+* **library:** survive the post-erase relaunch, spare the setup from the erase ([6464da0](https://github.com/Norudah/sonarche/commit/6464da03730374939713c1c3a3061c9f961d64ce))
+* **settings:** press anywhere on a theme tile, and name what the danger zone holds ([b328e3c](https://github.com/Norudah/sonarche/commit/b328e3c7cad293057a9022d7ef327ac54a1b7f06))
+* **shell:** keep the app's name on the Windows window ([f9d5943](https://github.com/Norudah/sonarche/commit/f9d5943896604b305026eaed267ddbf8ce3892f5))
+* **shell:** run jobs.db migrations unconditionally ([d3ce0c3](https://github.com/Norudah/sonarche/commit/d3ce0c36fbdc668e9d1324ce82434397fa19caac))
+* **sidecar:** clear the provisional flag on a match, and spare a cover the release did not change ([f0a7073](https://github.com/Norudah/sonarche/commit/f0a7073f8f132410171df711360df5461ad00568))
+* **sidecar:** do not fail the launch remux pass on a missing library ([fc32c52](https://github.com/Norudah/sonarche/commit/fc32c5278a27e368f936beba901cad5224aabe69))
+* **sidecar:** keep Cover Art Archive links on https ([a3161e4](https://github.com/Norudah/sonarche/commit/a3161e42efabdb4f3acf85639018cdecbd0f6195))
+* **sidecar:** let the video title outrank release popularity when matching ([f4bbdb1](https://github.com/Norudah/sonarche/commit/f4bbdb169dbaa63f18c6069f9ee12f3f4e22b027))
+* **sidecar:** stream image downloads and bound them in memory ([75c0b87](https://github.com/Norudah/sonarche/commit/75c0b8737e8ff51042657c4043ed18217242ce0c))
+* **ui:** dismiss toasts on their own, and quiet them down ([a55ad6c](https://github.com/Norudah/sonarche/commit/a55ad6c6de55d974d74579b2805ffd134202694d))
+* **ui:** draw the edges the app was losing ([b46d2ea](https://github.com/Norudah/sonarche/commit/b46d2ea8c59fa6b73849b309143239c69a4cee46))
+* **ui:** keep icon-only buttons round, and let the counts warn again ([e873e4a](https://github.com/Norudah/sonarche/commit/e873e4ac6ab7762281fa791c18eac281549498cb))
+* **ui:** mark every delete as destructive ([3b3020b](https://github.com/Norudah/sonarche/commit/3b3020b871249a58b3b9b5d31163986650618f7c))
+* **ui:** one word for the genre grouping — family, everywhere ([7e3aa90](https://github.com/Norudah/sonarche/commit/7e3aa90592fa9ce8e9922ffe1f6c0751fd73d851))
+* **ui:** reload the webview after an erase instead of relaunching ([a7e52ab](https://github.com/Norudah/sonarche/commit/a7e52ab69331bfb18af046474e2a612d91d4bd86))
+* **ui:** tell people to try without forcing an album first ([0fef1ca](https://github.com/Norudah/sonarche/commit/0fef1ca17b86108f09c5ae6299f74da5522e8e26))
+
+
+### Performance Improvements
+
+* **shell:** page the download history instead of loading the whole archive ([e4518c7](https://github.com/Norudah/sonarche/commit/e4518c72d29f47d16ef10769f5d80a97ff50087a))
+
 ## [1.0.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.9.1...sonarche-v1.0.0) (2026-07-31)
 
 
