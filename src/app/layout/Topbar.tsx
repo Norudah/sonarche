@@ -1,3 +1,4 @@
+import { GuideButton } from "@/app/layout/GuideButton";
 import { SettingsToggle } from "@/app/layout/SettingsToggle";
 import { useLensAvailable } from "@/features/library/inspect/inspectMode";
 import { InspectSwitch } from "@/features/library/inspect/InspectSwitch";
@@ -34,6 +35,7 @@ export function Topbar() {
       className="flex h-10 shrink-0 items-center justify-end gap-0.5 border-b border-separator bg-surface px-4"
     >
       {hasLens && <InspectSwitch />}
+      <GuideButton />
       <SettingsToggle />
     </div>
   );

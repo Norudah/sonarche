@@ -11,6 +11,9 @@
     }
   },
   "settings": "Settings",
+  "guide": {
+    "open": "Open the guide"
+  },
   "pagination": {
     "previous": "Previous page",
     "next": "Next page",

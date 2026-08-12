@@ -11,6 +11,9 @@
       "allow": [
         {
           "url": "https://acoustid.org/*"
+        },
+        {
+          "url": "https://sonarche.org/*"
         }
       ]
     },

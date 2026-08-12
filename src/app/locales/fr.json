@@ -11,6 +11,9 @@
     }
   },
   "settings": "Paramètres",
+  "guide": {
+    "open": "Ouvrir le guide"
+  },
   "pagination": {
     "previous": "Page précédente",
     "next": "Page suivante",
