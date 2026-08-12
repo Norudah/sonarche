@@ -12,7 +12,7 @@ import { MoveToAlbumDialog } from "@/features/library/albums/MoveToAlbumDialog";
 import { AlbumStickyHeader } from "@/features/library/albums/AlbumStickyHeader";
 import { AlbumTrackList } from "@/features/library/albums/AlbumTrackList";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
-import { DeleteAlbumDialog, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
+import { DeleteAlbumDialog, useAlbumDeleteGuard, type AlbumDeletion } from "@/features/library/DeleteAlbumDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistDialog";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
@@ -23,6 +23,7 @@ export function AlbumDetailView() {
   const { artist = "", title = "" } = useParams();
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
+  const mayDelete = useAlbumDeleteGuard();
   const [deleting, setDeleting] = useState<AlbumDeletion | null>(null);
   const [inspecting, setInspecting] = useState(false);
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
@@ -85,7 +86,10 @@ export function AlbumDetailView() {
         onPlay={() => playOrdered(album.tracks)}
         onShuffle={() => playShuffled(album.tracks)}
         onEdit={() => setInspecting(true)}
-        onDelete={() => setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) })}
+        onDelete={() => {
+          if (!mayDelete(album.albumIds)) return;
+          setDeleting({ title: album.title, trackIds: album.tracks.map((track) => track.id) });
+        }}
         onAddToPlaylist={() => setAddingToPlaylist(true)}
         onMoveToAlbum={() => setMovingAlbum(true)}
         onAddTracks={() => setAddingTracks(true)}

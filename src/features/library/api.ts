@@ -107,6 +107,12 @@ export async function deleteTrack(id: number): Promise<void> {
   await invoke("delete_track", { id });
 }
 
+/** beets album ids a download still in flight is going to file tracks into.
+ * The library's one input from the queue — nothing else here knows a job. */
+export async function listDownloadTargetAlbums(): Promise<number[]> {
+  return invoke<number[]>("download_target_albums");
+}
+
 /** Beets attribute names for the tags an edit may touch — the wire contract the
  * Rust command validates against. Every value travels as a string; the sidecar
  * coerces `year`/`track`/`tracktotal` and collapses `genre` into its column. */

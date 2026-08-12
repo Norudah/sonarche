@@ -63,6 +63,14 @@ pub enum JobStatus {
     Cancelled,
 }
 
+impl JobStatus {
+    /// The job has stopped moving, however it ended. Whatever it was going to
+    /// write to the library, it has written.
+    pub fn is_settled(self) -> bool {
+        matches!(self, Self::Done | Self::Failed | Self::Cancelled)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum JobStep {
@@ -1517,6 +1525,22 @@ impl JobsState {
                 Vec::new()
             }
         }
+    }
+
+    /// The album rows a job still in flight is going to file its tracks into.
+    ///
+    /// Deleting one of them mid-download would take the move's destination out
+    /// from under it: the tracks would land on whatever release the pipeline
+    /// guessed, and the failure is logged rather than raised — so the guard has
+    /// to sit in front of the delete, not behind it. Reads the live window,
+    /// which already holds every moving job.
+    pub async fn target_albums(&self) -> Vec<i64> {
+        self.list()
+            .await
+            .iter()
+            .filter(|job| !job.status.is_settled())
+            .filter_map(|job| job.forced_album.as_ref()?.album_id)
+            .collect()
     }
 
     /// One page of the whole archive, newest first, with the totals the

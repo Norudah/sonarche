@@ -102,6 +102,7 @@ fn main() {
             commands::enqueue_download,
             commands::list_jobs,
             commands::list_jobs_page,
+            commands::download_target_albums,
             commands::retry_job,
             commands::cancel_job,
             commands::clear_job_history,

@@ -25,6 +25,7 @@ function job(over: Record<string, unknown>) {
     report: null,
     tracks: [],
     downloadAttempts: 1,
+    forcedAlbum: null as { title: string; artist: string | null; albumId?: number | null } | null,
     createdAt: now,
     updatedAt: now,
     ...over,
@@ -78,6 +79,10 @@ const jobs = [
     thumbnail: thumb("#f0a", "#60c"),
     artist: "Various Artists",
     createdAt: now - 500,
+    // Bound for an existing record — album 1 is Skillet's "Awake", the first
+    // one `withAlbumIds` numbers. It is what makes the delete guard reachable
+    // in the preview: that album refuses to be deleted while this job runs.
+    forcedAlbum: { title: "Awake", artist: "Skillet", albumId: 1 },
     tracks: [
       albumTrack({
         index: 1,
@@ -959,6 +964,15 @@ export function installMockTauri() {
           total: all.length,
           terminalTotal: all.filter((job) => terminal.has(String(job.status))).length,
         };
+      }
+      // Mirrors `JobsState::target_albums`: the destinations of whatever is
+      // still moving, which is what the library's delete guard reads.
+      if (cmd === "download_target_albums") {
+        const terminal = new Set(["done", "failed", "cancelled"]);
+        return (isEmpty ? [] : jobs)
+          .filter((job) => !terminal.has(String(job.status)))
+          .map((job) => job.forcedAlbum?.albumId)
+          .filter((id): id is number => id != null);
       }
       if (cmd === "list_imports") return [...mockImports];
       if (cmd === "preview_import_undo") return mockUndoPreview(String(payload?.id ?? ""));

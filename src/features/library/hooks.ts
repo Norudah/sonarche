@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef, useState } from "react";
 
 import {
   deleteTrack,
   listArtistImages,
+  listDownloadTargetAlbums,
   listLibrary,
   moveTracks,
   recomputeGenres,
@@ -23,6 +25,7 @@ import { playlistsKey } from "@/features/library/playlists/hooks";
 
 export const libraryKey = ["library"] as const;
 export const artistImagesKey = ["artist-images"] as const;
+export const downloadTargetsKey = ["download-target-albums"] as const;
 
 /**
  * The whole library, once.
@@ -250,6 +253,34 @@ export function useRemoveArtistImage() {
       queryClient.invalidateQueries({ queryKey: artistImagesKey });
     },
   });
+}
+
+/**
+ * The albums a download is filing into right now.
+ *
+ * Kept live off the job stream rather than off the download feature's own
+ * query: the library may not import from a sibling feature, and the backend
+ * already holds the answer as one list of ids. `jobs:updated` fires on every
+ * transition, so the set empties itself the moment the last job settles.
+ */
+export function useDownloadTargetAlbums() {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: downloadTargetsKey,
+    queryFn: async () => new Set(await listDownloadTargetAlbums()),
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    const unlisten = listen("jobs:updated", () => {
+      queryClient.invalidateQueries({ queryKey: downloadTargetsKey });
+    });
+    return () => {
+      unlisten.then((stop) => stop());
+    };
+  }, [queryClient]);
+
+  return query;
 }
 
 export function useRecomputeGenres() {

@@ -1,14 +1,48 @@
+import { toast } from "@heroui/react";
 import { Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useDeleteTracks } from "@/features/library/hooks";
+import { useDeleteTracks, useDownloadTargetAlbums } from "@/features/library/hooks";
+import { TOAST_EXPLAINED } from "@/shared/toast/durations";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 export interface AlbumDeletion {
   title: string;
   /** Library items the album produced; the dialog deletes exactly these. */
   trackIds: number[];
+}
+
+/**
+ * Says no to deleting a record a download is still filing into.
+ *
+ * A download bound for an existing album moves its tracks onto that row once
+ * the enrich step is done, and the move's only reaction to a missing target is
+ * a log line — the job still comes out green while the tracks sit on whatever
+ * release the pipeline guessed. So the refusal has to happen before the dialog
+ * opens, and it has to say why: a delete that quietly does nothing reads as a
+ * broken button.
+ *
+ * Returns whether the caller may proceed, and raises the toast when it may not.
+ */
+export function useAlbumDeleteGuard(): (albumIds: number[]) => boolean {
+  const { t } = useTranslation("library");
+  // Stable across renders while the set is: the download deck re-renders
+  // several times a second during an album, and hands this straight to memoed
+  // cards.
+  const locked = useDownloadTargetAlbums().data;
+
+  return useCallback(
+    (albumIds) => {
+      if (!locked || !albumIds.some((id) => locked.has(id))) return true;
+      toast.warning(t("deleteAlbum.lockedTitle"), {
+        description: t("deleteAlbum.lockedBody"),
+        timeout: TOAST_EXPLAINED,
+      });
+      return false;
+    },
+    [locked, t],
+  );
 }
 
 export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | null; onClose: () => void }) {

@@ -448,7 +448,9 @@
     "title": "Delete this album?",
     "body_one": "“{{title}}” and its track will be removed from your library and the file deleted from disk. This cannot be undone.",
     "body_other": "“{{title}}” and its {{count}} tracks will be removed from your library and the files deleted from disk. This cannot be undone.",
-    "action": "Delete album"
+    "action": "Delete album",
+    "lockedTitle": "A download is filing into this album",
+    "lockedBody": "Tracks are on their way to this record. Wait for the download to finish — or stop it from Downloads — before deleting it."
   },
   "sort": {
     "label": "Sort by",

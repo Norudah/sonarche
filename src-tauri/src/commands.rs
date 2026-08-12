@@ -139,6 +139,15 @@ pub async fn list_jobs_page(
     state.page(offset, limit.clamp(1, 100)).await
 }
 
+/// The albums a download still in flight is bound for — the library's delete
+/// guard reads this. Deliberately a command of its own rather than something
+/// the frontend derives from `list_jobs`: the library must not have to know the
+/// shape of a job to refuse to delete its destination.
+#[tauri::command]
+pub async fn download_target_albums(state: State<'_, JobsState>) -> AppResult<Vec<i64>> {
+    Ok(state.target_albums().await)
+}
+
 #[tauri::command]
 pub async fn retry_job(app: AppHandle, state: State<'_, JobsState>, id: String) -> AppResult<Job> {
     state.retry(&app, &id).await
