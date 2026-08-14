@@ -1,13 +1,12 @@
 import { Button, Spinner } from "@heroui/react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
-import { useAppVersion, useCheckForUpdate, useInstallUpdate } from "@/features/update/hooks";
+import { useAppVersion, useInstallUpdate, useUpdateCheck } from "@/features/update/hooks";
 import { parseReleaseNotes } from "@/features/update/notes";
 import { updateStatus, type Tone } from "@/features/update/status";
-import { UpdateNotesModal } from "@/features/update/UpdateNotesModal";
+import { UpdateNotesCard } from "@/features/update/UpdateNotesCard";
 
 const TONES: Record<Tone, string> = {
   muted: "text-muted",
@@ -17,8 +16,10 @@ const TONES: Record<Tone, string> = {
 
 /**
  * The manual half of the update story. The app already offers a new version
- * once at launch (`useUpdatePrompt`); this is for the user who dismissed that
- * toast, or who just wants to know.
+ * once at launch (`UpdatePrompt`); its toast lands here, and the check result
+ * it found is already in the shared cache (`useUpdateCheck`) — so arriving
+ * from the toast shows the available version and its notes without asking
+ * GitHub twice. The button re-asks on demand for everyone else.
  *
  * It lives in the update feature and is mounted by the router rather than
  * imported by the settings feature — the two share a pane, not a dependency.
@@ -26,23 +27,22 @@ const TONES: Record<Tone, string> = {
 export function UpdateSection() {
   const { t } = useTranslation(["update", "settings"]);
   const version = useAppVersion();
-  const check = useCheckForUpdate();
+  const check = useUpdateCheck();
   const install = useInstallUpdate();
 
-  const update = check.data;
-  const busy = check.isPending || install.isPending;
-  const [showNotes, setShowNotes] = useState(false);
-  // Derived from the check result, never stored: the modal is a view of the
+  const update = check.data ?? null;
+  const busy = check.isFetching || install.isPending;
+  // Derived from the check result, never stored: the card is a view of the
   // update the last check found, not a copy of it.
   const notes = update ? parseReleaseNotes(update.body) : null;
   // Derived on every render, never mirrored into state: a status line kept in a
   // `useState` synced by an effect is how it ends up one press behind.
   const status = updateStatus({
-    checking: check.isPending,
+    checking: check.isFetching,
     installing: install.isPending,
     checkFailed: check.isError,
     installFailed: install.isError,
-    available: update === undefined ? undefined : (update?.version ?? null),
+    available: check.data === undefined ? undefined : (check.data?.version ?? null),
   });
 
   return (
@@ -63,18 +63,11 @@ export function UpdateSection() {
             </p>
 
             {update ? (
-              <span className="flex items-center gap-2">
-                {notes && (
-                  <Button variant="ghost" onPress={() => setShowNotes(true)} isDisabled={busy}>
-                    {t("notes.view")}
-                  </Button>
-                )}
-                <Button variant="primary" onPress={() => install.mutate(update)} isDisabled={busy}>
-                  {t("install")}
-                </Button>
-              </span>
+              <Button variant="primary" onPress={() => install.mutate(update)} isDisabled={busy}>
+                {t("install")}
+              </Button>
             ) : (
-              <Button variant="secondary" onPress={() => check.mutate()} isDisabled={busy}>
+              <Button variant="secondary" onPress={() => void check.refetch()} isDisabled={busy}>
                 {t("check")}
               </Button>
             )}
@@ -83,16 +76,9 @@ export function UpdateSection() {
       </SettingCard>
 
       {update && notes && (
-        <UpdateNotesModal
-          isOpen={showNotes}
-          onClose={() => setShowNotes(false)}
-          version={update.version}
-          notes={notes}
-          onInstall={() => {
-            setShowNotes(false);
-            install.mutate(update);
-          }}
-        />
+        <SettingCard>
+          <UpdateNotesCard version={update.version} notes={notes} />
+        </SettingCard>
       )}
     </>
   );

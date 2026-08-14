@@ -14,12 +14,12 @@
   "failedHint": "Try again later, or download the latest version from GitHub.",
   "notes": {
     "view": "See what's new",
+    "whatsNew": "What's new",
     "title": "Sonarche {{version}}",
     "detail": "In detail",
     "breaking": "Breaking changes",
     "features": "New",
     "fixes": "Fixes",
-    "perf": "Performance",
-    "later": "Later"
+    "perf": "Performance"
   }
 }
