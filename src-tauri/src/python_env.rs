@@ -685,10 +685,34 @@ fn yaml_scalar(path: &Path) -> String {
 /// `%if{$track,…}` also drops the number prefix when there is none: beets reads
 /// an unset track as falsy, so an untagged rip lands on `Title.mp3` instead of
 /// the `00 Title.mp3` a bare `$track $title` produced.
+///
+/// Everything an import brings is the user's own music, so all of it files
+/// under the `Library/` zone — see `APP_PATHS` for what the zones are.
 const IMPORT_PATHS: &str = r#"paths:
-  default: '%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
-  singleton: 'Singles/%if{$artist,$artist,Unknown Artist}/$title'
-  comp: 'Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  singleton: 'Library/Singles/%if{$artist,$artist,Unknown Artist}/$title'
+  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+"#;
+
+/// Where an enriched download is filed — the App flavour's answer to the same
+/// question, also rendered for real in `import_paths_test.py`.
+///
+/// `Music/` splits into two zones a glance can tell apart:
+/// - `Library/` — the verified shelves: beets' stock templates plus the blank
+///   guards the import flavour carries, `%aunique{}` still keeping two
+///   genuinely coexisting same-named records apart.
+/// - `Unidentified/` — the guessed zone. The only items with no album row are
+///   the ones nothing could identify (channel-name artist, video-title title,
+///   flagged provisional), and they must not sit on the shelves as if they
+///   were verified. They used to stand up blank album rows whose folders
+///   %aunique could only tell apart by row id (`LIVinglife/[86]/…`).
+///
+/// The one-time re-file of an existing library onto these templates is the
+/// relayout pass in `remux.rs`.
+const APP_PATHS: &str = r#"paths:
+  default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
+  singleton: 'Unidentified/%if{$artist,$artist,Unknown Artist}/$title'
+  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
 "#;
 
 /// beets remembers the source directories it has taken on and skips them on a
@@ -772,7 +796,7 @@ ui:
         path_format = if flavour == Flavour::Import {
             IMPORT_PATHS
         } else {
-            ""
+            APP_PATHS
         },
         art_sources = if flavour == Flavour::Import {
             "  sources: filesystem\n"
@@ -1002,6 +1026,7 @@ mod tests {
                 .replace(" sonarche_import", "")
                 .replace(INCREMENTAL, "")
                 .replace(IMPORT_PATHS, "")
+                .replace(APP_PATHS, "")
                 .lines()
                 .filter(|line| !line.starts_with("pluginpath:") && !line.starts_with("statefile:"))
                 .collect::<Vec<_>>()
@@ -1030,7 +1055,23 @@ mod tests {
         assert!(import.contains("statefile: '/data/beets/import-state.pickle'"));
         assert!(!app.contains("incremental"));
         assert!(!app.contains("statefile"));
-        assert!(!app.contains("paths:"));
+    }
+
+    /// The app flavour's own filing rules: %aunique still keeps genuinely
+    /// coexisting same-named records apart, verified music lives under the
+    /// `Library/` zone, and a guessed single (the only kind of item with no
+    /// album row) files under `Unidentified/` instead of standing up a blank
+    /// record. Rendered for real in `import_paths_test.py`.
+    #[test]
+    fn the_app_config_keeps_aunique_and_files_guesses_in_the_zone() {
+        let app = beets_config_yaml(&paths(), Flavour::App);
+        assert!(app.contains(APP_PATHS), "{app}");
+        assert!(app.contains("%aunique{}"), "{app}");
+        assert!(app.contains("default: 'Library/"), "{app}");
+        assert!(app.contains("singleton: 'Unidentified/"), "{app}");
+        // Imports are the user's own music: everything they bring is Library/.
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+        assert!(import.contains("singleton: 'Library/Singles/"), "{import}");
     }
 
     /// The filename/year repairs are for someone's own rips. On the download

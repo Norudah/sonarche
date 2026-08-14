@@ -212,6 +212,10 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // library restarts those from 1 — kept, it would exempt the next
         // library's first files from the fragmentation scan.
         data_dir.join("remux-checked"),
+        // The zones relayout marker: a fresh library files itself right from
+        // the start, so re-running the pass is a no-op — but a stale marker
+        // claiming work done on a library that no longer exists is debt.
+        data_dir.join("library-zoned"),
     ];
     for legacy in [
         "jobs.json",
@@ -327,6 +331,8 @@ fn library_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // The repair pass's watermark counts beets item ids, which the fresh
         // index restarts from 1.
         data_dir.join("remux-checked"),
+        // The zones relayout marker follows the library it describes.
+        data_dir.join("library-zoned"),
     ]
 }
 

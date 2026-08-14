@@ -129,6 +129,7 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         album = lib.get_album(int(target_album_id))
         if album is None:
             raise RuntimeError(f"album not found: id={target_album_id}")
+        _ensure_filed_owner(album, items)
         # Already filed there: nothing to do, and counting them as moved would
         # make the recap lie.
         incoming = [item for item in items if item.album_id != album.id]
@@ -146,6 +147,14 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         existing = [] if created else [item.track or 0 for item in album.items()]
         numbers = renumbering(existing, len(incoming))
 
+    # Two passes, and the split is the point: retag + re-parent first (DB
+    # only), files second. Moving a file inside the first loop computed its
+    # destination while the emptied source rows still existed — and when a
+    # source shared the target's name (a one-by-one download matched another
+    # edition of the same album), %aunique saw two records with one name and
+    # baked a "[catalognum]" suffix into the *target's* folder. The rows died
+    # right after, but no one re-moved the files: every add split the album
+    # folder a little more.
     sources: dict[int, None] = {}
     for index, item in enumerate(incoming):
         changed: set[str] = set()
@@ -187,16 +196,31 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             # it exactly like a typed-in edit.
             provenance.mark_edited(item, changed)
 
-        old_art = item.get(library.ITEM_ART_KEY) or None
-        # `with_album=False`: the target row is not moving, so giving it "a
-        # chance to move its art" per incoming track is N no-op stats at best.
-        item.try_sync(write=True, move=True, with_album=False)
-        if old_art:
-            _follow_item_art(lib, item, old_art)
+        item.store()
 
     sources_removed = sum(
         1 for source_id in sources if _remove_emptied_source(lib, source_id, album.id)
     )
+    # %aunique memoizes per Library instance; a verdict reached while the dead
+    # rows were still around must not outlive them.
+    lib._memotable = {}
+
+    for item in incoming:
+        old_art = item.get(library.ITEM_ART_KEY) or None
+        # `with_album=False`: the target row's own move runs once below, not
+        # once per incoming track.
+        item.try_sync(write=True, move=True, with_album=False)
+        if old_art:
+            _follow_item_art(lib, item, old_art)
+
+    # Residents whose paths were baked with a suffix by an earlier incident
+    # follow: with the duplicate rows gone the album re-files itself (art
+    # included) under its clean name. Aligned files are a no-op.
+    try:
+        album.move()
+    except Exception as exc:
+        protocol.log(f"move_tracks: album re-file failed: {exc}")
+
     _apply_kind(album, kind)
 
     return {
@@ -206,6 +230,35 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         "target_album_id": album.id,
         "sources_removed": sources_removed,
     }
+
+
+def _ensure_filed_owner(album, arriving) -> None:
+    """A target row with no album artist hands blank filing to every arrival —
+    and the app, which groups cards by (album artist, title) with a per-track
+    artist fallback, then splits one record into one card per track artist.
+    Rows born outside the MusicBrainz flows carry the blank: an album name
+    typed track by track in the drawer, a legacy provisional row. Heal it from
+    the tracks in play — majority artist wins — before the arrivals inherit it.
+    The residents are pushed the value explicitly (not via `store(inherit=…)`:
+    their in-memory copies would win the next sync and undo it); their files
+    move later with the album's own re-file pass."""
+    if (str(album.albumartist) or "").strip():
+        return
+    residents = list(album.items())
+    counts: dict[str, int] = {}
+    for item in residents + list(arriving):
+        artist = (str(item.artist) or "").strip()
+        if artist:
+            counts[artist] = counts.get(artist, 0) + 1
+    if not counts:
+        return
+    owner = sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))[0][0]
+    protocol.log(f"move_tracks: target row {album.id} had no album artist, filing under « {owner} »")
+    album.albumartist = owner
+    album.store(inherit=False)
+    for item in residents:
+        item.albumartist = owner
+        item.try_sync(write=True, move=False, with_album=False)
 
 
 def _create_album(lib, incoming, new_album) -> "object":

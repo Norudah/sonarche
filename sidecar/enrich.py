@@ -219,6 +219,35 @@ def find_album_row(lib, release_id: str | None):
     return None
 
 
+def find_named_row(lib, albumartist: str | None, album_title: str | None):
+    """The library's album row wearing exactly this albumartist + album, or
+    None. The fallback behind `find_album_row`: the app groups albums by name,
+    so two editions of one album standing up two rows is never a state the
+    user can see — only a folder split, because %aunique suffixes every row
+    sharing a name. One name, one row.
+
+    Collections are never returned (a gathering the user named is not a
+    landing spot for a matched release), nor blank names (every provisional
+    row is blank; they have nothing in common). When the pathology already
+    exists — several rows with the name — the fullest row wins, same rule as
+    the consolidation pass."""
+    import library
+    from beets.dbcore.query import AndQuery, MatchQuery
+
+    if not albumartist or not album_title:
+        return None
+    rows = [
+        row
+        for row in lib.albums(
+            AndQuery([MatchQuery("albumartist", albumartist), MatchQuery("album", album_title)])
+        )
+        if row.get(library.ALBUM_KIND_KEY) != library.COLLECTION
+    ]
+    if not rows:
+        return None
+    return max(rows, key=lambda row: (len(list(row.items())), -row.id))
+
+
 def _album_row_for(lib, item):
     """The album row `item` belongs on now that its tags are (re)written.
 
@@ -236,7 +265,14 @@ def _album_row_for(lib, item):
         # like a regular -A import would have.
         return album if album is not None else lib.add_album([item])
 
+    # The exact release first; failing that, the row wearing the same name —
+    # another edition of the same album, which must share its folder rather
+    # than stand up a %aunique-suffixed sibling.
     target = find_album_row(lib, release_id)
+    if target is None:
+        target = find_named_row(lib, item.albumartist, item.album)
+        if target is not None and target.id == (item.album_id or None):
+            return target
     if target is not None:
         item.album_id = target.id
         item.store()
@@ -285,10 +321,36 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
+def _file_as_singleton(lib, item) -> None:
+    """File a guess that no record claims outside the shelves: no album row,
+    so beets' `singleton` path (the guessed zone, `À identifier/`) applies.
+
+    This path used to force an album row instead, and with a blank title the
+    row's folder had no name — %aunique could only tell the blanks apart by
+    row id, and every guessed single stood as `<channel>/[86]/`. A blank row a
+    prior run left the item on is dropped once it empties."""
+    old_row = item.get_album()
+    if item.album_id is not None:
+        item.album_id = None
+    item.store()
+    try:
+        item.write()
+    except Exception as exc:  # DB is authoritative; file tags are best-effort
+        protocol.log(f"enrich: tag write failed: {exc}")
+    if old_row is not None and not list(old_row.items()):
+        old_row.remove(delete=False, with_items=False)
+    try:
+        item.move()
+    except Exception as exc:
+        protocol.log(f"enrich: move failed: {exc}")
+
+
 def apply_provisional(lib, item, params: dict, album=None) -> bool:
     """Nothing identified this file: fill it from the download's own hints (and
-    from `album`, when its siblings matched a release) and flag it as a guess,
-    so it lands with its album instead of staying blank outside every folder.
+    from `album`, when its siblings matched a release) and flag it as a guess.
+    With an album behind it, it files next to the siblings that vouch for it;
+    with nothing behind it, it files in the guessed zone rather than posing on
+    the shelves as a verified record.
 
     Returns whether anything was written."""
     fields = provisional.guess_fields(
@@ -302,7 +364,17 @@ def apply_provisional(lib, item, params: dict, album=None) -> bool:
     protocol.log(f"enrich: item {item.id} provisionally tagged from {sorted(fields)}")
     if album is not None:
         item.album_id = album.id
-    store_and_file(lib, item, sync_album=album is None)
+        store_and_file(lib, item, sync_album=False)
+        return True
+
+    current = item.get_album()
+    if current is not None and (str(current.album) or "").strip():
+        # It already sits on a named record (a re-run that failed to match):
+        # keep it where it is, and keep the row's own words — a guess must not
+        # rewrite them.
+        store_and_file(lib, item, sync_album=False)
+    else:
+        _file_as_singleton(lib, item)
     return True
 
 

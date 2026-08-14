@@ -30,6 +30,10 @@ const REMUX_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 /// One `listdir` per album folder — minutes would already be generous.
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
+/// One rename per file on its own volume; an hour covers a huge library on a
+/// network share without letting a wedged pass hold the slot forever.
+const RELAYOUT_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+
 #[derive(Default)]
 pub struct RemuxState {
     running: Mutex<()>,
@@ -49,7 +53,7 @@ impl RemuxState {
         let since = read_watermark(&watermark).await;
 
         let sidecar = app.state::<SidecarState>();
-        let report = sidecar
+        let mut report = sidecar
             .request(
                 app,
                 "library_remux",
@@ -73,7 +77,45 @@ impl RemuxState {
         }
 
         self.cleanup_legacy_archives(app, &paths).await;
+        let relayouted = self.relayout_zones(app, &paths).await;
+        if let (Some(map), Some(moved)) = (report.as_object_mut(), relayouted) {
+            // Surfaced on the repair report so the shell knows to refetch the
+            // library — every artUrl and path just changed under it.
+            map.insert("relayouted".into(), json!(moved));
+        }
         Ok(report)
+    }
+
+    /// The one-time re-file of the library into the `Library/` +
+    /// `Unidentified/` zones (see `APP_PATHS` in python_env.rs). Same launch
+    /// slot and same marker pattern as the archive sweep: debt left by older
+    /// versions whose templates filed everything at the root of `Music/`.
+    /// Returns how many records moved, or None when the pass did not run.
+    async fn relayout_zones(&self, app: &AppHandle, paths: &AppPaths) -> Option<i64> {
+        let marker = app.path().app_data_dir().ok()?.join("library-zoned");
+        if tokio::fs::try_exists(&marker).await.unwrap_or(false) {
+            return None;
+        }
+
+        let sidecar = app.state::<SidecarState>();
+        let report = sidecar
+            .request(
+                app,
+                "library_relayout",
+                json!({
+                    "beets_db": paths.beets_db.to_string_lossy(),
+                    "library_dir": paths.music_dir().to_string_lossy(),
+                }),
+                RELAYOUT_TIMEOUT,
+            )
+            .await
+            .ok()?;
+        let _ = tokio::fs::write(&marker, "done").await;
+        // The M3U mirror renders absolute paths; every one of them just moved.
+        crate::playlists_mirror::sync_after_library_change(app).await;
+        let moved = report.get("albums").and_then(Value::as_i64).unwrap_or(0)
+            + report.get("singles").and_then(Value::as_i64).unwrap_or(0);
+        Some(moved)
     }
 
     /// The one-time sweep of the `cover-hq.*` archives 2.x kept beside every

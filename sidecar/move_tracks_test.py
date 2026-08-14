@@ -333,6 +333,99 @@ class MoveTest(unittest.TestCase):
         self.assertTrue(provenance.was_hand_edited(item, "album"))
         lib._close()
 
+    def test_moving_between_same_named_records_bakes_no_aunique_suffix(self):
+        """Found on a user's library: a one-by-one download matched another
+        edition of the target ("American Idiot" [48777-2] vs [WBCD 2075]), and
+        the move computed the destination while the emptied source row still
+        existed — %aunique saw two records with one name and suffixed the
+        target's folder. The source was removed right after, but nothing
+        re-moved the file, so every add left the album folder split."""
+        lib = self._lib()
+        target = self._album(
+            lib, "American Idiot", ["Holiday"],
+            album="American Idiot", albumartist="Green Day",
+            mb_albumid="mb-standard", catalognum="48777-2",
+        )
+        source = self._album(
+            lib, "American Idiot dup", ["Letterbomb"],
+            album="American Idiot", albumartist="Green Day",
+            mb_albumid="mb-japan", catalognum="WBCD 2075",
+        )
+        moved_id = next(iter(source.items())).id
+        lib._close()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        for item in lib.get_album(target.id).items():
+            self.assertIn(os.path.join("Green Day", "American Idiot"), item.path.decode())
+            self.assertNotIn("[", item.path.decode())
+        lib._close()
+
+    def test_arriving_tracks_heal_the_targets_stale_folder(self):
+        """Residents whose paths were baked with a suffix by an earlier
+        incident follow the same move: once the duplicate rows are gone the
+        album re-files itself under its clean name."""
+        lib = self._lib()
+        target = self._album(
+            lib, "American Idiot [48777-2]", ["Holiday"],
+            album="American Idiot", albumartist="Green Day",
+        )
+        source = self._album(
+            lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead"
+        )
+        moved_id = next(iter(source.items())).id
+        lib._close()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        for item in lib.get_album(target.id).items():
+            self.assertIn(os.path.join("Green Day", "American Idiot"), item.path.decode())
+            self.assertNotIn("[48777-2]", item.path.decode())
+        lib._close()
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "American Idiot [48777-2]")))
+
+    def test_a_target_without_an_album_artist_gets_one_from_its_tracks(self):
+        """The two-cards regression: a row named track by track in the drawer
+        never gains an album artist, arrivals inherit the blank, and the app —
+        which groups cards by (album artist, title) with a per-track artist
+        fallback — shows the one record as two albums."""
+        lib = self._lib()
+        target = self._album(
+            lib, "X", ["One", "Two"],
+            album="X", artist="Real Name",
+        )
+        self.assertEqual(target.albumartist, "")
+        source = self._album(lib, "staging", ["Three"], artist="LIVinglife")
+        moved_id = next(iter(source.items())).id
+        lib._close()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        healed = lib.get_album(target.id)
+        # Majority artist among residents + arrival: "Real Name" (2 vs 1).
+        self.assertEqual(healed.albumartist, "Real Name")
+        for item in healed.items():
+            self.assertEqual(item.albumartist, "Real Name")
+        lib._close()
+
+    def test_a_target_with_an_owner_keeps_it(self):
+        lib = self._lib()
+        target = self._album(
+            lib, "Mine", ["Kept"], album="Mine", albumartist="Muse", artist="Muse"
+        )
+        source = self._album(lib, "staging", ["Guest"], artist="LIVinglife")
+        moved_id = next(iter(source.items())).id
+        lib._close()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        self.assertEqual(lib.get_album(target.id).albumartist, "Muse")
+        lib._close()
+
     def test_a_singleton_brings_its_own_cover_along(self):
         lib = self._lib()
         target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")

@@ -42,6 +42,7 @@ def _handlers():
     import lyrics
     import move_tracks
     import probe
+    import relayout
     import remux
     import services
 
@@ -61,6 +62,7 @@ def _handlers():
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remux": remux.handle,
+        "library_relayout": relayout.handle,
         "cover_cleanup": cover_cleanup.handle,
         "library_remove": library.remove,
         "library_update": library.update,

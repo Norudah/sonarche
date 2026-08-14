@@ -337,6 +337,9 @@ export interface RemuxReport {
   remuxed: number;
   /** Basenames of files the pass could not repair; retried on next launch. */
   failed: string[];
+  /** Records the one-time zones relayout re-filed, when that pass ran this
+   * launch — every path and artUrl in the library changed under the app. */
+  relayouted?: number;
 }
 
 /** One-shot repair pass: remux fragmented DASH m4a files (downloads made
