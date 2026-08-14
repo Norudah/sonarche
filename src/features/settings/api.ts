@@ -98,6 +98,28 @@ export async function reinstallEnvironment(): Promise<void> {
   await invoke("reinstall_environment");
 }
 
+/** Destroys the music and its index only: artist images, playlists (kept,
+ * emptied) and the histories all survive. */
+export async function eraseLibrary(): Promise<void> {
+  await invoke("erase_library");
+}
+
+/** Every artist image at once — files and index rows. Avatars take over. */
+export async function eraseArtistImages(): Promise<void> {
+  await invoke("erase_artist_images");
+}
+
+/** Every playlist at once — rows, covers, M3U8 mirror. The music stays. */
+export async function erasePlaylists(): Promise<void> {
+  await invoke("erase_playlists");
+}
+
+/** Both archives in one sweep: terminal download jobs and the import history.
+ * The same command the history page's own clear button calls. */
+export async function eraseHistory(): Promise<void> {
+  await invoke("clear_job_history");
+}
+
 /** The one delay the user may still tune. The AcoustID and Last.fm pauses are
  * fixed server-side — their keys are shared across installs — and the backend
  * refuses writes to them. */

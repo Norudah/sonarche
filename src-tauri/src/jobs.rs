@@ -1782,4 +1782,12 @@ impl JobsState {
         })
         .await
     }
+
+    /// Empty every playlist without deleting any: the library-wipe companion,
+    /// where the lists are kept but their item ids just stopped meaning
+    /// anything.
+    pub async fn clear_playlist_memberships(&self) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::clear_memberships(c, now)).await
+    }
 }

@@ -218,7 +218,9 @@
     },
     "danger": {
       "title": "Danger zone",
-      "description": "Two actions that cannot be undone. Nothing here comes back.",
+      "description": "Actions that cannot be undone. Nothing here comes back.",
+      "prompt": "Type {{phrase}} to confirm",
+      "cancel": "Cancel",
       "reinstall": {
         "name": "Reinstall the environment",
         "why": "Deletes the Python environment and the downloaded tools, then rebuilds them on restart. Leaves your music, your index and your history alone. Worth trying when the app refuses to import or download for no clear reason.",
@@ -228,6 +230,58 @@
         "cancel": "Cancel",
         "confirm": "Reinstall and restart",
         "failedTitle": "The reinstall failed"
+      },
+      "eraseLibrary": {
+        "name": "Delete the library",
+        "why": "Deletes every audio file from the disk along with its index. Artist images, playlists (emptied, but kept) and the histories stay in place.",
+        "action": "Delete",
+        "dialogTitle": "Delete the library?",
+        "dialogBody": "This is permanent. Here is what goes:",
+        "itemFiles": "Every audio file in the library, deleted from the disk",
+        "itemIndex": "The beets index: titles, albums, artists, genres, artwork",
+        "itemPlaylists": "The playlists' contents — the lists themselves remain, empty",
+        "keeps": "Artist images, playlist names and the histories are kept.",
+        "confirm": "Delete the library",
+        "failedTitle": "The delete failed"
+      },
+      "eraseArtistImages": {
+        "name": "Delete artist images",
+        "why": "Deletes every artist image placed by hand. There is no automatic source: they will not come back on their own.",
+        "action": "Delete",
+        "dialogTitle": "Delete the artist images?",
+        "dialogBody": "This is permanent. Here is what goes:",
+        "itemFiles": "Every artist image, deleted from the disk",
+        "keeps": "The generated avatars take over; nothing else is touched.",
+        "doneTitle": "Artist images deleted",
+        "confirm": "Delete the images",
+        "failedTitle": "The delete failed"
+      },
+      "erasePlaylists": {
+        "name": "Delete playlists",
+        "why": "Deletes every playlist, their covers and their M3U8 files. The music is not touched.",
+        "action": "Delete",
+        "dialogTitle": "Delete the playlists?",
+        "dialogBody": "This is permanent. Here is what goes:",
+        "itemLists": "Every playlist, including the favorites' contents",
+        "itemCovers": "Their covers and their M3U8 files",
+        "keeps": "The music and the rest of the library stay put.",
+        "doneTitle": "Playlists deleted",
+        "confirm": "Delete the playlists",
+        "failedTitle": "The delete failed"
+      },
+      "eraseHistory": {
+        "name": "Delete the histories",
+        "why": "Empties the download history and the import history. Music already in the library is not touched.",
+        "action": "Delete",
+        "dialogTitle": "Delete the histories?",
+        "dialogBody": "This is permanent. Here is what goes:",
+        "itemDownloads": "The history of finished, failed or cancelled downloads",
+        "itemImports": "The history of folder imports",
+        "itemUndo": "The ability to undo a past import goes with its history",
+        "keeps": "The music and in-flight downloads stay put.",
+        "doneTitle": "Histories deleted",
+        "confirm": "Delete the histories",
+        "failedTitle": "The delete failed"
       },
       "erase": {
         "name": "Erase everything",
@@ -241,8 +295,6 @@
         "itemHistory": "The download and import history, and pending downloads",
         "itemKeys": "Your settings, back to their defaults, and the diagnostic log",
         "keepsEngine": "The Python environment and your AcoustID key are kept: the app is usable again straight away, no setup to redo.",
-        "prompt": "Type {{phrase}} to confirm",
-        "cancel": "Cancel",
         "confirm": "Erase permanently",
         "failedTitle": "The erase failed"
       }

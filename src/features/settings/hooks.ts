@@ -6,6 +6,10 @@ import {
   checkLibraryMove,
   checkServices,
   eraseAllData,
+  eraseArtistImages,
+  eraseHistory,
+  eraseLibrary,
+  erasePlaylists,
   getLibraryLocation,
   getPreferences,
   listApiKeys,
@@ -69,18 +73,49 @@ export function useMoveLibrary() {
 }
 
 /**
- * The two danger-zone resets.
+ * The danger-zone resets that end in a webview reload.
  *
- * Neither invalidates anything on success, and that is deliberate: both end
- * with the app relaunching, so refreshing a cache that is about to be thrown
- * away would only give the dying window one last render of an empty library.
+ * None of the three invalidates anything on success, and that is deliberate:
+ * each ends with the app reloading, so refreshing a cache that is about to be
+ * thrown away would only give the dying window one last render of an empty
+ * library.
  */
 export function useEraseAllData() {
   return useMutation({ mutationFn: eraseAllData });
 }
 
+export function useEraseLibrary() {
+  return useMutation({ mutationFn: eraseLibrary });
+}
+
 export function useReinstallEnvironment() {
   return useMutation({ mutationFn: reinstallEnvironment });
+}
+
+/** The aimed erases the page survives: no reload, so every cache that could
+ * hold the dead rows goes stale at once. Blanket invalidation for the same
+ * reason as the dev reset — enumerating other features' query keys here would
+ * be a list nobody keeps in sync. */
+function useEraseAndRefresh(mutationFn: () => Promise<void>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+export function useEraseArtistImages() {
+  return useEraseAndRefresh(eraseArtistImages);
+}
+
+export function useErasePlaylists() {
+  return useEraseAndRefresh(erasePlaylists);
+}
+
+export function useEraseHistory() {
+  return useEraseAndRefresh(eraseHistory);
 }
 
 export function usePreferences() {

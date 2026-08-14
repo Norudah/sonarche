@@ -563,6 +563,21 @@ pub fn clear(conn: &Connection) -> AppResult<()> {
     Ok(())
 }
 
+/// The library was wiped under the playlists: every membership goes, the lists
+/// themselves stay. A fresh beets index restarts item ids from 1, so a kept
+/// membership would soon point at whatever unrelated track inherits its id.
+pub fn clear_memberships(conn: &Connection, now: u64) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "UPDATE playlists SET updated_at = ?1
+         WHERE id IN (SELECT DISTINCT playlist_id FROM playlist_tracks)",
+        params![now as i64],
+    )?;
+    tx.execute("DELETE FROM playlist_tracks", [])?;
+    tx.commit()?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Commands. Thin: validation happens in the store functions above, connection
 // discipline in `JobsState` (same shape as artist images).
@@ -931,6 +946,27 @@ mod tests {
         add_tracks(&conn, row.id, &[1], 110).unwrap();
         clear(&conn).unwrap();
         assert!(list(&conn).unwrap().is_empty());
+    }
+
+    /// A library wipe empties the lists without deleting them: names, covers
+    /// and the favorites list survive, the dead item ids do not.
+    #[test]
+    fn a_library_wipe_empties_the_playlists_but_keeps_them() {
+        let conn = open_in_memory_for_tests();
+        let kept = create(&conn, "Mix", 100).unwrap();
+        let empty = create(&conn, "Vide", 100).unwrap();
+        add_tracks(&conn, kept.id, &[1, 2], 110).unwrap();
+
+        clear_memberships(&conn, 200).unwrap();
+
+        let listed = list(&conn).unwrap();
+        assert_eq!(listed.len(), 2);
+        assert_eq!(ids(&conn, kept.id), Vec::<i64>::new());
+        let kept_row = listed.iter().find(|row| row.id == kept.id).unwrap();
+        assert_eq!(kept_row.updated_at, 200);
+        // A list that held nothing was not rewritten.
+        let empty_row = listed.iter().find(|row| row.id == empty.id).unwrap();
+        assert_eq!(empty_row.updated_at, 100);
     }
 
     #[test]

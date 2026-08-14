@@ -581,6 +581,31 @@ pub async fn erase_all_data(
     reset::erase_data(&app, &jobs, &sidecar).await
 }
 
+/// The danger zone's aimed shot: the music and its index, sparing the artist
+/// images, the playlists' names and the histories. Refuses while a download
+/// or an import is running.
+#[tauri::command]
+pub async fn erase_library(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+) -> AppResult<()> {
+    reset::erase_library(&app, &jobs, &sidecar).await
+}
+
+/// Every artist image at once — files and index rows. The generated avatars
+/// take over again.
+#[tauri::command]
+pub async fn erase_artist_images(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
+    reset::erase_artist_images(&app, &jobs).await
+}
+
+/// Every playlist at once — rows, covers, M3U8 mirror. The music stays.
+#[tauri::command]
+pub async fn erase_playlists(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
+    reset::erase_playlists(&app, &jobs).await
+}
+
 /// The danger zone's harmless half: the Python environment and the tools, both
 /// of which the walkthrough puts back.
 #[tauri::command]
