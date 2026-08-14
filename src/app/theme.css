@@ -592,6 +592,11 @@
 
 .sonarche-tour .driver-popover-navigation-btns {
   gap: 0.5rem;
+  /* The guide button is injected into this span, not the footer, and the
+     lib's own rule has no wrap — without this the closing card's three
+     buttons overflow the popover instead of taking a second row. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .sonarche-tour .driver-popover-footer button {
