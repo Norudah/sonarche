@@ -23,3 +23,20 @@ export const CARD_ACTION_SECONDARY =
 export const CARD_ACTION_PLAY =
   "flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground " +
   "glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+
+/**
+ * The same pair on a *row*, where there is no artwork to ride.
+ *
+ * Smoked glass exists to stay readable over a cover; over the page background
+ * it is a black lozenge for no reason. So the row keeps the shapes and the
+ * accent and drops the glass — and steps down a size, because a 40 px disc on a
+ * 52 px row is a button wearing the row rather than sitting in it.
+ */
+const ROW_ACTION =
+  "flex size-8 cursor-pointer items-center justify-center rounded-full outline-none " +
+  "focus-visible:ring-2 focus-visible:ring-accent/40 ";
+
+export const ROW_ACTION_SECONDARY = ROW_ACTION + "text-muted hover:bg-default hover:text-foreground";
+
+export const ROW_ACTION_PLAY =
+  ROW_ACTION + "bg-accent text-accent-foreground glow-accent hover:scale-[1.06] transition";

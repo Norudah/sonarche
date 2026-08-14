@@ -267,7 +267,6 @@
     "soundtrackHint": "MusicBrainz indique une bande originale — choisis une catégorie.",
     "missingFields_one": "il manque {{fields}}",
     "missingFields_other": "il manque {{fields}}",
-    "filedUnder": "album rangé sous {{artist}}",
     "editMetadata": "Modifier les métadonnées"
   },
   "albumMetadata": {
@@ -455,6 +454,10 @@
     "action": "Supprimer l'album",
     "lockedTitle": "Téléchargement en cours vers cet album",
     "lockedBody": "Des morceaux sont en route vers ce disque. Attends la fin du téléchargement (ou arrête-le depuis Téléchargements) pour pouvoir le supprimer."
+  },
+  "layout": {
+    "grid": "Grille",
+    "list": "Liste"
   },
   "sort": {
     "label": "Trier par",

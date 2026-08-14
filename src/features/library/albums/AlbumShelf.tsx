@@ -2,12 +2,17 @@ import { useState } from "react";
 
 import { findAlbumLike, type Album } from "@/features/library/albums/albums";
 import { AlbumGrid } from "@/features/library/albums/AlbumGrid";
+import { AlbumRows } from "@/features/library/albums/AlbumRows";
 import { AlbumInspectModal } from "@/features/library/albums/inspect/AlbumInspectModal";
+import type { ShelfLayout } from "@/features/library/shelfLayout";
 
 interface AlbumShelfProps {
   albums: Album[];
   /** Same contract as `AlbumGrid`: what this result set is a result *of*. */
   animationKey?: string;
+  /** Covers or rows. Only the albums page offers the choice; a discography and
+   * a genre's shelf keep the covers, which is what those pages are for. */
+  layout?: ShelfLayout;
   onPlay: (album: Album) => void;
   /**
    * Every album in the library, for the drawer to look its record up in.
@@ -30,9 +35,9 @@ interface AlbumShelfProps {
  *
  * One modal per shelf and not one per card: a wall of two hundred covers must
  * not mount two hundred dialogs to let one of them be edited — the same
- * reasoning that put the image modal in `ArtistGrid`.
+ * reasoning that put the image modal in `ArtistShelf`.
  */
-export function AlbumShelf({ albums, animationKey, onPlay, pool = albums }: AlbumShelfProps) {
+export function AlbumShelf({ albums, animationKey, layout = "grid", onPlay, pool = albums }: AlbumShelfProps) {
   const [inspectedKey, setInspectedKey] = useState<string | null>(null);
   // Derived from the live list, not a snapshot — a re-enrich refetch must update
   // the open panel, not a stale copy. Held across a rename: editing the album or
@@ -47,12 +52,21 @@ export function AlbumShelf({ albums, animationKey, onPlay, pool = albums }: Albu
 
   return (
     <>
-      <AlbumGrid
-        albums={albums}
-        animationKey={animationKey}
-        onPlay={onPlay}
-        onEdit={(album) => setInspectedKey(album.key)}
-      />
+      {layout === "list" ? (
+        <AlbumRows
+          albums={albums}
+          animationKey={animationKey}
+          onPlay={onPlay}
+          onEdit={(album) => setInspectedKey(album.key)}
+        />
+      ) : (
+        <AlbumGrid
+          albums={albums}
+          animationKey={animationKey}
+          onPlay={onPlay}
+          onEdit={(album) => setInspectedKey(album.key)}
+        />
+      )}
       <AlbumInspectModal album={inspected} onClose={() => setInspectedKey(null)} />
     </>
   );
