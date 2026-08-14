@@ -14,12 +14,19 @@ the image *after* EXIF orientation, which is also how a browser displays it —
 what the user framed is what gets cut.
 """
 
+from __future__ import annotations
+
 import base64
 import io
 import os
 import tempfile
+from typing import TYPE_CHECKING
 
-from PIL import Image, ImageOps
+# Deferred like beets and requests are everywhere else: this module is imported
+# at sidecar startup by the handler table, and PIL is the one heavyweight the
+# table was dragging in before any request needed it.
+if TYPE_CHECKING:
+    from PIL import Image
 
 import covers
 import net
@@ -88,6 +95,8 @@ def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bytes, bo
     already square, no EXIF rotation, already JPEG or PNG. Re-encoding a file
     that needed no edit would quietly degrade the one copy meant to be kept.
     """
+    from PIL import Image, ImageOps
+
     with Image.open(source_path) as opened:
         source_format = opened.format
         # exif_transpose always hands back a copy, so "was anything rotated"

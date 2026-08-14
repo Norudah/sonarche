@@ -16,8 +16,6 @@ screen ever pays that.
 import os
 import shutil
 
-from PIL import Image
-
 import protocol
 
 HQ_PREFIX = "cover-hq."
@@ -59,6 +57,8 @@ def read_dimensions(path: str) -> tuple[int, int] | None:
     `Image.open` is lazy — it parses the header and stops — so this never
     decodes the pixels it exists to avoid decoding.
     """
+    from PIL import Image
+
     try:
         with Image.open(path) as image:
             return image.size
@@ -79,6 +79,8 @@ def _write_rendition(source: str, dest: str) -> None:
     and the result written in one breath — the object it mutates is the decoded
     image, and the point is to hold it for as short a time as possible.
     """
+    from PIL import Image
+
     with Image.open(source) as image:
         fmt = image.format
         image.thumbnail((DISPLAY_MAX_PX, DISPLAY_MAX_PX))

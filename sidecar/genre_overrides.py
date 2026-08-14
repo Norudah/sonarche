@@ -98,6 +98,15 @@ def family_root_for(genre_lower: str) -> str | None:
 
 
 def _atomic_write(path: str, content: str) -> None:
+    # Unchanged content is left alone: `ensure_derived` runs at every sidecar
+    # startup, twice per launch (two processes), and rewriting identical bytes
+    # each time is pure disk churn on a path that almost never changes.
+    try:
+        with open(path, encoding="utf-8") as existing:
+            if existing.read() == content:
+                return
+    except OSError:
+        pass
     directory = os.path.dirname(path)
     os.makedirs(directory, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-")
