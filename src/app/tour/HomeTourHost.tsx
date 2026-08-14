@@ -24,9 +24,16 @@ export function HomeTourHost() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (homeTourSeen()) return;
-    const timer = window.setTimeout(() => setIsOpen(true), FIRST_RUN_DELAY_MS);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    let timer: number | undefined;
+    void homeTourSeen().then((seen) => {
+      if (seen || cancelled) return;
+      timer = window.setTimeout(() => setIsOpen(true), FIRST_RUN_DELAY_MS);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(

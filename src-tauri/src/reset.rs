@@ -265,15 +265,20 @@ pub async fn erase_data(
     // it: an erased app opens at its default folder, not at the external disk
     // whose contents it just deleted. The walkthrough flag is put back below —
     // same reasoning as the key, the setup survives the erase.
-    let was_set_up = preferences::load(app)
+    let (was_set_up, tour_seen) = preferences::load(app)
         .await
-        .map(|prefs| prefs.onboarding_completed)
-        .unwrap_or(false);
+        .map(|prefs| (prefs.onboarding_completed, prefs.home_tour_seen))
+        .unwrap_or((false, false));
     let prefs_path = app.path().app_data_dir()?.join("preferences.json");
     let _ = tokio::fs::remove_file(&prefs_path).await;
     app.state::<LibraryRoot>().set(None);
     if was_set_up {
         preferences::set_onboarding_completed(app, true).await?;
+    }
+    // Same side of the line as the walkthrough flag: the guided tour is part
+    // of the setup, not of the library the user just asked to forget.
+    if tour_seen {
+        preferences::set_home_tour_seen(app, true).await?;
     }
 
     // Recreate the (now default) library folder so the next launch has

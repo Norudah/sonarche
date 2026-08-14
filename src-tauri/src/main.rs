@@ -116,6 +116,8 @@ fn main() {
             commands::library_align_apply,
             commands::get_preferences,
             commands::set_rate_limit_delay,
+            commands::get_home_tour_seen,
+            commands::set_home_tour_seen,
             commands::get_library_location,
             commands::check_library_move,
             commands::move_library,

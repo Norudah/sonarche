@@ -416,6 +416,17 @@ pub async fn get_preferences(app: AppHandle) -> AppResult<Preferences> {
 }
 
 #[tauri::command]
+pub async fn get_home_tour_seen(app: AppHandle) -> AppResult<bool> {
+    Ok(preferences::load(&app).await?.home_tour_seen)
+}
+
+#[tauri::command]
+pub async fn set_home_tour_seen(app: AppHandle, seen: bool) -> AppResult<()> {
+    preferences::set_home_tour_seen(&app, seen).await?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn set_rate_limit_delay(
     app: AppHandle,
     key: String,
