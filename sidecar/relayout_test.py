@@ -96,5 +96,63 @@ class RelayoutTest(unittest.TestCase):
         lib._close()
 
 
+
+    def test_no_database_means_no_pass_and_no_database(self):
+        """First run or post-erase: opening the Library would create an empty
+        beets db every "does the user have a library" check then believes in."""
+        report = self._run()
+        self.assertEqual(report, {"albums": 0, "singles": 0, "dissolved": 0})
+        self.assertFalse(os.path.exists(self.db))
+
+    def test_a_blank_row_dissolves_instead_of_relayouting_as_unknown_album(self):
+        """The legacy guessed-single filing: a blank-titled row whose folder
+        %aunique could only name by row id. Re-filing it would park it as
+        Library/Unknown Artist/Unknown Album for good; dissolving it hands the
+        items back to the singleton path, where the provisional flag routes."""
+        lib = Library(self.db, directory=self.dir)
+        item = Item(
+            path=self._file("LIVinglife/_86/track.mp3"),
+            format="MP3",
+            title="Mamma Mia - I Do",
+            artist="LIVinglife",
+        )
+        row = lib.add_album([item])
+        self.assertEqual(str(row.album), "")
+
+        report = self._run()
+
+        self.assertEqual(report["dissolved"], 1)
+        self.assertIsNone(lib.get_album(row.id))
+        fresh = lib.get_item(item.id)
+        self.assertIsNone(fresh.album_id)
+        # Test env runs beets' stock templates; what matters is the re-file.
+        self.assertIn("Non-Album", fresh.path.decode())
+        lib._close()
+
+    def test_a_singletons_written_out_cover_follows_its_file(self):
+        import library as library_mod
+
+        lib = Library(self.db, directory=self.dir)
+        item = Item(
+            path=self._file("wrong/track.mp3"),
+            format="MP3",
+            title="Mamma Mia - I Do",
+            artist="LIVinglife",
+        )
+        lib.add(item)
+        art = self._file("wrong/track.jpg")
+        item[library_mod.ITEM_ART_KEY] = art
+        item.store()
+
+        self._run()
+
+        fresh = lib.get_item(item.id)
+        followed = fresh.get(library_mod.ITEM_ART_KEY)
+        self.assertEqual(os.path.dirname(followed), os.path.dirname(fresh.path.decode()))
+        self.assertTrue(os.path.exists(followed))
+        lib._close()
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "wrong")))
+
+
 if __name__ == "__main__":
     unittest.main()

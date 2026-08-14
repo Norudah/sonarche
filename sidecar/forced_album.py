@@ -210,8 +210,11 @@ def apply(lib, items, spec: dict):
         if row is None or list(row.items()):
             continue
         protocol.log(f"forced_album: dropping emptied album row {row_id}")
-        row.remove(delete=False, with_items=False)
+        enrich.drop_emptied_row(lib, row)
 
+    # %aunique memoizes per Library instance; a verdict reached while the
+    # dropped rows were alive must not name the forced folder "Title [2]".
+    lib._memotable = {}
     album.try_sync(write=True, move=True)
     protocol.log(
         f"forced_album: « {spec['title']} » by {spec['artist']} "

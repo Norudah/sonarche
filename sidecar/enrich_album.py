@@ -513,16 +513,23 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
     # exact release, a row wearing the same name — another edition of the same
     # album — is reused for the same reason: the app groups albums by name, so
     # a sibling row is invisible in the UI and a split folder on disk.
-    album = enrich.find_album_row(lib, match.info.album_id) or enrich.find_named_row(
-        lib, mapped[0].albumartist if mapped else None, mapped[0].album if mapped else None
-    )
+    album = enrich.find_album_row(lib, match.info.album_id)
+    foreign = False
+    if album is None:
+        album = enrich.find_named_row(
+            lib, mapped[0].albumartist if mapped else None, mapped[0].album if mapped else None
+        )
+        # Another edition wearing the same name: the batch shares its folder
+        # but must not rewrite the record's own words, ids or artwork.
+        foreign = album is not None and bool(album.mb_albumid)
     if album is not None:
         protocol.log(f"enrich_album: joining existing album row {album.id}")
         for item in mapped:
             item.album_id = album.id
     else:
         album = lib.add_album(mapped)
-    match.apply_album_metadata(album)
+    if not foreign:
+        match.apply_album_metadata(album)
     album.store()
 
     lastgenre = metadata.lastgenre_plugin()
@@ -565,7 +572,7 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
             {"stage": "track_done", "done": done, "total": total, "item_id": item.id},
         )
 
-    return album, mapped
+    return album, mapped, foreign
 
 
 def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict) -> list:
@@ -759,6 +766,14 @@ def _merge_rows(lib, rows, label: str):
             item.move()
         except Exception as exc:
             protocol.log(f"enrich_album: move failed: {exc}")
+    # Item.move never touches artpath: when the re-move lifted a %aunique
+    # suffix off the folder, the cover must follow or the husk keeps it.
+    if members[keep.id]:
+        try:
+            keep.move_art()
+            keep.store()
+        except Exception as exc:
+            protocol.log(f"enrich_album: art move failed: {exc}")
     _prune_vacated_art_dir(lib, keep, art_dir_before)
     return keep
 
@@ -823,12 +838,16 @@ def _consolidate_album_rows(lib, items) -> list:
             )
             if row.get(library_mod.ALBUM_KIND_KEY) != library_mod.COLLECTION
         ]
-        if rows:
-            keep = _merge_rows(lib, rows, f"{albumartist} — {album_title}")
-            albums.pop(keep.id, None)
-            for row in rows:
-                albums.pop(row.id, None)
-            albums[keep.id] = keep
+        if not rows:
+            continue
+        if len(rows) == 1 and rows[0].id in albums:
+            # A single row the release pass just merged and re-moved: running
+            # the heal again would re-compute every destination for nothing.
+            continue
+        keep = _merge_rows(lib, rows, f"{albumartist} — {album_title}")
+        for row in rows:
+            albums.pop(row.id, None)
+        albums[keep.id] = keep
     return list(albums.values())
 
 
@@ -965,7 +984,7 @@ def _absorb_strays(request_id: str, lib, album, items) -> list:
         except Exception as exc:
             protocol.log(f"enrich_album: move failed: {exc}")
         if origin_row is not None and origin_row.id != album.id and not list(origin_row.items()):
-            origin_row.remove(delete=False, with_items=False)
+            enrich.drop_emptied_row(lib, origin_row)
         _embed_album_cover(album, fresh)
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "track_done", "item_id": fresh.id}
@@ -990,7 +1009,7 @@ def _single_album_fallback(params: dict) -> dict | None:
     }
 
 
-def _tag_unidentified(lib, album, items, params: dict) -> None:
+def _tag_unidentified(lib, album, items, params: dict, file: bool = True) -> None:
     """Fill and flag whatever survived the per-track fallback unidentified.
 
     With an album row in hand the guess borrows the release the siblings did
@@ -1014,7 +1033,7 @@ def _tag_unidentified(lib, album, items, params: dict) -> None:
             continue
         hint = hints.get(item.id) or {}
         track_params = {"title": hint.get("title"), "artist": artist}
-        if enrich.apply_provisional(lib, fresh, track_params, album=album):
+        if enrich.apply_provisional(lib, fresh, track_params, album=album, file=file):
             _embed_album_cover(album, fresh)
 
 
@@ -1041,7 +1060,9 @@ def _handle_forced(
     position back."""
     protocol.log(f"enrich_album: album forced to « {forced['title']} », per-track identification")
     any_matched = _enrich_per_track(request_id, lib, items, params, pause, recordings)
-    _tag_unidentified(lib, None, items, params)
+    # `file=False`: the forced apply below re-files everything anyway; a real
+    # move here would bounce each unidentified file through the guessed zone.
+    _tag_unidentified(lib, None, items, params, file=False)
 
     fresh = [item for item in (lib.get_item(i.id) for i in items) if item is not None]
     album = forced_album.apply(lib, fresh, forced)
@@ -1087,6 +1108,11 @@ def handle(request_id: str, params: dict) -> dict:
         # no way to see why. Two copies of the same recording *inside the
         # playlist* stay a mis-upload either way, so that pass above still runs.
         if not forced:
+            # The single-album fallback (below, when no release coheres) files
+            # the survivors of THIS pass: unlike an explicitly forced album, a
+            # track already owned elsewhere has been dropped by then. Accepted:
+            # the user owns it either way, and keeping it here would duplicate
+            # the file whenever the playlist does match its release.
             items, library_duplicates = _remove_library_duplicates(
                 request_id, lib, items, recordings
             )
@@ -1127,15 +1153,22 @@ def handle(request_id: str, params: dict) -> dict:
 
     single_album = bool(params.get("single_album"))
     if match is not None:
-        album, mapped = _apply_album(request_id, lib, match, pause, source, hints)
+        album, mapped, foreign = _apply_album(request_id, lib, match, pause, source, hints)
         adopted = (
             _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause, hints)
             if leftovers
             else []
         )
-        _fetch_album_cover(
-            album, mapped + adopted, match.info.album_id, match.info.releasegroup_id
-        )
+        artpath = enrich._decode(album.artpath) if album.artpath else None
+        if foreign and artpath and os.path.exists(artpath):
+            # The record already wears a cover — possibly the user's. The new
+            # arrivals borrow it; nothing is fetched over it.
+            for item in mapped + adopted:
+                _embed_album_cover(album, item)
+        else:
+            _fetch_album_cover(
+                album, mapped + adopted, match.info.album_id, match.info.releasegroup_id
+            )
         rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
         if rest:
             protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")

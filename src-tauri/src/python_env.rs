@@ -687,10 +687,15 @@ fn yaml_scalar(path: &Path) -> String {
 /// the `00 Title.mp3` a bare `$track $title` produced.
 ///
 /// Everything an import brings is the user's own music, so all of it files
-/// under the `Library/` zone — see `APP_PATHS` for what the zones are.
+/// under the `Library/` zone — see `APP_PATHS` for what the zones are (the
+/// singleton template is shared: an import never carries the provisional
+/// flag, so it lands in `Library/Singles/` by the same rule). `%ifdef`, not
+/// `%if`: a missing flexible attribute renders as the literal `$symbol`,
+/// which `%if` reads as true — definedness is the actual boundary, and the
+/// flag is deleted outright when a real match lands.
 const IMPORT_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
-  singleton: 'Library/Singles/%if{$artist,$artist,Unknown Artist}/$title'
+  singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
   comp: 'Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
 "#;
 
@@ -701,17 +706,18 @@ const IMPORT_PATHS: &str = r#"paths:
 /// - `Library/` — the verified shelves: beets' stock templates plus the blank
 ///   guards the import flavour carries, `%aunique{}` still keeping two
 ///   genuinely coexisting same-named records apart.
-/// - `Unidentified/` — the guessed zone. The only items with no album row are
-///   the ones nothing could identify (channel-name artist, video-title title,
-///   flagged provisional), and they must not sit on the shelves as if they
-///   were verified. They used to stand up blank album rows whose folders
-///   %aunique could only tell apart by row id (`LIVinglife/[86]/…`).
+/// - `Unidentified/` — the guessed zone. What defines "guessed" is the
+///   `sonarche_provisional` flag itself, not the absence of an album row: a
+///   library import in "tracks" mode also produces rowless singletons, and
+///   those are the user's own verified music (`Library/Singles/`). Guessed
+///   items used to stand up blank album rows whose folders %aunique could
+///   only tell apart by row id (`LIVinglife/[86]/…`).
 ///
 /// The one-time re-file of an existing library onto these templates is the
 /// relayout pass in `remux.rs`.
 const APP_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
-  singleton: 'Unidentified/%if{$artist,$artist,Unknown Artist}/$title'
+  singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
   comp: 'Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
 "#;
 
@@ -1068,10 +1074,18 @@ mod tests {
         assert!(app.contains(APP_PATHS), "{app}");
         assert!(app.contains("%aunique{}"), "{app}");
         assert!(app.contains("default: 'Library/"), "{app}");
-        assert!(app.contains("singleton: 'Unidentified/"), "{app}");
-        // Imports are the user's own music: everything they bring is Library/.
+        // The zone boundary is the provisional flag, not "has no album row":
+        // an imported single is rowless too, and it is the user's own music.
+        assert!(
+            app.contains("singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/"),
+            "{app}"
+        );
         let import = beets_config_yaml(&paths(), Flavour::Import);
-        assert!(import.contains("singleton: 'Library/Singles/"), "{import}");
+        assert!(
+            import
+                .contains("singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/"),
+            "{import}"
+        );
     }
 
     /// The filename/year repairs are for someone's own rips. On the download

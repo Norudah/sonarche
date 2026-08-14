@@ -245,7 +245,29 @@ def find_named_row(lib, albumartist: str | None, album_title: str | None):
     ]
     if not rows:
         return None
+    if len(rows) == 1:  # the healthy case pays no per-row item count
+        return rows[0]
     return max(rows, key=lambda row: (len(list(row.items())), -row.id))
+
+
+def drop_emptied_row(lib, row) -> None:
+    """Remove an album row its last item just left — art and husk included.
+
+    beets prunes a vacated directory only when nothing is left in it, and the
+    row's own cover.jpg usually is: `remove(delete=True, with_items=False)`
+    deletes exactly that one file, and the sweep after lets the folder go.
+    Same contract as move_tracks' emptied-source removal, shared so no caller
+    re-learns it by leaking husks."""
+    from beets import util
+
+    art_dir = os.path.dirname(_decode(row.artpath)) if row.artpath else None
+    row.remove(delete=True, with_items=False)
+    if art_dir and os.path.isdir(art_dir):
+        covers.remove_legacy_archives(art_dir)
+        try:
+            util.prune_dirs(art_dir, lib.directory)
+        except OSError as exc:
+            protocol.log(f"enrich: husk prune failed: {exc}")
 
 
 def _album_row_for(lib, item):
@@ -279,7 +301,7 @@ def _album_row_for(lib, item):
     else:
         target = lib.add_album([item])
     if album is not None and not list(album.items()):
-        album.remove(delete=False, with_items=False)
+        drop_emptied_row(lib, album)
     return target
 
 
@@ -309,7 +331,11 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
     #   2. beets' duplicate check keys on albumartist+album; two blank rows look
     #      like duplicates, making it skip every later untagged import.
     album = _album_row_for(lib, item)
-    if sync_album:
+    # A row of another release reused by name keeps its own words: the item
+    # joining "Thriller" from a sibling edition must not rewrite the record's
+    # year, ids or artwork source. Fresh and same-release rows sync as before.
+    foreign = bool(album.mb_albumid) and str(album.mb_albumid) != str(item.mb_albumid or "")
+    if sync_album and not foreign:
         for key in library.Album.item_keys:
             album[key] = item[key]
         album.store()
@@ -323,7 +349,8 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
 
 def _file_as_singleton(lib, item) -> None:
     """File a guess that no record claims outside the shelves: no album row,
-    so beets' `singleton` path (the guessed zone, `À identifier/`) applies.
+    so beets' `singleton` path applies — which the provisional flag routes to
+    the `Unidentified/` zone.
 
     This path used to force an album row instead, and with a blank title the
     row's folder had no name — %aunique could only tell the blanks apart by
@@ -338,19 +365,23 @@ def _file_as_singleton(lib, item) -> None:
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"enrich: tag write failed: {exc}")
     if old_row is not None and not list(old_row.items()):
-        old_row.remove(delete=False, with_items=False)
+        drop_emptied_row(lib, old_row)
     try:
         item.move()
     except Exception as exc:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def apply_provisional(lib, item, params: dict, album=None) -> bool:
+def apply_provisional(lib, item, params: dict, album=None, file: bool = True) -> bool:
     """Nothing identified this file: fill it from the download's own hints (and
     from `album`, when its siblings matched a release) and flag it as a guess.
     With an album behind it, it files next to the siblings that vouch for it;
     with nothing behind it, it files in the guessed zone rather than posing on
     the shelves as a verified record.
+
+    `file=False` writes the guess without moving anything: the forced-album
+    flow re-files every item onto the forced record right after, and a real
+    move here would bounce the file through the guessed zone on the way.
 
     Returns whether anything was written."""
     fields = provisional.guess_fields(
@@ -362,6 +393,13 @@ def apply_provisional(lib, item, params: dict, album=None) -> bool:
         protocol.log(f"enrich: item {item.id} unidentified and no hint to guess from")
         return False
     protocol.log(f"enrich: item {item.id} provisionally tagged from {sorted(fields)}")
+    if not file:
+        item.store()
+        try:
+            item.write()
+        except Exception as exc:  # DB is authoritative; file tags are best-effort
+            protocol.log(f"enrich: tag write failed: {exc}")
+        return True
     if album is not None:
         item.album_id = album.id
         store_and_file(lib, item, sync_album=False)
@@ -629,8 +667,15 @@ def enrich_one(
             same_release = bool(previous_release) and previous_release == str(
                 album_info.album_id or ""
             )
-            if same_release and album is not None and album.artpath:
-                protocol.log("enrich: release unchanged and cover present, keeping it")
+            # A named row of another edition wears its own cover — possibly
+            # the user's — and a single joining it must not stomp that either.
+            foreign_row = (
+                album is not None
+                and bool(album.mb_albumid)
+                and str(album.mb_albumid) != str(album_info.album_id or "")
+            )
+            if (same_release or foreign_row) and album is not None and album.artpath:
+                protocol.log("enrich: cover already on the record, keeping it")
             else:
                 try:
                     _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
