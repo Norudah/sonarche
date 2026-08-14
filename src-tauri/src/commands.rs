@@ -988,10 +988,9 @@ pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Valu
 /// what "reframe this one" needs, where every other road into the modal brings
 /// its own file.
 ///
-/// Not simply the display cover: the two-file convention keeps the full-size
-/// image beside it as `cover-hq.*`, and cutting a tighter square out of the
-/// 500px rendition would archive that rendition as the new original. The
-/// archive is the source whenever there is one, the display cover otherwise.
+/// The display cover *is* the source since the `cover-hq.*` archive went:
+/// recutting a 500px rendition is honest about what the library keeps, and
+/// the modal's size line tells the user what they are cutting from.
 ///
 /// `art_path` is beets' own artpath, which the library listing already handed
 /// the front. It is checked back to the library all the same — an IPC argument
@@ -1004,23 +1003,9 @@ pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<
     let music_dir = tokio::fs::canonicalize(paths.music_dir())
         .await
         .unwrap_or_else(|_| paths.music_dir());
-    let art = checked_cover_source(&art_path).await?;
-    if !art.starts_with(&music_dir) {
+    let source = checked_cover_source(&art_path).await?;
+    if !source.starts_with(&music_dir) {
         return Err(AppError::InvalidInput("cover outside the library".into()));
-    }
-
-    let mut source = art.clone();
-    if let Some(dir) = art.parent() {
-        for extension in COVER_SOURCE_EXTENSIONS {
-            let archive = dir.join(format!("cover-hq.{extension}"));
-            if tokio::fs::metadata(&archive)
-                .await
-                .is_ok_and(|m| m.is_file())
-            {
-                source = archive;
-                break;
-            }
-        }
     }
 
     let bytes = tokio::fs::metadata(&source).await?.len();

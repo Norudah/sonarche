@@ -670,14 +670,10 @@ def _fetch_album_cover(
         protocol.log(f"enrich_album: fetching cover for release {release_id}")
         cover = enrich.download_cover(release_id, release_group_id)
         if cover is not None:
-            hq, thumb = cover
-            enrich.set_album_art(album, *thumb)
-            enrich.save_hq_cover(album, *hq)
+            enrich.set_album_art(album, *cover)
             for item in items:
-                enrich.embed_cover(item, *thumb)
-            protocol.log(
-                f"enrich_album: cover stored (hq on disk, 500px embedded in {len(items)} file(s))"
-            )
+                enrich.embed_cover(item, *cover)
+            protocol.log(f"enrich_album: cover stored (500px embedded in {len(items)} file(s))")
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"enrich_album: cover fetch failed: {exc}")
 
@@ -693,7 +689,8 @@ def _build_reports(lib, items) -> list[dict]:
 def _adopt_art(keep, dying) -> None:
     """Move a dying row's cover files into the kept row's directory when the
     kept row has none — otherwise the files are stale copies; delete them so
-    the emptied folder can be pruned instead of surviving on cover.jpg alone."""
+    the emptied folder can be pruned instead of surviving on cover.jpg alone.
+    Legacy `cover-hq.*` archives ride along so no husk survives on one."""
     import shutil
 
     art = enrich._decode(dying.artpath) if dying.artpath else None
@@ -776,9 +773,26 @@ def _consolidate_album_rows(lib, items) -> list:
                 item.move()
             except Exception as exc:
                 protocol.log(f"enrich_album: move failed: {exc}")
-        covers.follow_hq_cover(lib, keep, art_dir_before, enrich._decode)
+        _prune_vacated_art_dir(lib, keep, art_dir_before)
         albums.append(keep)
     return albums
+
+
+def _prune_vacated_art_dir(lib, album, old_dir: str | None) -> None:
+    """When the merge renamed the album folder, sweep what beets left behind —
+    legacy `cover-hq.*` archives from <= 2.x are the one thing that can still
+    hold the husk open — then drop the folder if that emptied it."""
+    fresh = lib.get_album(album.id) if album is not None else None
+    art = enrich._decode(fresh.artpath) if fresh is not None and fresh.artpath else None
+    new_dir = os.path.dirname(art) if art else None
+    if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
+        return
+    covers.remove_legacy_archives(old_dir)
+    try:
+        if not os.listdir(old_dir):
+            os.rmdir(old_dir)
+    except OSError:
+        pass
 
 
 def _enrich_per_track(

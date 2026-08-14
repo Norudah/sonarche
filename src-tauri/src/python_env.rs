@@ -718,9 +718,9 @@ import:
   # `skip` (the quiet default) silently drops every album-batch track after
   # the first one; real re-download duplicates never collide anyway.
   duplicate_action: keep
-{incremental}{statefile}# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
-# cover.jpg); declaring it clutter lets beets prune a folder that only has
-# it left after an album is moved or merged away.
+{incremental}{statefile}# cover-hq.* is the archive Sonarche <= 2.x kept beside beets' cover.jpg;
+# nothing writes it anymore, but declaring the leftovers clutter lets beets
+# prune a folder where one still lingers after a move or merge.
 clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
 {path_format}{pluginpath}plugins: musicbrainz fetchart embedart lastgenre{repair_plugin}
 musicbrainz:

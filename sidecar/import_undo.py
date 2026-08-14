@@ -14,7 +14,8 @@ run created, months and edits later.
 Removal goes through beets' own API rather than SQL, which is what makes the
 rest fall into place: the file is deleted, the album row goes when its last
 track does, its cover goes with it, and the emptied directories are pruned
-(`cover-hq.*` is declared clutter, so a folder holding only one still prunes).
+(legacy `cover-hq.*` from <= 2.x is declared clutter, so a folder still
+holding one prunes all the same).
 
 Two things this deliberately does *not* do:
 

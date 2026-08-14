@@ -390,14 +390,14 @@
       "reframeHint": "Déplace le cadre, ou zoome, pour choisir le carré qui restera.",
       "notSquare": "Le cadre déborde de l'image : la pochette ne serait pas carrée. Rezoome jusqu'à ce qu'il tienne dedans.",
       "sourceLine": "Image choisie :",
-      "archiveLine": "Archivée en carré {{side}}×{{side}} px (cover-hq, une seule fois).",
+      "squareLine": "Recadrée en carré {{side}}×{{side}} px, affichée en 500 px.",
       "currentEmbedded_one": "Incrustée dans {{count}} morceau — {{total}} dans le fichier.",
       "currentEmbedded_other": "Incrustée dans {{count}} morceaux — ≈ {{total}} sur l'album.",
       "nextEmbedded_one": "Sera incrustée à ≈ {{each}} dans {{count}} morceau.",
       "nextEmbedded_other": "Sera incrustée à ≈ {{each}} × {{count}} morceaux — ≈ {{total}} sur l'album.",
       "nextEmbeddedUnknown_one": "Sera incrustée en 500 px dans {{count}} morceau.",
       "nextEmbeddedUnknown_other": "Sera incrustée en 500 px dans {{count}} morceaux.",
-      "candidateNote": "Depuis la Cover Art Archive : l'image pleine taille sera téléchargée, archivée (cover-hq) et incrustée en 500 px.",
+      "candidateNote": "Depuis la Cover Art Archive : l'image sera téléchargée puis incrustée en 500 px.",
       "noCurrent": "Aucune pochette pour l'instant.",
       "mb": "Mo",
       "kb": "Ko",
@@ -409,8 +409,7 @@
       "help": {
         "title": "Ce que le remplacement écrit",
         "embed": "Un fichier audio transporte sa pochette à l'intérieur du fichier lui-même — c'est ainsi que les autres lecteurs et appareils l'affichent. Sonarche incruste l'image dans chaque morceau de l'album.",
-        "weight": "La copie incrustée est plafonnée à 500×500 px, et c'est tout l'intérêt : un scan de 3000×3000 incrusté tel quel ajouterait plusieurs Mo à chaque morceau, là où la version 500 px ajoute quelques dizaines de Ko.",
-        "archive": "Ton image complète n'est pas perdue : elle est archivée une fois à côté de l'album (cover-hq) et reste disponible le jour où une vue plein format en aura besoin."
+        "weight": "La copie incrustée est plafonnée à 500×500 px, et c'est tout l'intérêt : un scan de 3000×3000 incrusté tel quel ajouterait plusieurs Mo à chaque morceau, là où la version 500 px ajoute quelques dizaines de Ko."
       },
       "candidates": {
         "heading": "Propositions en ligne",

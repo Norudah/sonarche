@@ -2,10 +2,10 @@
 
 The one write path where the picture does not come from a service: the user
 already has the album's real artwork and wants the library to carry it. The
-result follows the two-file convention to the letter — the chosen image
-(cropped square) becomes `cover-hq.*`, a 500 px rendition becomes beets'
-`artpath`, and the rendition is embedded into the album's m4a files, exactly
-as a downloaded cover would have been.
+chosen image (cropped square) becomes a 500 px rendition written as beets'
+`artpath` and embedded into the album's m4a files, exactly as a downloaded
+cover would have been. The user's own file is read, never moved — the library
+keeps display-sized covers only.
 
 Covers are square in every frame the interface draws, so a non-square source
 is cropped rather than letterboxed. The crop rectangle comes from the front
@@ -32,9 +32,9 @@ import covers
 import net
 import protocol
 
-# The archive is a user file we copy, not a download we can retry: refuse
-# anything that would balloon memory when decoded. 12k x 12k is far beyond any
-# real cover and still decodes in well under a second.
+# The source is a user file, not a download we can retry: refuse anything
+# that would balloon memory when decoded. 12k x 12k is far beyond any real
+# cover and still decodes in well under a second.
 MAX_SOURCE_PX = 12_000
 
 ART_SOURCE = "Local file"
@@ -49,7 +49,7 @@ CAA_ROOT = "https://coverartarchive.org"
 # webview's CSP allows no remote images).
 MAX_CANDIDATES = 8
 
-# A full-size CAA upload is the archive we keep; bound what one click may pull.
+# Bound what one click may pull — a CAA upload can be a full-resolution scan.
 MAX_CANDIDATE_BYTES = 60 * 1024 * 1024
 
 
@@ -82,68 +82,44 @@ def _encode(image: Image.Image, is_png: bool) -> bytes:
     else:
         if image.mode not in ("RGB", "L"):
             image = image.convert("RGB")
-        # High quality on purpose: this encode writes the *archive* when the
-        # source needed cropping, and an archive is kept, not re-made.
+        # High quality on purpose: this is the one copy the library keeps, and
+        # it is also what gets embedded into every file of the album.
         image.save(buffer, format="JPEG", quality=92)
     return buffer.getvalue()
 
 
-def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bytes, bool, int]:
-    """(hq_bytes, thumb_bytes, is_png, side) from the user's file.
-
-    The archive keeps the source's own bytes whenever nothing had to change —
-    already square, no EXIF rotation, already JPEG or PNG. Re-encoding a file
-    that needed no edit would quietly degrade the one copy meant to be kept.
-    """
+def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bool, int]:
+    """(thumb_bytes, is_png, side) from the user's file — the square the crop
+    chose, scaled to the display ceiling. `side` is the square's size in source
+    pixels, which is what the confirmation line quotes back to the user."""
     from PIL import Image, ImageOps
 
     with Image.open(source_path) as opened:
         source_format = opened.format
-        # exif_transpose always hands back a copy, so "was anything rotated"
-        # is read off the tag itself, not off object identity.
-        upright = opened.getexif().get(0x0112, 1) in (None, 1)
         oriented = ImageOps.exif_transpose(opened)
         width, height = oriented.size
         if max(width, height) > MAX_SOURCE_PX:
             raise RuntimeError(f"image too large: {width}x{height} (max {MAX_SOURCE_PX} px per side)")
 
         left, top, size = square_crop_box(width, height, crop)
-        untouched = (left, top, size) == (0, 0, width) and upright
         square = oriented.crop((left, top, left + size, top + size))
 
         is_png = source_format == "PNG"
-        if untouched and source_format in ("JPEG", "PNG"):
-            with open(source_path, "rb") as f:
-                hq_bytes = f.read()
-        else:
-            hq_bytes = _encode(square, is_png)
-
         thumb = square.copy()
         thumb.thumbnail((covers.DISPLAY_MAX_PX, covers.DISPLAY_MAX_PX))
         thumb_bytes = _encode(thumb, is_png)
 
-    return hq_bytes, thumb_bytes, is_png, size
+    return thumb_bytes, is_png, size
 
 
 def _clear_stale_art(album, old_art: str | None, decode) -> None:
-    """Remove files the replacement obsoletes: every cover-hq.* (the archive is
-    being deliberately replaced — the import sweep's "never overwrite" rule
-    protects against *accidents*, and this is the opposite of one), and the old
-    artpath when a format change gave the new one a different name."""
+    """Remove files the replacement obsoletes: any legacy cover-hq.* archive a
+    <= 2.x install left beside the album, and the old artpath when a format
+    change gave the new one a different name."""
     new_art = decode(album.artpath) if album.artpath else None
     if not new_art:
         return
-    art_dir = os.path.dirname(new_art)
-    try:
-        names = os.listdir(art_dir)
-    except OSError:
-        names = []
-    for name in names:
-        if name.startswith(covers.HQ_PREFIX):
-            try:
-                os.remove(os.path.join(art_dir, name))
-            except OSError as exc:
-                protocol.log(f"cover_set: could not remove stale archive {name}: {exc}")
+    covers.remove_legacy_archives(os.path.dirname(new_art))
     if old_art and old_art != new_art and os.path.exists(old_art):
         try:
             os.remove(old_art)
@@ -241,7 +217,8 @@ def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
 
 
 def _download_candidate(url: str) -> bytes:
-    """The chosen upload, full size — it becomes the archive."""
+    """The chosen upload, full size — cropped and scaled down before anything
+    keeps it."""
     import requests
 
     if not url.startswith(f"{CAA_ROOT}/"):
@@ -284,21 +261,18 @@ def handle(_request_id: str, params: dict) -> dict:
             tmp.write(data)
             tmp_path = tmp.name
         try:
-            hq_bytes, thumb_bytes, is_png, side = prepare_cover(tmp_path, None)
+            thumb_bytes, is_png, side = prepare_cover(tmp_path, None)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
         art_source = CAA_ART_SOURCE
     else:
-        hq_bytes, thumb_bytes, is_png, side = prepare_cover(source_path, params.get("crop"))
+        thumb_bytes, is_png, side = prepare_cover(source_path, params.get("crop"))
         art_source = ART_SOURCE
 
     old_art = decode(album.artpath) if album.artpath else None
-    # The thumb becomes beets' artpath; the archive is only written after, once
-    # artpath says which directory the album lives in.
     enrich.set_album_art(album, thumb_bytes, is_png, source=art_source)
     _clear_stale_art(album, old_art, decode)
-    enrich.save_hq_cover(album, hq_bytes, is_png)
 
     embedded = 0
     for item in album.items():
@@ -311,5 +285,5 @@ def handle(_request_id: str, params: dict) -> dict:
             item.store()
 
     art_path = decode(album.artpath) if album.artpath else None
-    protocol.log(f"cover_set: album {album.id} now carries {art_path} ({side}x{side} archived)")
+    protocol.log(f"cover_set: album {album.id} now carries {art_path} (cut at {side}x{side})")
     return {"art_path": art_path, "side": side, "embedded": embedded}

@@ -26,6 +26,7 @@ def _handlers():
     import acoustid_key
     import album_kind
     import artist_image
+    import cover_cleanup
     import cover_set
     import download
     import enrich
@@ -57,6 +58,7 @@ def _handlers():
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remux": remux.handle,
+        "cover_cleanup": cover_cleanup.handle,
         "library_remove": library.remove,
         "library_update": library.update,
         "library_move_tracks": move_tracks.handle,

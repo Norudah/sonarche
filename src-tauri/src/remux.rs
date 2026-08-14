@@ -27,6 +27,9 @@ use crate::sidecar::SidecarState;
 /// library on a slow disk deserves better than a timeout mid-repair.
 const REMUX_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
+/// One `listdir` per album folder — minutes would already be generous.
+const CLEANUP_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+
 #[derive(Default)]
 pub struct RemuxState {
     running: Mutex<()>,
@@ -68,7 +71,41 @@ impl RemuxState {
                 let _ = tokio::fs::write(&watermark, settled.to_string()).await;
             }
         }
+
+        self.cleanup_legacy_archives(app, &paths).await;
         Ok(report)
+    }
+
+    /// The one-time sweep of the `cover-hq.*` archives 2.x kept beside every
+    /// cover. Rides the same launch slot as the remux pass because it is the
+    /// same kind of debt — files older versions left that no current write
+    /// path maintains. Failure is silent and unmarked: the next launch simply
+    /// tries again.
+    async fn cleanup_legacy_archives(&self, app: &AppHandle, paths: &AppPaths) {
+        let marker = match app.path().app_data_dir() {
+            Ok(dir) => dir.join("cover-hq-cleaned"),
+            Err(_) => return,
+        };
+        if tokio::fs::try_exists(&marker).await.unwrap_or(false) {
+            return;
+        }
+
+        let sidecar = app.state::<SidecarState>();
+        let done = sidecar
+            .request(
+                app,
+                "cover_cleanup",
+                json!({
+                    "beets_db": paths.beets_db.to_string_lossy(),
+                    "library_dir": paths.music_dir().to_string_lossy(),
+                }),
+                CLEANUP_TIMEOUT,
+            )
+            .await
+            .is_ok();
+        if done {
+            let _ = tokio::fs::write(&marker, "done").await;
+        }
     }
 }
 

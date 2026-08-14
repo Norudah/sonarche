@@ -11,6 +11,7 @@ import os
 import subprocess
 import tempfile
 
+import covers
 import metadata
 import protocol
 import provenance
@@ -329,47 +330,35 @@ def _apply(lib, item, album_info, track_info) -> None:
     store_and_file(lib, item)
 
 
-def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) front cover from one Cover Art Archive entity
-    (`release/<id>` or `release-group/<id>`), each as (data, is_png), or None
-    when that entity carries no front art. hq is CAA's original upload; thumb is
-    its 500px rendition (or the original when CAA has no rendition)."""
+def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
+    """The 500px front cover from one Cover Art Archive entity (`release/<id>`
+    or `release-group/<id>`) as (data, is_png), or None when that entity
+    carries no front art. CAA's own rendition first — the full upload is only
+    fetched when no rendition exists, and `set_album_art` shrinks it locally;
+    since the archive convention went, nothing keeps the original anyway."""
     import requests
 
     import cover_set
     import net
 
-    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30, stream=True)
-    if hq_resp.status_code != 200:
-        return None
-    try:
-        hq_data = net.read_bounded(hq_resp, cover_set.MAX_CANDIDATE_BYTES)
-    except RuntimeError:
-        # An outsized upload degrades to "no cover", never to a failed enrich.
-        protocol.log(f"enrich: cover on {entity_path} over the size cap, skipped")
-        return None
-    if not hq_data:
-        return None
-    hq = (hq_data, hq_data[:4] == b"\x89PNG")
-
-    thumb_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front-500", timeout=30, stream=True)
-    thumb = hq
-    if thumb_resp.status_code == 200:
+    for variant in ("front-500", "front"):
+        resp = requests.get(f"https://coverartarchive.org/{entity_path}/{variant}", timeout=30, stream=True)
+        if resp.status_code != 200:
+            continue
         try:
-            thumb_data = net.read_bounded(thumb_resp, cover_set.MAX_CANDIDATE_BYTES)
-            if thumb_data:
-                thumb = (thumb_data, thumb_data[:4] == b"\x89PNG")
+            data = net.read_bounded(resp, cover_set.MAX_CANDIDATE_BYTES)
         except RuntimeError:
-            protocol.log(f"enrich: 500px rendition on {entity_path} over the size cap, kept the original")
-    return hq, thumb
+            # An outsized upload degrades to "no cover", never to a failed enrich.
+            protocol.log(f"enrich: cover on {entity_path}/{variant} over the size cap, skipped")
+            continue
+        if data:
+            return data, data[:4] == b"\x89PNG"
+    return None
 
 
-def download_cover(
-    release_id: str, release_group_id: str | None = None
-) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) cover from the Cover Art Archive, or None. hq is CAA's
-    original upload, kept on disk for Sonarche's own display; thumb is the 500px
-    rendition — used as beets' artpath (cover.jpg) and embedded into file tags,
+def download_cover(release_id: str, release_group_id: str | None = None) -> tuple[bytes, bool] | None:
+    """The display cover from the Cover Art Archive, or None — the 500px
+    rendition used as beets' artpath (cover.jpg) and embedded into file tags,
     so the beets copy and the audio files stay light.
 
     Tries the specific release first, then the release-group's designated cover.
@@ -403,18 +392,11 @@ def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Arc
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
-
-def save_hq_cover(album, data: bytes, is_png: bool) -> None:
-    """Write the HQ cover next to beets' artpath as cover-hq.*, for Sonarche's
-    own display. Kept outside beets' management — call after set_album_art so
-    album.artpath already points at the album's directory."""
-    if not album.artpath:
-        return
-    art_dir = os.path.dirname(_decode(album.artpath))
-    ext = "png" if is_png else "jpg"
-    with open(os.path.join(art_dir, f"cover-hq.{ext}"), "wb") as f:
-        f.write(data)
+    # The ceiling holds whatever arrived: the CAA fallback hands over the full
+    # upload when no 500px rendition exists, and an oversized artpath is the
+    # exact memory bill the rendition rule exists to prevent.
+    if album.artpath:
+        covers.ensure_display_rendition(_decode(album.artpath))
 
 
 def embed_cover(item, data: bytes, is_png: bool) -> None:
@@ -435,10 +417,8 @@ def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> 
     cover = download_cover(release_id, release_group_id)
     if cover is None:
         return
-    hq, thumb = cover
-    set_album_art(album, *thumb)
-    save_hq_cover(album, *hq)
-    embed_cover(item, *thumb)
+    set_album_art(album, *cover)
+    embed_cover(item, *cover)
 
 
 def handle(request_id: str, params: dict) -> dict:

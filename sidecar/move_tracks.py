@@ -22,8 +22,8 @@ own MusicBrainz match with it.
 
 An emptied source row is removed and its folder cleaned by hand: beets prunes a
 vacated directory only when nothing is left in it, and its own `cover.jpg`
-(plus our `cover-hq.*` archive) is still there, so the husk would outlive the
-record it belonged to.
+(plus any legacy `cover-hq.*` archive from <= 2.x) is still there, so the husk
+would outlive the record it belonged to.
 """
 
 import os
@@ -254,9 +254,9 @@ def _remove_emptied_source(lib, source_id: int, target_id: int) -> bool:
     """Drop a source album row its last track just left, and its folder.
 
     beets pruned the vacated directory only if nothing was left in it; the
-    album's own `cover.jpg` and our `cover-hq.*` archive usually are, so both
-    are removed by hand before pruning. A source still holding tracks is left
-    entirely alone — it is still a record.
+    album's own `cover.jpg` (and any legacy `cover-hq.*` archive) usually is,
+    so both are removed by hand before pruning. A source still holding tracks
+    is left entirely alone — it is still a record.
     """
     if source_id == target_id:
         return False
@@ -276,18 +276,14 @@ def _remove_emptied_source(lib, source_id: int, target_id: int) -> bool:
 
 
 def _prune_husk(lib, directory: str | None) -> None:
-    """Remove our `cover-hq.*` leftovers, then let beets prune what is empty."""
+    """Remove legacy `cover-hq.*` leftovers, then let beets prune what is
+    empty."""
     if not directory or not os.path.isdir(directory):
         return
     import covers
     from beets import util
 
-    for name in os.listdir(directory):
-        if name.startswith(covers.HQ_PREFIX):
-            try:
-                os.remove(os.path.join(directory, name))
-            except OSError as exc:
-                protocol.log(f"move_tracks: could not remove {name}: {exc}")
+    covers.remove_legacy_archives(directory)
     util.prune_dirs(directory, lib.directory)
 
 

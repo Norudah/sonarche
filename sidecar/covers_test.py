@@ -7,20 +7,6 @@ from PIL import Image
 import covers
 
 
-class HqNameTest(unittest.TestCase):
-    def test_carries_the_extension_over(self):
-        self.assertEqual(covers.hq_name_for("cover.jpg"), "cover-hq.jpg")
-        self.assertEqual(covers.hq_name_for("cover.png"), "cover-hq.png")
-
-    def test_normalises_case_so_one_name_is_ever_produced(self):
-        self.assertEqual(covers.hq_name_for("cover.JPEG"), "cover-hq.jpeg")
-
-    def test_falls_back_when_there_is_no_extension(self):
-        # Better a wrong-but-consistent name than `cover-hq.` with a bare dot,
-        # which is a hidden file on every system that matters.
-        self.assertEqual(covers.hq_name_for("cover"), "cover-hq.jpg")
-
-
 class NeedsRenditionTest(unittest.TestCase):
     def test_judges_on_the_longest_side(self):
         self.assertTrue(covers.needs_rendition(1400, 200))
@@ -36,8 +22,7 @@ class NeedsRenditionTest(unittest.TestCase):
 
 class RenditionTest(unittest.TestCase):
     """Against real images, because the interesting failures — a resize that
-    silently does nothing, an archive that overwrites the file it archives —
-    only exist on disk."""
+    silently does nothing, a half-written file — only exist on disk."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -47,16 +32,15 @@ class RenditionTest(unittest.TestCase):
         Image.new(mode, (width, height if height is not None else width), "purple").save(path)
         return path
 
-    def test_archives_the_original_and_shrinks_what_the_ui_reads(self):
+    def test_shrinks_what_the_ui_reads_in_place(self):
         art = self._make("cover.jpg", 1400)
 
         self.assertTrue(covers.ensure_display_rendition(art))
 
-        hq = os.path.join(self.dir, "cover-hq.jpg")
-        self.assertTrue(os.path.exists(hq), "the original must survive")
-        self.assertEqual(covers.read_dimensions(hq), (1400, 1400))
         width, height = covers.read_dimensions(art)
         self.assertEqual(max(width, height), covers.DISPLAY_MAX_PX)
+        # No archive convention any more: the folder holds the rendition alone.
+        self.assertEqual(sorted(os.listdir(self.dir)), ["cover.jpg"])
 
     def test_keeps_the_aspect_ratio(self):
         """A squashed cover is worse than a big one: the ceiling is on the
@@ -86,7 +70,6 @@ class RenditionTest(unittest.TestCase):
         self.assertFalse(covers.ensure_display_rendition(art))
 
         self.assertEqual(os.path.getsize(art), before)
-        self.assertFalse(os.path.exists(os.path.join(self.dir, "cover-hq.jpg")))
 
     def test_a_missing_cover_is_not_an_error(self):
         self.assertFalse(covers.ensure_display_rendition(os.path.join(self.dir, "nope.jpg")))
@@ -102,13 +85,10 @@ class RenditionTest(unittest.TestCase):
         self.assertIsNone(covers.read_dimensions(broken))
         self.assertFalse(covers.ensure_display_rendition(broken))
 
-    def test_never_archives_over_an_archive_that_is_already_there(self):
-        """The regression that cost a real cover. An oversized file at artpath
-        means something replaced our rendition since the last pass — beets'
-        fetchart adopting `cover-hq.jpg` as an album's art on a re-import is one
-        way — and copying it over the archive destroys the original we
-        undertook to keep. The rendition is still made; the archive is not
-        touched."""
+    def test_a_legacy_archive_is_not_touched_by_the_rendition(self):
+        """The rendition pass has one job. Legacy `cover-hq.*` files are the
+        cleanup pass's business, and quietly eating one here would make the
+        rendition sweep destructive in a folder it only came to shrink."""
         art = self._make("cover.jpg", 1400)
         hq = self._make("cover-hq.jpg", 3000)
         with open(hq, "rb") as f:
@@ -117,19 +97,8 @@ class RenditionTest(unittest.TestCase):
         self.assertTrue(covers.ensure_display_rendition(art))
 
         with open(hq, "rb") as f:
-            self.assertEqual(f.read(), original, "the archive must survive")
+            self.assertEqual(f.read(), original)
         self.assertEqual(max(covers.read_dimensions(art)), covers.DISPLAY_MAX_PX)
-
-    def test_finds_an_archive_whatever_its_extension(self):
-        """`hq_name_for` derives the archive name from the *current* art, so a
-        png arriving next to a jpg archive would miss it and the folder would
-        end up holding two."""
-        art = self._make("cover.png", 1400)
-        self._make("cover-hq.jpg", 3000)
-
-        self.assertTrue(covers.ensure_display_rendition(art))
-
-        self.assertFalse(os.path.exists(os.path.join(self.dir, "cover-hq.png")))
 
     def test_leaves_no_working_copy_behind(self):
         art = self._make("cover.jpg", 1400)
@@ -138,6 +107,34 @@ class RenditionTest(unittest.TestCase):
 
         leftovers = [n for n in os.listdir(self.dir) if n.endswith(".sonarche-original")]
         self.assertEqual(leftovers, [])
+
+
+class RemoveLegacyArchivesTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def _touch(self, name: str) -> str:
+        path = os.path.join(self.dir, name)
+        with open(path, "wb") as f:
+            f.write(b"x")
+        return path
+
+    def test_removes_every_archive_and_nothing_else(self):
+        self._touch("cover-hq.jpg")
+        self._touch("cover-hq.png")
+        kept = self._touch("cover.jpg")
+        audio = self._touch("01 Track.m4a")
+
+        self.assertEqual(covers.remove_legacy_archives(self.dir), 2)
+
+        self.assertEqual(sorted(os.listdir(self.dir)), sorted([os.path.basename(kept), os.path.basename(audio)]))
+
+    def test_a_folder_without_archives_is_a_quiet_zero(self):
+        self._touch("cover.jpg")
+        self.assertEqual(covers.remove_legacy_archives(self.dir), 0)
+
+    def test_a_missing_folder_is_a_quiet_zero(self):
+        self.assertEqual(covers.remove_legacy_archives(os.path.join(self.dir, "gone")), 0)
 
 
 if __name__ == "__main__":

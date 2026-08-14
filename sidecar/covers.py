@@ -1,16 +1,17 @@
-"""The two cover files of an album, and keeping them together.
+"""An album's cover file, kept small enough to draw.
 
-An album carries `cover.jpg` — beets' own `artpath`, the rendition the
-interface draws — and, beside it, `cover-hq.*`: the full-size original,
-archived out of beets' sight for the day a full-size view exists. The second
-one is ours, so beets never moves it, never prunes it and never knows it is
-there. Every operation that relocates an album has to bring it along by hand.
+An album carries exactly one picture: `cover.jpg` — beets' own `artpath`, the
+display-sized rendition the interface reads and the files embed. Up to 2.x a
+full-size original was archived beside it as `cover-hq.*`; that convention is
+gone (nothing ever displayed it, and it confused more than it kept), but its
+leftovers still exist in libraries created by those versions, so the prefix
+below survives as the mark every cleanup path recognises.
 
-Why two files at all: an image on disk is compressed, but drawing it means
-decompressing it into pixels, and that costs width x height x 4 bytes however
-small the file is. A 5000x5000 cover is 100 MB of memory to paint a 40 px
-thumbnail, against 1 MB for a 500 px one. The rendition exists so nothing on
-screen ever pays that.
+Why a size ceiling at all: an image on disk is compressed, but drawing it
+means decompressing it into pixels, and that costs width x height x 4 bytes
+however small the file is. A 5000x5000 cover is 100 MB of memory to paint a
+40 px thumbnail, against 1 MB for a 500 px one. The rendition exists so
+nothing on screen ever pays that.
 """
 
 import os
@@ -18,6 +19,9 @@ import shutil
 
 import protocol
 
+# The archive prefix Sonarche <= 2.x wrote. Only referenced to *remove* the
+# files it left behind — at the one-shot launch cleanup, and wherever a folder
+# holding one must still empty out.
 HQ_PREFIX = "cover-hq."
 
 # The longest side a cover may have once the interface reads it. Matches the
@@ -29,17 +33,6 @@ DISPLAY_MAX_PX = 500
 # was the sidecar's last tie to one OS. Reading the size is also a header read
 # now instead of a process spawn, which matters — the import sweep asks the
 # question once per album and answers "already small enough" almost every time.
-
-
-def hq_name_for(art_name: str) -> str:
-    """Where the full-size original goes, given beets' own art filename.
-
-    The extension is carried over rather than forced to `.jpg`: the archive is
-    a copy of the file the user had, and re-labelling a PNG as JPEG would make
-    every later reader guess wrong.
-    """
-    _, ext = os.path.splitext(art_name)
-    return f"{HQ_PREFIX}{ext.lstrip('.').lower() or 'jpg'}"
 
 
 def needs_rendition(width: int, height: int) -> bool:
@@ -91,43 +84,17 @@ def _write_rendition(source: str, dest: str) -> None:
         image.save(dest, format=fmt)
 
 
-def existing_hq(art_dir: str) -> str | None:
-    """The archive already sitting beside an album's art, whatever its
-    extension. Matched on the prefix rather than rebuilt from the current
-    art's extension: a `cover.png` arriving next to a `cover-hq.jpg` left by an
-    earlier original must find it, or the folder ends up with two archives and
-    no way to say which is the real one.
-    """
-    try:
-        names = sorted(os.listdir(art_dir))
-    except OSError:
-        return None
-    for name in names:
-        if name.startswith(HQ_PREFIX):
-            return os.path.join(art_dir, name)
-    return None
-
-
 def ensure_display_rendition(art_path: str) -> bool:
     """Make sure the file the interface reads is small enough to draw.
 
-    An oversized cover is archived as `cover-hq.*` and replaced, at its own
-    path, by a rendition — so beets' `artpath` stays valid and nothing else has
-    to learn about the swap. Returns whether a rendition was made.
+    An oversized cover is replaced, at its own path, by a rendition — so
+    beets' `artpath` stays valid and nothing else has to learn about the swap.
+    Returns whether a rendition was made.
 
-    Never destructive: the original survives under the archive name, which is
-    the whole point of keeping two files rather than shrinking one.
-
-    An archive that is *already* there is never overwritten, and that is a
-    correctness rule rather than an optimisation. Reaching this line at all
-    means the file at `artpath` is oversized — which our own rendition never is
-    — so something replaced it since we last passed. beets is the likeliest
-    culprit: `cover-hq` contains "cover", so it matches beets' own
-    `cover_names`, and fetchart can adopt the archive itself as an album's art
-    when a Sonarche folder is imported back in. Copying that over the archive
-    would destroy the one file we undertook to keep. The rendition is still
-    made: an oversized `artpath` costs width x height x 4 bytes on every
-    thumbnail either way.
+    Shrinking is deliberate, not a loss: the library's copy exists to be
+    displayed and embedded, both capped at DISPLAY_MAX_PX, and the user's own
+    source file (an imported folder, a picked image) is never the file at
+    `artpath` — imports copy.
     """
     if not art_path or not os.path.exists(art_path):
         return False
@@ -136,11 +103,8 @@ def ensure_display_rendition(art_path: str) -> bool:
     if size is None or not needs_rendition(*size):
         return False
 
-    art_dir = os.path.dirname(art_path)
-    archive = existing_hq(art_dir)
-    # The original is copied aside first either way, so a resize that dies
-    # half-way has something to put back — and so the decision about the
-    # archive is taken after the risky part, not before it.
+    # Through a scratch copy so a resize that dies half-way leaves the
+    # original in place rather than a truncated cover.
     scratch = f"{art_path}.sonarche-original"
     try:
         shutil.copyfile(art_path, scratch)
@@ -156,17 +120,7 @@ def ensure_display_rendition(art_path: str) -> bool:
         _discard(scratch)
         return False
 
-    if archive is not None:
-        protocol.log(f"covers: {archive} kept; the oversized {art_path} was not archived over it")
-        _discard(scratch)
-    else:
-        hq_path = os.path.join(art_dir, hq_name_for(os.path.basename(art_path)))
-        try:
-            os.replace(scratch, hq_path)
-        except OSError as exc:
-            protocol.log(f"covers: could not archive {art_path}: {exc}")
-            _discard(scratch)
-
+    _discard(scratch)
     return True
 
 
@@ -180,28 +134,20 @@ def _discard(path: str) -> None:
         pass
 
 
-def follow_hq_cover(lib, album, old_dir: str | None, decode) -> None:
-    """When a move renamed the album folder, beets relocated its own artpath
-    (`item.move` gives the album a chance to move its art) — but our
-    out-of-band `cover-hq.*` stayed behind. Bring it along and prune the husk.
-
-    `decode` is the caller's path decoder: beets stores paths as bytes, and the
-    two callers already have the helper.
-    """
-    fresh = lib.get_album(album.id) if album is not None else None
-    art = decode(fresh.artpath) if fresh is not None and fresh.artpath else None
-    new_dir = os.path.dirname(art) if art else None
-    if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
-        return
-
-    for name in os.listdir(old_dir):
+def remove_legacy_archives(art_dir: str) -> int:
+    """Delete the `cover-hq.*` files a <= 2.x install left in one album folder.
+    Returns how many went. Every remover funnels through here so the rule —
+    match on the prefix, log and carry on — stays in one place."""
+    try:
+        names = os.listdir(art_dir)
+    except OSError:
+        return 0
+    removed = 0
+    for name in names:
         if name.startswith(HQ_PREFIX):
             try:
-                shutil.move(os.path.join(old_dir, name), os.path.join(new_dir, name))
+                os.remove(os.path.join(art_dir, name))
+                removed += 1
             except OSError as exc:
-                protocol.log(f"covers: relocation failed: {exc}")
-    try:
-        if not os.listdir(old_dir):
-            os.rmdir(old_dir)
-    except OSError:
-        pass
+                protocol.log(f"covers: could not remove legacy archive {name}: {exc}")
+    return removed

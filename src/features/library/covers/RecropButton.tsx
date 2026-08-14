@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
  * It ends where a pick would: the image lands in the stage on the right as the
  * chosen source, framed whole, and nothing is written until the modal's own
  * confirm. `source` resolves the file — for a cover that means asking the
- * backend for the full-size archive rather than the 500px rendition.
+ * backend to admit the album's own artpath to the asset scope.
  */
 export function RecropButton({
   source,
