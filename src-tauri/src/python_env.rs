@@ -436,15 +436,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         adopt_library_dir(app).await?;
     }
     let deps_ok = if venv_ok {
-        command(&venv_python)
-            .args(["-c", "import yt_dlp, beets, mutagen"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .await
-            .map(|s| s.success())
-            .unwrap_or(false)
+        deps_ok_cached(app, &paths, &venv_python).await
     } else {
         false
     };
@@ -455,6 +447,71 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         deps_ok,
         library_dir: paths.library_root.display().to_string(),
     })
+}
+
+/// The import smoke test, behind a stamp so it does not tax every launch.
+///
+/// `import yt_dlp, beets, mutagen` in a fresh interpreter is the one honest
+/// proof the venv works — and it costs seconds of cold I/O on an old machine,
+/// paid at every launch behind a splash that shows nothing until it answers.
+/// The proof is only re-run when something it depends on changed: the venv's
+/// interpreter (recreated by `venv --clear` on every setup), the resolved
+/// requirements (a new file with every app update), or the app version
+/// itself. A matching stamp answers instantly.
+///
+/// What the stamp cannot see is a hand-gutted `site-packages` under an
+/// untouched interpreter. That failure no longer blocks the launch gate — it
+/// surfaces when the sidecar first speaks, and rebuilding the environment
+/// (which rewrites the stamp's inputs) remains the fix either way.
+async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> bool {
+    let stamp_path = paths.venv_dir.join("deps-ok");
+    let stamp = deps_stamp(app, paths, venv_python).await;
+
+    if let (Some(stamp), Ok(cached)) = (&stamp, tokio::fs::read_to_string(&stamp_path).await) {
+        if cached.trim() == stamp {
+            return true;
+        }
+    }
+
+    let ok = command(venv_python)
+        .args(["-c", "import yt_dlp, beets, mutagen"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if ok {
+        if let Some(stamp) = &stamp {
+            let _ = tokio::fs::write(&stamp_path, stamp).await;
+        }
+    } else {
+        let _ = tokio::fs::remove_file(&stamp_path).await;
+    }
+    ok
+}
+
+/// What the smoke test's answer depends on, as one line. `None` when a file
+/// it needs cannot be stat'ed — no stamp, the test just runs.
+async fn deps_stamp(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> Option<String> {
+    fn token(meta: &std::fs::Metadata) -> Option<String> {
+        let mtime = meta
+            .modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_secs();
+        Some(format!("{mtime}.{}", meta.len()))
+    }
+    let python = tokio::fs::metadata(venv_python).await.ok()?;
+    let requirements = tokio::fs::metadata(&paths.requirements).await.ok()?;
+    Some(format!(
+        "v{} python {} requirements {}",
+        app.package_info().version,
+        token(&python)?,
+        token(&requirements)?,
+    ))
 }
 
 fn emit_log(app: &AppHandle, line: &str) {
