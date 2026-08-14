@@ -1,11 +1,12 @@
 """Regression tests for remux box detection (run: python -m unittest remux_test)."""
 
 import os
+import sqlite3
 import struct
 import tempfile
 import unittest
 
-from remux import _library_paths, is_fragmented, top_level_boxes
+from remux import _checked_through, _library_paths, is_fragmented, top_level_boxes
 
 
 def _box(name: bytes, payload: bytes = b"") -> bytes:
@@ -73,7 +74,42 @@ class LibraryPathsTest(unittest.TestCase):
     def test_a_missing_database_yields_no_targets(self):
         with tempfile.TemporaryDirectory() as tmp:
             missing = os.path.join(tmp, "library.db")
-            self.assertEqual(_library_paths(missing, tmp), [])
+            self.assertEqual(_library_paths(missing, tmp, 0), ([], 0))
+
+    def test_only_items_past_the_watermark_are_scanned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = os.path.join(tmp, "library.db")
+            conn = sqlite3.connect(db)
+            conn.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, path BLOB)")
+            for item_id, name in [(1, "old.m4a"), (2, "new.m4a"), (3, "cover.jpg")]:
+                path = os.path.join(tmp, name)
+                with open(path, "wb") as handle:
+                    handle.write(b"x")
+                conn.execute("INSERT INTO items VALUES (?, ?)", (item_id, path.encode()))
+            conn.commit()
+            conn.close()
+
+            targets, newest = _library_paths(db, tmp, 1)
+            self.assertEqual([item_id for item_id, _ in targets], [2])
+            # The jpg has nothing to remux but still advances the cursor.
+            self.assertEqual(newest, 3)
+
+
+class CheckedThroughTest(unittest.TestCase):
+    """The watermark rule: settle everything below the first failure, so a
+    clean pass never re-runs and a failed file is retried next launch."""
+
+    def test_a_clean_pass_settles_everything(self):
+        self.assertEqual(_checked_through(10, 42, []), 42)
+
+    def test_a_failure_holds_the_watermark_just_before_it(self):
+        self.assertEqual(_checked_through(10, 42, [30, 35]), 29)
+
+    def test_a_failure_on_the_first_new_item_never_regresses(self):
+        self.assertEqual(_checked_through(10, 42, [11]), 10)
+
+    def test_an_empty_slice_stays_put(self):
+        self.assertEqual(_checked_through(7, 7, []), 7)
 
 
 if __name__ == "__main__":

@@ -176,6 +176,10 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // Staged downloads: audio that never finished its import is still the
         // user's data, and an erase that left it would keep actual music.
         paths.staging_dir.clone(),
+        // The repair pass's watermark: it counts beets item ids, and the fresh
+        // library restarts those from 1 — kept, it would exempt the next
+        // library's first files from the fragmentation scan.
+        data_dir.join("remux-checked"),
     ];
     for legacy in [
         "jobs.json",

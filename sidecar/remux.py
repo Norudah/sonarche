@@ -128,30 +128,55 @@ def _remux_file(ffmpeg: str, path: str) -> None:
             os.remove(tmp)
 
 
-def _library_paths(db_path: str, library_dir: str) -> list[str]:
-    # No database, nothing to repair — the ordinary state of a launch right
-    # after a data erase, and of a first run. Same guard as every other reader
-    # here; without it the read-only connect raises and the launch pass leaves
-    # a traceback in the log for a library that simply has no files yet.
+def _library_paths(db_path: str, library_dir: str, since_id: int) -> tuple[list[tuple[int, str]], int]:
+    """The `(item id, path)` pairs newer than `since_id`, and the newest id seen.
+
+    The launch pass only re-examines items added since its last completed run:
+    the shell remembers how far it got (the watermark it passes back in as
+    `since_id`), so a library that was scanned once is never walked again.
+    Items that are not m4a/mp4, or whose file is gone, still advance the
+    newest-id cursor — there is nothing to remux in them, ever.
+
+    No database, nothing to repair — the ordinary state of a launch right
+    after a data erase, and of a first run. Same guard as every other reader
+    here; without it the read-only connect raises and the launch pass leaves
+    a traceback in the log for a library that simply has no files yet.
+    """
     if not os.path.exists(db_path):
-        return []
+        return [], since_id
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=20.0)
     try:
-        rows = conn.execute("SELECT path FROM items").fetchall()
+        rows = conn.execute("SELECT id, path FROM items WHERE id > ? ORDER BY id", (since_id,)).fetchall()
     finally:
         conn.close()
-    paths = (expand_db_path(stored, library_dir) for (stored,) in rows)
-    return [p for p in paths if p and p.lower().endswith((".m4a", ".mp4")) and os.path.exists(p)]
+    newest = rows[-1][0] if rows else since_id
+    expanded = ((item_id, expand_db_path(stored, library_dir)) for item_id, stored in rows)
+    targets = [(i, p) for i, p in expanded if p and p.lower().endswith((".m4a", ".mp4")) and os.path.exists(p)]
+    return targets, newest
+
+
+def _checked_through(since_id: int, newest_id: int, failed_ids: list[int]) -> int:
+    """How far the watermark may advance after a pass.
+
+    Everything below the first failure is settled; the failure itself and
+    whatever follows must be seen again next launch, or a file that failed
+    once would stay fragmented forever without anyone retrying it.
+    """
+    if failed_ids:
+        return max(since_id, min(failed_ids) - 1)
+    return newest_id
 
 
 def handle(request_id: str, params: dict) -> dict:
     ffmpeg = params["ffmpeg"]
-    targets = _library_paths(params["beets_db"], params["library_dir"])
-    fragmented = [path for path in targets if is_fragmented(path)]
+    since_id = int(params.get("since_id", 0))
+    targets, newest_id = _library_paths(params["beets_db"], params["library_dir"], since_id)
+    fragmented = [(item_id, path) for item_id, path in targets if is_fragmented(path)]
 
     remuxed = 0
     failures: list[str] = []
-    for index, path in enumerate(fragmented):
+    failed_ids: list[int] = []
+    for index, (item_id, path) in enumerate(fragmented):
         protocol.send_event(
             request_id,
             "remux_progress",
@@ -162,6 +187,7 @@ def handle(request_id: str, params: dict) -> dict:
             remuxed += 1
         except Exception as exc:  # noqa: BLE001 — one bad file must not stop the pass
             failures.append(os.path.basename(path))
+            failed_ids.append(item_id)
             protocol.log(f"remux failed for {os.path.basename(path)}: {exc}")
 
     if fragmented:
@@ -171,4 +197,5 @@ def handle(request_id: str, params: dict) -> dict:
         "fragmented": len(fragmented),
         "remuxed": remuxed,
         "failed": failures,
+        "checked_through": _checked_through(since_id, newest_id, failed_ids),
     }
