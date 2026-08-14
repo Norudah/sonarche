@@ -3,11 +3,12 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadJob } from "@/features/download/api";
+import { JobActions } from "@/features/download/activity/JobActions";
 import { JobTrackRow, TRACK_GRID } from "@/features/download/activity/JobTrackRow";
 import type { EnrichStage } from "@/features/download/hooks";
 import { AttemptDots } from "@/features/download/activity/StepMarkers";
 import { jobAttempts } from "@/features/download/queue/attempts";
-import { jobPresence, type LibraryPresence } from "@/features/download/queue/library";
+import { jobPresence } from "@/features/download/queue/library";
 import { formatTags, jobTags } from "@/features/download/queue/tags";
 import type { LibraryTrack } from "@/features/library/api";
 // The taxonomy the download composer offers is the library's own axis, and its
@@ -23,12 +24,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
-
-const PRESENCE_KEY: Record<LibraryPresence, string> = {
-  full: "queue.inLibrary",
-  partial: "queue.partiallyInLibrary",
-  none: "queue.removedFromLibrary",
-};
 
 interface JobDetailProps {
   job: DownloadJob;
@@ -61,9 +56,10 @@ export function JobDetail({
   const { t } = useTranslation("download");
   const categoryLabel = useCategoryLabel();
   const isAlbum = job.kind === "album" && job.tracks.length > 0;
+  const isSettled = job.status === "done" || job.status === "failed" || job.status === "cancelled";
   const tags = jobTags(job);
 
-  const presence = isLibraryLoaded ? jobPresence(job, isInLibrary) : null;
+  const presence = isLibraryLoaded ? jobPresence(job, { has: isInLibrary, trackFor: libraryTrackFor }) : null;
 
   const source = isAlbum
     ? job.tracks.find((track) => track.report?.source)?.report?.source
@@ -105,8 +101,18 @@ export function JobDetail({
           </Fact>
         )}
 
+        {/* The same words as the card's own label, deliberately: the folded
+            and unfolded readings of one fact must not speak two languages.
+            A settled job with nothing filed states that; only a job still in
+            line is "awaiting". */}
         <Fact label={t("queue.colLibrary")}>
-          {presence ? t(PRESENCE_KEY[presence]) : <span className="text-muted">{t("queue.awaiting")}</span>}
+          {job.undoneAt != null ? (
+            t("activity.presence.undone")
+          ) : presence ? (
+            t(`activity.presence.${presence}`)
+          ) : (
+            <span className="text-muted">{t(isSettled ? "activity.presence.nothing" : "queue.awaiting")}</span>
+          )}
         </Fact>
 
         {/* Only when the job carried one: an absent category is the ordinary
@@ -148,6 +154,15 @@ export function JobDetail({
             />
           ))}
         </div>
+      )}
+
+      {isSettled && (
+        <JobActions
+          job={job}
+          // The two library verbs need something of the job's still on the
+          // shelf; the re-download inside needs only the row itself.
+          canUndo={job.undoneAt == null && (presence === "full" || presence === "partial")}
+        />
       )}
     </div>
   );

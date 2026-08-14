@@ -4,14 +4,20 @@ import { useEffect, useState } from "react";
 
 import {
   cancelJob,
+  changeJobDestination,
   clearJobHistory,
   type DownloadJob,
+  type DownloadUndoOutcome,
+  type DownloadUndoPreview,
   type EnqueueRequest,
   enqueueDownload,
+  type ForcedAlbum,
   listJobs,
   listJobsPage,
   mapJob,
+  previewDownloadUndo,
   retryJob,
+  undoDownload,
   type WireJob,
 } from "@/features/download/api";
 import { HISTORY_PAGE_SIZE } from "@/features/download/queue/page";
@@ -111,6 +117,51 @@ export function useCancelJob() {
   return useMutation({
     mutationFn: cancelJob,
     onSuccess: (job) => upsertJob(queryClient, job),
+  });
+}
+
+/**
+ * What undoing this download would take away, asked only while the question
+ * is on screen. A query rather than a call made before opening the dialog —
+ * same reasoning as the import undo's preview: the confirmation should appear
+ * at once and fill in, and a stale count under a destructive button is worse
+ * than no count.
+ */
+export function useDownloadUndoPreview(id: string, enabled: boolean) {
+  return useQuery<DownloadUndoPreview>({
+    queryKey: ["download-undo-preview", id],
+    queryFn: () => previewDownloadUndo(id),
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Take one download back out. Everything is invalidated, like the import
+ * undo: tracks, albums, covers and playlist entries go in one sweep, and
+ * naming the caches would mean reaching into three other features. The job
+ * row itself comes back stamped through the `jobs:updated` event.
+ */
+export function useUndoDownload() {
+  const queryClient = useQueryClient();
+  return useMutation<DownloadUndoOutcome, unknown, string>({
+    mutationFn: (id) => undoDownload(id),
+    onSettled: () => queryClient.invalidateQueries(),
+  });
+}
+
+/** Re-file what a finished download produced onto another record. The library
+ * is what visibly changes; the job row rides back through the event. */
+export function useChangeJobDestination() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, forcedAlbum }: { id: string; forcedAlbum: ForcedAlbum }) =>
+      changeJobDestination(id, forcedAlbum),
+    onSuccess: (job) => upsertJob(queryClient, job),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: libraryKey });
+    },
   });
 }
 

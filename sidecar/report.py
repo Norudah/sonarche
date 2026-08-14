@@ -20,6 +20,12 @@ def build_report(item) -> dict:
 
     return {
         "item_id": item.id,
+        # The tags as filed, kept on the report so a history row can later
+        # recognise its item: beets recycles deleted rowids, and an id alone
+        # cannot say "this is still the track I filed" months later.
+        "title": item.title or None,
+        "artist": item.artist or None,
+        "album": item.album or None,
         # Empty mb_trackid means no trusted match was ever applied.
         "mb_matched": bool(item.mb_trackid),
         # Tags were written, but guessed from the video rather than matched.

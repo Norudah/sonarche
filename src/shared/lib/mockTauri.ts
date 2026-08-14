@@ -1099,6 +1099,28 @@ export function installMockTauri() {
         Object.assign(target, { status: "queued", error: null, failedStep: null });
         return target;
       }
+      // The undo pair reads/mutates the seed like the Rust pair reads the
+      // store, so the flow is walkable in the preview: preview counts, undo
+      // stamps the row and the invalidation re-lists it.
+      if (cmd === "preview_download_undo") {
+        const target = jobs.find((j) => j.id === payload?.id) as { tracks?: { itemId?: number | null }[] } | undefined;
+        const count = target?.tracks?.filter((t) => t.itemId != null).length || 1;
+        return { tracks: count, albumsRemoved: 1, albumsKept: 0, playlistEntries: 2 };
+      }
+      if (cmd === "undo_download") {
+        const target = jobs.find((j) => j.id === payload?.id) as
+          { undoneAt?: number; tracks?: { itemId?: number | null }[] } | undefined;
+        if (!target) return {};
+        target.undoneAt = Date.now();
+        const count = target.tracks?.filter((t) => t.itemId != null).length || 1;
+        return { removed: count, foreign: 0, playlistEntries: 2 };
+      }
+      if (cmd === "change_job_destination") {
+        const target = jobs.find((j) => j.id === payload?.id);
+        if (!target) return {};
+        Object.assign(target, { forcedAlbum: payload?.forcedAlbum ?? null, updatedAt: Date.now() });
+        return target;
+      }
       if (cmd === "cancel_job") {
         const target = jobs.find((j) => j.id === payload?.id);
         if (!target) return {};

@@ -4,6 +4,7 @@ mod artist_images;
 mod artwork;
 mod audio_formats;
 mod commands;
+mod download_undo;
 mod error;
 mod genres;
 mod identity;
@@ -106,6 +107,9 @@ fn main() {
             commands::retry_job,
             commands::cancel_job,
             commands::clear_job_history,
+            commands::preview_download_undo,
+            commands::undo_download,
+            commands::change_job_destination,
             commands::list_library,
             commands::playable_extensions,
             commands::reenrich_track,

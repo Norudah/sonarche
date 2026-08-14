@@ -7,6 +7,7 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
+use crate::download_undo;
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::identity;
@@ -282,6 +283,43 @@ pub async fn undo_import(
     id: String,
 ) -> AppResult<import_undo::UndoOutcome> {
     import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
+}
+
+/// What undoing this download would take away. Counted from the library as it
+/// stands: tracks deleted by hand since simply do not count.
+#[tauri::command]
+pub async fn preview_download_undo(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    id: String,
+) -> AppResult<download_undo::UndoPreview> {
+    download_undo::preview(&app, &sidecar, &jobs, &id).await
+}
+
+/// Take one download back out: its tracks, their files, the albums that
+/// empty, their covers, the playlist entries. The history row stays, stamped.
+#[tauri::command]
+pub async fn undo_download(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    imports: State<'_, LibraryImportState>,
+    id: String,
+) -> AppResult<download_undo::UndoOutcome> {
+    download_undo::run(&app, &sidecar, &jobs, &imports, &id).await
+}
+
+/// Re-file what a finished download put in the library onto another record —
+/// the composer's destination option, offered after the fact.
+#[tauri::command]
+pub async fn change_job_destination(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    id: String,
+    forced_album: crate::jobs::ForcedAlbum,
+) -> AppResult<Job> {
+    jobs.change_destination(&app, &id, forced_album).await
 }
 
 #[tauri::command]

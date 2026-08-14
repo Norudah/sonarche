@@ -79,11 +79,16 @@ export function DestinationChoice({
   value,
   kind,
   onChange,
+  modes = ["auto", "existing", "new"],
 }: {
   value: Destination;
   /** Playlist or single — the wording and the diagram follow. */
   kind: JobKind;
   onChange: (next: Destination) => void;
+  /** The offered modes. The composer offers all three; the after-the-fact
+   * "change the destination" dialog drops `auto` — there is no pipeline left
+   * to decide anything. */
+  modes?: Destination["mode"][];
 }) {
   const { t } = useTranslation("download");
 
@@ -104,15 +109,21 @@ export function DestinationChoice({
         aria-label={t("options.destination.legend")}
         className="flex w-fit flex-row gap-0.5 rounded-full bg-default/60 p-0.5"
       >
-        <Segment mode="auto" selected={value.mode}>
-          {t("options.destination.modeAuto")}
-        </Segment>
-        <Segment mode="existing" selected={value.mode}>
-          {t("options.destination.modeExisting")}
-        </Segment>
-        <Segment mode="new" selected={value.mode}>
-          {t("options.destination.modeNew")}
-        </Segment>
+        {modes.includes("auto") && (
+          <Segment mode="auto" selected={value.mode}>
+            {t("options.destination.modeAuto")}
+          </Segment>
+        )}
+        {modes.includes("existing") && (
+          <Segment mode="existing" selected={value.mode}>
+            {t("options.destination.modeExisting")}
+          </Segment>
+        )}
+        {modes.includes("new") && (
+          <Segment mode="new" selected={value.mode}>
+            {t("options.destination.modeNew")}
+          </Segment>
+        )}
       </RadioGroup>
 
       {value.mode === "auto" && (

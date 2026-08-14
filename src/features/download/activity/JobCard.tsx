@@ -78,11 +78,13 @@ function JobCardImpl({
 
   const isAlbum = job.kind === "album";
   const outcome = jobOutcome(job);
-  const href = jobDestination(job, library.trackFor);
+  const href = jobDestination(job, library);
   /** Whether what this job filed is still in the library — the one fact the
    * history rows kept behind a click, and the reason people read "recent" as
-   * "in my library". Settled jobs only; silent until the library has loaded. */
-  const presence = library.isLoaded ? jobPresence(job, library.has) : null;
+   * "in my library". Settled jobs only; silent until the library has loaded.
+   * An undone job states that instead: its tracks being gone is not news, it
+   * is what the user asked for. */
+  const presence = job.undoneAt != null ? "undone" : library.isLoaded ? jobPresence(job, library) : null;
   /** The single's own library item — what its row actions act on. */
   const landed = isAlbum ? undefined : library.trackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
 

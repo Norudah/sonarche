@@ -29,6 +29,7 @@ def _handlers():
     import cover_cleanup
     import cover_set
     import download
+    import download_undo
     import enrich
     import enrich_album
     import genre_overrides
@@ -52,6 +53,8 @@ def _handlers():
         "library_import": library_import.handle,
         "library_import_undo_preview": import_undo.preview,
         "library_import_undo": import_undo.handle,
+        "library_download_undo_preview": download_undo.preview,
+        "library_download_undo": download_undo.handle,
         "library_align_scan": library_align.scan,
         "library_align_apply": library_align.apply,
         "enrich": enrich.handle,

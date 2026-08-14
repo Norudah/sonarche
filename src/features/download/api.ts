@@ -36,6 +36,12 @@ export interface MetadataReportFields {
 export interface MetadataReport {
   /** beets item id — links the job to its library track (null if unknown). */
   itemId: number | null;
+  /** The tags as filed, so a history row can later recognise its item: beets
+   * recycles deleted rowids, and an id alone cannot say "this is still the
+   * track I filed". Null on reports written before these existed. */
+  title: string | null;
+  artist: string | null;
+  album: string | null;
   mbMatched: boolean;
   /** Tags were written but guessed from the video, not matched — never trust
    * them without a second pass. See the sidecar's `provisional` module. */
@@ -92,6 +98,10 @@ export interface DownloadJob {
    * before download (they could only fail), but the set has holes YouTube
    * cannot even name, and the user deserves to know. */
   unavailable: number;
+  /** When the job's library output was taken back out (undo), or null. The
+   * row stays in the history; this is what its labels read instead of asking
+   * the library whether the tracks survive. */
+  undoneAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -110,6 +120,9 @@ export interface ForcedAlbum {
 
 interface WireReport {
   item_id: number | null;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
   mb_matched: boolean;
   provisional?: boolean;
   source: string | null;
@@ -150,6 +163,7 @@ export interface WireJob {
   category?: string | null;
   forcedAlbum?: ForcedAlbum | null;
   unavailable?: number;
+  undoneAt?: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -158,6 +172,9 @@ function mapReport(raw: WireReport | null): MetadataReport | null {
   if (!raw) return null;
   return {
     itemId: raw.item_id ?? null,
+    title: raw.title ?? null,
+    artist: raw.artist ?? null,
+    album: raw.album ?? null,
     mbMatched: raw.mb_matched,
     // Absent from reports stored before the flag existed: those jobs predate
     // provisional tagging, so they never guessed anything.
@@ -194,6 +211,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     category: raw.category ?? null,
     forcedAlbum: raw.forcedAlbum ?? null,
     unavailable: raw.unavailable ?? 0,
+    undoneAt: raw.undoneAt ?? null,
   };
 }
 
@@ -247,4 +265,33 @@ export async function cancelJob(id: string): Promise<DownloadJob> {
 export async function clearJobHistory(): Promise<DownloadJob[]> {
   const raw = await invoke<WireJob[]>("clear_job_history");
   return raw.map(mapJob);
+}
+
+/** What undoing a download would take away, counted from the library as it is
+ * now. The same sentence shapes as the import undo's preview, on purpose. */
+export interface DownloadUndoPreview {
+  tracks: number;
+  albumsRemoved: number;
+  albumsKept: number;
+  playlistEntries: number;
+}
+
+export interface DownloadUndoOutcome {
+  removed: number;
+  foreign: number;
+  playlistEntries: number;
+}
+
+export async function previewDownloadUndo(id: string): Promise<DownloadUndoPreview> {
+  return invoke<DownloadUndoPreview>("preview_download_undo", { id });
+}
+
+export async function undoDownload(id: string): Promise<DownloadUndoOutcome> {
+  return invoke<DownloadUndoOutcome>("undo_download", { id });
+}
+
+/** Re-file what a finished download put in the library onto another record —
+ * the composer's destination option, after the fact. */
+export async function changeJobDestination(id: string, forcedAlbum: ForcedAlbum): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("change_job_destination", { id, forcedAlbum }));
 }
