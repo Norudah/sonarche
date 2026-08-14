@@ -20,9 +20,19 @@ export function resolvePlaylistTracks(itemIds: number[], byId: Map<number, Libra
 }
 
 /** The library keyed by item id — built once per listing, shared by every
- * playlist surface on the page. */
+ * playlist surface on the page. Cached on the array's identity like
+ * `groupAlbums`: the callers run on every render, and rebuilding a Map of the
+ * whole library each time is real work at thousands of tracks. A refetch hands
+ * out a new array, so the entry invalidates itself. */
+const byIdCache = new WeakMap<LibraryTrack[], Map<number, LibraryTrack>>();
+
 export function tracksById(tracks: LibraryTrack[]): Map<number, LibraryTrack> {
-  return new Map(tracks.map((track) => [track.id, track]));
+  const hit = byIdCache.get(tracks);
+  if (hit) return hit;
+
+  const computed = new Map(tracks.map((track) => [track.id, track]));
+  byIdCache.set(tracks, computed);
+  return computed;
 }
 
 /**
