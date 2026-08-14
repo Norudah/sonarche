@@ -161,6 +161,11 @@ pub struct Job {
     /// releases its tracks turn out to belong to. `None` is the normal path.
     #[serde(default)]
     pub forced_album: Option<ForcedAlbum>,
+    /// One record for the whole playlist, on by default: the auto pipeline
+    /// must not scatter a set across editions or per-track releases. Only
+    /// consulted when no `forced_album` already decides the filing.
+    #[serde(default = "default_single_album")]
+    pub single_album: bool,
     /// Playlist slots whose video was deleted, made private or claimed:
     /// skipped before download (they can only fail) but counted, because the
     /// record has holes YouTube cannot even name.
@@ -173,6 +178,12 @@ pub struct Job {
     pub undone_at: Option<u64>,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+/// On, for jobs written before the option existed too: a retry of an old job
+/// should scatter no more than a new one — the option's default is the fix.
+fn default_single_album() -> bool {
+    true
 }
 
 /// The album the download must land on, because the user said so — a record
@@ -1384,6 +1395,9 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
                 "album_title": job.title,
                 "artist": job.artist,
                 "forced_album": forced_album,
+                "single_album": job.single_album,
+                "category": job.category,
+                "thumbnail": job.thumbnail,
                 "track_hints": track_hints,
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
                 "lookup_pause_seconds": prefs.acoustid_lookup_delay_seconds,
@@ -1422,6 +1436,7 @@ impl JobsState {
         kind: JobKind,
         category: Option<String>,
         forced_album: Option<ForcedAlbum>,
+        single_album: bool,
     ) -> AppResult<Job> {
         let now = now_ms();
         let job = Job {
@@ -1442,6 +1457,7 @@ impl JobsState {
             download_attempts: 0,
             category,
             forced_album,
+            single_album,
             unavailable: 0,
             undone_at: None,
             created_at: now,

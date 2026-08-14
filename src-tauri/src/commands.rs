@@ -60,6 +60,7 @@ pub async fn enqueue_download(
     kind: Option<JobKind>,
     category: Option<String>,
     forced_album: Option<ForcedAlbum>,
+    single_album: Option<bool>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -119,6 +120,8 @@ pub async fn enqueue_download(
             kind.unwrap_or(JobKind::Single),
             category,
             forced_album,
+            // Absent on old callers means the default the option ships with.
+            single_album.unwrap_or(true),
         )
         .await
 }

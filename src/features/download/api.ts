@@ -94,6 +94,8 @@ export interface DownloadJob {
   /** The album the user declared this playlist to be, overriding whatever
    * releases its tracks belong to. Null on every ordinary download. */
   forcedAlbum: ForcedAlbum | null;
+  /** One record for the whole playlist (auto mode); what a re-download reuses. */
+  singleAlbum: boolean;
   /** Playlist slots whose video was deleted, private or claimed — skipped
    * before download (they could only fail), but the set has holes YouTube
    * cannot even name, and the user deserves to know. */
@@ -162,6 +164,7 @@ export interface WireJob {
   downloadAttempts?: number;
   category?: string | null;
   forcedAlbum?: ForcedAlbum | null;
+  singleAlbum?: boolean;
   unavailable?: number;
   undoneAt?: number | null;
   createdAt: number;
@@ -210,6 +213,7 @@ export function mapJob(raw: WireJob): DownloadJob {
     downloadAttempts: raw.downloadAttempts ?? 0,
     category: raw.category ?? null,
     forcedAlbum: raw.forcedAlbum ?? null,
+    singleAlbum: raw.singleAlbum ?? true,
     unavailable: raw.unavailable ?? 0,
     undoneAt: raw.undoneAt ?? null,
   };
@@ -225,10 +229,19 @@ export interface EnqueueRequest {
   category: string | null;
   /** One album for the whole playlist, or null to let the pipeline decide. */
   forcedAlbum: ForcedAlbum | null;
+  /** The auto pipeline's promise on a playlist: end as one record instead of
+   * scattering across editions and per-track releases. On by default. */
+  singleAlbum: boolean;
 }
 
-export async function enqueueDownload({ url, kind, category, forcedAlbum }: EnqueueRequest): Promise<DownloadJob> {
-  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind, category, forcedAlbum }));
+export async function enqueueDownload({
+  url,
+  kind,
+  category,
+  forcedAlbum,
+  singleAlbum,
+}: EnqueueRequest): Promise<DownloadJob> {
+  return mapJob(await invoke<WireJob>("enqueue_download", { url, kind, category, forcedAlbum, singleAlbum }));
 }
 
 export async function listJobs(): Promise<DownloadJob[]> {

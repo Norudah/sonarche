@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- The album the user forced this playlist into, as JSON ({title, artist}).
     -- NULL is the normal path: let the pipeline decide what album this is.
     forced_album TEXT,
+    -- One record for the whole playlist (the single-album option), on by
+    -- default: the auto pipeline must not scatter a set across releases.
+    single_album INTEGER NOT NULL DEFAULT 1,
     -- Playlist slots skipped at probe time because their video was deleted,
     -- private or claimed: the job's downloads mirror the playable playlist.
     unavailable INTEGER NOT NULL DEFAULT 0,
@@ -219,6 +222,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     )?;
     add_column(conn, "jobs", "category", "TEXT")?;
     add_column(conn, "jobs", "forced_album", "TEXT")?;
+    add_column(conn, "jobs", "single_album", "INTEGER NOT NULL DEFAULT 1")?;
     add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
     add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
     add_column(conn, "playlists", "cover", "TEXT")?;
@@ -305,6 +309,7 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
             .map(|text| serde_json::from_str(&text))
             .transpose()
             .map_err(|e| AppError::Sidecar(format!("bad forced_album json: {e}")))?,
+        single_album: row.get::<_, i64>("single_album")? != 0,
         unavailable: row.get::<_, i64>("unavailable")? as u32,
         undone_at: row.get::<_, Option<i64>>("undone_at")?.map(|at| at as u64),
         created_at: row.get::<_, i64>("created_at")? as u64,
@@ -334,8 +339,8 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
             duration, staged_path, item_id, report, download_attempts, category,
-            forced_album, unavailable, undone_at, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
+            forced_album, single_album, unavailable, undone_at, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
         params![
             job.id,
             job.url,
@@ -357,6 +362,7 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
                 .map(serde_json::to_string)
                 .transpose()
                 .map_err(|e| AppError::Sidecar(format!("forced_album not serializable: {e}")))?,
+            job.single_album as i64,
             job.unavailable as i64,
             job.undone_at.map(|at| at as i64),
             job.created_at as i64,
@@ -975,6 +981,7 @@ mod tests {
             download_attempts: 1,
             category: Some("Video Games".into()),
             forced_album: None,
+            single_album: true,
             unavailable: 0,
             undone_at: None,
             created_at: 1000,

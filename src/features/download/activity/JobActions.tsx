@@ -209,7 +209,7 @@ export function JobActions({ job, canUndo }: { job: DownloadJob; canUndo: boolea
 
   const confirmRedownload = (forced: ForcedAlbum | null) => {
     enqueue.mutate(
-      { url: job.url, kind: job.kind, category: job.category, forcedAlbum: forced },
+      { url: job.url, kind: job.kind, category: job.category, forcedAlbum: forced, singleAlbum: job.singleAlbum },
       {
         onSuccess: () => {
           setOpen(null);

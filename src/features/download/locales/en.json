@@ -22,6 +22,8 @@
       "modeExisting": "Existing album",
       "modeNew": "New album",
       "autoHint": "Each track rejoins the album of its own release — the normal path, and the right one for almost every link.",
+      "singleAlbum": "One album only",
+      "singleAlbumHint": "The playlist ends up as one record: tracks recognised on other editions or other albums are filed on it anyway, and without a coherent album everything is grouped under the playlist's name. Unchecked, each track joins the album it was recognised on.",
       "existingHint": "Whatever arrives joins the chosen album from your library, after its own tracks. The album keeps its cover and its nature.",
       "problem": "A hand-built playlist gathers tracks from different albums: filed as they come, each rejoins its own. This files them under the album you name, leaving their artist and genre alone.",
       "tryWithout": "Try without it first: a soundtrack already released as an album is recognised on its own. Forcing only helps when no such album exists.",
