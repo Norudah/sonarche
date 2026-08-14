@@ -1,5 +1,4 @@
 import { ImagePlus, Play } from "lucide-react";
-import { motion } from "motion/react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -9,11 +8,13 @@ import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 import type { Artist } from "@/features/library/artists/artists";
 import { CARD_ACTION_PLAY, CARD_ACTION_SECONDARY } from "@/features/library/cardActions";
 import { useArtistImages } from "@/features/library/hooks";
-import { springs } from "@/shared/motion/tokens";
 
 interface ArtistCardProps {
   artist: Artist;
   style?: CSSProperties;
+  /** Whether this card takes part in the grid's entrance cascade — see
+   * `AlbumCard`, same reasoning. */
+  cascade?: boolean;
   onPlay: () => void;
   /** Opens the artist-image modal — the grid hosts one for all its cards. */
   onEditImage: () => void;
@@ -29,8 +30,10 @@ interface ArtistCardProps {
  * on the album card — a circle has no corner to anchor to. It is the link's
  * *sibling*, not its child: a <button> inside an <a> is invalid HTML and
  * swallows the outer activation.
+ *
+ * Plain buttons with CSS transforms, not motion components — see `AlbumCard`.
  */
-export function ArtistCard({ artist, style, onPlay, onEditImage }: ArtistCardProps) {
+export function ArtistCard({ artist, style, cascade = true, onPlay, onEditImage }: ArtistCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
   // Looked up here rather than plumbed through every grid: the map is one
@@ -38,7 +41,7 @@ export function ArtistCard({ artist, style, onPlay, onEditImage }: ArtistCardPro
   const imageUrl = useArtistImages().data?.get(artist.name) ?? null;
 
   return (
-    <div style={style} className="group/card cascade-item relative">
+    <div style={style} className={`group/card relative${cascade ? " cascade-item" : ""}`}>
       <Link
         to={artistPath(artist.name)}
         // Lets the artist page know it can go *back* rather than pushing a fresh
@@ -65,31 +68,23 @@ export function ArtistCard({ artist, style, onPlay, onEditImage }: ArtistCardPro
        * button reveals itself (not the row) so a focus restored by a closing
        * modal cannot pin the pair on screen. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex aspect-square items-end justify-end gap-1.5 pr-[5%] pb-[5%]">
-        <motion.button
+        <button
           type="button"
           onClick={onEditImage}
           aria-label={t("artists.image.title")}
-          initial={false}
-          whileTap={{ scale: 0.92 }}
-          whileHover={{ scale: 1.06 }}
-          transition={springs.snappy}
-          className={`${CARD_ACTION_SECONDARY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale,background-color] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100`}
+          className={`${CARD_ACTION_SECONDARY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale,background-color] group-hover/card:scale-100 group-hover/card:opacity-100 hover:scale-[1.06] focus-visible:scale-100 focus-visible:opacity-100 active:scale-[0.92]`}
         >
           <ImagePlus className="size-4" />
-        </motion.button>
+        </button>
 
-        <motion.button
+        <button
           type="button"
           onClick={onPlay}
           aria-label={tPlayer("play")}
-          initial={false}
-          whileTap={{ scale: 0.92 }}
-          whileHover={{ scale: 1.06 }}
-          transition={springs.snappy}
-          className={`${CARD_ACTION_PLAY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 focus-visible:scale-100 focus-visible:opacity-100`}
+          className={`${CARD_ACTION_PLAY} pointer-events-auto scale-90 opacity-0 transition-[opacity,scale] group-hover/card:scale-100 group-hover/card:opacity-100 hover:scale-[1.06] focus-visible:scale-100 focus-visible:opacity-100 active:scale-[0.92]`}
         >
           <Play className="size-4 fill-current" />
-        </motion.button>
+        </button>
       </div>
     </div>
   );

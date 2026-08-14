@@ -5,6 +5,9 @@ import { ArtistCard } from "@/features/library/artists/ArtistCard";
 import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
 import { useArtistImages } from "@/features/library/hooks";
 
+/** Same cap as `AlbumGrid`: only the first rows join the entrance cascade. */
+const CASCADE_CAP = 24;
+
 interface ArtistGridProps {
   artists: Artist[];
   /** Same contract as `AlbumGrid`: what this result set is a result *of*.
@@ -36,6 +39,7 @@ export function ArtistGrid({ artists, animationKey = "", onPlay }: ArtistGridPro
             // Capped like the album grid's: the cards below the fold are not
             // worth making the user wait for.
             style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
+            cascade={position < CASCADE_CAP}
             onPlay={() => onPlay(artist)}
             onEditImage={() => setEditing(artist)}
           />
