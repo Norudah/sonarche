@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.1.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.0.0...sonarche-v2.1.0) (2026-08-15)
+
+
+### Features
+
+* **download:** a playlist files as one album by default ([0f55f9b](https://github.com/Norudah/sonarche/commit/0f55f9b679174a94f59711491482a60795044450))
+* **download:** undo a download, refile it, or queue it again ([67cb09f](https://github.com/Norudah/sonarche/commit/67cb09f5c72227e6c8e607fa70f3ca68b788e85d))
+* **library:** grid or list, the shelf remembers ([da223fc](https://github.com/Norudah/sonarche/commit/da223fcbc3e93c8168f6e0f7e4b0d25683338816))
+* **ui:** break the danger zone into aimed deletions ([dd8358c](https://github.com/Norudah/sonarche/commit/dd8358ce3484d1d53f153660657bab04b8ec2464))
+* **ui:** land the update toast on the settings pane with the notes inline ([8d74fe8](https://github.com/Norudah/sonarche/commit/8d74fe8854b8d9a16cc31a1a2feb94add610cf0c))
+* **update:** ship hand-written release notes inside the app ([5142062](https://github.com/Norudah/sonarche/commit/51420624cc96a668dfb96271d100832fd0a98d02))
+
+
+### Bug Fixes
+
+* **library:** close what the release audit found ([0416d58](https://github.com/Norudah/sonarche/commit/0416d5843ef9f29a7427b85c74535d33d97d18ff))
+* **library:** one album, one row, one folder, one owner ([a130a68](https://github.com/Norudah/sonarche/commit/a130a68447cda0c3a162bd85f9e37ce242468858))
+* **shell:** keep the home tour seen flag on disk across updates ([47056fd](https://github.com/Norudah/sonarche/commit/47056fdd2084eb9b7d90e61bc8285c4cd55b386c))
+* **ui:** wrap the tour finale buttons inside the popover ([2b145ff](https://github.com/Norudah/sonarche/commit/2b145ff01ab4e861ebf9ebf7a84275c1c2d1f0a4))
+
+
+### Performance Improvements
+
+* **library:** cache the by-id track map on the listing's identity ([7b595b4](https://github.com/Norudah/sonarche/commit/7b595b4df19e3bcd9f4d155d3ac00760f4770951))
+* **library:** scan only new items in the launch remux pass ([5dc460f](https://github.com/Norudah/sonarche/commit/5dc460f8214e89c7fc9f3ca2854b05e39670d6f6))
+* **shell:** stamp the venv smoke test so it skips unchanged launches ([5b90c5c](https://github.com/Norudah/sonarche/commit/5b90c5cd8fe6b4b7b01442ab1685785a7b90ee81))
+* **sidecar:** defer PIL and stop rewriting unchanged genre files ([3b51c0b](https://github.com/Norudah/sonarche/commit/3b51c0bbdeab23acf2fc9d0348f984fa9ee5fc87))
+* **ui:** take Motion out of the grid cards and cap the cascade ([3f28b57](https://github.com/Norudah/sonarche/commit/3f28b57c2e8df587faf075694b3d855864f469a2))
+
+
+### Miscellaneous Chores
+
+* release as 2.1.0 ([cea4ddf](https://github.com/Norudah/sonarche/commit/cea4ddf6e31385f3762cca6bd56ca2225cf4ff5c))
+
 ## [2.0.0](https://github.com/Norudah/sonarche/compare/sonarche-v1.0.0...sonarche-v2.0.0) (2026-08-12)
 
 
