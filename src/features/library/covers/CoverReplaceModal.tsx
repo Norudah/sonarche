@@ -263,7 +263,6 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
           >
             <p className="text-[0.75rem] leading-relaxed text-muted">{t("albumMetadata.cover.help.embed")}</p>
             <p className="text-[0.75rem] leading-relaxed text-muted">{t("albumMetadata.cover.help.weight")}</p>
-            <p className="text-[0.75rem] leading-relaxed text-muted">{t("albumMetadata.cover.help.archive")}</p>
           </FieldHelpPopover>
         }
         next={
@@ -308,7 +307,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
                   </span>
                 </p>
                 <p className="text-[0.6875rem] text-muted/80">{t("albumMetadata.cover.reframeHint")}</p>
-                {squareSide != null && <p>{t("albumMetadata.cover.archiveLine", { side: squareSide })}</p>}
+                {squareSide != null && <p>{t("albumMetadata.cover.squareLine", { side: squareSide })}</p>}
                 {embedCount > 0 && (
                   <p>
                     {embeddedEstimate != null

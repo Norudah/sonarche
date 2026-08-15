@@ -16,6 +16,11 @@ export function report(over: Partial<MetadataReport> = {}): MetadataReport {
   };
   return {
     itemId: 1,
+    // Null like every report written before the anchor tags existed; the
+    // id-recycling guard is opted into by the tests that are about it.
+    title: null,
+    artist: null,
+    album: null,
     mbMatched: true,
     provisional: false,
     source: "MusicBrainz",
@@ -60,7 +65,9 @@ export function job(over: Partial<DownloadJob> = {}): DownloadJob {
     downloadAttempts: 0,
     category: null,
     forcedAlbum: null,
+    singleAlbum: true,
     unavailable: 0,
+    undoneAt: null,
     createdAt: 0,
     updatedAt: 0,
     ...over,

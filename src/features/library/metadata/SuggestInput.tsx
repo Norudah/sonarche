@@ -36,11 +36,8 @@ interface Placement {
  * The list is portaled to `body` and positioned from the input's viewport
  * rect: rendered inside the field it was clipped by every scrolling ancestor
  * (the album modal's identity column cut it off mid-word). The portal sits
- * outside react-aria's overlay tree, so nothing here may let a click reach
- * the document as an "outside interaction": options `preventDefault` the
- * mousedown (which also keeps the input focused — a tracklist cell unmounts
- * on blur) and select on click, and the overlay's dismiss never fires because
- * the pointer lands on the list, not the backdrop.
+ * outside react-aria's overlay tree, which the list has to declare — see the
+ * top-layer attribute below — or the host modal treats it as outside world.
  *
  * The highlight starts on nothing: Enter must never silently swap freshly
  * typed text for the first match — attaching is always an explicit arrow-key
@@ -180,10 +177,16 @@ export function SuggestInput({
           <ul
             id={listId}
             role="listbox"
+            // react-aria's modals mark everything outside themselves `inert`
+            // while open — a body portal added afterwards included, which left
+            // the list perfectly visible and completely dead to the pointer.
+            // This attribute is the escape hatch its own toast region uses: it
+            // also stops the click reading as an interaction outside the
+            // overlay, and lets focus stay here under a contained scope.
+            data-react-aria-top-layer="true"
             // Keep the input focused through a click: blur would tear the list
             // down before the click lands (and unmount a tracklist cell
-            // entirely) — and the pointer must never read as an interaction
-            // outside the host overlay.
+            // entirely).
             onMouseDown={(event) => event.preventDefault()}
             style={{
               left: placement.left,

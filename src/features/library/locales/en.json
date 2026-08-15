@@ -267,7 +267,6 @@
     "soundtrackHint": "MusicBrainz marks this release a soundtrack — pick a category.",
     "missingFields_one": "{{fields}} missing",
     "missingFields_other": "{{fields}} missing",
-    "filedUnder": "album filed under {{artist}}",
     "editMetadata": "Edit metadata"
   },
   "albumMetadata": {
@@ -390,14 +389,14 @@
       "reframeHint": "Move the frame, or zoom, to choose the square that stays.",
       "notSquare": "The frame runs past the picture — the cover would not come out square. Zoom back in until it fits inside.",
       "sourceLine": "Chosen image:",
-      "archiveLine": "Archived square at {{side}}×{{side}} px (cover-hq, once).",
+      "squareLine": "Cut square at {{side}}×{{side}} px, shown at 500 px.",
       "currentEmbedded_one": "Embedded in {{count}} track — {{total}} in the file.",
       "currentEmbedded_other": "Embedded in {{count}} tracks — ≈ {{total}} across the album.",
       "nextEmbedded_one": "Will be embedded at ≈ {{each}} in {{count}} track.",
       "nextEmbedded_other": "Will be embedded at ≈ {{each}} × {{count}} tracks — ≈ {{total}} across the album.",
       "nextEmbeddedUnknown_one": "Will be embedded at 500 px in {{count}} track.",
       "nextEmbeddedUnknown_other": "Will be embedded at 500 px in {{count}} tracks.",
-      "candidateNote": "From the Cover Art Archive: the full-size upload is downloaded, archived (cover-hq) and embedded at 500 px.",
+      "candidateNote": "From the Cover Art Archive: the image is downloaded, then embedded at 500 px.",
       "noCurrent": "No cover yet.",
       "mb": "MB",
       "kb": "KB",
@@ -409,8 +408,7 @@
       "help": {
         "title": "What replacing the cover writes",
         "embed": "Audio files carry their cover inside the file itself — that's how other players and devices show it. Sonarche embeds the image into each track of the album.",
-        "weight": "The embedded copy is capped at 500×500 px. That's the whole point: a 3000×3000 scan embedded as-is would add several MB to every single track, where the 500 px rendition adds a few dozen KB.",
-        "archive": "Your full image isn't lost: it's archived once next to the album (cover-hq) and stays available the day a full-size view needs it."
+        "weight": "The embedded copy is capped at 500×500 px. That's the whole point: a 3000×3000 scan embedded as-is would add several MB to every single track, where the 500 px rendition adds a few dozen KB."
       },
       "candidates": {
         "heading": "Online proposals",
@@ -456,6 +454,10 @@
     "action": "Delete album",
     "lockedTitle": "A download is filing into this album",
     "lockedBody": "Tracks are on their way to this record. Wait for the download to finish — or stop it from Downloads — before deleting it."
+  },
+  "layout": {
+    "grid": "Grid",
+    "list": "List"
   },
   "sort": {
     "label": "Sort by",

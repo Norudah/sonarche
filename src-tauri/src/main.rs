@@ -4,6 +4,7 @@ mod artist_images;
 mod artwork;
 mod audio_formats;
 mod commands;
+mod download_undo;
 mod error;
 mod genres;
 mod identity;
@@ -106,6 +107,9 @@ fn main() {
             commands::retry_job,
             commands::cancel_job,
             commands::clear_job_history,
+            commands::preview_download_undo,
+            commands::undo_download,
+            commands::change_job_destination,
             commands::list_library,
             commands::playable_extensions,
             commands::reenrich_track,
@@ -116,6 +120,8 @@ fn main() {
             commands::library_align_apply,
             commands::get_preferences,
             commands::set_rate_limit_delay,
+            commands::get_home_tour_seen,
+            commands::set_home_tour_seen,
             commands::get_library_location,
             commands::check_library_move,
             commands::move_library,
@@ -154,6 +160,9 @@ fn main() {
             commands::list_api_keys,
             commands::set_api_key,
             commands::erase_all_data,
+            commands::erase_library,
+            commands::erase_artist_images,
+            commands::erase_playlists,
             commands::reinstall_environment,
             commands::reset_setup_dev,
             commands::reset_library_dev,

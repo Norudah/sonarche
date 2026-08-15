@@ -22,6 +22,8 @@
       "modeExisting": "Existing album",
       "modeNew": "New album",
       "autoHint": "Each track rejoins the album of its own release — the normal path, and the right one for almost every link.",
+      "singleAlbum": "One album only",
+      "singleAlbumHint": "The playlist ends up as one record: tracks recognised on other editions or other albums are filed on it anyway, and without a coherent album everything is grouped under the playlist's name. Unchecked, each track joins the album it was recognised on.",
       "existingHint": "Whatever arrives joins the chosen album from your library, after its own tracks. The album keeps its cover and its nature.",
       "problem": "A hand-built playlist gathers tracks from different albums: filed as they come, each rejoins its own. This files them under the album you name, leaving their artist and genre alone.",
       "tryWithout": "Try without it first: a soundtrack already released as an album is recognised on its own. Forcing only helps when no such album exists.",
@@ -39,7 +41,10 @@
     "presence": {
       "full": "In the library",
       "partial": "Partly removed",
-      "none": "Removed from the library"
+      "none": "Removed from the library",
+      "duplicate": "Already in the library",
+      "undone": "Undone",
+      "nothing": "Nothing imported"
     },
     "expand": "Show details",
     "collapse": "Hide details",
@@ -116,9 +121,6 @@
     "awaiting": "Awaiting",
     "copyUrl": "Copy source link",
     "attempts": "Download attempts",
-    "inLibrary": "In library",
-    "partiallyInLibrary": "Partial",
-    "removedFromLibrary": "Removed",
     "openInLibrary": "Open in library",
     "delete": "Delete track",
     "moreActions": "More actions",
@@ -154,5 +156,45 @@
     "more": "+{{count}} queued",
     "done": "Download finished",
     "failed": "Download failed"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "undo": {
+      "action": "Undo this download",
+      "title": "Undo \"{{name}}\"?",
+      "keep": "Keep",
+      "confirm": "Remove from the library",
+      "counting": "Counting…",
+      "countFailed": "Could not count what would be removed. You can still undo.",
+      "nothingLeft": "Nothing from this download is in the library anymore.",
+      "tracks_one": "{{count}} track removed from the library, file included",
+      "tracks_other": "{{count}} tracks removed from the library, files included",
+      "albumsRemoved_one": "{{count}} album disappears with its tracks",
+      "albumsRemoved_other": "{{count}} albums disappear with their tracks",
+      "albumsKept_one": "{{count}} existing album only loses the tracks this download added",
+      "albumsKept_other": "{{count}} existing albums only lose the tracks this download added",
+      "playlistEntries_one": "{{count}} playlist entry removed",
+      "playlistEntries_other": "{{count}} playlist entries removed",
+      "noOriginals": "The files are not coming back: you would have to download again. Corrections made since disappear too.",
+      "doneToast_one": "{{count}} track removed — \"{{name}}\" undone",
+      "doneToast_other": "{{count}} tracks removed — \"{{name}}\" undone",
+      "failedToast": "The undo failed"
+    },
+    "move": {
+      "action": "Change the destination…",
+      "title": "Change the destination",
+      "hint": "Regroups this download's tracks onto another record, without downloading anything again. The cure for a playlist the automatic filing split into several albums.",
+      "confirm": "Move",
+      "doneToast": "Tracks moved to \"{{album}}\"",
+      "failedToast": "The move failed"
+    },
+    "redownload": {
+      "action": "Download again…",
+      "title": "Download again",
+      "hint": "Queues the same address again, with the destination of your choice. If the old content is still in the library, undo this download first — otherwise the duplicates will be dropped.",
+      "confirm": "Download",
+      "doneToast": "\"{{name}}\" queued again",
+      "failedToast": "Queueing failed"
+    }
   }
 }

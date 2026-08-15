@@ -226,11 +226,9 @@ def _fetch_cover(album, items, release_id: str, release_group_id: str | None) ->
         return False
     if cover is None:
         return False
-    hq, thumb = cover
-    enrich.set_album_art(album, *thumb)
-    enrich.save_hq_cover(album, *hq)
+    enrich.set_album_art(album, *cover)
     for item in items:
-        enrich.embed_cover(item, *thumb)
+        enrich.embed_cover(item, *cover)
     return True
 
 

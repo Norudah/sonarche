@@ -1,12 +1,14 @@
 import { toast } from "@heroui/react";
-import { check } from "@tauri-apps/plugin-updater";
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 
+import { paths } from "@/app/routes";
+import { checkForUpdate } from "@/features/update/hooks";
 import type { Update } from "@/features/update/install";
 import { installUpdate } from "@/features/update/install";
 import { parseReleaseNotes } from "@/features/update/notes";
-import { UpdateNotesModal } from "@/features/update/UpdateNotesModal";
 import { TOAST_EXPLAINED, TOAST_OFFER } from "@/shared/toast/durations";
 
 /**
@@ -19,19 +21,22 @@ import { TOAST_EXPLAINED, TOAST_OFFER } from "@/shared/toast/durations";
  * Réglages → Mises à jour asks it again on demand.
  *
  * The toast's one action is "see what's new", not "install": nobody should be
- * asked to restart the app on the strength of a version number. The modal
- * makes the case, and Install lives there. Only when the release body yields
- * nothing readable does the toast fall back to offering the install directly.
+ * asked to restart the app on the strength of a version number. It leads to
+ * Réglages → Mises à jour, where the same check result is already waiting
+ * (shared cache, see `hooks.ts`) with the release notes laid out under it and
+ * Install alongside. Only when the release body yields nothing readable does
+ * the toast fall back to offering the install directly.
  *
  * Checked at launch and not again: the app is opened, used, and closed, and a
  * poll running all day would only find what the next launch finds anyway.
  */
 export function UpdatePrompt() {
   const { t } = useTranslation("update");
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // Effects run twice in StrictMode, and two identical prompts stacked on top
   // of each other is how a careful check reads as a bug.
   const asked = useRef(false);
-  const [offer, setOffer] = useState<Update | null>(null);
 
   useEffect(() => {
     if (asked.current) return;
@@ -40,7 +45,7 @@ export function UpdatePrompt() {
     // Deliberately unawaited and deliberately quiet: the check talks to GitHub,
     // and a machine that is offline or behind a captive portal should notice
     // nothing at all. A failure here is not the user's problem.
-    void check()
+    void checkForUpdate(queryClient)
       .then((update) => {
         if (!update) return;
         const hasNotes = parseReleaseNotes(update.body) !== null;
@@ -51,28 +56,14 @@ export function UpdatePrompt() {
           // notice that outstays its welcome is the one people learn to swat.
           timeout: TOAST_OFFER,
           actionProps: hasNotes
-            ? { children: t("notes.view"), onPress: () => setOffer(update) }
+            ? { children: t("notes.view"), onPress: () => void navigate(paths.settingsUpdates) }
             : { children: t("install"), onPress: () => void install(update, t) },
         });
       })
       .catch(() => undefined);
-  }, [t]);
+  }, [t, navigate, queryClient]);
 
-  // Mounted with empty props rather than conditionally: the modal component
-  // stays in the tree so its open/close transitions actually run.
-  const notes = offer ? parseReleaseNotes(offer.body) : null;
-  return (
-    <UpdateNotesModal
-      isOpen={notes !== null}
-      onClose={() => setOffer(null)}
-      version={offer?.version ?? ""}
-      notes={notes ?? { highlights: [], sections: [] }}
-      onInstall={() => {
-        setOffer(null);
-        if (offer) void install(offer, t);
-      }}
-    />
-  );
+  return null;
 }
 
 async function install(update: Update, t: (key: string) => string) {

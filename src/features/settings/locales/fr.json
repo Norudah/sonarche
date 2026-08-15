@@ -218,7 +218,9 @@
     },
     "danger": {
       "title": "Zone de danger",
-      "description": "Deux actions irréversibles. Rien ici ne se défait.",
+      "description": "Des actions irréversibles. Rien ici ne se défait.",
+      "prompt": "Tape {{phrase}} pour confirmer",
+      "cancel": "Annuler",
       "reinstall": {
         "name": "Réinstaller l'environnement",
         "why": "Supprime l'environnement Python et les outils téléchargés, puis les reconstruit au redémarrage. Ne touche ni à ta musique, ni à ton index, ni à ton historique. À faire si l'app refuse d'importer ou de télécharger sans raison claire.",
@@ -228,6 +230,58 @@
         "cancel": "Annuler",
         "confirm": "Réinstaller et redémarrer",
         "failedTitle": "La réinstallation a échoué"
+      },
+      "eraseLibrary": {
+        "name": "Supprimer la bibliothèque",
+        "why": "Supprime tous les fichiers audio du disque et l'index qui va avec. Les images d'artistes, les playlists (vidées, mais conservées) et les historiques restent en place.",
+        "action": "Supprimer",
+        "dialogTitle": "Supprimer la bibliothèque ?",
+        "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
+        "itemFiles": "Tous les fichiers audio de la bibliothèque, supprimés du disque",
+        "itemIndex": "L'index beets : titres, albums, artistes, genres, pochettes",
+        "itemPlaylists": "Le contenu des playlists — les listes elles-mêmes restent, vides",
+        "keeps": "Les images d'artistes, les noms de playlists et les historiques sont conservés.",
+        "confirm": "Supprimer la bibliothèque",
+        "failedTitle": "La suppression a échoué"
+      },
+      "eraseArtistImages": {
+        "name": "Supprimer les images d'artistes",
+        "why": "Supprime toutes les images d'artistes placées à la main. Il n'y a pas de source automatique : elles ne reviendront pas seules.",
+        "action": "Supprimer",
+        "dialogTitle": "Supprimer les images d'artistes ?",
+        "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
+        "itemFiles": "Toutes les images d'artistes, supprimées du disque",
+        "keeps": "Les avatars générés reprennent le relais ; rien d'autre n'est touché.",
+        "doneTitle": "Images d'artistes supprimées",
+        "confirm": "Supprimer les images",
+        "failedTitle": "La suppression a échoué"
+      },
+      "erasePlaylists": {
+        "name": "Supprimer les playlists",
+        "why": "Supprime toutes les playlists, leurs pochettes et leurs fichiers M3U8. La musique n'est pas touchée.",
+        "action": "Supprimer",
+        "dialogTitle": "Supprimer les playlists ?",
+        "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
+        "itemLists": "Toutes les playlists, y compris le contenu des favoris",
+        "itemCovers": "Leurs pochettes et leurs fichiers M3U8",
+        "keeps": "La musique et le reste de la bibliothèque ne bougent pas.",
+        "doneTitle": "Playlists supprimées",
+        "confirm": "Supprimer les playlists",
+        "failedTitle": "La suppression a échoué"
+      },
+      "eraseHistory": {
+        "name": "Supprimer les historiques",
+        "why": "Vide l'historique des téléchargements et celui des imports. La musique déjà dans la bibliothèque n'est pas touchée.",
+        "action": "Supprimer",
+        "dialogTitle": "Supprimer les historiques ?",
+        "dialogBody": "Cette action est définitive. Voici ce qui disparaît :",
+        "itemDownloads": "L'historique des téléchargements terminés, échoués ou annulés",
+        "itemImports": "L'historique des imports de dossiers",
+        "itemUndo": "La possibilité d'annuler un import passé part avec son historique",
+        "keeps": "La musique et les téléchargements en cours ne bougent pas.",
+        "doneTitle": "Historiques supprimés",
+        "confirm": "Supprimer les historiques",
+        "failedTitle": "La suppression a échoué"
       },
       "erase": {
         "name": "Tout effacer",
@@ -241,8 +295,6 @@
         "itemHistory": "L'historique des téléchargements et des imports, les téléchargements en attente",
         "itemKeys": "Tes réglages, remis à leurs valeurs d'origine, et le journal de diagnostic",
         "keepsEngine": "L'environnement Python et ta clef AcoustID sont conservés : l'app est de nouveau utilisable tout de suite, sans refaire l'installation.",
-        "prompt": "Tape {{phrase}} pour confirmer",
-        "cancel": "Annuler",
         "confirm": "Effacer définitivement",
         "failedTitle": "L'effacement a échoué"
       }

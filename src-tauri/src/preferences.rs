@@ -69,6 +69,14 @@ pub struct Preferences {
     /// which is the returning-user path we want to exercise anyway.
     #[serde(default)]
     pub onboarding_completed: bool,
+    /// Whether the guided home tour already had its one spontaneous showing.
+    ///
+    /// On disk and not in the webview's localStorage, where it lived up to
+    /// 2.0.0: an ad-hoc-signed bundle is not guaranteed to keep its WebKit
+    /// data store across updates, and a flag that evaporates with it replays
+    /// the tour on every release.
+    #[serde(default)]
+    pub home_tour_seen: bool,
     /// Where the music lives, when the user has moved it off the default.
     ///
     /// `None` means "wherever the app would put it", which is not the same as
@@ -96,6 +104,7 @@ impl Default for Preferences {
             acoustid_lookup_delay_seconds: ACOUSTID_DELAY.default,
             download_delay_seconds: DOWNLOAD_DELAY.default,
             onboarding_completed: false,
+            home_tour_seen: false,
             library_dir: None,
         }
     }
@@ -134,6 +143,13 @@ async fn save(app: &AppHandle, prefs: &Preferences) -> AppResult<()> {
 pub async fn set_onboarding_completed(app: &AppHandle, completed: bool) -> AppResult<Preferences> {
     let mut prefs = load(app).await?;
     prefs.onboarding_completed = completed;
+    save(app, &prefs).await?;
+    Ok(prefs)
+}
+
+pub async fn set_home_tour_seen(app: &AppHandle, seen: bool) -> AppResult<Preferences> {
+    let mut prefs = load(app).await?;
+    prefs.home_tour_seen = seen;
     save(app, &prefs).await?;
     Ok(prefs)
 }

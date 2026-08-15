@@ -161,13 +161,29 @@ pub struct Job {
     /// releases its tracks turn out to belong to. `None` is the normal path.
     #[serde(default)]
     pub forced_album: Option<ForcedAlbum>,
+    /// One record for the whole playlist, on by default: the auto pipeline
+    /// must not scatter a set across editions or per-track releases. Only
+    /// consulted when no `forced_album` already decides the filing.
+    #[serde(default = "default_single_album")]
+    pub single_album: bool,
     /// Playlist slots whose video was deleted, made private or claimed:
     /// skipped before download (they can only fail) but counted, because the
     /// record has holes YouTube cannot even name.
     #[serde(default)]
     pub unavailable: u32,
+    /// When the job's library output was taken back out (see `download_undo`).
+    /// The row stays — the history still says what happened — but the front
+    /// reads this instead of asking the library whether the tracks survive.
+    #[serde(default)]
+    pub undone_at: Option<u64>,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+/// On, for jobs written before the option existed too: a retry of an old job
+/// should scatter no more than a new one — the option's default is the fix.
+fn default_single_album() -> bool {
+    true
 }
 
 /// The album the download must land on, because the user said so — a record
@@ -794,13 +810,30 @@ async fn apply_destination(
     if item_ids.is_empty() {
         return;
     }
-    let paths = match AppPaths::resolve(app) {
-        Ok(paths) => paths,
-        Err(err) => {
-            job_log(id, &format!("destination not applied: {err}"));
-            return;
-        }
-    };
+    match move_to_destination(app, forced, item_ids, fallback_artist).await {
+        Ok(_) => job_log(
+            id,
+            &format!(
+                "destination « {} » holds {} arriving item(s)",
+                forced.title,
+                item_ids.len()
+            ),
+        ),
+        Err(err) => job_log(id, &format!("destination not applied: {err}")),
+    }
+}
+
+/// The move request `apply_destination` and the after-the-fact "change the
+/// destination" command share: same sidecar verb, same artist fallback, same
+/// renumbering — only what happens to a failure differs (a log line mid-run,
+/// a surfaced error when the user asked directly).
+pub(crate) async fn move_to_destination(
+    app: &AppHandle,
+    forced: &ForcedAlbum,
+    item_ids: &[i64],
+    fallback_artist: Option<&str>,
+) -> AppResult<Value> {
+    let paths = AppPaths::resolve(app)?;
     let (target_album_id, new_album) = match forced.album_id {
         Some(album_id) => (Some(album_id), Value::Null),
         None => {
@@ -818,7 +851,7 @@ async fn apply_destination(
         }
     };
     let sidecar = app.state::<SidecarState>();
-    let result = sidecar
+    sidecar
         .request(
             app,
             "library_move_tracks",
@@ -833,17 +866,21 @@ async fn apply_destination(
             }),
             LIBRARY_TIMEOUT,
         )
-        .await;
-    match result {
-        Ok(_) => job_log(
-            id,
-            &format!(
-                "destination « {} » holds {} arriving item(s)",
-                forced.title,
-                item_ids.len()
-            ),
-        ),
-        Err(err) => job_log(id, &format!("destination not applied: {err}")),
+        .await
+}
+
+/// The beets items a job filed, as recorded on its row: an album's tracks
+/// minus the duplicates enrich dropped, a single's one item. What the undo
+/// removes and the destination change moves.
+pub fn library_item_ids(job: &Job) -> Vec<i64> {
+    match job.kind {
+        JobKind::Album => job
+            .tracks
+            .iter()
+            .filter(|track| track.duplicate_of.is_none())
+            .filter_map(|track| track.item_id)
+            .collect(),
+        JobKind::Single => job.item_id.into_iter().collect(),
     }
 }
 
@@ -1358,6 +1395,9 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
                 "album_title": job.title,
                 "artist": job.artist,
                 "forced_album": forced_album,
+                "single_album": job.single_album,
+                "category": job.category,
+                "thumbnail": job.thumbnail,
                 "track_hints": track_hints,
                 "fetch_pause_seconds": prefs.lastfm_fetch_delay_seconds,
                 "lookup_pause_seconds": prefs.acoustid_lookup_delay_seconds,
@@ -1396,6 +1436,7 @@ impl JobsState {
         kind: JobKind,
         category: Option<String>,
         forced_album: Option<ForcedAlbum>,
+        single_album: bool,
     ) -> AppResult<Job> {
         let now = now_ms();
         let job = Job {
@@ -1416,7 +1457,9 @@ impl JobsState {
             download_attempts: 0,
             category,
             forced_album,
+            single_album,
             unavailable: 0,
+            undone_at: None,
             created_at: now,
             updated_at: now,
         };
@@ -1508,6 +1551,61 @@ impl JobsState {
             .send(job.id.clone())
             .map_err(|_| AppError::Sidecar("job worker is not running".into()))?;
         Ok(job)
+    }
+
+    /// One job by id, tracks included.
+    pub async fn get(&self, id: &str) -> AppResult<Option<Job>> {
+        let owned = id.to_string();
+        with_conn(&self.0, move |c| jobs_store::get_job(c, &owned)).await
+    }
+
+    /// Stamp a job undone and tell the front: the write is the fact, the emit
+    /// is what flips the history row without a reload.
+    pub async fn mark_undone(&self, app: &AppHandle, id: &str, when: u64) -> AppResult<Job> {
+        let owned = id.to_string();
+        with_conn(&self.0, move |c| {
+            jobs_store::mark_job_undone(c, &owned, when)
+        })
+        .await?;
+        let job = self
+            .get(id)
+            .await?
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
+        let _ = app.emit("jobs:updated", &job);
+        Ok(job)
+    }
+
+    /// Re-file what a settled job put in the library onto another record — the
+    /// after-the-fact edition of the composer's destination option, for the
+    /// playlist the pipeline split into albums it should not have.
+    pub async fn change_destination(
+        &self,
+        app: &AppHandle,
+        id: &str,
+        forced: ForcedAlbum,
+    ) -> AppResult<Job> {
+        let job = self
+            .get(id)
+            .await?
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
+        if !job.status.is_settled() {
+            return Err(AppError::InvalidInput("job is still running".into()));
+        }
+        if job.undone_at.is_some() {
+            return Err(AppError::InvalidInput("this download was undone".into()));
+        }
+        let item_ids = library_item_ids(&job);
+        if item_ids.is_empty() {
+            return Err(AppError::InvalidInput(
+                "this download filed nothing in the library".into(),
+            ));
+        }
+        move_to_destination(app, &forced, &item_ids, job.artist.as_deref()).await?;
+        // The row records the filing the user last chose, so the history card
+        // tells the story as it now stands.
+        update_job(app, &self.0, id, move |j| j.forced_album = Some(forced))
+            .await
+            .ok_or_else(|| AppError::InvalidInput("unknown job".into()))
     }
 
     /// The live window — every moving job plus the most recent terminal ones.
@@ -1781,5 +1879,13 @@ impl JobsState {
             playlists::ensure_favorites(c, now)
         })
         .await
+    }
+
+    /// Empty every playlist without deleting any: the library-wipe companion,
+    /// where the lists are kept but their item ids just stopped meaning
+    /// anything.
+    pub async fn clear_playlist_memberships(&self) -> AppResult<()> {
+        let now = now_ms();
+        with_conn(&self.0, move |c| playlists::clear_memberships(c, now)).await
     }
 }

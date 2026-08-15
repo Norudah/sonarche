@@ -210,8 +210,11 @@ def apply(lib, items, spec: dict):
         if row is None or list(row.items()):
             continue
         protocol.log(f"forced_album: dropping emptied album row {row_id}")
-        row.remove(delete=False, with_items=False)
+        enrich.drop_emptied_row(lib, row)
 
+    # %aunique memoizes per Library instance; a verdict reached while the
+    # dropped rows were alive must not name the forced folder "Title [2]".
+    lib._memotable = {}
     album.try_sync(write=True, move=True)
     protocol.log(
         f"forced_album: « {spec['title']} » by {spec['artist']} "
@@ -237,15 +240,13 @@ def ensure_cover(lib, album, items, spec: dict) -> bool:
         protocol.log("forced_album: no cover found, album left bare")
         return False
 
-    hq, thumb = cover
     # Written onto the album row and shown in the metadata panel, so it names
     # the *kind* of picture rather than the site it came from.
     source = "Video thumbnail" if provisional else "Cover Art Archive"
     try:
-        enrich.set_album_art(album, *thumb, source=source)
-        enrich.save_hq_cover(album, *hq)
+        enrich.set_album_art(album, *cover, source=source)
         for item in items:
-            enrich.embed_cover(item, *thumb)
+            enrich.embed_cover(item, *cover)
     except Exception as exc:  # the album landed; a cover is not worth failing on
         protocol.log(f"forced_album: cover store failed: {exc}")
         return False

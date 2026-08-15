@@ -3,6 +3,11 @@ import type { CSSProperties } from "react";
 import type { Album } from "@/features/library/albums/albums";
 import { AlbumCard } from "@/features/library/albums/AlbumCard";
 
+/** How many cards join the entrance cascade — two-plus rows on the widest
+ * shelf. Beyond that the cards are below the fold, and animating a thousand
+ * of them at once is what froze the page on integrated GPUs. */
+const CASCADE_CAP = 24;
+
 interface AlbumGridProps {
   albums: Album[];
   /** Same contract as `TrackTable`: what this result set is a result *of*.
@@ -24,6 +29,7 @@ export function AlbumGrid({ albums, animationKey = "", onPlay, onEdit }: AlbumGr
           // Capped like the track table's: the cards below the fold are not
           // worth making the user wait for.
           style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
+          cascade={position < CASCADE_CAP}
           onPlay={() => onPlay(album)}
           onEdit={onEdit && (() => onEdit(album))}
         />

@@ -8,7 +8,7 @@ import { genrePath, paths } from "@/app/routes";
 import { groupAlbums, sortAlbums } from "@/features/library/albums/albums";
 import { AlbumShelf } from "@/features/library/albums/AlbumShelf";
 import { groupArtists, sortArtists } from "@/features/library/artists/artists";
-import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
+import { ArtistShelf } from "@/features/library/artists/ArtistShelf";
 import {
   albumsWithGenre,
   familyKeyOf,
@@ -193,7 +193,7 @@ export function GenreDetailView() {
 
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.artists")}</h2>
-            <ArtistGrid
+            <ArtistShelf
               artists={artists}
               animationKey={family.key}
               onPlay={(artist) => playOrdered(artist.albums.flatMap((album) => album.tracks))}

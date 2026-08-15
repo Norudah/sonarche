@@ -11,6 +11,7 @@ import os
 import subprocess
 import tempfile
 
+import covers
 import metadata
 import protocol
 import provenance
@@ -218,6 +219,57 @@ def find_album_row(lib, release_id: str | None):
     return None
 
 
+def find_named_row(lib, albumartist: str | None, album_title: str | None):
+    """The library's album row wearing exactly this albumartist + album, or
+    None. The fallback behind `find_album_row`: the app groups albums by name,
+    so two editions of one album standing up two rows is never a state the
+    user can see — only a folder split, because %aunique suffixes every row
+    sharing a name. One name, one row.
+
+    Collections are never returned (a gathering the user named is not a
+    landing spot for a matched release), nor blank names (every provisional
+    row is blank; they have nothing in common). When the pathology already
+    exists — several rows with the name — the fullest row wins, same rule as
+    the consolidation pass."""
+    import library
+    from beets.dbcore.query import AndQuery, MatchQuery
+
+    if not albumartist or not album_title:
+        return None
+    rows = [
+        row
+        for row in lib.albums(
+            AndQuery([MatchQuery("albumartist", albumartist), MatchQuery("album", album_title)])
+        )
+        if row.get(library.ALBUM_KIND_KEY) != library.COLLECTION
+    ]
+    if not rows:
+        return None
+    if len(rows) == 1:  # the healthy case pays no per-row item count
+        return rows[0]
+    return max(rows, key=lambda row: (len(list(row.items())), -row.id))
+
+
+def drop_emptied_row(lib, row) -> None:
+    """Remove an album row its last item just left — art and husk included.
+
+    beets prunes a vacated directory only when nothing is left in it, and the
+    row's own cover.jpg usually is: `remove(delete=True, with_items=False)`
+    deletes exactly that one file, and the sweep after lets the folder go.
+    Same contract as move_tracks' emptied-source removal, shared so no caller
+    re-learns it by leaking husks."""
+    from beets import util
+
+    art_dir = os.path.dirname(_decode(row.artpath)) if row.artpath else None
+    row.remove(delete=True, with_items=False)
+    if art_dir and os.path.isdir(art_dir):
+        covers.remove_legacy_archives(art_dir)
+        try:
+            util.prune_dirs(art_dir, lib.directory)
+        except OSError as exc:
+            protocol.log(f"enrich: husk prune failed: {exc}")
+
+
 def _album_row_for(lib, item):
     """The album row `item` belongs on now that its tags are (re)written.
 
@@ -235,14 +287,21 @@ def _album_row_for(lib, item):
         # like a regular -A import would have.
         return album if album is not None else lib.add_album([item])
 
+    # The exact release first; failing that, the row wearing the same name —
+    # another edition of the same album, which must share its folder rather
+    # than stand up a %aunique-suffixed sibling.
     target = find_album_row(lib, release_id)
+    if target is None:
+        target = find_named_row(lib, item.albumartist, item.album)
+        if target is not None and target.id == (item.album_id or None):
+            return target
     if target is not None:
         item.album_id = target.id
         item.store()
     else:
         target = lib.add_album([item])
     if album is not None and not list(album.items()):
-        album.remove(delete=False, with_items=False)
+        drop_emptied_row(lib, album)
     return target
 
 
@@ -272,7 +331,11 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
     #   2. beets' duplicate check keys on albumartist+album; two blank rows look
     #      like duplicates, making it skip every later untagged import.
     album = _album_row_for(lib, item)
-    if sync_album:
+    # A row of another release reused by name keeps its own words: the item
+    # joining "Thriller" from a sibling edition must not rewrite the record's
+    # year, ids or artwork source. Fresh and same-release rows sync as before.
+    foreign = bool(album.mb_albumid) and str(album.mb_albumid) != str(item.mb_albumid or "")
+    if sync_album and not foreign:
         for key in library.Album.item_keys:
             album[key] = item[key]
         album.store()
@@ -284,10 +347,41 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
         protocol.log(f"enrich: move failed: {exc}")
 
 
-def apply_provisional(lib, item, params: dict, album=None) -> bool:
+def _file_as_singleton(lib, item) -> None:
+    """File a guess that no record claims outside the shelves: no album row,
+    so beets' `singleton` path applies — which the provisional flag routes to
+    the `Unidentified/` zone.
+
+    This path used to force an album row instead, and with a blank title the
+    row's folder had no name — %aunique could only tell the blanks apart by
+    row id, and every guessed single stood as `<channel>/[86]/`. A blank row a
+    prior run left the item on is dropped once it empties."""
+    old_row = item.get_album()
+    if item.album_id is not None:
+        item.album_id = None
+    item.store()
+    try:
+        item.write()
+    except Exception as exc:  # DB is authoritative; file tags are best-effort
+        protocol.log(f"enrich: tag write failed: {exc}")
+    if old_row is not None and not list(old_row.items()):
+        drop_emptied_row(lib, old_row)
+    try:
+        item.move()
+    except Exception as exc:
+        protocol.log(f"enrich: move failed: {exc}")
+
+
+def apply_provisional(lib, item, params: dict, album=None, file: bool = True) -> bool:
     """Nothing identified this file: fill it from the download's own hints (and
-    from `album`, when its siblings matched a release) and flag it as a guess,
-    so it lands with its album instead of staying blank outside every folder.
+    from `album`, when its siblings matched a release) and flag it as a guess.
+    With an album behind it, it files next to the siblings that vouch for it;
+    with nothing behind it, it files in the guessed zone rather than posing on
+    the shelves as a verified record.
+
+    `file=False` writes the guess without moving anything: the forced-album
+    flow re-files every item onto the forced record right after, and a real
+    move here would bounce the file through the guessed zone on the way.
 
     Returns whether anything was written."""
     fields = provisional.guess_fields(
@@ -299,9 +393,26 @@ def apply_provisional(lib, item, params: dict, album=None) -> bool:
         protocol.log(f"enrich: item {item.id} unidentified and no hint to guess from")
         return False
     protocol.log(f"enrich: item {item.id} provisionally tagged from {sorted(fields)}")
+    if not file:
+        item.store()
+        try:
+            item.write()
+        except Exception as exc:  # DB is authoritative; file tags are best-effort
+            protocol.log(f"enrich: tag write failed: {exc}")
+        return True
     if album is not None:
         item.album_id = album.id
-    store_and_file(lib, item, sync_album=album is None)
+        store_and_file(lib, item, sync_album=False)
+        return True
+
+    current = item.get_album()
+    if current is not None and (str(current.album) or "").strip():
+        # It already sits on a named record (a re-run that failed to match):
+        # keep it where it is, and keep the row's own words — a guess must not
+        # rewrite them.
+        store_and_file(lib, item, sync_album=False)
+    else:
+        _file_as_singleton(lib, item)
     return True
 
 
@@ -329,47 +440,35 @@ def _apply(lib, item, album_info, track_info) -> None:
     store_and_file(lib, item)
 
 
-def _caa_front(entity_path: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) front cover from one Cover Art Archive entity
-    (`release/<id>` or `release-group/<id>`), each as (data, is_png), or None
-    when that entity carries no front art. hq is CAA's original upload; thumb is
-    its 500px rendition (or the original when CAA has no rendition)."""
+def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
+    """The 500px front cover from one Cover Art Archive entity (`release/<id>`
+    or `release-group/<id>`) as (data, is_png), or None when that entity
+    carries no front art. CAA's own rendition first — the full upload is only
+    fetched when no rendition exists, and `set_album_art` shrinks it locally;
+    since the archive convention went, nothing keeps the original anyway."""
     import requests
 
     import cover_set
     import net
 
-    hq_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front", timeout=30, stream=True)
-    if hq_resp.status_code != 200:
-        return None
-    try:
-        hq_data = net.read_bounded(hq_resp, cover_set.MAX_CANDIDATE_BYTES)
-    except RuntimeError:
-        # An outsized upload degrades to "no cover", never to a failed enrich.
-        protocol.log(f"enrich: cover on {entity_path} over the size cap, skipped")
-        return None
-    if not hq_data:
-        return None
-    hq = (hq_data, hq_data[:4] == b"\x89PNG")
-
-    thumb_resp = requests.get(f"https://coverartarchive.org/{entity_path}/front-500", timeout=30, stream=True)
-    thumb = hq
-    if thumb_resp.status_code == 200:
+    for variant in ("front-500", "front"):
+        resp = requests.get(f"https://coverartarchive.org/{entity_path}/{variant}", timeout=30, stream=True)
+        if resp.status_code != 200:
+            continue
         try:
-            thumb_data = net.read_bounded(thumb_resp, cover_set.MAX_CANDIDATE_BYTES)
-            if thumb_data:
-                thumb = (thumb_data, thumb_data[:4] == b"\x89PNG")
+            data = net.read_bounded(resp, cover_set.MAX_CANDIDATE_BYTES)
         except RuntimeError:
-            protocol.log(f"enrich: 500px rendition on {entity_path} over the size cap, kept the original")
-    return hq, thumb
+            # An outsized upload degrades to "no cover", never to a failed enrich.
+            protocol.log(f"enrich: cover on {entity_path}/{variant} over the size cap, skipped")
+            continue
+        if data:
+            return data, data[:4] == b"\x89PNG"
+    return None
 
 
-def download_cover(
-    release_id: str, release_group_id: str | None = None
-) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """(hq, thumb) cover from the Cover Art Archive, or None. hq is CAA's
-    original upload, kept on disk for Sonarche's own display; thumb is the 500px
-    rendition — used as beets' artpath (cover.jpg) and embedded into file tags,
+def download_cover(release_id: str, release_group_id: str | None = None) -> tuple[bytes, bool] | None:
+    """The display cover from the Cover Art Archive, or None — the 500px
+    rendition used as beets' artpath (cover.jpg) and embedded into file tags,
     so the beets copy and the audio files stay light.
 
     Tries the specific release first, then the release-group's designated cover.
@@ -403,18 +502,11 @@ def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Arc
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
-
-def save_hq_cover(album, data: bytes, is_png: bool) -> None:
-    """Write the HQ cover next to beets' artpath as cover-hq.*, for Sonarche's
-    own display. Kept outside beets' management — call after set_album_art so
-    album.artpath already points at the album's directory."""
-    if not album.artpath:
-        return
-    art_dir = os.path.dirname(_decode(album.artpath))
-    ext = "png" if is_png else "jpg"
-    with open(os.path.join(art_dir, f"cover-hq.{ext}"), "wb") as f:
-        f.write(data)
+    # The ceiling holds whatever arrived: the CAA fallback hands over the full
+    # upload when no 500px rendition exists, and an oversized artpath is the
+    # exact memory bill the rendition rule exists to prevent.
+    if album.artpath:
+        covers.ensure_display_rendition(_decode(album.artpath))
 
 
 def embed_cover(item, data: bytes, is_png: bool) -> None:
@@ -435,10 +527,8 @@ def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> 
     cover = download_cover(release_id, release_group_id)
     if cover is None:
         return
-    hq, thumb = cover
-    set_album_art(album, *thumb)
-    save_hq_cover(album, *hq)
-    embed_cover(item, *thumb)
+    set_album_art(album, *cover)
+    embed_cover(item, *cover)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -577,8 +667,15 @@ def enrich_one(
             same_release = bool(previous_release) and previous_release == str(
                 album_info.album_id or ""
             )
-            if same_release and album is not None and album.artpath:
-                protocol.log("enrich: release unchanged and cover present, keeping it")
+            # A named row of another edition wears its own cover — possibly
+            # the user's — and a single joining it must not stomp that either.
+            foreign_row = (
+                album is not None
+                and bool(album.mb_albumid)
+                and str(album.mb_albumid) != str(album_info.album_id or "")
+            )
+            if (same_release or foreign_row) and album is not None and album.artpath:
+                protocol.log("enrich: cover already on the record, keeping it")
             else:
                 try:
                     _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)

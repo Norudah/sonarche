@@ -71,8 +71,7 @@ export interface ImportRecap {
 export interface ImportOutcome {
   /** Album folders beets took on — comparable to the scan's `albumFolders`. */
   folders: number;
-  /** Covers too big to draw that were given a small rendition, the original
-   * kept beside them as `cover-hq.*`. */
+  /** Covers too big to draw that were scaled down in place. */
   renditions: number;
   recap: ImportRecap | null;
   /** The user stopped the copy. Not a failure: everything taken on by then is

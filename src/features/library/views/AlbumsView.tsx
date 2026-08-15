@@ -10,6 +10,8 @@ import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { AlbumsHeader } from "@/features/library/albums/AlbumsHeader";
 import { applyAlbumTriage, parseAlbumTriage } from "@/features/library/albums/triage";
 import { useLibrary } from "@/features/library/hooks";
+import { ShelfLayoutSwitch } from "@/features/library/ShelfLayoutSwitch";
+import { useShelfLayout } from "@/features/library/shelfLayout";
 import { SortSelect } from "@/features/library/SortSelect";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
@@ -24,6 +26,7 @@ export function AlbumsView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
   const [params, setParams] = useSearchParams();
+  const [layout, setLayout] = useShelfLayout("albums");
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
   // No `useMemo`: `groupAlbums` caches on the array's identity, which every
@@ -61,6 +64,7 @@ export function AlbumsView() {
       <AlbumsHeader
         albumCount={albums.length}
         trackCount={albums.reduce((sum, album) => sum + album.tracks.length, 0)}
+        actions={<ShelfLayoutSwitch layout={layout} onChange={setLayout} />}
       />
 
       <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={albums.length}>
@@ -102,6 +106,7 @@ export function AlbumsView() {
       {visible.length > 0 && (
         <AlbumShelf
           albums={visible}
+          layout={layout}
           // The unfiltered list: the drawer must keep hold of a record whose
           // edit drops it out of the current filter or sort.
           pool={albums}

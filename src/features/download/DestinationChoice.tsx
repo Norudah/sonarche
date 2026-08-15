@@ -1,4 +1,4 @@
-import { Radio, RadioGroup } from "@heroui/react";
+import { Radio, RadioGroup, Switch } from "@heroui/react";
 import { Lightbulb } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -7,6 +7,11 @@ import { useTranslation } from "react-i18next";
 import type { ForcedAlbum, JobKind } from "@/features/download/api";
 import { ForcedAlbumPreview } from "@/features/download/ForcedAlbumPreview";
 import { AlbumSelect, type AlbumTarget } from "@/features/library/albums/AlbumSelect";
+// Same reason as the category chips: the names the library already knows are
+// the library's to serve, and a second spelling of "Hans Zimmer" is exactly
+// what forcing a destination is supposed to prevent.
+import { SuggestInput } from "@/features/library/metadata/SuggestInput";
+import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
 /**
@@ -79,11 +84,24 @@ export function DestinationChoice({
   value,
   kind,
   onChange,
+  modes = ["auto", "existing", "new"],
+  singleAlbum,
+  onSingleAlbumChange,
 }: {
   value: Destination;
   /** Playlist or single — the wording and the diagram follow. */
   kind: JobKind;
   onChange: (next: Destination) => void;
+  /** The offered modes. The composer offers all three; the after-the-fact
+   * "change the destination" dialog drops `auto` — there is no pipeline left
+   * to decide anything. */
+  modes?: Destination["mode"][];
+  /** The automatic pipeline's one promise a playlist can toggle: end as one
+   * record instead of scattering across editions and per-track releases.
+   * Only rendered when a handler is given (the composer) — the refile dialog
+   * has no pipeline left to promise anything. */
+  singleAlbum?: boolean;
+  onSingleAlbumChange?: (on: boolean) => void;
 }) {
   const { t } = useTranslation("download");
 
@@ -104,19 +122,42 @@ export function DestinationChoice({
         aria-label={t("options.destination.legend")}
         className="flex w-fit flex-row gap-0.5 rounded-full bg-default/60 p-0.5"
       >
-        <Segment mode="auto" selected={value.mode}>
-          {t("options.destination.modeAuto")}
-        </Segment>
-        <Segment mode="existing" selected={value.mode}>
-          {t("options.destination.modeExisting")}
-        </Segment>
-        <Segment mode="new" selected={value.mode}>
-          {t("options.destination.modeNew")}
-        </Segment>
+        {modes.includes("auto") && (
+          <Segment mode="auto" selected={value.mode}>
+            {t("options.destination.modeAuto")}
+          </Segment>
+        )}
+        {modes.includes("existing") && (
+          <Segment mode="existing" selected={value.mode}>
+            {t("options.destination.modeExisting")}
+          </Segment>
+        )}
+        {modes.includes("new") && (
+          <Segment mode="new" selected={value.mode}>
+            {t("options.destination.modeNew")}
+          </Segment>
+        )}
       </RadioGroup>
 
       {value.mode === "auto" && (
-        <p className="text-xs leading-relaxed text-muted">{t("options.destination.autoHint")}</p>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs leading-relaxed text-muted">{t("options.destination.autoHint")}</p>
+          {kind === "album" && onSingleAlbumChange && (
+            <div className="flex flex-col gap-1">
+              <Switch isSelected={singleAlbum ?? true} onChange={onSingleAlbumChange} className="w-fit">
+                <Switch.Content className="gap-2">
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                  <span className="text-xs font-medium">{t("options.destination.singleAlbum")}</span>
+                </Switch.Content>
+              </Switch>
+              <p className="max-w-[62ch] text-xs leading-relaxed text-muted">
+                {t("options.destination.singleAlbumHint")}
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {value.mode === "existing" && (
@@ -162,15 +203,20 @@ export function DestinationChoice({
             </label>
             <label className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-[0.75rem] font-medium text-muted">{t("options.destination.artist")}</span>
-              <input
-                type="text"
-                value={value.artist ?? ""}
-                // A playlist with no named artist falls back to the sidecar's
-                // compilation default; a single keeps its own artist.
-                placeholder={kind === "album" ? "Various Artists" : undefined}
-                onChange={(event) => onChange({ ...value, artist: event.target.value || null })}
-                className={FIELD}
-              />
+              {/* The provider mounts with the field, not with the section: the
+                  pools are derived from the whole library, and the two other
+                  modes never ask for a name. */}
+              <MetadataSuggestionsProvider>
+                <SuggestInput
+                  value={value.artist ?? ""}
+                  suggest="artist"
+                  // A playlist with no named artist falls back to the sidecar's
+                  // compilation default; a single keeps its own artist.
+                  placeholder={kind === "album" ? "Various Artists" : undefined}
+                  onChange={(artist) => onChange({ ...value, artist: artist || null })}
+                  className={FIELD}
+                />
+              </MetadataSuggestionsProvider>
             </label>
           </div>
         </div>

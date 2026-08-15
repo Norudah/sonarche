@@ -26,8 +26,10 @@ def _handlers():
     import acoustid_key
     import album_kind
     import artist_image
+    import cover_cleanup
     import cover_set
     import download
+    import download_undo
     import enrich
     import enrich_album
     import genre_overrides
@@ -40,6 +42,7 @@ def _handlers():
     import lyrics
     import move_tracks
     import probe
+    import relayout
     import remux
     import services
 
@@ -51,12 +54,16 @@ def _handlers():
         "library_import": library_import.handle,
         "library_import_undo_preview": import_undo.preview,
         "library_import_undo": import_undo.handle,
+        "library_download_undo_preview": download_undo.preview,
+        "library_download_undo": download_undo.handle,
         "library_align_scan": library_align.scan,
         "library_align_apply": library_align.apply,
         "enrich": enrich.handle,
         "enrich_album": enrich_album.handle,
         "library_list": library.handle,
         "library_remux": remux.handle,
+        "library_relayout": relayout.handle,
+        "cover_cleanup": cover_cleanup.handle,
         "library_remove": library.remove,
         "library_update": library.update,
         "library_move_tracks": move_tracks.handle,

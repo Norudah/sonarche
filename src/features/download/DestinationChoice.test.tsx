@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DestinationChoice, toForcedAlbum } from "@/features/download/DestinationChoice";
 
 afterEach(cleanup);
+
+/** The `new` mode's artist field suggests names from the library, so the tree
+ * needs a QueryClient — one per render, queries left unresolved on purpose. */
+function renderWithQueries(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 /**
  * The mapping decides whether a download rewrites where every one of its
@@ -54,7 +63,9 @@ describe("DestinationChoice", () => {
 
   it("reports the new album's title as it is typed", () => {
     const onChange = vi.fn();
-    render(<DestinationChoice value={{ mode: "new", title: "", artist: null }} kind="album" onChange={onChange} />);
+    renderWithQueries(
+      <DestinationChoice value={{ mode: "new", title: "", artist: null }} kind="album" onChange={onChange} />,
+    );
 
     fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "Inception" } });
 

@@ -12,10 +12,12 @@ import {
   sortArtists,
   type ArtistSort,
 } from "@/features/library/artists/artists";
-import { ArtistGrid } from "@/features/library/artists/ArtistGrid";
+import { ArtistShelf } from "@/features/library/artists/ArtistShelf";
 import { ArtistsHeader } from "@/features/library/artists/ArtistsHeader";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
+import { ShelfLayoutSwitch } from "@/features/library/ShelfLayoutSwitch";
+import { useShelfLayout } from "@/features/library/shelfLayout";
 import { SortSelect } from "@/features/library/SortSelect";
 import { useArtistImages, useLibrary } from "@/features/library/hooks";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
@@ -30,6 +32,7 @@ export function ArtistsView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ArtistSort>("name");
   const [params, setParams] = useSearchParams();
+  const [layout, setLayout] = useShelfLayout("artists");
 
   // The metadata page's door: only the artists still wearing the generated
   // motif. No filter while the image map is loading — a half-loaded map would
@@ -68,6 +71,7 @@ export function ArtistsView() {
       <ArtistsHeader
         artistCount={artists.length}
         albumCount={artists.reduce((sum, artist) => sum + artist.albums.length, 0)}
+        actions={<ShelfLayoutSwitch layout={layout} onChange={setLayout} />}
       />
 
       <ExplorerBar query={query} onQueryChange={setQuery} shown={visible.length} total={artists.length}>
@@ -107,8 +111,9 @@ export function ArtistsView() {
       )}
 
       {visible.length > 0 && (
-        <ArtistGrid
+        <ArtistShelf
           artists={visible}
+          layout={layout}
           animationKey={`${params.toString()}:${query}:${sort}`}
           // The first track of the earliest album: an artist's "play" has to
           // start *somewhere*, and the discography's opening is the only choice

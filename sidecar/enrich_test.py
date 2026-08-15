@@ -137,3 +137,140 @@ class CollectionGuardTest(unittest.TestCase):
                 )
         finally:
             shutil.rmtree(root, ignore_errors=True)
+
+
+class LibraryHarness(unittest.TestCase):
+    """Against a real beets library, like move_tracks_test: what these paths
+    promise is what beets does with rows and destinations."""
+
+    def setUp(self):
+        import os
+        import tempfile
+
+        self.dir = tempfile.mkdtemp()
+        self.db = os.path.join(self.dir, "library.db")
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def _item(self, name: str, **fields):
+        import os
+
+        from beets.library import Item
+
+        path = os.path.join(self.dir, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(b"audio")
+        return Item(path=path.encode(), format="MP3", **fields)
+
+    def _lib(self):
+        from beets.library import Library
+
+        return Library(self.db, directory=self.dir)
+
+
+class FindNamedRowTest(LibraryHarness):
+    def test_finds_the_row_wearing_the_name(self):
+        import enrich
+
+        lib = self._lib()
+        row = lib.add_album(
+            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+        )
+        found = enrich.find_named_row(lib, "Green Day", "American Idiot")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, row.id)
+        self.assertIsNone(enrich.find_named_row(lib, "Green Day", "Dookie"))
+        lib._close()
+
+    def test_a_collection_is_never_a_landing_spot(self):
+        import enrich
+        import library
+
+        lib = self._lib()
+        row = lib.add_album(
+            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+        )
+        row[library.ALBUM_KIND_KEY] = library.COLLECTION
+        row.store(inherit=False)
+        self.assertIsNone(enrich.find_named_row(lib, "Green Day", "American Idiot"))
+        lib._close()
+
+    def test_blank_names_match_nothing(self):
+        import enrich
+
+        lib = self._lib()
+        lib.add_album([self._item("blank/1 X.mp3", title="X", albumartist="LIVinglife")])
+        self.assertIsNone(enrich.find_named_row(lib, "LIVinglife", ""))
+        self.assertIsNone(enrich.find_named_row(lib, "", "American Idiot"))
+        lib._close()
+
+    def test_the_fullest_row_wins_when_the_pathology_exists(self):
+        import enrich
+
+        lib = self._lib()
+        lib.add_album(
+            [self._item("AI dup/1 Letterbomb.mp3", title="Letterbomb", album="American Idiot", albumartist="Green Day")]
+        )
+        full = lib.add_album(
+            [
+                self._item(f"AI/{n} T{n}.mp3", title=f"T{n}", album="American Idiot", albumartist="Green Day")
+                for n in (1, 2)
+            ]
+        )
+        self.assertEqual(enrich.find_named_row(lib, "Green Day", "American Idiot").id, full.id)
+        lib._close()
+
+
+class ProvisionalFilingTest(LibraryHarness):
+    """The `LIVinglife/[86]/` regression: a guessed single used to stand up a
+    blank album row, and %aunique could only name the blanks by row id."""
+
+    def test_a_rootless_guess_files_as_a_singleton_not_a_blank_record(self):
+        import enrich
+
+        lib = self._lib()
+        item = self._item("staging/video.mp3")
+        lib.add(item)
+        wrote = enrich.apply_provisional(
+            lib, item, {"title": "Mamma Mia - I Do", "artist": "LIVinglife"}
+        )
+        self.assertTrue(wrote)
+        fresh = lib.get_item(item.id)
+        self.assertIsNone(fresh.album_id)
+        self.assertEqual(len(list(lib.albums())), 0)
+        # beets' `singleton` path applies (the guessed zone in the app config).
+        self.assertIn("Non-Album", fresh.path.decode())
+        lib._close()
+
+    def test_a_blank_row_a_prior_run_left_dies_with_the_refile(self):
+        import enrich
+
+        lib = self._lib()
+        item = self._item("LIVinglife/_/track.mp3", artist="LIVinglife")
+        row = lib.add_album([item])
+        self.assertEqual((row.album or ""), "")
+        wrote = enrich.apply_provisional(
+            lib, item, {"title": "Mamma Mia - I Do", "artist": "LIVinglife"}
+        )
+        self.assertTrue(wrote)
+        self.assertIsNone(lib.get_album(row.id))
+        self.assertIsNone(lib.get_item(item.id).album_id)
+        lib._close()
+
+    def test_a_guess_on_a_named_record_stays_with_it(self):
+        import enrich
+
+        lib = self._lib()
+        item = self._item("AI/1 Unknown.mp3", album="American Idiot", albumartist="Green Day")
+        row = lib.add_album([item])
+        wrote = enrich.apply_provisional(lib, item, {"title": "Letterbomb", "artist": "LIVinglife"})
+        self.assertTrue(wrote)
+        fresh = lib.get_item(item.id)
+        self.assertEqual(fresh.album_id, row.id)
+        # The row's own words survive the guess.
+        self.assertEqual(lib.get_album(row.id).album, "American Idiot")
+        lib._close()

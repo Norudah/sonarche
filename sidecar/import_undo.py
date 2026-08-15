@@ -11,10 +11,9 @@ alignment pass over it — none of that touches the mark, and beets follows the
 file when a rename moves it. So the set of tracks this removes is the set the
 run created, months and edits later.
 
-Removal goes through beets' own API rather than SQL, which is what makes the
-rest fall into place: the file is deleted, the album row goes when its last
-track does, its cover goes with it, and the emptied directories are pruned
-(`cover-hq.*` is declared clutter, so a folder holding only one still prunes).
+The removal itself is `undo_removal`, shared with the download undo: beets'
+own API does the deleting, so the album row, the cover and the emptied
+folders go along with the tracks.
 
 Two things this deliberately does *not* do:
 
@@ -32,8 +31,8 @@ failure a user undoing an import is most likely to hit next.
 
 import os
 
-import library
 import protocol
+import undo_removal
 from import_recap import BATCH_FIELD
 
 
@@ -44,58 +43,16 @@ def _batch(params: dict) -> str:
     return batch
 
 
-def _under(path: str, root: str) -> bool:
-    """Whether `path` sits inside `root`. Both resolved first, so a symlinked
-    library directory does not make every one of its own files look foreign."""
-    try:
-        return os.path.commonpath([os.path.realpath(path), os.path.realpath(root)]) == os.path.realpath(root)
-    except ValueError:  # different drives on Windows: not under, and not an error
-        return False
-
-
 def preview(_request_id: str, params: dict) -> dict:
-    """What undoing this run would remove, without removing anything.
-
-    The confirmation has to state a count before it asks, and the count has to
-    come from the library rather than from what the run once reported: tracks
-    may have been deleted by hand since, and an album may have grown.
-    """
+    """What undoing this run would remove, without removing anything."""
     from beets.library import Library
 
     batch = _batch(params)
     lib = Library(params["beets_db"], directory=params["library_dir"])
     try:
-        item_ids: list[int] = []
-        by_album: dict[int, set[int]] = {}
-        for item in lib.items(f"{BATCH_FIELD}:{batch}"):
-            item_ids.append(item.id)
-            if item.album_id:
-                by_album.setdefault(item.album_id, set()).add(item.id)
-
-        emptied = 0
-        kept = 0
-        for album_id, mine in by_album.items():
-            album = lib.get_album(album_id)
-            if album is None:
-                continue
-            if any(item.id not in mine for item in album.items()):
-                kept += 1
-            else:
-                emptied += 1
+        return undo_removal.survey(lib, list(lib.items(f"{BATCH_FIELD}:{batch}")))
     finally:
         lib._close()
-
-    return {
-        "tracks": len(item_ids),
-        # Albums that disappear with their tracks, and albums that merely lose
-        # some: two different sentences on the confirmation, and the second is
-        # the one nobody expects.
-        "albumsRemoved": emptied,
-        "albumsKept": kept,
-        # For the caller, which owns the playlists: they live in another
-        # database file, so no foreign key can carry the removal across.
-        "itemIds": item_ids,
-    }
 
 
 def handle(_request_id: str, params: dict) -> dict:
@@ -105,53 +62,17 @@ def handle(_request_id: str, params: dict) -> dict:
     batch = _batch(params)
     library_dir = params["library_dir"]
     lib = Library(params["beets_db"], directory=library_dir)
-    removed: list[int] = []
-    foreign = 0
     try:
-        for item in lib.items(f"{BATCH_FIELD}:{batch}"):
-            path = library._decode(item.path)
-            inside = bool(path) and _under(path, library_dir)
-            if not inside:
-                foreign += 1
-                protocol.log(f"import_undo: {path} is outside the library, row dropped, file kept")
-            else:
-                _drop_staged_art(item, library_dir)
-            # `delete` only for a file we put there. The row goes either way:
-            # it is this app's record of a track it no longer claims.
-            item.remove(delete=inside)
-            removed.append(item.id)
+        result = undo_removal.remove_items(
+            list(lib.items(f"{BATCH_FIELD}:{batch}")), library_dir, "import_undo"
+        )
     finally:
         lib._close()
 
     forgotten = forget_folder(params.get("state_file"), params.get("folder"))
-    protocol.log(f"import_undo: {len(removed)} track(s) removed, {forgotten} folder(s) forgotten")
-
-    return {
-        "removed": len(removed),
-        "itemIds": removed,
-        # Files left alone because they were not ours to delete. Reported, not
-        # swallowed: it is the one outcome that does not match "everything this
-        # import brought in is gone".
-        "foreign": foreign,
-        "forgotten": forgotten,
-    }
-
-
-def _drop_staged_art(item, library_dir: str) -> None:
-    """Delete the cover written out beside a singleton at import.
-
-    beets knows nothing about it — it is our file, recorded on the item — so
-    nothing else would remove it, and a folder still holding one would not
-    prune. An album's own cover needs no such care: beets deletes `artpath`
-    with the album.
-    """
-    art = item.get(library.ITEM_ART_KEY)
-    if not art or not _under(art, library_dir):
-        return
-    try:
-        os.remove(art)
-    except OSError:  # already gone, or never written: nothing owed
-        pass
+    protocol.log(f"import_undo: {result['removed']} track(s) removed, {forgotten} folder(s) forgotten")
+    result["forgotten"] = forgotten
+    return result
 
 
 def forget_folder(state_file: str | None, folder: str | None) -> int:

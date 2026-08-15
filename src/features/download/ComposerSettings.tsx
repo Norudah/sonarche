@@ -21,6 +21,8 @@ interface ComposerSettingsProps {
   onCategoryChange: (next: string | null) => void;
   destination: Destination;
   onDestinationChange: (next: Destination) => void;
+  singleAlbum: boolean;
+  onSingleAlbumChange: (on: boolean) => void;
 }
 
 /** What the folded strip can say about the destination — the picked album's
@@ -56,6 +58,8 @@ export function ComposerSettings({
   onCategoryChange,
   destination,
   onDestinationChange,
+  singleAlbum,
+  onSingleAlbumChange,
 }: ComposerSettingsProps) {
   const { t } = useTranslation("download");
   const labelOf = useCategoryLabel();
@@ -111,7 +115,13 @@ export function ComposerSettings({
             onChange={onCategoryChange}
           />
           <hr className="border-separator/70" />
-          <DestinationChoice value={destination} kind={kind} onChange={onDestinationChange} />
+          <DestinationChoice
+            value={destination}
+            kind={kind}
+            onChange={onDestinationChange}
+            singleAlbum={singleAlbum}
+            onSingleAlbumChange={onSingleAlbumChange}
+          />
         </Disclosure.Body>
       </Disclosure.Content>
     </Disclosure>

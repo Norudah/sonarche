@@ -89,13 +89,11 @@ def first_genre(stored: str | None) -> str | None:
 def art_paths_by_album(conn, library_dir: str) -> dict[int, str | None]:
     """Resolve every album's cover once, up front.
 
-    This is beets' own artpath — the 500px rendition `set_album_art` writes and
-    embeds — and *not* the cover-hq.* we archive next to it. Nothing on screen
-    is wider than the album hero (192pt, 384px on retina), so the HQ never had
-    a pixel to spare: it was decoded at up to 5000x5000 to be drawn into a 40px
-    list thumbnail, which costs ~100 MB of bitmap per cover instead of ~1 MB.
-    The archive keeps the original on disk; the UI reads the rendition sized
-    for it, and gets its own path back the day a full-size cover view exists.
+    This is beets' own artpath — the 500px rendition `set_album_art` writes
+    and embeds. Nothing on screen is wider than the album hero (192pt, 384px
+    on retina), so a bigger file never had a pixel to spare: a 5000x5000
+    original decoded into a 40px list thumbnail costs ~100 MB of bitmap per
+    cover instead of ~1 MB, which is why the library only keeps the rendition.
 
     Cover art is an album-level property; resolving it per track meant one
     query each, to answer a question with one answer per album. Keeps the work
@@ -455,10 +453,21 @@ def update(_request_id: str, params: dict) -> dict:
     for item in solo:
         item.try_sync(write=True, move=True)
 
-    # beets moved its own cover.jpg with the items; `cover-hq.*` is ours and it
-    # knows nothing about it.
+    # beets moved its own cover.jpg with the items; a legacy `cover-hq.*`
+    # archive from <= 2.x is the one file that can keep the vacated folder
+    # alive, so sweep it and let the husk go.
     for album_id, old_dir in art_dirs.items():
-        covers.follow_hq_cover(lib, lib.get_album(album_id), old_dir, _decode)
+        album = lib.get_album(album_id)
+        art = _decode(album.artpath) if album is not None and album.artpath else None
+        new_dir = os.path.dirname(art) if art else None
+        if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
+            continue
+        covers.remove_legacy_archives(old_dir)
+        try:
+            if not os.listdir(old_dir):
+                os.rmdir(old_dir)
+        except OSError:
+            pass
 
     return {
         "updated": updated,

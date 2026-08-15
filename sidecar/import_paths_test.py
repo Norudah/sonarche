@@ -19,12 +19,21 @@ from beets.util.functemplate import Template
 
 # Copied from `IMPORT_PATHS` in src-tauri/src/python_env.rs.
 DEFAULT = (
-    "%if{$albumartist,$albumartist,Unknown Artist}/"
+    "Library/%if{$albumartist,$albumartist,Unknown Artist}/"
     "%if{$album,$album,Unknown Album}/"
     "%if{$track,$track ,}$title"
 )
-SINGLETON = "Singles/%if{$artist,$artist,Unknown Artist}/$title"
-COMP = "Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title"
+SINGLETON = "%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title"
+COMP = "Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title"
+
+# Copied from `APP_PATHS` in src-tauri/src/python_env.rs.
+APP_DEFAULT = (
+    "Library/%if{$albumartist,$albumartist,Unknown Artist}/"
+    "%if{$album,$album,Unknown Album}%aunique{}/"
+    "%if{$track,$track ,}$title"
+)
+APP_SINGLETON = "%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title"
+APP_COMP = "Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title"
 
 _FUNCTIONS = DefaultTemplateFunctions().functions()
 
@@ -45,33 +54,96 @@ class DefaultPathTest(unittest.TestCase):
     def test_a_tagged_track_files_where_it_always_did(self):
         self.assertEqual(
             render(DEFAULT, albumartist="Sigrid", album="Sucker Punch", track="03", title="Strangers"),
-            "Sigrid/Sucker Punch/03 Strangers",
+            "Library/Sigrid/Sucker Punch/03 Strangers",
         )
 
     def test_an_untagged_rip_gets_named_folders_instead_of_empty_ones(self):
         """The regression this template exists for: beets' stock one renders
         `//Title` here, and every untagged track in the library shares those two
         nameless folders."""
-        self.assertEqual(render(DEFAULT, title="Airplane"), "Unknown Artist/Unknown Album/Airplane")
+        self.assertEqual(render(DEFAULT, title="Airplane"), "Library/Unknown Artist/Unknown Album/Airplane")
 
     def test_an_unnumbered_track_drops_the_prefix_rather_than_wearing_a_zero(self):
         """beets reads an unset track as falsy, so `%if` covers both "no tag"
         and "tagged 0" — which is what a yt-dlp rip carries."""
-        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", title="Rosetta"), "Mili/Mili/Rosetta")
-        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", track="00", title="Rosetta"), "Mili/Mili/Rosetta")
+        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", title="Rosetta"), "Library/Mili/Mili/Rosetta")
+        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", track="00", title="Rosetta"), "Library/Mili/Mili/Rosetta")
 
     def test_only_the_missing_half_falls_back(self):
-        self.assertEqual(render(DEFAULT, albumartist="Sigrid", title="Fort Knox"), "Sigrid/Unknown Album/Fort Knox")
+        self.assertEqual(render(DEFAULT, albumartist="Sigrid", title="Fort Knox"), "Library/Sigrid/Unknown Album/Fort Knox")
 
 
 class OtherPathsTest(unittest.TestCase):
-    def test_a_singleton_is_filed_by_artist_under_one_roof(self):
-        self.assertEqual(render(SINGLETON, artist="Sigrid", title="Fort Knox"), "Singles/Sigrid/Fort Knox")
-        self.assertEqual(render(SINGLETON, title="Fort Knox"), "Singles/Unknown Artist/Fort Knox")
+    def test_a_compilation_keeps_its_own_shelf(self):
+        self.assertEqual(render(COMP, album="OST", track="02", title="Java"), "Library/Compilations/OST/02 Java")
+        self.assertEqual(render(COMP, title="Java"), "Library/Compilations/Unknown Album/Java")
+
+
+class AppPathsTest(unittest.TestCase):
+    """The app flavour: same guards, plus %aunique (which renders empty here —
+    no library behind the template — exactly like a unique album), and the
+    guessed zone for singletons — an item no album row claims is a provisional
+    single, and it must not sit on the shelves as if it were verified."""
+
+    def test_a_tagged_track_files_on_the_library_shelf(self):
+        self.assertEqual(
+            render(APP_DEFAULT, albumartist="Green Day", album="American Idiot", track="03", title="Holiday"),
+            "Library/Green Day/American Idiot/03 Holiday",
+        )
+
+    def test_a_zero_track_drops_the_prefix_rather_than_wearing_00(self):
+        # The `00 Mamma Mia - I Do.m4a` regression: provisional parks a 0.
+        self.assertEqual(
+            render(APP_DEFAULT, albumartist="Green Day", album="American Idiot", track="00", title="Holiday"),
+            "Library/Green Day/American Idiot/Holiday",
+        )
 
     def test_a_compilation_keeps_its_own_shelf(self):
-        self.assertEqual(render(COMP, album="OST", track="02", title="Java"), "Compilations/OST/02 Java")
-        self.assertEqual(render(COMP, title="Java"), "Compilations/Unknown Album/Java")
+        self.assertEqual(render(APP_COMP, album="OST", track="02", title="Java"), "Library/Compilations/OST/02 Java")
+
+
+class SingletonZoneTest(unittest.TestCase):
+    """The singleton template, against a real Library: `%ifdef` reads the
+    provisional flag's *definedness* off the item itself, which the dict
+    renderer above cannot say. Pinned here because `%if` was the trap — a
+    missing flexible attribute renders as the literal `$symbol`, which `%if`
+    reads as true, and every verified single would have landed in the zone."""
+
+    def test_the_flag_and_only_the_flag_routes_to_the_zone(self):
+        import os
+        import shutil
+        import tempfile
+
+        import beets
+        from beets.library import Item, Library
+
+        root = tempfile.mkdtemp()
+        old = beets.config["paths"]["singleton"].get()
+        beets.config["paths"]["singleton"] = APP_SINGLETON
+        try:
+            lib = Library(os.path.join(root, "library.db"), directory=root)
+            path = os.path.join(root, "x.mp3")
+            with open(path, "wb") as fh:
+                fh.write(b"audio")
+            plain = Item(path=path.encode(), format="MP3", title="Fort Knox", artist="Sigrid")
+            lib.add(plain)
+            self.assertIn("Library/Singles/Sigrid", plain.destination().decode())
+
+            flagged = Item(path=path.encode(), format="MP3", title="Mamma", artist="LIVinglife")
+            lib.add(flagged)
+            flagged["sonarche_provisional"] = 1
+            flagged.store()
+            self.assertIn("Unidentified/LIVinglife", lib.get_item(flagged.id).destination().decode())
+
+            # A later real match deletes the flag: back on the shelf.
+            fresh = lib.get_item(flagged.id)
+            del fresh["sonarche_provisional"]
+            fresh.store()
+            self.assertIn("Library/Singles/LIVinglife", lib.get_item(flagged.id).destination().decode())
+            lib._close()
+        finally:
+            beets.config["paths"]["singleton"] = old
+            shutil.rmtree(root, ignore_errors=True)
 
 
 if __name__ == "__main__":

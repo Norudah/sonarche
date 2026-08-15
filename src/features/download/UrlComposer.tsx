@@ -38,6 +38,9 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   // playlist is the Inception soundtrack" is true of one download, where "I
   // file game music under Video Games" is a standing habit.
   const [destination, setDestination] = useState<Destination>(AUTO_DESTINATION);
+  // One record for the whole playlist. Reset with the destination: it is a
+  // statement about this link, not a standing habit.
+  const [singleAlbum, setSingleAlbum] = useState(true);
   const [lastReset, setLastReset] = useState(resetToken);
 
   if (resetToken !== lastReset) {
@@ -45,6 +48,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
     setUrl("");
     setChoice(null);
     setDestination(AUTO_DESTINATION);
+    setSingleAlbum(true);
   }
 
   const detected = detectUrlKind(url);
@@ -87,7 +91,8 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
             event.preventDefault();
-            if (canSubmit) onSubmit({ url: url.trim(), kind, category, forcedAlbum: toForcedAlbum(destination) });
+            if (canSubmit)
+              onSubmit({ url: url.trim(), kind, category, forcedAlbum: toForcedAlbum(destination), singleAlbum });
           }}
         >
           {/* `items-stretch`, not `items-center`: the input's height comes from
@@ -145,6 +150,8 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
             }}
             destination={destination}
             onDestinationChange={setDestination}
+            singleAlbum={singleAlbum}
+            onSingleAlbumChange={setSingleAlbum}
           />
         </form>
       </div>

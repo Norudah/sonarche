@@ -30,10 +30,13 @@ import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
  * share is the grammar — same labels, same help, same always-editable fields
  * marked when they move, same footer, same exit guard.
  *
- * The album artist is *not* editable here, and that is a fix rather than a
- * removal. Albums are grouped by (album artist, title); writing that field from
- * a single track used to move that one track into an album of its own, silently
- * splitting the record in two. It reads as context beside the artist instead.
+ * The album artist is editable here, like the album title and with the same
+ * semantics: the write path fans both out to the album row and re-files the
+ * whole record, so editing it from one track renames the record — it cannot
+ * split it. It used to be read-only context, a fix for an older per-item write
+ * that DID split records; hiding it outlived that write path, and left the one
+ * field that decides an album's grouping unreachable from anywhere when it was
+ * blank (every guessed track is), which is its own way of splitting records.
  */
 function MetadataForm({
   track,
@@ -203,7 +206,7 @@ function MetadataForm({
           />
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2.5">
           <EditableField
             label={t("metadata.fields.artist")}
             value={draft.artist}
@@ -228,11 +231,15 @@ function MetadataForm({
             onChange={setField("artist")}
             onRevert={revert("artist")}
           />
-          {/* Context, not a field: this is the name the record is filed under,
-              and it only means anything at the album's scale. */}
-          {live.albumArtist.trim() !== "" && (
-            <p className="text-[0.6875rem] text-muted/85">{t("metadata.filedUnder", { artist: live.albumArtist })}</p>
-          )}
+          <EditableField
+            label={t("metadata.fields.albumArtist")}
+            value={draft.albumArtist}
+            origin={originOf("albumArtist")}
+            isMissing={live.albumArtist.trim() === ""}
+            suggest="artist"
+            onChange={setField("albumArtist")}
+            onRevert={revert("albumArtist")}
+          />
         </div>
 
         <EditableField

@@ -42,8 +42,7 @@ pub struct ImportOutcome {
     /// Album folders beets took on. Comparable to the scan's `albumFolders`,
     /// which is what the progress bar counted against.
     pub folders: u64,
-    /// Covers that were too big to draw and got a small rendition, the
-    /// original kept beside it as `cover-hq.*`.
+    /// Covers that were too big to draw and were scaled down in place.
     pub renditions: u64,
     /// The state of the tags that came in, straight from the sidecar. See
     /// `ImportRecord::recap` for why it stays untyped here.

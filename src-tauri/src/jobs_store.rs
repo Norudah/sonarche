@@ -26,7 +26,7 @@ use crate::library_import::{ImportRecord, ScanCounts};
 
 /// Schema version stamped into `PRAGMA user_version`. Informational: it records
 /// which build last touched the file. Nothing branches on it — see `open()`.
-const SCHEMA_VERSION: i64 = 7;
+const SCHEMA_VERSION: i64 = 8;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS jobs (
@@ -51,9 +51,15 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- The album the user forced this playlist into, as JSON ({title, artist}).
     -- NULL is the normal path: let the pipeline decide what album this is.
     forced_album TEXT,
+    -- One record for the whole playlist (the single-album option), on by
+    -- default: the auto pipeline must not scatter a set across releases.
+    single_album INTEGER NOT NULL DEFAULT 1,
     -- Playlist slots skipped at probe time because their video was deleted,
     -- private or claimed: the job's downloads mirror the playable playlist.
     unavailable INTEGER NOT NULL DEFAULT 0,
+    -- When the job's library output was taken back out. NULL for a job that
+    -- stands; a set value is what stops a second undo.
+    undone_at   INTEGER,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
@@ -216,6 +222,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     )?;
     add_column(conn, "jobs", "category", "TEXT")?;
     add_column(conn, "jobs", "forced_album", "TEXT")?;
+    add_column(conn, "jobs", "single_album", "INTEGER NOT NULL DEFAULT 1")?;
     add_column(conn, "jobs", "unavailable", "INTEGER NOT NULL DEFAULT 0")?;
     add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
     add_column(conn, "playlists", "cover", "TEXT")?;
@@ -227,6 +234,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     // When the run was taken back out. NULL for every row that still stands,
     // which is what an older file's rows are.
     add_column(conn, "imports", "undone_at", "INTEGER")?;
+    add_column(conn, "jobs", "undone_at", "INTEGER")?;
     Ok(())
 }
 
@@ -301,7 +309,9 @@ fn row_to_job(row: &Row) -> AppResult<Job> {
             .map(|text| serde_json::from_str(&text))
             .transpose()
             .map_err(|e| AppError::Sidecar(format!("bad forced_album json: {e}")))?,
+        single_album: row.get::<_, i64>("single_album")? != 0,
         unavailable: row.get::<_, i64>("unavailable")? as u32,
+        undone_at: row.get::<_, Option<i64>>("undone_at")?.map(|at| at as u64),
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
     })
@@ -329,8 +339,8 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
         "INSERT OR REPLACE INTO jobs (
             id, url, kind, status, failed_step, error, title, artist, thumbnail,
             duration, staged_path, item_id, report, download_attempts, category,
-            forced_album, unavailable, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
+            forced_album, single_album, unavailable, undone_at, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
         params![
             job.id,
             job.url,
@@ -352,7 +362,9 @@ fn write_job_row(conn: &Connection, job: &Job) -> AppResult<()> {
                 .map(serde_json::to_string)
                 .transpose()
                 .map_err(|e| AppError::Sidecar(format!("forced_album not serializable: {e}")))?,
+            job.single_album as i64,
             job.unavailable as i64,
+            job.undone_at.map(|at| at as i64),
             job.created_at as i64,
             job.updated_at as i64,
         ],
@@ -552,6 +564,16 @@ pub fn get_import(conn: &Connection, id: &str) -> AppResult<Option<ImportRecord>
 }
 
 /// Mark a run as taken back out. The row stays, and the history says so.
+/// Stamp a download job as undone. The row keeps its status and its tracks —
+/// the history still says what the job did; this says it was taken back.
+pub fn mark_job_undone(conn: &Connection, id: &str, when: u64) -> AppResult<()> {
+    conn.execute(
+        "UPDATE jobs SET undone_at = ?2, updated_at = ?2 WHERE id = ?1",
+        params![id, when as i64],
+    )?;
+    Ok(())
+}
+
 pub fn mark_import_undone(conn: &Connection, id: &str, when: u64) -> AppResult<()> {
     conn.execute(
         "UPDATE imports SET undone_at = ?2 WHERE id = ?1",
@@ -959,7 +981,9 @@ mod tests {
             download_attempts: 1,
             category: Some("Video Games".into()),
             forced_album: None,
+            single_album: true,
             unavailable: 0,
+            undone_at: None,
             created_at: 1000,
             updated_at: 1000,
         }
@@ -1248,6 +1272,45 @@ mod tests {
         assert_eq!(record.undone_at, Some(500));
         assert_eq!(list_imports(&conn).unwrap().len(), 1);
         assert!(get_import(&conn, "nobody").unwrap().is_none());
+    }
+
+    /// What an undo removes and a destination change moves: the recorded item
+    /// ids, minus the duplicates enrich dropped — their files belong to the
+    /// tracks enrich kept, which this job never filed.
+    #[test]
+    fn library_item_ids_reads_the_rows_and_skips_duplicates() {
+        let job = single("j", JobStatus::Done);
+        assert_eq!(crate::jobs::library_item_ids(&job), vec![42]);
+
+        let mut album = single("a", JobStatus::Done);
+        album.kind = JobKind::Album;
+        album.item_id = None;
+        album.tracks = vec![
+            track(1, TrackStatus::Done),
+            track(2, TrackStatus::Done),
+            track(3, TrackStatus::Failed),
+        ];
+        album.tracks[1].duplicate_of = Some(7);
+        album.tracks[2].item_id = None;
+        assert_eq!(crate::jobs::library_item_ids(&album), vec![1]);
+    }
+
+    /// The undo stamp survives the round-trip and a later full rewrite of the
+    /// row must not silently drop it — `upsert_job` writes every column.
+    #[test]
+    fn a_job_marked_undone_stays_undone() {
+        let conn = mem();
+        let job = single("j", JobStatus::Done);
+        upsert_job(&conn, &job).unwrap();
+        assert_eq!(get_job(&conn, "j").unwrap().unwrap().undone_at, None);
+
+        mark_job_undone(&conn, "j", 500).unwrap();
+
+        let reloaded = get_job(&conn, "j").unwrap().unwrap();
+        assert_eq!(reloaded.undone_at, Some(500));
+        assert_eq!(reloaded.updated_at, 500);
+        upsert_job(&conn, &reloaded).unwrap();
+        assert_eq!(get_job(&conn, "j").unwrap().unwrap().undone_at, Some(500));
     }
 
     #[test]

@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { jobDestination, jobPresence } from "@/features/download/queue/library";
+import { jobDestination, jobPresence, type PresenceLookup } from "@/features/download/queue/library";
 import { albumTrack, job, report } from "@/features/download/testFixtures";
 import type { LibraryTrack } from "@/features/library/api";
 import { track } from "@/features/library/testFixtures";
 
-const inLibrary = (ids: number[]) => (itemId: number) => ids.includes(itemId);
+const lookup = (present: Record<number, LibraryTrack>): PresenceLookup => ({
+  has: (itemId) => itemId in present,
+  trackFor: (itemId) => (itemId == null ? undefined : present[itemId]),
+});
+
+/** Ids present as anonymous tracks — enough for every test not about tags. */
+const inLibrary = (ids: number[]) => lookup(Object.fromEntries(ids.map((id) => [id, track({ id })])));
 
 describe("jobPresence", () => {
   it("does not apply while the job is still running", () => {
@@ -79,12 +85,50 @@ describe("jobPresence", () => {
     expect(jobPresence(single, inLibrary([3]))).toBe("full");
     expect(jobPresence(single, inLibrary([]))).toBe("none");
   });
+
+  /** The row that used to show no label at all and read as unresolved
+   * forever: every track dropped because the library already held it. */
+  it("resolves an all-duplicates job against the tracks enrich kept", () => {
+    const album = job({
+      kind: "album",
+      status: "done",
+      tracks: [
+        albumTrack({ index: 1, status: "done", itemId: null, duplicateOf: 7 }),
+        albumTrack({ index: 2, status: "done", itemId: null, duplicateOf: 8 }),
+      ],
+    });
+    expect(jobPresence(album, inLibrary([7, 8]))).toBe("duplicate");
+    // The kept originals were deleted since: claiming "already in the
+    // library" would point at music that is no longer there.
+    expect(jobPresence(album, inLibrary([]))).toBe("none");
+  });
+
+  /** beets recycles deleted rowids: an old row's id can point at unrelated
+   * audio. The report's stored tags are the anchor — one of title/album has
+   * to still match for the id to count. */
+  it("does not count a recycled id whose track no longer matches the report", () => {
+    const single = job({
+      status: "done",
+      report: report({ itemId: 3, title: "Life is a Highway", album: "Cars" }),
+    });
+    const stranger = track({ id: 3, title: "Something Else", album: "Elsewhere" });
+    expect(jobPresence(single, lookup({ 3: stranger }))).toBe("none");
+
+    // One surviving anchor is enough: a destination change rewrites the
+    // album, a retitle rewrites the title — never both for the same reason.
+    const retitled = track({ id: 3, title: "Life is a Highway (Remaster)", album: "Cars" });
+    expect(jobPresence(single, lookup({ 3: retitled }))).toBe("full");
+  });
+
+  it("trusts an id when the report predates the anchor tags", () => {
+    const single = job({ status: "done", report: report({ itemId: 3 }) });
+    const stranger = track({ id: 3, title: "Something Else", album: "Elsewhere" });
+    expect(jobPresence(single, lookup({ 3: stranger }))).toBe("full");
+  });
 });
 
 describe("jobDestination", () => {
   const inLibraryTrack = (over: Partial<LibraryTrack>) => track({ id: 1, album: "Cars", albumArtist: "VA", ...over });
-  const lookup = (map: Record<number, LibraryTrack>) => (itemId: number | null) =>
-    itemId == null ? undefined : map[itemId];
 
   it("points an album at the record its tracks landed on", () => {
     const album = job({ kind: "album", tracks: [albumTrack({ itemId: 7, status: "done" })] });
@@ -114,5 +158,21 @@ describe("jobDestination", () => {
     expect(jobDestination(job({ report: null }), lookup({}))).toBeNull();
     const single = job({ report: report({ itemId: 3 }) });
     expect(jobDestination(single, lookup({ 3: inLibraryTrack({ id: 3, album: "" }) }))).toBeNull();
+  });
+
+  it("refuses to link a recycled id to a stranger's record", () => {
+    const single = job({
+      report: report({ itemId: 3, title: "Life is a Highway", album: "Cars" }),
+    });
+    const stranger = inLibraryTrack({ id: 3, title: "Something Else", album: "Elsewhere" });
+    expect(jobDestination(single, lookup({ 3: stranger }))).toBeNull();
+  });
+
+  it("links an all-duplicates job to the record enrich kept", () => {
+    const album = job({
+      kind: "album",
+      tracks: [albumTrack({ index: 1, itemId: null, duplicateOf: 7 })],
+    });
+    expect(jobDestination(album, lookup({ 7: inLibraryTrack({ id: 7 }) }))).toBe("/library/albums/VA/Cars");
   });
 });

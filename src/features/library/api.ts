@@ -239,9 +239,8 @@ export async function allowCoverPreview(path: string): Promise<{ path: string; b
   return { ...result, url: convertFileSrc(result.path) };
 }
 
-/** The album's own cover as a file to reframe: the full-size archive kept
- * beside the display rendition when there is one, so a tighter square is cut
- * from the original rather than from the 500px copy. */
+/** The album's own cover as a file to reframe — the display rendition,
+ * admitted to the asset scope so the crop stage can reopen it. */
 export async function albumRecropSource(artPath: string): Promise<{ path: string; bytes: number }> {
   return invoke("album_recrop_source", { artPath });
 }
@@ -338,6 +337,9 @@ export interface RemuxReport {
   remuxed: number;
   /** Basenames of files the pass could not repair; retried on next launch. */
   failed: string[];
+  /** Records the one-time zones relayout re-filed, when that pass ran this
+   * launch — every path and artUrl in the library changed under the app. */
+  relayouted?: number;
 }
 
 /** One-shot repair pass: remux fragmented DASH m4a files (downloads made

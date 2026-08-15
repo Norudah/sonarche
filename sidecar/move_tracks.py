@@ -22,8 +22,8 @@ own MusicBrainz match with it.
 
 An emptied source row is removed and its folder cleaned by hand: beets prunes a
 vacated directory only when nothing is left in it, and its own `cover.jpg`
-(plus our `cover-hq.*` archive) is still there, so the husk would outlive the
-record it belonged to.
+(plus any legacy `cover-hq.*` archive from <= 2.x) is still there, so the husk
+would outlive the record it belonged to.
 """
 
 import os
@@ -132,12 +132,16 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         # Already filed there: nothing to do, and counting them as moved would
         # make the recap lie.
         incoming = [item for item in items if item.album_id != album.id]
+        # `incoming`, not `items`: a selected resident is also in album.items()
+        # and would vote twice, which can flip the healed majority.
+        owner_healed = _ensure_filed_owner(album, incoming)
         created = False
     else:
         incoming = items
         if not incoming:
             raise RuntimeError("no tracks to move")
         album = _create_album(lib, incoming, new_album)
+        owner_healed = False
         created = True
 
     if renumber:
@@ -146,6 +150,14 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         existing = [] if created else [item.track or 0 for item in album.items()]
         numbers = renumbering(existing, len(incoming))
 
+    # Two passes, and the split is the point: retag + re-parent first (DB
+    # only), files second. Moving a file inside the first loop computed its
+    # destination while the emptied source rows still existed — and when a
+    # source shared the target's name (a one-by-one download matched another
+    # edition of the same album), %aunique saw two records with one name and
+    # baked a "[catalognum]" suffix into the *target's* folder. The rows died
+    # right after, but no one re-moved the files: every add split the album
+    # folder a little more.
     sources: dict[int, None] = {}
     for index, item in enumerate(incoming):
         changed: set[str] = set()
@@ -187,16 +199,56 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             # it exactly like a typed-in edit.
             provenance.mark_edited(item, changed)
 
+        item.store()
+
+    # Rows first, art after: the emptied source rows must be gone before any
+    # destination is computed (their ghost is what made %aunique suffix the
+    # target), but their cover files stay on disk until the audio has moved —
+    # a move failing mid-pass then leaves covers in place, not deleted under
+    # albums whose files never left.
+    emptied_art: list[str | None] = []
+    for source_id in sources:
+        art = _pop_emptied_source(lib, source_id, album.id)
+        if art is not False:
+            emptied_art.append(art)
+    sources_removed = len(emptied_art)
+    # %aunique memoizes per Library instance; a verdict reached while the dead
+    # rows were still around must not outlive them.
+    lib._memotable = {}
+
+    for item in incoming:
         old_art = item.get(library.ITEM_ART_KEY) or None
-        # `with_album=False`: the target row is not moving, so giving it "a
-        # chance to move its art" per incoming track is N no-op stats at best.
+        # `with_album=False`: the target row's own move runs (at most) once
+        # below, not once per incoming track.
         item.try_sync(write=True, move=True, with_album=False)
         if old_art:
             _follow_item_art(lib, item, old_art)
 
-    sources_removed = sum(
-        1 for source_id in sources if _remove_emptied_source(lib, source_id, album.id)
-    )
+    for art in emptied_art:
+        _sweep_source_art(lib, art)
+
+    # Residents whose paths were baked with a suffix by an earlier incident
+    # follow: the album re-files itself (album art included) under its clean
+    # name. Only when this move could have changed the album's own folder — a
+    # same-named source row died, or the blank owner was just healed — so the
+    # everyday single-track move stays O(1), not O(album size).
+    if sources_removed or owner_healed:
+        resident_art = {
+            item.id: item.get(library.ITEM_ART_KEY)
+            for item in album.items()
+            if item.get(library.ITEM_ART_KEY)
+        }
+        try:
+            album.move()
+        except Exception as exc:
+            protocol.log(f"move_tracks: album re-file failed: {exc}")
+        # Album.move carries the album cover but not a resident's written-out
+        # singleton art; carry those by hand, exactly like the arrivals'.
+        for item_id, old_art in resident_art.items():
+            fresh = lib.get_item(item_id)
+            if fresh is not None:
+                _follow_item_art(lib, fresh, old_art)
+
     _apply_kind(album, kind)
 
     return {
@@ -206,6 +258,37 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         "target_album_id": album.id,
         "sources_removed": sources_removed,
     }
+
+
+def _ensure_filed_owner(album, arriving) -> bool:
+    """A target row with no album artist hands blank filing to every arrival —
+    and the app, which groups cards by (album artist, title) with a per-track
+    artist fallback, then splits one record into one card per track artist.
+    Rows born outside the MusicBrainz flows carry the blank: an album name
+    typed track by track in the drawer, a legacy provisional row. Heal it from
+    the tracks in play — majority artist wins, ties alphabetical — before the
+    arrivals inherit it. Returns whether it healed anything.
+    The residents are pushed the value explicitly (not via `store(inherit=…)`:
+    their in-memory copies would win the next sync and undo it); their files
+    move later with the album's own re-file pass."""
+    if (str(album.albumartist) or "").strip():
+        return False
+    residents = list(album.items())
+    counts: dict[str, int] = {}
+    for item in residents + list(arriving):
+        artist = (str(item.artist) or "").strip()
+        if artist:
+            counts[artist] = counts.get(artist, 0) + 1
+    if not counts:
+        return False
+    owner = min(counts.items(), key=lambda pair: (-pair[1], pair[0]))[0]
+    protocol.log(f"move_tracks: target row {album.id} had no album artist, filing under « {owner} »")
+    album.albumartist = owner
+    album.store(inherit=False)
+    for item in residents:
+        item.albumartist = owner
+        item.try_sync(write=True, move=False, with_album=False)
+    return True
 
 
 def _create_album(lib, incoming, new_album) -> "object":
@@ -250,13 +333,12 @@ def _follow_item_art(lib, item, old_art: str) -> None:
     _prune_husk(lib, os.path.dirname(old_art))
 
 
-def _remove_emptied_source(lib, source_id: int, target_id: int) -> bool:
-    """Drop a source album row its last track just left, and its folder.
+def _pop_emptied_source(lib, source_id: int, target_id: int):
+    """Drop a source album row its last track just left — the row only.
 
-    beets pruned the vacated directory only if nothing was left in it; the
-    album's own `cover.jpg` and our `cover-hq.*` archive usually are, so both
-    are removed by hand before pruning. A source still holding tracks is left
-    entirely alone — it is still a record.
+    Returns the row's art path (or None) so `_sweep_source_art` can finish the
+    job once the audio has moved, or False when there was nothing to drop. A
+    source still holding tracks is left entirely alone — it is still a record.
     """
     if source_id == target_id:
         return False
@@ -266,28 +348,36 @@ def _remove_emptied_source(lib, source_id: int, target_id: int) -> bool:
     if list(source.items()):
         return False
 
-    art_dir = os.path.dirname(_decode(source.artpath)) if source.artpath else None
-    # `delete=True` with `with_items=False` deletes exactly one thing: the art
-    # file. The items are gone already — that is why we are here.
-    source.remove(delete=True, with_items=False)
-    if art_dir:
-        _prune_husk(lib, art_dir)
-    return True
+    art = _decode(source.artpath) if source.artpath else None
+    source.remove(delete=False, with_items=False)
+    return art
+
+
+def _sweep_source_art(lib, art: str | None) -> None:
+    """The second half of an emptied source's removal: its cover and its husk.
+
+    beets prunes the vacated directory only if nothing is left in it; the
+    album's own `cover.jpg` (and any legacy `cover-hq.*` archive) usually is,
+    so both go by hand before pruning."""
+    if not art:
+        return
+    try:
+        if os.path.exists(art):
+            os.remove(art)
+    except OSError as exc:
+        protocol.log(f"move_tracks: source cover removal failed: {exc}")
+    _prune_husk(lib, os.path.dirname(art))
 
 
 def _prune_husk(lib, directory: str | None) -> None:
-    """Remove our `cover-hq.*` leftovers, then let beets prune what is empty."""
+    """Remove legacy `cover-hq.*` leftovers, then let beets prune what is
+    empty."""
     if not directory or not os.path.isdir(directory):
         return
     import covers
     from beets import util
 
-    for name in os.listdir(directory):
-        if name.startswith(covers.HQ_PREFIX):
-            try:
-                os.remove(os.path.join(directory, name))
-            except OSError as exc:
-                protocol.log(f"move_tracks: could not remove {name}: {exc}")
+    covers.remove_legacy_archives(directory)
     util.prune_dirs(directory, lib.directory)
 
 

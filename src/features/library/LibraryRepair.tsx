@@ -26,9 +26,10 @@ export function LibraryRepair() {
     queryKey: repairKey,
     queryFn: async () => {
       const report = await remuxLibrary();
-      // Length/bitrate can shift by a rounding hair after the remux; refresh
-      // only when something was actually rewritten.
-      if (report.remuxed > 0) {
+      // Length/bitrate can shift by a rounding hair after the remux, and the
+      // one-time zones relayout moves every file; refresh only when one of
+      // them actually touched the library.
+      if (report.remuxed > 0 || (report.relayouted ?? 0) > 0) {
         await queryClient.invalidateQueries({ queryKey: libraryKey });
       }
       return report;

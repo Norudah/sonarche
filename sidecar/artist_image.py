@@ -77,9 +77,7 @@ def handle(_request_id: str, params: dict) -> dict:
     if not os.path.isfile(source_path):
         raise RuntimeError(f"file not found: {source_path}")
 
-    # The archive bytes are computed and dropped: prepare_cover decodes the
-    # image either way, and sharing its crop rules matters more than the copy.
-    _hq, thumb_bytes, is_png, side = cover_set.prepare_cover(source_path, params.get("crop"))
+    thumb_bytes, is_png, side = cover_set.prepare_cover(source_path, params.get("crop"))
 
     filename = f"{stem}.{'png' if is_png else 'jpg'}"
     os.makedirs(dest_dir, exist_ok=True)

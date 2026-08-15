@@ -436,15 +436,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         adopt_library_dir(app).await?;
     }
     let deps_ok = if venv_ok {
-        command(&venv_python)
-            .args(["-c", "import yt_dlp, beets, mutagen"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .await
-            .map(|s| s.success())
-            .unwrap_or(false)
+        deps_ok_cached(app, &paths, &venv_python).await
     } else {
         false
     };
@@ -455,6 +447,71 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
         deps_ok,
         library_dir: paths.library_root.display().to_string(),
     })
+}
+
+/// The import smoke test, behind a stamp so it does not tax every launch.
+///
+/// `import yt_dlp, beets, mutagen` in a fresh interpreter is the one honest
+/// proof the venv works — and it costs seconds of cold I/O on an old machine,
+/// paid at every launch behind a splash that shows nothing until it answers.
+/// The proof is only re-run when something it depends on changed: the venv's
+/// interpreter (recreated by `venv --clear` on every setup), the resolved
+/// requirements (a new file with every app update), or the app version
+/// itself. A matching stamp answers instantly.
+///
+/// What the stamp cannot see is a hand-gutted `site-packages` under an
+/// untouched interpreter. That failure no longer blocks the launch gate — it
+/// surfaces when the sidecar first speaks, and rebuilding the environment
+/// (which rewrites the stamp's inputs) remains the fix either way.
+async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> bool {
+    let stamp_path = paths.venv_dir.join("deps-ok");
+    let stamp = deps_stamp(app, paths, venv_python).await;
+
+    if let (Some(stamp), Ok(cached)) = (&stamp, tokio::fs::read_to_string(&stamp_path).await) {
+        if cached.trim() == stamp {
+            return true;
+        }
+    }
+
+    let ok = command(venv_python)
+        .args(["-c", "import yt_dlp, beets, mutagen"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if ok {
+        if let Some(stamp) = &stamp {
+            let _ = tokio::fs::write(&stamp_path, stamp).await;
+        }
+    } else {
+        let _ = tokio::fs::remove_file(&stamp_path).await;
+    }
+    ok
+}
+
+/// What the smoke test's answer depends on, as one line. `None` when a file
+/// it needs cannot be stat'ed — no stamp, the test just runs.
+async fn deps_stamp(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> Option<String> {
+    fn token(meta: &std::fs::Metadata) -> Option<String> {
+        let mtime = meta
+            .modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_secs();
+        Some(format!("{mtime}.{}", meta.len()))
+    }
+    let python = tokio::fs::metadata(venv_python).await.ok()?;
+    let requirements = tokio::fs::metadata(&paths.requirements).await.ok()?;
+    Some(format!(
+        "v{} python {} requirements {}",
+        app.package_info().version,
+        token(&python)?,
+        token(&requirements)?,
+    ))
 }
 
 fn emit_log(app: &AppHandle, line: &str) {
@@ -628,10 +685,40 @@ fn yaml_scalar(path: &Path) -> String {
 /// `%if{$track,…}` also drops the number prefix when there is none: beets reads
 /// an unset track as falsy, so an untagged rip lands on `Title.mp3` instead of
 /// the `00 Title.mp3` a bare `$track $title` produced.
+///
+/// Everything an import brings is the user's own music, so all of it files
+/// under the `Library/` zone — see `APP_PATHS` for what the zones are (the
+/// singleton template is shared: an import never carries the provisional
+/// flag, so it lands in `Library/Singles/` by the same rule). `%ifdef`, not
+/// `%if`: a missing flexible attribute renders as the literal `$symbol`,
+/// which `%if` reads as true — definedness is the actual boundary, and the
+/// flag is deleted outright when a real match lands.
 const IMPORT_PATHS: &str = r#"paths:
-  default: '%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
-  singleton: 'Singles/%if{$artist,$artist,Unknown Artist}/$title'
-  comp: 'Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
+  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+"#;
+
+/// Where an enriched download is filed — the App flavour's answer to the same
+/// question, also rendered for real in `import_paths_test.py`.
+///
+/// `Music/` splits into two zones a glance can tell apart:
+/// - `Library/` — the verified shelves: beets' stock templates plus the blank
+///   guards the import flavour carries, `%aunique{}` still keeping two
+///   genuinely coexisting same-named records apart.
+/// - `Unidentified/` — the guessed zone. What defines "guessed" is the
+///   `sonarche_provisional` flag itself, not the absence of an album row: a
+///   library import in "tracks" mode also produces rowless singletons, and
+///   those are the user's own verified music (`Library/Singles/`). Guessed
+///   items used to stand up blank album rows whose folders %aunique could
+///   only tell apart by row id (`LIVinglife/[86]/…`).
+///
+/// The one-time re-file of an existing library onto these templates is the
+/// relayout pass in `remux.rs`.
+const APP_PATHS: &str = r#"paths:
+  default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
+  singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
+  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
 "#;
 
 /// beets remembers the source directories it has taken on and skips them on a
@@ -661,9 +748,9 @@ import:
   # `skip` (the quiet default) silently drops every album-batch track after
   # the first one; real re-download duplicates never collide anyway.
   duplicate_action: keep
-{incremental}{statefile}# cover-hq.* is Sonarche's own file (the full-size CAA art next to beets'
-# cover.jpg); declaring it clutter lets beets prune a folder that only has
-# it left after an album is moved or merged away.
+{incremental}{statefile}# cover-hq.* is the archive Sonarche <= 2.x kept beside beets' cover.jpg;
+# nothing writes it anymore, but declaring the leftovers clutter lets beets
+# prune a folder where one still lingers after a move or merge.
 clutter: ["Thumbs.DB", ".DS_Store", "cover-hq.jpg", "cover-hq.png"]
 {path_format}{pluginpath}plugins: musicbrainz fetchart embedart lastgenre{repair_plugin}
 musicbrainz:
@@ -715,7 +802,7 @@ ui:
         path_format = if flavour == Flavour::Import {
             IMPORT_PATHS
         } else {
-            ""
+            APP_PATHS
         },
         art_sources = if flavour == Flavour::Import {
             "  sources: filesystem\n"
@@ -945,6 +1032,7 @@ mod tests {
                 .replace(" sonarche_import", "")
                 .replace(INCREMENTAL, "")
                 .replace(IMPORT_PATHS, "")
+                .replace(APP_PATHS, "")
                 .lines()
                 .filter(|line| !line.starts_with("pluginpath:") && !line.starts_with("statefile:"))
                 .collect::<Vec<_>>()
@@ -973,7 +1061,31 @@ mod tests {
         assert!(import.contains("statefile: '/data/beets/import-state.pickle'"));
         assert!(!app.contains("incremental"));
         assert!(!app.contains("statefile"));
-        assert!(!app.contains("paths:"));
+    }
+
+    /// The app flavour's own filing rules: %aunique still keeps genuinely
+    /// coexisting same-named records apart, verified music lives under the
+    /// `Library/` zone, and a guessed single (the only kind of item with no
+    /// album row) files under `Unidentified/` instead of standing up a blank
+    /// record. Rendered for real in `import_paths_test.py`.
+    #[test]
+    fn the_app_config_keeps_aunique_and_files_guesses_in_the_zone() {
+        let app = beets_config_yaml(&paths(), Flavour::App);
+        assert!(app.contains(APP_PATHS), "{app}");
+        assert!(app.contains("%aunique{}"), "{app}");
+        assert!(app.contains("default: 'Library/"), "{app}");
+        // The zone boundary is the provisional flag, not "has no album row":
+        // an imported single is rowless too, and it is the user's own music.
+        assert!(
+            app.contains("singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/"),
+            "{app}"
+        );
+        let import = beets_config_yaml(&paths(), Flavour::Import);
+        assert!(
+            import
+                .contains("singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/"),
+            "{import}"
+        );
     }
 
     /// The filename/year repairs are for someone's own rips. On the download

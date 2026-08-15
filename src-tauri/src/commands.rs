@@ -7,6 +7,7 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
+use crate::download_undo;
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
 use crate::identity;
@@ -59,6 +60,7 @@ pub async fn enqueue_download(
     kind: Option<JobKind>,
     category: Option<String>,
     forced_album: Option<ForcedAlbum>,
+    single_album: Option<bool>,
 ) -> AppResult<Job> {
     let parsed =
         url::Url::parse(&url).map_err(|_| AppError::InvalidInput("not a valid URL".into()))?;
@@ -118,6 +120,8 @@ pub async fn enqueue_download(
             kind.unwrap_or(JobKind::Single),
             category,
             forced_album,
+            // Absent on old callers means the default the option ships with.
+            single_album.unwrap_or(true),
         )
         .await
 }
@@ -284,6 +288,43 @@ pub async fn undo_import(
     import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 
+/// What undoing this download would take away. Counted from the library as it
+/// stands: tracks deleted by hand since simply do not count.
+#[tauri::command]
+pub async fn preview_download_undo(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    id: String,
+) -> AppResult<download_undo::UndoPreview> {
+    download_undo::preview(&app, &sidecar, &jobs, &id).await
+}
+
+/// Take one download back out: its tracks, their files, the albums that
+/// empty, their covers, the playlist entries. The history row stays, stamped.
+#[tauri::command]
+pub async fn undo_download(
+    app: AppHandle,
+    sidecar: State<'_, SidecarState>,
+    jobs: State<'_, JobsState>,
+    imports: State<'_, LibraryImportState>,
+    id: String,
+) -> AppResult<download_undo::UndoOutcome> {
+    download_undo::run(&app, &sidecar, &jobs, &imports, &id).await
+}
+
+/// Re-file what a finished download put in the library onto another record —
+/// the composer's destination option, offered after the fact.
+#[tauri::command]
+pub async fn change_job_destination(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    id: String,
+    forced_album: crate::jobs::ForcedAlbum,
+) -> AppResult<Job> {
+    jobs.change_destination(&app, &id, forced_album).await
+}
+
 #[tauri::command]
 pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
     settings::list().await
@@ -413,6 +454,17 @@ pub async fn player_status(state: State<'_, PlayerState>) -> AppResult<PlaybackS
 #[tauri::command]
 pub async fn get_preferences(app: AppHandle) -> AppResult<Preferences> {
     preferences::load(&app).await
+}
+
+#[tauri::command]
+pub async fn get_home_tour_seen(app: AppHandle) -> AppResult<bool> {
+    Ok(preferences::load(&app).await?.home_tour_seen)
+}
+
+#[tauri::command]
+pub async fn set_home_tour_seen(app: AppHandle, seen: bool) -> AppResult<()> {
+    preferences::set_home_tour_seen(&app, seen).await?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -568,6 +620,31 @@ pub async fn erase_all_data(
     sidecar: State<'_, SidecarState>,
 ) -> AppResult<()> {
     reset::erase_data(&app, &jobs, &sidecar).await
+}
+
+/// The danger zone's aimed shot: the music and its index, sparing the artist
+/// images, the playlists' names and the histories. Refuses while a download
+/// or an import is running.
+#[tauri::command]
+pub async fn erase_library(
+    app: AppHandle,
+    jobs: State<'_, JobsState>,
+    sidecar: State<'_, SidecarState>,
+) -> AppResult<()> {
+    reset::erase_library(&app, &jobs, &sidecar).await
+}
+
+/// Every artist image at once — files and index rows. The generated avatars
+/// take over again.
+#[tauri::command]
+pub async fn erase_artist_images(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
+    reset::erase_artist_images(&app, &jobs).await
+}
+
+/// Every playlist at once — rows, covers, M3U8 mirror. The music stays.
+#[tauri::command]
+pub async fn erase_playlists(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
+    reset::erase_playlists(&app, &jobs).await
 }
 
 /// The danger zone's harmless half: the Python environment and the tools, both
@@ -977,10 +1054,9 @@ pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Valu
 /// what "reframe this one" needs, where every other road into the modal brings
 /// its own file.
 ///
-/// Not simply the display cover: the two-file convention keeps the full-size
-/// image beside it as `cover-hq.*`, and cutting a tighter square out of the
-/// 500px rendition would archive that rendition as the new original. The
-/// archive is the source whenever there is one, the display cover otherwise.
+/// The display cover *is* the source since the `cover-hq.*` archive went:
+/// recutting a 500px rendition is honest about what the library keeps, and
+/// the modal's size line tells the user what they are cutting from.
 ///
 /// `art_path` is beets' own artpath, which the library listing already handed
 /// the front. It is checked back to the library all the same — an IPC argument
@@ -993,23 +1069,9 @@ pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<
     let music_dir = tokio::fs::canonicalize(paths.music_dir())
         .await
         .unwrap_or_else(|_| paths.music_dir());
-    let art = checked_cover_source(&art_path).await?;
-    if !art.starts_with(&music_dir) {
+    let source = checked_cover_source(&art_path).await?;
+    if !source.starts_with(&music_dir) {
         return Err(AppError::InvalidInput("cover outside the library".into()));
-    }
-
-    let mut source = art.clone();
-    if let Some(dir) = art.parent() {
-        for extension in COVER_SOURCE_EXTENSIONS {
-            let archive = dir.join(format!("cover-hq.{extension}"));
-            if tokio::fs::metadata(&archive)
-                .await
-                .is_ok_and(|m| m.is_file())
-            {
-                source = archive;
-                break;
-            }
-        }
     }
 
     let bytes = tokio::fs::metadata(&source).await?.len();

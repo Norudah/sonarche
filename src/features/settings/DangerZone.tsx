@@ -1,12 +1,17 @@
 import { Button, toast } from "@heroui/react";
-import { ChevronDown, RotateCcw, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
-import { useState } from "react";
+import { Disc3, History, ImageOff, ListX, RotateCcw, Trash2 } from "lucide-react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { EraseDataDialog } from "@/features/settings/EraseDataDialog";
-import { useEraseAllData, useReinstallEnvironment } from "@/features/settings/hooks";
-import { springs } from "@/shared/motion/tokens";
+import { EraseDialog } from "@/features/settings/EraseDialog";
+import {
+  useEraseAllData,
+  useEraseArtistImages,
+  useEraseHistory,
+  useEraseLibrary,
+  useErasePlaylists,
+  useReinstallEnvironment,
+} from "@/features/settings/hooks";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 /** One dangerous action: what it does, and the button that does it. */
@@ -25,10 +30,10 @@ function DangerAction({
   icon: typeof Trash2;
   onPress: () => void;
   isDisabled: boolean;
-  /** Red is spent on the one action that destroys something. The reinstall
-   * lives in this section because it is drastic, not because it is dangerous —
-   * painting both the same colour would make the colour mean nothing on the
-   * row where it has to. */
+  /** Red is spent on the actions that destroy something. The reinstall lives
+   * in this section because it is drastic, not because it is dangerous —
+   * painting it the same colour would make the colour mean nothing on the
+   * rows where it has to. */
   isDestructive: boolean;
 }) {
   return (
@@ -50,104 +55,136 @@ function DangerAction({
   );
 }
 
+/** The aimed erases, mildest first; the full erase is not in this list — it
+ * closes the card in its own emphasized band. */
+const AIMED_ERASES = [
+  { key: "eraseLibrary", icon: Disc3, itemKeys: ["itemFiles", "itemIndex", "itemPlaylists"], reloads: true },
+  { key: "eraseArtistImages", icon: ImageOff, itemKeys: ["itemFiles"], reloads: false },
+  { key: "erasePlaylists", icon: ListX, itemKeys: ["itemLists", "itemCovers"], reloads: false },
+  { key: "eraseHistory", icon: History, itemKeys: ["itemDownloads", "itemImports", "itemUndo"], reloads: false },
+] as const;
+
+type EraseKey = (typeof AIMED_ERASES)[number]["key"] | "erase";
+
 /**
- * The two actions that cannot be undone, filed where nobody reaches them by
- * accident.
+ * The actions that cannot be undone, filed where nobody reaches them by
+ * accident: one open card at the bottom of the page, in its own red frame.
  *
- * Folded shut by default, in its own red frame, at the bottom of the page. The
- * shape is borrowed openly from GitHub's, because it works for the reason
- * every part of it exists: the fold means you cannot click through on your way
- * somewhere else, and the frame means that once it is open you know what kind
- * of screen you are on.
+ * No fold anymore: with five aimed erases the folded summary was longer than
+ * the list, and the typed phrase on every destructive row is the real
+ * misclick guard — the fold only hid what could be erased. The frame still
+ * marks what kind of screen this is.
  *
- * Both actions end in a webview reload, not a process relaunch. The reload is
- * a full front reboot — splash, environment check (which re-adopts the fresh
- * default root), sidecar respawned on demand — and the process underneath
- * keeps the setup that now survives an erase. `relaunch()` was worse in both
- * worlds: in dev it killed the process the tauri CLI was watching, which took
- * vite down with it and relaunched the app onto a dead dev server — a white
- * window; in prod it paid a whole process restart for nothing the reload
- * does not already redo.
+ * The full erase and the library erase end in a webview reload, not a process
+ * relaunch. The reload is a full front reboot — splash, environment check,
+ * sidecar respawned on demand — and the process underneath keeps the setup.
+ * `relaunch()` was worse in both worlds: in dev it killed the process the
+ * tauri CLI was watching, which took vite down with it and relaunched the app
+ * onto a dead dev server — a white window; in prod it paid a whole process
+ * restart for nothing the reload does not already redo.
  */
 export function DangerZone() {
   const { t } = useTranslation("settings");
-  const [open, setOpen] = useState(false);
-  const [asking, setAsking] = useState<"erase" | "reinstall" | null>(null);
-  const erase = useEraseAllData();
+  const [asking, setAsking] = useState<EraseKey | "reinstall" | null>(null);
   const reinstall = useReinstallEnvironment();
+  const mutations = {
+    eraseLibrary: useEraseLibrary(),
+    eraseArtistImages: useEraseArtistImages(),
+    erasePlaylists: useErasePlaylists(),
+    eraseHistory: useEraseHistory(),
+    erase: useEraseAllData(),
+  };
 
-  const busy = erase.isPending || reinstall.isPending;
+  const busy = reinstall.isPending || Object.values(mutations).some((mutation) => mutation.isPending);
 
-  const run = async (what: "erase" | "reinstall") => {
+  const runErase = async (key: EraseKey, reloads: boolean) => {
     try {
-      await (what === "erase" ? erase.mutateAsync() : reinstall.mutateAsync());
+      await mutations[key].mutateAsync();
       // Factory settings include the front's own: theme, language choice, the
-      // remembered download category all live in localStorage. Only the erase
-      // claims them — a reinstall touches nothing the user chose.
-      if (what === "erase") window.localStorage.clear();
-      window.location.reload();
+      // remembered download category all live in localStorage. Only the full
+      // erase claims them — the aimed ones touch nothing the user chose.
+      if (key === "erase") window.localStorage.clear();
+      if (reloads) {
+        window.location.reload();
+        return;
+      }
+      setAsking(null);
+      toast.success(t(`library.danger.${key}.doneTitle`));
     } catch (error) {
       setAsking(null);
-      toast.danger(t(`library.danger.${what === "erase" ? "erase" : "reinstall"}.failedTitle`), {
-        description: String(error),
-      });
+      toast.danger(t(`library.danger.${key}.failedTitle`), { description: String(error) });
     }
   };
 
+  const runReinstall = async () => {
+    try {
+      await reinstall.mutateAsync();
+      window.location.reload();
+    } catch (error) {
+      setAsking(null);
+      toast.danger(t("library.danger.reinstall.failedTitle"), { description: String(error) });
+    }
+  };
+
+  const eraseDialog = (key: EraseKey, itemKeys: readonly string[], reloads: boolean, note?: string) => (
+    <EraseDialog
+      isOpen={asking === key}
+      isPending={mutations[key].isPending}
+      onClose={() => setAsking(null)}
+      onConfirm={() => void runErase(key, reloads)}
+      title={t(`library.danger.${key}.dialogTitle`)}
+      intro={t(`library.danger.${key}.dialogBody`)}
+      items={itemKeys.map((item) => t(`library.danger.${key}.${item}`))}
+      note={note}
+      confirmLabel={t(`library.danger.${key}.confirm`)}
+    />
+  );
+
   return (
     <div className="overflow-hidden rounded-xl border border-danger/30 bg-surface">
-      <button
-        type="button"
-        onClick={() => setOpen((was) => !was)}
-        aria-expanded={open}
-        className="flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-4 text-left"
-      >
-        <span className="flex flex-col gap-0.5">
-          <span className="text-[0.8125rem] font-semibold text-danger">{t("library.danger.title")}</span>
-          <span className="text-[0.8125rem] text-muted">{t("library.danger.description")}</span>
-          {/* Folded, the zone still says what it holds: the two actions by
-              name, so nobody has to open it just to find out. The fold keeps
-              being the misclick guard; it stops being a mystery box. */}
-          {!open && (
-            <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
-                <RotateCcw className="size-3.5 shrink-0" />
-                {t("library.danger.reinstall.name")}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
-                <Trash2 className="size-3.5 shrink-0" />
-                {t("library.danger.erase.name")}
-              </span>
-            </span>
-          )}
-        </span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={springs.snappy} className="shrink-0">
-          <ChevronDown className="size-4 text-muted" />
-        </motion.span>
-      </button>
+      <div className="flex flex-col gap-0.5 px-5 py-4">
+        <p className="text-[0.8125rem] font-semibold text-danger">{t("library.danger.title")}</p>
+        <p className="text-[0.8125rem] text-muted">{t("library.danger.description")}</p>
+      </div>
 
-      {open && (
-        <div className="divide-y divide-separator border-t border-danger/20 px-5">
+      <div className="divide-y divide-separator border-t border-danger/20 px-5">
+        <DangerAction
+          name={t("library.danger.reinstall.name")}
+          why={t("library.danger.reinstall.why")}
+          action={t("library.danger.reinstall.action")}
+          icon={RotateCcw}
+          onPress={() => setAsking("reinstall")}
+          isDisabled={busy}
+          isDestructive={false}
+        />
+        {AIMED_ERASES.map(({ key, icon }) => (
           <DangerAction
-            name={t("library.danger.reinstall.name")}
-            why={t("library.danger.reinstall.why")}
-            action={t("library.danger.reinstall.action")}
-            icon={RotateCcw}
-            onPress={() => setAsking("reinstall")}
-            isDisabled={busy}
-            isDestructive={false}
-          />
-          <DangerAction
-            name={t("library.danger.erase.name")}
-            why={t("library.danger.erase.why")}
-            action={t("library.danger.erase.action")}
-            icon={Trash2}
-            onPress={() => setAsking("erase")}
+            key={key}
+            name={t(`library.danger.${key}.name`)}
+            why={t(`library.danger.${key}.why`)}
+            action={t(`library.danger.${key}.action`)}
+            icon={icon}
+            onPress={() => setAsking(key)}
             isDisabled={busy}
             isDestructive
           />
-        </div>
-      )}
+        ))}
+      </div>
+
+      {/* The full erase closes the card in its own tinted band: it is the one
+          row that covers all the others, and the eye should have to cross a
+          visible boundary to reach it. */}
+      <div className="border-t border-danger/20 bg-danger/5 px-5">
+        <DangerAction
+          name={t("library.danger.erase.name")}
+          why={t("library.danger.erase.why")}
+          action={t("library.danger.erase.action")}
+          icon={Trash2}
+          onPress={() => setAsking("erase")}
+          isDisabled={busy}
+          isDestructive
+        />
+      </div>
 
       {/* The reinstall is a plain yes/no: nothing it removes is irreplaceable,
           and putting the typing exercise on both would teach people to type
@@ -160,18 +197,21 @@ export function DangerZone() {
         title={t("library.danger.reinstall.dialogTitle")}
         cancelLabel={t("library.danger.reinstall.cancel")}
         confirmLabel={t("library.danger.reinstall.confirm")}
-        onConfirm={() => void run("reinstall")}
+        onConfirm={() => void runReinstall()}
         isPending={reinstall.isPending}
       >
         <p>{t("library.danger.reinstall.dialogBody")}</p>
       </ConfirmDialog>
 
-      <EraseDataDialog
-        isOpen={asking === "erase"}
-        isErasing={erase.isPending}
-        onClose={() => setAsking(null)}
-        onConfirm={() => void run("erase")}
-      />
+      {AIMED_ERASES.map(({ key, itemKeys, reloads }) => (
+        <Fragment key={key}>{eraseDialog(key, itemKeys, reloads, t(`library.danger.${key}.keeps`))}</Fragment>
+      ))}
+      {eraseDialog(
+        "erase",
+        ["itemFiles", "itemIndex", "itemPlaylists", "itemHistory", "itemKeys"],
+        true,
+        t("library.danger.erase.keepsEngine"),
+      )}
     </div>
   );
 }
