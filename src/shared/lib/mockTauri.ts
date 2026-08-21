@@ -1019,6 +1019,9 @@ export function installMockTauri() {
         return { ...env };
       }
       if (cmd === "setup_env") return runMockSetup();
+      // Nothing to reveal in a browser tab; succeeding quietly keeps the
+      // settings card exercisable.
+      if (cmd === "reveal_log_file") return null;
       if (cmd === "get_onboarding_state") return { ...onboarding };
       if (cmd === "set_onboarding_completed") {
         onboarding.completed = Boolean(payload?.completed);

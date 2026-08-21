@@ -189,6 +189,13 @@
       "action": "Déplacer la bibliothèque…",
       "isDefault": "Emplacement par défaut"
     },
+    "logs": {
+      "name": "Journal de diagnostic",
+      "why": "Ce que l'app et son moteur racontent pendant qu'ils travaillent. C'est le fichier à envoyer quand quelque chose ne tourne pas rond.",
+      "actionMac": "Afficher dans le Finder",
+      "actionWindows": "Afficher dans l'Explorateur",
+      "failed": "Impossible d'afficher le journal"
+    },
     "move": {
       "title": "Déplacer la bibliothèque ?",
       "body": "Toute ta musique va être transférée vers ce dossier. L'index reste valide : rien n'est réimporté, rien n'est réidentifié.",

@@ -189,6 +189,13 @@
       "action": "Move the library…",
       "isDefault": "Default location"
     },
+    "logs": {
+      "name": "Diagnostic log",
+      "why": "What the app and its engine report while they work. This is the file to send along when something goes wrong.",
+      "actionMac": "Show in Finder",
+      "actionWindows": "Show in Explorer",
+      "failed": "Could not reveal the log"
+    },
     "move": {
       "title": "Move the library?",
       "body": "All your music moves to this folder. The index stays valid: nothing is re-imported and nothing is identified again.",
