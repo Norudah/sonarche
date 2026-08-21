@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.1.0...sonarche-v2.2.0) (2026-08-21)
+
+
+### Features
+
+* **ui:** reveal the diagnostic log from settings ([b36ccea](https://github.com/Norudah/sonarche/commit/b36ccea4cfb103c5fc030aa52fd39942f440490a))
+
+
+### Bug Fixes
+
+* **sidecar:** bump yt-dlp to 2026.8.19 for the YouTube 403 ([a2c4822](https://github.com/Norudah/sonarche/commit/a2c4822b1a83eac4710bc8bce872cbd4bca14c8a))
+
 ## [2.1.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.0.0...sonarche-v2.1.0) (2026-08-15)
 
 
