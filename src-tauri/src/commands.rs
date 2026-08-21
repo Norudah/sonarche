@@ -52,6 +52,18 @@ pub async fn setup_env(app: AppHandle) -> AppResult<EnvStatus> {
     python_env::setup_env(&app).await
 }
 
+/// Reveal `sonarche.log` in the Finder / Explorer. The opener runs from Rust
+/// on a path the app resolved itself, so nothing crosses the IPC boundary and
+/// no opener capability is exposed to the webview.
+#[tauri::command]
+pub async fn reveal_log_file(app: AppHandle) -> AppResult<()> {
+    let path = crate::logs::path(&app).ok_or_else(|| AppError::Setup("no log path".into()))?;
+    tauri::async_runtime::spawn_blocking(move || tauri_plugin_opener::reveal_item_in_dir(&path))
+        .await
+        .map_err(|e| AppError::Setup(e.to_string()))?
+        .map_err(|e| AppError::Setup(e.to_string()))
+}
+
 #[tauri::command]
 pub async fn enqueue_download(
     app: AppHandle,

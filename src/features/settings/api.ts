@@ -8,6 +8,12 @@ export interface ApiKeyStatus {
   configured: boolean;
 }
 
+/** Reveal `sonarche.log` in the OS file manager. The path is resolved on the
+ * Rust side; nothing crosses the IPC boundary. */
+export async function revealLogFile(): Promise<void> {
+  return invoke("reveal_log_file");
+}
+
 export async function listApiKeys(): Promise<ApiKeyStatus[]> {
   return invoke<ApiKeyStatus[]>("list_api_keys");
 }

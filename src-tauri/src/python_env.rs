@@ -449,15 +449,22 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     })
 }
 
-/// The import smoke test, behind a stamp so it does not tax every launch.
+/// The venv probe: imports work, and every installed version matches the lock.
 ///
-/// `import yt_dlp, beets, mutagen` in a fresh interpreter is the one honest
-/// proof the venv works — and it costs seconds of cold I/O on an old machine,
-/// paid at every launch behind a splash that shows nothing until it answers.
-/// The proof is only re-run when something it depends on changed: the venv's
-/// interpreter (recreated by `venv --clear` on every setup), the resolved
-/// requirements (a new file with every app update), or the app version
-/// itself. A matching stamp answers instantly.
+/// `import yt_dlp, beets, mutagen` in a fresh interpreter proves the venv
+/// runs; checking each pin of `requirements.txt` against what is actually
+/// installed proves it is *current*. The second half is what makes an app
+/// update reach the venv at all: bumping a pin (the yt-dlp/YouTube arms race
+/// makes that routine) ships a new requirements file, the old packages still
+/// import fine, and without the version diff the launch gate would wave the
+/// stale venv through forever.
+///
+/// The probe costs seconds of cold I/O on an old machine, paid behind a
+/// splash that shows nothing until it answers — so it hides behind a stamp
+/// and only re-runs when an input changed: the venv's interpreter (recreated
+/// by `venv --clear` on every setup), the resolved requirements (a new file
+/// with every app update), or the app version itself. A matching stamp
+/// answers instantly.
 ///
 /// What the stamp cannot see is a hand-gutted `site-packages` under an
 /// untouched interpreter. That failure no longer blocks the launch gate — it
@@ -473,8 +480,28 @@ async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -
         }
     }
 
+    // `python -c code args…` leaves the code out of argv: sys.argv[1] is the
+    // requirements path. `packaging` is itself in the lock, so a venv too old
+    // or too broken to have it fails the probe and gets rebuilt — the right
+    // outcome by another road.
+    const PROBE: &str = "\
+import importlib.metadata, sys
+import yt_dlp, beets, mutagen
+from packaging.requirements import Requirement
+for line in open(sys.argv[1], encoding='utf-8'):
+    line = line.split('#', 1)[0].strip()
+    if not line:
+        continue
+    req = Requirement(line)
+    if req.marker and not req.marker.evaluate():
+        continue
+    if not req.specifier.contains(importlib.metadata.version(req.name), prereleases=True):
+        sys.exit(1)
+";
     let ok = command(venv_python)
-        .args(["-c", "import yt_dlp, beets, mutagen"])
+        .arg("-c")
+        .arg(PROBE)
+        .arg(&paths.requirements)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())

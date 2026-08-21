@@ -96,6 +96,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_env_status,
             commands::setup_env,
+            commands::reveal_log_file,
             commands::check_acoustid_key,
             commands::check_services,
             commands::get_onboarding_state,
