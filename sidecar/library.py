@@ -29,7 +29,7 @@ _GENRE_FMT_DELIMITER = "; "
 # in item_attributes and is never read.
 _BONUS_SOURCE_KEY = "sonarche_bonus_source"
 _SUSPECT_KEY = "sonarche_suspect_match"
-_PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
+PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
 # On the *album* row, not the item: what this record is. Absent means an album
 # — a release with a tracklist, which can therefore be missing tracks. Set to
 # COLLECTION it means someone's own gathering of tracks, which has no tracklist
@@ -255,7 +255,7 @@ def handle(_request_id: str, params: dict) -> dict:
         art_mtime_by_album = art_mtimes(art_by_album)
         bonus_by_item = flex_attrs_by_item(conn, _BONUS_SOURCE_KEY)
         suspect_by_item = flex_attrs_by_item(conn, _SUSPECT_KEY)
-        provisional_cover_by_item = flex_attrs_by_item(conn, _PROVISIONAL_COVER_KEY)
+        provisional_cover_by_item = flex_attrs_by_item(conn, PROVISIONAL_COVER_KEY)
         kind_by_album = flex_attrs_by_album(conn, ALBUM_KIND_KEY)
         art_by_item = flex_attrs_by_item(conn, ITEM_ART_KEY)
         accepted_by_item = flex_attrs_by_item(conn, accepted.KEY)

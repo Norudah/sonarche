@@ -448,6 +448,118 @@ class MoveTest(unittest.TestCase):
         lib._close()
         self.assertFalse(os.path.exists(os.path.join(self.dir, "Singles", "Orphan")))
 
+    # The record's cover, worn by whoever joins it.
+
+    def _covered_target(self, lib, data: bytes = b"cover"):
+        """A target record that carries a real cover file."""
+        target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
+        art = os.path.join(self.dir, "Mine", "cover.jpg")
+        with open(art, "wb") as fh:
+            fh.write(data)
+        target.artpath = art.encode()
+        target.store(inherit=False)
+        return target
+
+    def _embeds(self):
+        """Record what `embed_cover` is handed, without a real audio file to
+        write into: the fixtures are five bytes of "audio"."""
+        import enrich
+
+        calls: list[tuple[int, bytes]] = []
+        original = enrich.embed_cover
+        enrich.embed_cover = lambda item, data, is_png: calls.append((item.id, data)) or True
+        self.addCleanup(setattr, enrich, "embed_cover", original)
+        return calls
+
+    def test_an_arrival_takes_the_record_s_cover(self):
+        """Filing a track onto a record is saying it belongs there — and it used
+        to keep its own release's picture, so it sat in the right album wearing
+        the wrong cover."""
+        lib = self._lib()
+        target = self._covered_target(lib)
+        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        moved_id = next(iter(source.items())).id
+        lib._close()
+        calls = self._embeds()
+
+        result = self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        self.assertEqual(result["covered"], 1)
+        self.assertEqual(calls, [(moved_id, b"cover")])
+
+    def test_a_record_with_no_cover_leaves_the_arrival_s_alone(self):
+        # Gaining a picture is worth a rewrite; losing one is not.
+        lib = self._lib()
+        target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
+        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        moved_id = next(iter(source.items())).id
+        lib._close()
+        calls = self._embeds()
+
+        result = self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        self.assertEqual(result["covered"], 0)
+        self.assertEqual(calls, [])
+
+    def test_the_record_s_cover_replaces_a_singleton_s_own(self):
+        """A written-out singleton cover is the answer for a track with no
+        record. Once it has one, that file is a second answer — and the one the
+        library listing falls back to."""
+        lib = self._lib()
+        target = self._covered_target(lib)
+        single = self._item("Singles/Orphan/Loner.mp3", title="Loner", artist="Orphan")
+        lib.add(single)
+        art = os.path.join(self.dir, "Singles", "Orphan", "Loner.jpg")
+        with open(art, "wb") as fh:
+            fh.write(b"own")
+        single[library.ITEM_ART_KEY] = art
+        single.store()
+        lib._close()
+        self._embeds()
+
+        self._move(item_ids=[single.id], target_album_id=target.id)
+
+        lib = self._lib()
+        item = lib.get_item(single.id)
+        self.assertIsNone(item.get(library.ITEM_ART_KEY))
+        lib._close()
+        self.assertFalse(os.path.exists(art))
+
+    def test_the_arrival_wears_the_record_s_provisional_badge(self):
+        lib = self._lib()
+        target = self._covered_target(lib)
+        for resident in target.items():
+            resident[library.PROVISIONAL_COVER_KEY] = 1
+            resident.store()
+        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        moved_id = next(iter(source.items())).id
+        lib._close()
+        self._embeds()
+
+        self._move(item_ids=[moved_id], target_album_id=target.id)
+
+        lib = self._lib()
+        self.assertTrue(lib.get_item(moved_id).get(library.PROVISIONAL_COVER_KEY))
+        lib._close()
+
+    def test_the_arrival_drops_a_badge_the_record_does_not_wear(self):
+        """The badge belonged to the album it left. Read off the residents, not
+        off `album.items()` — by now the arrival is one of those."""
+        lib = self._lib()
+        target = self._covered_target(lib)
+        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        moved = next(iter(source.items()))
+        moved[library.PROVISIONAL_COVER_KEY] = 1
+        moved.store()
+        lib._close()
+        self._embeds()
+
+        self._move(item_ids=[moved.id], target_album_id=target.id)
+
+        lib = self._lib()
+        self.assertIsNone(lib.get_item(moved.id).get(library.PROVISIONAL_COVER_KEY))
+        lib._close()
+
     # Declaring the target's nature in the same pass.
 
     def test_kind_album_clears_a_stale_collection_mark(self):

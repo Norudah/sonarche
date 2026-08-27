@@ -276,8 +276,10 @@ def handle(_request_id: str, params: dict) -> dict:
 
     embedded = 0
     for item in album.items():
-        enrich.embed_cover(item, thumb_bytes, is_png)
-        embedded += 1
+        # Counted on the writer's own verdict: a file it could not open is not
+        # a file that carries the new cover, and the recap must not say it is.
+        if enrich.embed_cover(item, thumb_bytes, is_png):
+            embedded += 1
         # A user-chosen cover is real art: the "video thumbnail standing in"
         # flag has nothing left to warn about.
         if item.get(_PROVISIONAL_COVER_KEY):

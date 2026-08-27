@@ -166,7 +166,7 @@ def is_settled(key: tuple, title_hint: str | None) -> bool:
 
 
 def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str | None:
-    """Search MusicBrainz by name using the YouTube hints. In-memory only:
+    """Search MusicBrainz by name using the download's own hints. In-memory only:
     nothing is stored unless a near-perfect match is applied afterwards."""
     from beets import autotag
 
@@ -190,7 +190,7 @@ def work_fields(merged) -> dict:
     """A matched TrackInfo, stripped of anything that describes the audio file.
 
     `length` on a TrackInfo is MusicBrainz' duration for the recording, and the
-    file we downloaded from YouTube is never quite that: measured across the
+    file we downloaded is never quite that: measured across the
     library the two disagree by anywhere from a few tenths of a second to half a
     minute, in both directions — different masters, a trailing outro, silence at
     the end of a video. Copying it over `item.length` replaced a fact about our
@@ -509,15 +509,30 @@ def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Arc
         covers.ensure_display_rendition(_decode(album.artpath))
 
 
-def embed_cover(item, data: bytes, is_png: bool) -> None:
-    from mutagen.mp4 import MP4, MP4Cover
+def embed_cover(item, data: bytes, is_png: bool) -> bool:
+    """Write the cover into the audio file itself. Returns whether it landed.
+
+    Through beets' own `mediafile` rather than a container-specific writer: the
+    library holds m4a from the download path, whatever an import brought, and —
+    since the audio format became a setting — mp3 or flac the app transcoded
+    itself. One writer that knows every container is the only version of this
+    that stays true; the m4a-only one silently did nothing on every other file.
+    """
+    import mediafile
 
     path = _decode_path(item)
-    if path.endswith(".m4a") and os.path.exists(path):
-        tags = MP4(path)
-        fmt = MP4Cover.FORMAT_PNG if is_png else MP4Cover.FORMAT_JPEG
-        tags["covr"] = [MP4Cover(data, imageformat=fmt)]
-        tags.save()
+    if not os.path.exists(path):
+        return False
+    mime = "image/png" if is_png else "image/jpeg"
+    try:
+        media = mediafile.MediaFile(path)
+        media.images = [mediafile.Image(data=data, desc="", type=mediafile.ImageType.front)]
+        media.save()
+    except (mediafile.UnreadableFileError, OSError, ValueError) as exc:
+        # A cover is never worth failing an enrich, a move or a conversion on.
+        protocol.log(f"enrich: cover embed failed for {path}: {exc}")
+        return False
+    return True
 
 
 def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> None:
