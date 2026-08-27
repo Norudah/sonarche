@@ -26,7 +26,7 @@ export function AlbumsView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AlbumSort>("artist");
   const [params, setParams] = useSearchParams();
-  const [layout, setLayout] = useShelfLayout("albums");
+  const [layout, setLayout] = useShelfLayout();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
   // No `useMemo`: `groupAlbums` caches on the array's identity, which every

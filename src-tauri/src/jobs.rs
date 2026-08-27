@@ -34,7 +34,7 @@ const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 /// The configured download delay is a floor, not a metronome: jittering it up
 /// to 2x keeps the batch from looking like a scripted, perfectly-timed loop.
 const TRACK_SLEEP_JITTER: f64 = 1.0;
-/// YouTube 403s are transient flow protection, not permanent failures: retry
+/// The source's 403s are transient flow protection, not permanent failures: retry
 /// each URL a few times before giving up on it. A handful of polite, spaced
 /// attempts doesn't escalate throttling; hammering without pause does.
 const DOWNLOAD_ATTEMPTS: u32 = 3;
@@ -168,7 +168,7 @@ pub struct Job {
     pub single_album: bool,
     /// Playlist slots whose video was deleted, made private or claimed:
     /// skipped before download (they can only fail) but counted, because the
-    /// record has holes YouTube cannot even name.
+    /// record has holes the source cannot even name.
     #[serde(default)]
     pub unavailable: u32,
     /// When the job's library output was taken back out (see `download_undo`).
@@ -551,7 +551,7 @@ fn job_log(id: &str, msg: &str) {
     eprintln!("[job {}] {msg}", &id[..id.len().min(8)]);
 }
 
-/// The marker `sidecar/download.py` puts on a video YouTube will never serve.
+/// The marker `sidecar/download.py` puts on a video the source will never serve.
 /// The wording of yt-dlp's own message stays the sidecar's business; this side
 /// only needs to know the verdict.
 const UNAVAILABLE_PREFIX: &str = "video-unavailable:";
@@ -563,10 +563,14 @@ fn is_unavailable(message: &str) -> bool {
 /// Raw sidecar download of one URL into the staging dir.
 async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
-    // Without ffmpeg beside it, yt-dlp leaves YouTube's m4a as a fragmented
+    // Without ffmpeg beside it, yt-dlp leaves the m4a as a fragmented
     // DASH container — 0:00 durations and broken seeking on every player that
     // reads classic sample tables (Music.app, iOS, CarPlay).
     python_env::ensure_ffmpeg(&paths).await?;
+    // Read per track rather than carried on the job: the setting is what it is
+    // at the moment a file is written, and a playlist queued before the user
+    // changed it has no claim on the old answer.
+    let format = preferences::load(app).await?.audio_format;
     let sidecar = app.state::<SidecarState>();
     sidecar
         .request(
@@ -576,6 +580,7 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
                 "url": url,
                 "staging_dir": paths.staging_dir.to_string_lossy(),
                 "ffmpeg": paths.ffmpeg().to_string_lossy(),
+                "audio_format": format,
             }),
             DOWNLOAD_TIMEOUT,
         )
@@ -610,7 +615,7 @@ async fn record_attempt(
     };
 }
 
-/// One URL through the retry policy: transient failures (YouTube 403s, network
+/// One URL through the retry policy: transient failures (403s, network
 /// blips) get DOWNLOAD_ATTEMPTS tries with growing pauses; the row keeps its
 /// live status and its attempt count, the terminal log carries the full trail.
 async fn download_with_retry(
@@ -707,7 +712,7 @@ async fn run_enrich(
 
 /// Run the enrich stage for a beets item. `title`/`artist` are only used by the
 /// text fallback; pass `None` to let the sidecar reuse the item's own tags (the
-/// re-enrich path has no YouTube hints). Shared by the download worker and the
+/// re-enrich path has no download hints). Shared by the download worker and the
 /// standalone re-enrich command.
 pub async fn enrich_item(
     app: &AppHandle,
@@ -986,7 +991,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     }
 
     // Download loop: one sidecar request per track, jittered pauses between
-    // network hits so the batch never hammers YouTube.
+    // network hits so the batch never hammers the source.
     job_log(id, "━━ download phase ━━");
     let tracks = snapshot(inner, id)
         .await
@@ -1249,7 +1254,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .iter()
         .filter(|t| t.status == TrackStatus::Failed)
         .count();
-    // Videos YouTube pulled out from under the playlist. Counted on the job so
+    // Videos the source pulled out from under the playlist. Counted on the job so
     // the card can say the record has holes, and kept out of `failed`: nothing
     // went wrong here, and there is nothing to retry.
     let unavailable = job

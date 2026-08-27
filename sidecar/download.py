@@ -1,16 +1,22 @@
-"""Download a track with yt-dlp, keeping the native m4a/AAC stream (no re-encode).
+"""Download a track with yt-dlp, keeping the native m4a/AAC stream by default.
 
-App rule: the file is left untagged on purpose. YouTube titles/uploaders are not
-trustworthy metadata — fields stay empty until an automation process (MusicBrainz,
-AcoustID…) finds a real match. The YouTube info is only returned to the caller for
+The one exception is the audio-format setting (`audio_format.py`): someone who
+listens on a device that only reads mp3 has asked, explicitly, for the
+re-encode the app otherwise refuses to do behind their back. Without that
+setting nothing decodes the stream — the file stored is the file served.
+
+App rule: the file is left untagged on purpose. Video titles and channel names
+are not trustworthy metadata — fields stay empty until an automation process (MusicBrainz,
+AcoustID…) finds a real match. The source's own info is only returned to the caller for
 display and as search hints."""
 
 import os
 import re
 
+import audio_format
 import protocol
 
-# Prefix the caller matches on to tell "YouTube will never serve this" apart
+# Prefix the caller matches on to tell "the source will never serve this" apart
 # from "the download failed". A machine-readable marker rather than the raw
 # yt-dlp sentence: the wording is yt-dlp's to change, and only this module
 # should have to know it.
@@ -43,13 +49,13 @@ def scrub(message: str) -> str:
     """A yt-dlp error with the extractor tag removed.
 
     Errors reach the download history and are shown on the failing row, and
-    yt-dlp stamps every one with the site it came from (`ERROR: [youtube] …`).
+    yt-dlp stamps every one with the site it came from (`ERROR: [site] …`).
     The app never names the site it fetches from, so the tag comes off here —
     at the one place that reads yt-dlp's output — while the part that says what
     actually went wrong is kept verbatim. Pure."""
     text = (message or "").strip()
     text = re.sub(r"^ERROR:\s*", "", text)
-    # The tag and the video id it carries: "[youtube] dQw4w9WgXcQ: ".
+    # The tag and the video id it carries: "[site] dQw4w9WgXcQ: ".
     text = re.sub(r"^\[[^\]]+\]\s*[\w-]*:?\s*", "", text)
     return text.strip()
 
@@ -106,17 +112,29 @@ def handle(request_id: str, params: dict) -> dict:
     url = params["url"]
     staging_dir = params["staging_dir"]
     ffmpeg = params.get("ffmpeg")
+    fmt = audio_format.normalize(params.get("audio_format"))
     os.makedirs(staging_dir, exist_ok=True)
 
     opts = {
-        # Native AAC stream from YouTube; fall back to best audio without re-encoding.
-        "format": "bestaudio[ext=m4a]/bestaudio",
+        # Native AAC stream from the source; fall back to best audio without
+        # re-encoding. A chosen format widens the ask instead — see
+        # `audio_format.source_selector`.
+        "format": audio_format.source_selector(fmt),
         "outtmpl": os.path.join(staging_dir, "%(title)s [%(id)s].%(ext)s"),
         "noplaylist": True,
         "logger": _Logger(),
         "noprogress": True,
         "progress_hooks": [_progress_hook(request_id)],
     }
+    chain = audio_format.postprocessors(fmt)
+    if chain:
+        if not ffmpeg:
+            # Refused rather than downloaded native: the user picked a format,
+            # and handing them an m4a while the setting says mp3 is the app
+            # lying about what it stored.
+            raise RuntimeError(f"cannot produce {fmt} without ffmpeg")
+        opts["postprocessors"] = chain
+        protocol.log(f"download: re-encoding to {fmt} (audio format setting)")
     if ffmpeg:
         # The bundled binary, by absolute path — PATH is never trusted. With it,
         # yt-dlp's FixupM4a remuxes the DASH m4a into a classic MP4 (`-c copy`,
@@ -139,6 +157,15 @@ def handle(request_id: str, params: dict) -> dict:
 
     downloads = info.get("requested_downloads") or []
     path = downloads[0]["filepath"] if downloads else None
+    # The extract postprocessor rewrites `filepath` in place, but it is yt-dlp's
+    # bookkeeping and not a contract: if it ever falls behind, the converted
+    # file is the same name wearing the chosen suffix, and finding it there
+    # beats failing a download whose audio is sitting on disk.
+    if path and not os.path.exists(path):
+        swapped = f"{os.path.splitext(path)[0]}.{fmt}"
+        if os.path.exists(swapped):
+            protocol.log(f"download: output found as {os.path.basename(swapped)}")
+            path = swapped
     if not path or not os.path.exists(path):
         raise RuntimeError("download finished but output file not found")
 

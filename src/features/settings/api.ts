@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { AudioFormat } from "@/features/settings/audioFormats";
+
 export type ApiKeyName = "acoustid";
 
 /** The backend never returns the secret itself, only whether one is stored. */
@@ -135,6 +137,10 @@ export interface Preferences {
   lastfmFetchDelaySeconds: number;
   acoustidLookupDelaySeconds: number;
   downloadDelaySeconds: number;
+  /** The container a download lands in — see `audioFormats.ts`. Typed as the
+   * union rather than `string`: the backend validates the write and stamps
+   * anything unknown back to the default, so nothing else ever arrives. */
+  audioFormat: AudioFormat;
 }
 
 export async function getPreferences(): Promise<Preferences> {
@@ -143,6 +149,28 @@ export async function getPreferences(): Promise<Preferences> {
 
 export async function setRateLimitDelay(key: RateLimitKey, seconds: number): Promise<Preferences> {
   return invoke<Preferences>("set_rate_limit_delay", { key, seconds });
+}
+
+/** What the *next* download will be. Instant, and it touches nothing on disk. */
+export async function setAudioFormat(format: AudioFormat): Promise<Preferences> {
+  return invoke<Preferences>("set_audio_format", { format });
+}
+
+/** What every track on disk already is. Hours of CPU on a large library, and
+ * each original is deleted as soon as its replacement lands — hence the ritual
+ * around the button that calls this. */
+export interface ConvertReport {
+  format: AudioFormat;
+  /** Files that were not already in the target format. The rest were skipped
+   * and never opened. */
+  total: number;
+  converted: number;
+  failed: number;
+  skipped: number;
+}
+
+export async function convertLibrary(): Promise<ConvertReport> {
+  return invoke<ConvertReport>("convert_library");
 }
 
 /**

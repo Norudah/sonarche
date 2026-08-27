@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useState } from "react";
 
+import type { AudioFormat } from "@/features/settings/audioFormats";
 import {
   type ApiKeyName,
   checkApiKey,
   checkLibraryMove,
   checkServices,
+  convertLibrary,
   eraseAllData,
   eraseArtistImages,
   eraseHistory,
@@ -20,6 +24,7 @@ import {
   resetLibraryDev,
   resetSetupDev,
   setApiKey,
+  setAudioFormat,
   setRateLimitDelay,
   type SetupResetTargets,
 } from "@/features/settings/api";
@@ -130,6 +135,79 @@ export function useSetRateLimitDelay() {
       queryClient.invalidateQueries({ queryKey: preferencesKey });
     },
   });
+}
+
+export function useSetAudioFormat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (format: AudioFormat) => setAudioFormat(format),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: preferencesKey });
+    },
+  });
+}
+
+/**
+ * Re-encode the library. A mutation, never a query: this rewrites every file on
+ * disk, and nothing about a screen mounting may be able to start it.
+ *
+ * The blanket invalidation is not laziness — a conversion changes the path,
+ * the format and the bitrate of every track, so there is no cache in the app
+ * that is still true afterwards.
+ */
+export function useConvertLibrary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: convertLibrary,
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+export interface ConvertProgress {
+  done: number;
+  total: number;
+  title: string;
+  artist: string;
+  failed: number;
+}
+
+/**
+ * Follow the conversion while it runs.
+ *
+ * Subscribed only while `active`, same pattern as the align pass: the listener
+ * costs nothing to attach and would otherwise sit on every settings screen for
+ * a pass that runs once a year.
+ */
+export function useConvertProgress(active: boolean): ConvertProgress | null {
+  const [progress, setProgress] = useState<ConvertProgress | null>(null);
+  const [lastActive, setLastActive] = useState(active);
+
+  if (lastActive !== active) {
+    setLastActive(active);
+    setProgress(null);
+  }
+
+  useEffect(() => {
+    if (!active) return;
+    const unlisten = listen<{ event: string; data: Record<string, unknown> }>("sidecar:event", (event) => {
+      const { event: name, data } = event.payload;
+      if (name !== "convert_progress") return;
+      setProgress({
+        done: Number(data.done ?? 0),
+        total: Number(data.total ?? 0),
+        title: typeof data.title === "string" ? data.title : "",
+        artist: typeof data.artist === "string" ? data.artist : "",
+        failed: Number(data.failed ?? 0),
+      });
+    });
+    return () => {
+      void unlisten.then((off) => off());
+    };
+  }, [active]);
+
+  return progress;
 }
 
 export function useResetSetupDev() {

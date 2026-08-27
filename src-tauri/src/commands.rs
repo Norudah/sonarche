@@ -7,6 +7,7 @@ use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
+use crate::convert::ConvertLibraryState;
 use crate::download_undo;
 use crate::error::{AppError, AppResult};
 use crate::genres::RecomputeGenresState;
@@ -486,6 +487,28 @@ pub async fn set_rate_limit_delay(
     seconds: f64,
 ) -> AppResult<Preferences> {
     preferences::set_rate_limit_delay(&app, &key, seconds).await
+}
+
+/// The container downloads land in, from now on. Only the next download —
+/// converting what is already on disk is [`convert_library`], and the two are
+/// separate on purpose: one is instant and reversible, the other rewrites every
+/// file in the library.
+#[tauri::command]
+pub async fn set_audio_format(app: AppHandle, format: String) -> AppResult<Preferences> {
+    preferences::set_audio_format(&app, &format).await
+}
+
+/// Re-encode the library into the format the setting names.
+///
+/// Hours of CPU on a large library, and the front holds the user still while it
+/// runs — which is the honest shape for a pass that deletes each original the
+/// moment its replacement is on disk.
+#[tauri::command]
+pub async fn convert_library(
+    app: AppHandle,
+    state: State<'_, ConvertLibraryState>,
+) -> AppResult<Value> {
+    state.run(&app).await
 }
 
 #[tauri::command]

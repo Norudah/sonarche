@@ -3,7 +3,7 @@
 
 const now = Date.now();
 
-/** Stand-in for a YouTube thumbnail: 16:9 like the real thing, so the queue's
+/** Stand-in for a video thumbnail: 16:9 like the real thing, so the queue's
  * square artwork slot is exercised with the aspect ratio it actually crops. */
 function thumb(from: string, to: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="320" height="180" fill="url(#g)"/></svg>`;
@@ -210,7 +210,7 @@ const jobs = [
       }),
     ],
   }),
-  // A playlist that landed while one video was pulled from YouTube. The batch
+  // A playlist that landed while one video was pulled at the source. The batch
   // stays `done` — the library gained the rest — and the row reports the loss
   // as amber rather than painting the whole pipeline red.
   job({
@@ -283,9 +283,13 @@ const preferences = {
   lastfmFetchDelaySeconds: 1,
   acoustidLookupDelaySeconds: 1,
   downloadDelaySeconds: 3,
+  audioFormat: "m4a",
 };
 
-const preferenceFields: Record<string, keyof typeof preferences> = {
+const preferenceFields: Record<
+  string,
+  "lastfmFetchDelaySeconds" | "acoustidLookupDelaySeconds" | "downloadDelaySeconds"
+> = {
   lastfm: "lastfmFetchDelaySeconds",
   acoustid: "acoustidLookupDelaySeconds",
   download: "downloadDelaySeconds",
@@ -296,12 +300,6 @@ const preferenceFields: Record<string, keyof typeof preferences> = {
  * A format the player refuses is a state the UI has to draw, so it needs to be
  * reachable by clicking a row rather than only in a real install. */
 const MOCK_RELEASE_BODY = `## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-08-12)
-
-### En bref
-
-* Un clic sur une pochette l'agrandit, et tu peux la recadrer sans la remplacer.
-* La langue se choisit dès l'installation.
-* Chaque suppression demande confirmation, partout.
 
 ### Features
 
@@ -341,7 +339,7 @@ const libraryTracks = [
     bitrate: 256000,
     format: "AAC",
     path: "/Users/dev/Music/Sonarche/Music/Skillet/Monster.m4a",
-    // Square cover art: the queue swaps the 16:9 YouTube thumbnail for this
+    // Square cover art: the queue swaps the 16:9 video thumbnail for this
     // once the enrich step has filed the item.
     art_path: thumb("#334", "#112"),
     // Adopted bonus track: exercises the origin note in the metadata drawer.
@@ -964,9 +962,9 @@ export function installMockTauri() {
       if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
-      // The body is a faithful release-please changelog with the hand-written
-      // `En bref` section on top — the exact shape `parseReleaseNotes` is fed
-      // in production, so `?update` previews the notes modal too.
+      // The body is a faithful release-please changelog — the exact shape
+      // `parseReleaseNotes` is fed in production, so `?update` previews the
+      // notes section too.
       if (cmd === "plugin:updater|check") {
         return new URLSearchParams(window.location.search).has("update")
           ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: MOCK_RELEASE_BODY, rawJson: {} }
@@ -1066,6 +1064,32 @@ export function installMockTauri() {
           sizeBytes: 68_400_000_000,
           sameVolume: false,
         };
+      }
+      if (cmd === "set_audio_format") {
+        preferences.audioFormat = String(payload?.format ?? preferences.audioFormat);
+        return preferences;
+      }
+      // The conversion, paced so the preview can actually watch the dialog do
+      // its three phases — the real pass is seconds of CPU per track.
+      if (cmd === "convert_library") {
+        const total = 12;
+        for (let done = 0; done <= total; done++) {
+          window.setTimeout(() => {
+            emitMockEvent("sidecar:event", {
+              event: "convert_progress",
+              data: {
+                done,
+                total,
+                format: preferences.audioFormat,
+                title: `Track ${done}`,
+                artist: "Mock",
+                failed: 0,
+              },
+            });
+          }, done * 250);
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, (total + 1) * 250));
+        return { format: preferences.audioFormat, total, converted: total, failed: 0, skipped: 3 };
       }
       if (cmd === "set_rate_limit_delay") {
         const field = preferenceFields[String(payload?.key)];

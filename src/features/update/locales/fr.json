@@ -12,17 +12,10 @@
   "installing": "Installation en cours…",
   "failed": "La mise à jour a échoué",
   "failedHint": "Réessaie plus tard, ou télécharge la dernière version depuis GitHub.",
-  "changelog": {
-    "title": "Notes de version",
-    "subtitle": "Ce qui a changé dans Sonarche {{version}}.",
-    "view": "Voir les nouveautés",
-    "hide": "Masquer"
-  },
   "notes": {
     "view": "Voir les nouveautés",
     "whatsNew": "Nouveautés",
     "title": "Sonarche {{version}}",
-    "detail": "Dans le détail",
     "breaking": "Changements majeurs",
     "features": "Nouveautés",
     "fixes": "Corrections",

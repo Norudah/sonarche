@@ -1,5 +1,13 @@
 import type { Preferences, RateLimitKey } from "@/features/settings/api";
 
+/** The preference fields that hold a delay. Derived rather than
+ * `keyof Preferences`: not every preference is a number of seconds — the audio
+ * format is a string sitting in the same object — and a slider pointed at one
+ * would only fail at runtime. */
+type DelayField = {
+  [K in keyof Preferences]: Preferences[K] extends number ? K : never;
+}[keyof Preferences];
+
 /**
  * The politeness delays, and the scale their sliders run on.
  *
@@ -19,7 +27,7 @@ import type { Preferences, RateLimitKey } from "@/features/settings/api";
  */
 export interface RateLimitDef {
   key: RateLimitKey;
-  field: keyof Preferences;
+  field: DelayField;
   max: number;
   /** Below this, the slider shows the "you are being rude" warning. One second
    * for all three: it is the floor the app asks users to stay above, whatever
@@ -40,7 +48,7 @@ export const RATE_LIMITS: RateLimitDef[] = [
 /** The two pauses the app imposes rather than offers, in display order. Read
  * off the preferences (the backend stamps them to its defaults on every load)
  * so the printed number can never drift from the enforced one. */
-export const FIXED_API_DELAYS: { key: "acoustid" | "lastfm"; field: keyof Preferences }[] = [
+export const FIXED_API_DELAYS: { key: "acoustid" | "lastfm"; field: DelayField }[] = [
   { key: "acoustid", field: "acoustidLookupDelaySeconds" },
   { key: "lastfm", field: "lastfmFetchDelaySeconds" },
 ];

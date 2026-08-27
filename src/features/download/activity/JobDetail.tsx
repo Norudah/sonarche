@@ -120,7 +120,7 @@ export function JobDetail({
         {job.category && <Fact label={t("activity.detail.category")}>{categoryLabel(job.category)}</Fact>}
       </dl>
 
-      {/* Slots YouTube kept as dead placeholders (deleted/private/claimed):
+      {/* Slots the source kept as dead placeholders (deleted/private/claimed):
           skipped before download, but the set has holes the listing cannot
           even name — so the one honest move is to say so and hand the search
           back to the user. */}

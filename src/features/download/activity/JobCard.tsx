@@ -48,7 +48,7 @@ export interface JobCardProps {
 }
 
 /** Cover art the enrich step produced, once any of the job's items carries one;
- * until then the card keeps the YouTube thumbnail it was queued with. */
+ * until then the card keeps the video thumbnail it was queued with. */
 function coverOf(job: DownloadJob, library: LibraryLookup): string | null {
   if (job.kind !== "album") return library.trackFor(job.report?.itemId ?? null)?.artUrl ?? null;
   for (const track of job.tracks) {

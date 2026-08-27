@@ -4,11 +4,9 @@
  * `latest.json` carries the GitHub release body: release-please's generated
  * changelog — English commit subjects, scope prefixes, a commit link on every
  * line. Accurate, and unreadable for anyone who does not live in the repo.
- * This parser is the app's side of a two-part deal: the release editor may add
- * a hand-written `### En bref` section on the release PR before merging, and
- * the app shows that section as the story, with the generated lines cleaned up
- * underneath. When the hand-written part is missing, the cleaned lines are the
- * whole story — worse, but never empty for the wrong reason.
+ * This parser turns it into sections the UI can label in the reader's
+ * language, with the repo vocabulary (scope prefixes, commit links) stripped
+ * off each line.
  */
 
 export type SectionKind = "breaking" | "features" | "fixes" | "perf";
@@ -22,9 +20,6 @@ export interface NotesSection {
 }
 
 export interface ReleaseNotes {
-  /** The hand-written `En bref` / `Highlights` bullets, when the release
-   * editor wrote them. */
-  highlights: string[];
   sections: NotesSection[];
 }
 
@@ -34,8 +29,6 @@ const KINDS: [RegExp, SectionKind][] = [
   [/^bug fixes$/i, "fixes"],
   [/^performance/i, "perf"],
 ];
-
-const HIGHLIGHTS = /^(en bref|highlights)$/i;
 
 /** `[text](url)` → `text`, wherever it appears in a line. */
 function stripLinks(text: string): string {
@@ -54,18 +47,16 @@ function cleanItem(raw: string): string {
 }
 
 /**
- * `null` when there is nothing worth a modal: no body, or a body with no
+ * `null` when there is nothing worth a card: no body, or a body with no
  * bullets (tauri-action's placeholder sentence, an empty release). The caller
  * falls back to the plain install offer.
  */
 export function parseReleaseNotes(body: string | null | undefined): ReleaseNotes | null {
   if (!body) return null;
 
-  const highlights: string[] = [];
   const sections: NotesSection[] = [];
   // Bullets before any heading land in a synthetic section with no title.
   let current: NotesSection | null = null;
-  let inHighlights = false;
 
   for (const line of body.split(/\r?\n/)) {
     const heading = /^#{1,4}\s+(.*)$/.exec(line.trim());
@@ -77,11 +68,6 @@ export function parseReleaseNotes(body: string | null | undefined): ReleaseNotes
         .trim();
       // The version heading release-please opens with ("1.2.0 (2026-08-12)").
       if (/^\d+\.\d+\.\d+/.test(title)) continue;
-      inHighlights = HIGHLIGHTS.test(title);
-      if (inHighlights) {
-        current = null;
-        continue;
-      }
       current = { kind: KINDS.find(([re]) => re.test(title))?.[1] ?? null, title, items: [] };
       sections.push(current);
       continue;
@@ -91,18 +77,14 @@ export function parseReleaseNotes(body: string | null | undefined): ReleaseNotes
     if (!bullet) continue;
     const item = cleanItem(bullet[1]);
     if (!item) continue;
-    if (inHighlights) {
-      highlights.push(item);
-    } else {
-      if (!current) {
-        current = { kind: null, title: "", items: [] };
-        sections.push(current);
-      }
-      current.items.push(item);
+    if (!current) {
+      current = { kind: null, title: "", items: [] };
+      sections.push(current);
     }
+    current.items.push(item);
   }
 
   const kept = sections.filter((section) => section.items.length > 0);
-  if (highlights.length === 0 && kept.length === 0) return null;
-  return { highlights, sections: kept };
+  if (kept.length === 0) return null;
+  return { sections: kept };
 }

@@ -4,11 +4,6 @@ import { parseReleaseNotes } from "@/features/update/notes";
 
 const RELEASE_PLEASE_BODY = `## [1.1.0](https://github.com/Norudah/sonarche/compare/sonarche-v1.0.0...sonarche-v1.1.0) (2026-08-12)
 
-### En bref
-
-* Un clic sur la pochette l'agrandit, et tu peux la recadrer sans la remplacer.
-* La langue se choisit dès l'installation.
-
 ### ⚠ BREAKING CHANGES
 
 * **library:** the genre tree is rebuilt on first launch
@@ -28,14 +23,6 @@ const RELEASE_PLEASE_BODY = `## [1.1.0](https://github.com/Norudah/sonarche/comp
 `;
 
 describe("parseReleaseNotes", () => {
-  it("lifts the hand-written En bref section out as highlights", () => {
-    const notes = parseReleaseNotes(RELEASE_PLEASE_BODY);
-    expect(notes?.highlights).toEqual([
-      "Un clic sur la pochette l'agrandit, et tu peux la recadrer sans la remplacer.",
-      "La langue se choisit dès l'installation.",
-    ]);
-  });
-
   it("cleans changelog bullets: scope prefix and commit link go, links keep their text", () => {
     const notes = parseReleaseNotes(RELEASE_PLEASE_BODY);
     const features = notes?.sections.find((section) => section.kind === "features");
@@ -48,12 +35,6 @@ describe("parseReleaseNotes", () => {
   it("maps the known release-please headings", () => {
     const notes = parseReleaseNotes(RELEASE_PLEASE_BODY);
     expect(notes?.sections.map((section) => section.kind)).toEqual(["breaking", "features", "fixes", null]);
-  });
-
-  it("accepts Highlights as the English name of the hand-written section", () => {
-    const notes = parseReleaseNotes("### Highlights\n\n* Faster startup.\n");
-    expect(notes?.highlights).toEqual(["Faster startup."]);
-    expect(notes?.sections).toEqual([]);
   });
 
   it("skips the version heading without turning it into a section", () => {

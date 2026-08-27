@@ -10,21 +10,17 @@ import { useState } from "react";
  * albums either way. Someone who prefers rows prefers them tomorrow too, and a
  * choice that had to be made again on every visit would not be a preference.
  *
- * One key per shelf rather than one for both. The two are read at different
- * distances — a wall of covers is how you recognise a record you own, a list is
- * how you find one by name — and nothing says the answer is the same for
- * artists, whose grid is portraits rather than artwork.
+ * One key for every shelf, not one per shelf. The switch is the same control in
+ * the same corner of two pages that are browsed one after the other; setting it
+ * on the albums page and finding the artists page still in covers reads as the
+ * switch having failed, not as two preferences being kept. "I read my library
+ * as a list" is one statement about the person, not one per shelf.
  */
 
 export const SHELF_LAYOUTS = ["grid", "list"] as const;
 export type ShelfLayout = (typeof SHELF_LAYOUTS)[number];
 
-export type Shelf = "albums" | "artists";
-
-const STORAGE_KEYS: Record<Shelf, string> = {
-  albums: "sonarche.shelfLayout.albums",
-  artists: "sonarche.shelfLayout.artists",
-};
+const STORAGE_KEY = "sonarche.shelfLayout";
 
 /** Anything unreadable means nobody has chosen, and the grid is the shelf the
  * app was designed around. */
@@ -32,9 +28,9 @@ export function parseShelfLayout(raw: string | null | undefined): ShelfLayout {
   return raw === "list" ? "list" : "grid";
 }
 
-function read(shelf: Shelf): ShelfLayout {
+function read(): ShelfLayout {
   try {
-    return parseShelfLayout(window.localStorage.getItem(STORAGE_KEYS[shelf]));
+    return parseShelfLayout(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     // Storage throws rather than returning null in a hardened webview.
     return "grid";
@@ -44,19 +40,19 @@ function read(shelf: Shelf): ShelfLayout {
 /**
  * The remembered layout and the way to change it.
  *
- * Plain state over a `useSyncExternalStore` — unlike the option panels, which
- * are flipped in Settings and read on another page: this switch sits on the
- * very shelf it governs, so there is no second reader to keep in step.
+ * Plain state over a `useSyncExternalStore`: the two shelves sharing the key
+ * are two routes, never on screen at once, so each one reads the stored choice
+ * when it mounts and there is no live reader to keep in step.
  */
-export function useShelfLayout(shelf: Shelf): [ShelfLayout, (layout: ShelfLayout) => void] {
-  const [layout, setLayout] = useState<ShelfLayout>(() => read(shelf));
+export function useShelfLayout(): [ShelfLayout, (layout: ShelfLayout) => void] {
+  const [layout, setLayout] = useState<ShelfLayout>(read);
 
   return [
     layout,
     (next: ShelfLayout) => {
       setLayout(next);
       try {
-        window.localStorage.setItem(STORAGE_KEYS[shelf], next);
+        window.localStorage.setItem(STORAGE_KEY, next);
       } catch {
         // Nothing to do: the choice still holds for this session.
       }

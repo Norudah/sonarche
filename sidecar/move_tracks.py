@@ -249,15 +249,96 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             if fresh is not None:
                 _follow_item_art(lib, fresh, old_art)
 
+    # Last, so the cover is read and written at the paths everything above just
+    # settled on — a renamed album folder moves `artpath` and the audio with it.
+    covered = _adopt_album_art(lib, album, incoming)
+
     _apply_kind(album, kind)
 
     return {
         "moved": len(incoming),
+        "covered": covered,
         "skipped": len(items) - len(incoming),
         "created": created,
         "target_album_id": album.id,
         "sources_removed": sources_removed,
     }
+
+
+def _adopt_album_art(lib, album, incoming) -> int:
+    """Give the arrivals the record's own cover. Returns how many files took it.
+
+    Filing a track onto a record is the user saying it *is* part of that record,
+    and everything that states where a file belongs already follows — album,
+    album artist, `comp`, the position. The picture was the one thing left
+    behind: the file kept whatever its own release (or its video thumbnail) had
+    embedded, so the track sat inside the right album wearing another album's
+    cover, and the only way out was to re-set the cover by hand.
+
+    The album row's `artpath` is the record's picture — the same file every
+    other surface reads — so the arrivals take it verbatim; nothing is fetched.
+    A record with no cover of its own has nothing to hand over and the arrivals
+    keep theirs: gaining a picture is worth a rewrite, losing one is not.
+
+    A written-out singleton cover (`sonarche_item_art`) goes with the same move:
+    it exists so a track *with no album row* has a picture, and now that the
+    track has one, that file is a second answer to a question with one answer —
+    and the one the library listing prefers when the record itself is bare.
+    """
+    art = _decode(album.artpath) if album.artpath else None
+    if not art or not os.path.exists(art):
+        return 0
+    try:
+        with open(art, "rb") as handle:
+            data = handle.read()
+    except OSError as exc:
+        protocol.log(f"move_tracks: album cover unreadable ({exc}), arrivals keep theirs")
+        return 0
+
+    import enrich
+
+    # The badge says "this record's cover is a video thumbnail, replace it". It
+    # is carried per item, so an arrival must wear whatever the record wears or
+    # one track in the list would contradict its siblings. Read off the
+    # residents only — the arrivals are already re-parented by now, and their
+    # own origin's badge is exactly what this pass is here to overwrite.
+    arriving = {item.id for item in incoming}
+    provisional = any(
+        item.get(library.PROVISIONAL_COVER_KEY)
+        for item in album.items()
+        if item.id not in arriving
+    )
+
+    covered = 0
+    for item in incoming:
+        fresh = lib.get_item(item.id)
+        if fresh is None:
+            continue
+        if enrich.embed_cover(fresh, data, data[:4] == b"\x89PNG"):
+            covered += 1
+        _drop_item_art(fresh)
+        if provisional and not fresh.get(library.PROVISIONAL_COVER_KEY):
+            fresh[library.PROVISIONAL_COVER_KEY] = 1
+            fresh.store()
+        elif not provisional and fresh.get(library.PROVISIONAL_COVER_KEY):
+            del fresh[library.PROVISIONAL_COVER_KEY]
+            fresh.store()
+    protocol.log(f"move_tracks: {covered} arrival(s) took the record's cover")
+    return covered
+
+
+def _drop_item_art(item) -> None:
+    """Remove a track's own written-out cover now that its record carries one."""
+    art = item.get(library.ITEM_ART_KEY)
+    if not art:
+        return
+    try:
+        if os.path.exists(art):
+            os.remove(art)
+    except OSError as exc:
+        protocol.log(f"move_tracks: stale track cover removal failed: {exc}")
+    del item[library.ITEM_ART_KEY]
+    item.store()
 
 
 def _ensure_filed_owner(album, arriving) -> bool:

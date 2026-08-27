@@ -32,7 +32,7 @@ export function ArtistsView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ArtistSort>("name");
   const [params, setParams] = useSearchParams();
-  const [layout, setLayout] = useShelfLayout("artists");
+  const [layout, setLayout] = useShelfLayout();
 
   // The metadata page's door: only the artists still wearing the generated
   // motif. No filter while the image map is loading — a half-loaded map would

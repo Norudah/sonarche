@@ -6,7 +6,7 @@ recording identity. From there: two files of one recording are duplicates
 (playlists love mislabelled re-uploads) and only the first is kept; a release
 is voted from sampled recordings; the item→track mapping is exact by
 recording id, with duration rescuing the files AcoustID couldn't identify —
-YouTube titles are never trusted; and bonus tracks living on sibling editions
+video titles are never trusted; and bonus tracks living on sibling editions
 of the same release-group (deluxe, regional) are adopted into the main
 album's folder. Per-track enrichment remains the fallback when no coherent
 release emerges."""
@@ -29,7 +29,7 @@ from report import build_report
 _MAX_SAMPLES = 3
 # A mapped file may differ from its studio track by trims/silence, but a wrong
 # mapping is usually a different song entirely — durations are the one signal
-# YouTube can't corrupt (channel names and video titles are junk hints).
+# an upload can't corrupt (channel names and video titles are junk hints).
 _MAX_DURATION_DIFF_SECONDS = 20.0
 # The text search has no fingerprint safety net: near-perfect hits only.
 _MAX_TEXT_ALBUM_DISTANCE = 0.15

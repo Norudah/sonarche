@@ -20,7 +20,7 @@ const FPCALC_BIN: &str = if cfg!(windows) {
 };
 
 /// Static ffmpeg, same provenance story as fpcalc. Used for exactly one thing:
-/// remuxing YouTube's fragmented DASH m4a into a classic MP4 (`-c copy`) so
+/// remuxing a fragmented DASH m4a into a classic MP4 (`-c copy`) so
 /// players that read the classic sample tables — Music.app, iOS, CarPlay —
 /// see real durations instead of 0:00.
 const FFMPEG_BIN: &str = if cfg!(windows) {
@@ -454,7 +454,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
 /// `import yt_dlp, beets, mutagen` in a fresh interpreter proves the venv
 /// runs; checking each pin of `requirements.txt` against what is actually
 /// installed proves it is *current*. The second half is what makes an app
-/// update reach the venv at all: bumping a pin (the yt-dlp/YouTube arms race
+/// update reach the venv at all: bumping a pin (the extractor arms race
 /// makes that routine) ships a new requirements file, the old packages still
 /// import fine, and without the version diff the launch gate would wave the
 /// stale venv through forever.
@@ -723,7 +723,7 @@ fn yaml_scalar(path: &Path) -> String {
 const IMPORT_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
   singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
-  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
+  comp: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
 "#;
 
 /// Where an enriched download is filed — the App flavour's answer to the same
@@ -740,12 +740,32 @@ const IMPORT_PATHS: &str = r#"paths:
 ///   items used to stand up blank album rows whose folders %aunique could
 ///   only tell apart by row id (`LIVinglife/[86]/…`).
 ///
+/// `comp` restates `default` word for word, and that repetition is the point.
+/// beets' stock compilation template routes such a record to
+/// `Compilations/$album`: it throws the album artist away, files that one record
+/// differently from every other album in the library, and puts it outside the
+/// `Library/` zone entirely — while the app, which shelves everything by album
+/// artist, keeps showing it under "Various Artists". `forced_album.py` already
+/// refused the rule for the records the user assembles by hand; leaving it on
+/// for the ones MusicBrainz calls compilations meant one library with two
+/// filing rules, and a soundtrack whose album artist is a real composer torn
+/// away from the rest of their work. Worse, `comp` is carried per *item*, so a
+/// single track disagreeing with its row (an unidentified track filed onto a
+/// matched compilation) split one record across two folders — which is exactly
+/// how ten tracks of one soundtrack landed in `Compilations/` and the eleventh
+/// in `Various Artists/`.
+///
+/// Spelled out rather than deleted: beets merges this config over its own
+/// defaults key by key, so a missing `comp` is not "no compilation rule", it is
+/// beets' `Compilations/$album%aunique{}/$track $title` — the very thing being
+/// removed, minus the zone.
+///
 /// The one-time re-file of an existing library onto these templates is the
 /// relayout pass in `remux.rs`.
 const APP_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
   singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
-  comp: 'Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
+  comp: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
 "#;
 
 /// beets remembers the source directories it has taken on and skips them on a
@@ -839,7 +859,7 @@ ui:
         // `sonarche_import` (sidecar/beetsplug/) fills title/artist/track from
         // the filename when the tag is empty and unpacks YYYYMMDD years —
         // repairs for someone's own rips. The download path must not load it:
-        // a staged file's name is the YouTube title, and enrich owns those
+        // a staged file's name is the video's own title, and enrich owns those
         // fields there.
         repair_plugin = if flavour == Flavour::Import {
             " sonarche_import"
@@ -1115,8 +1135,30 @@ mod tests {
         );
     }
 
+    /// One filing rule for every record. beets' stock `comp` template routes a
+    /// compilation to `Compilations/$album` — a second shelf the app never
+    /// shows, outside the zones, and one a single item's own `comp` flag can
+    /// split a record across. Overridden, not omitted: beets merges this config
+    /// over its defaults key by key. See the note on `APP_PATHS`.
+    #[test]
+    fn neither_config_files_compilations_on_a_shelf_of_their_own() {
+        for flavour in [Flavour::App, Flavour::Import] {
+            let config = beets_config_yaml(&paths(), flavour);
+            assert!(!config.contains("Compilations/"), "{config}");
+            let rule = |key: &str| {
+                config
+                    .lines()
+                    .find_map(|line| line.trim().strip_prefix(key))
+                    .map(str::to_string)
+                    .unwrap_or_default()
+            };
+            assert_eq!(rule("comp: "), rule("default: "), "{config}");
+            assert!(rule("comp: ").starts_with("'Library/"), "{config}");
+        }
+    }
+
     /// The filename/year repairs are for someone's own rips. On the download
-    /// path the filename *is* the YouTube title and enrich owns those fields,
+    /// path the filename *is* the video's own title and enrich owns those fields,
     /// so only the import flavour may load the plugin.
     #[test]
     fn only_the_import_config_loads_the_repair_plugin() {

@@ -7,7 +7,7 @@ import unittest
 
 import protocol
 
-# A title that cp1252 cannot represent, of the kind YouTube hands out daily:
+# A title that cp1252 cannot represent, of the kind an upload hands out daily:
 # a combining accent, an emoji, and a fullwidth bar.
 HOSTILE = "Ně́on 🎵 ｜ Live"
 

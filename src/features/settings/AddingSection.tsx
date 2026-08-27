@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { AudioFormatCard } from "@/features/settings/AudioFormatCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
 import { SwitchCard } from "@/features/settings/SwitchCard";
 import { storeAutoExpand, useAutoExpand } from "@/shared/lib/optionPanels";
@@ -13,8 +14,10 @@ import { storeAutoExpand, useAutoExpand } from "@/shared/lib/optionPanels";
  * sidebar group, same composer grammar, one shared history page. This is where
  * anything else about how music comes in will land.
  *
- * Neither switch touches what an import or a download *does* — only whether the
- * options are already unfolded when you arrive at them.
+ * The two switches touch nothing an import or a download *does* — only whether
+ * the options are already unfolded when you arrive at them. The format card
+ * underneath is the opposite and the page says so by putting it last: it
+ * decides what the audio files are made of.
  */
 export function AddingSection() {
   const { t } = useTranslation("settings");
@@ -38,6 +41,11 @@ export function AddingSection() {
         isSelected={importing}
         onChange={(on) => storeAutoExpand("import", on)}
       />
+
+      {/* Last, and the only card here that touches the files themselves: the
+          two switches above are about how a page looks when you arrive at it,
+          this one decides what the audio is made of. */}
+      <AudioFormatCard />
     </>
   );
 }

@@ -212,11 +212,14 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // library restarts those from 1 — kept, it would exempt the next
         // library's first files from the fragmentation scan.
         data_dir.join("remux-checked"),
-        // The zones relayout marker: a fresh library files itself right from
-        // the start, so re-running the pass is a no-op — but a stale marker
-        // claiming work done on a library that no longer exists is debt.
-        data_dir.join("library-zoned"),
     ];
+    // The relayout markers, every generation of them: a fresh library files
+    // itself right from the start, so re-running the pass is a no-op — but a
+    // stale marker claiming work done on a library that no longer exists is
+    // debt.
+    for marker in crate::remux::LAYOUT_MARKERS {
+        targets.push(data_dir.join(marker));
+    }
     for legacy in [
         "jobs.json",
         "jobs.json.migrated",
@@ -331,9 +334,15 @@ fn library_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
         // The repair pass's watermark counts beets item ids, which the fresh
         // index restarts from 1.
         data_dir.join("remux-checked"),
-        // The zones relayout marker follows the library it describes.
-        data_dir.join("library-zoned"),
     ]
+    .into_iter()
+    // The relayout markers follow the library they describe.
+    .chain(
+        crate::remux::LAYOUT_MARKERS
+            .iter()
+            .map(|marker| data_dir.join(marker)),
+    )
+    .collect()
 }
 
 /// Wipe the music and its index, and only that: `Artwork/` (artist and
