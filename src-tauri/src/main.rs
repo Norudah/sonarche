@@ -4,6 +4,7 @@ mod artist_images;
 mod artwork;
 mod audio_formats;
 mod commands;
+mod convert;
 mod download_undo;
 mod error;
 mod genres;
@@ -51,6 +52,7 @@ fn main() {
         .manage(reenrich::ReenrichState::default())
         .manage(remux::RemuxState::default())
         .manage(genres::RecomputeGenresState::default())
+        .manage(convert::ConvertLibraryState::default())
         .manage(library_align::LibraryAlignState::default())
         .manage(library_import::LibraryImportState::default())
         .manage(player::PlayerState::default())
@@ -116,6 +118,8 @@ fn main() {
             commands::reenrich_track,
             commands::remux_library,
             commands::recompute_genres,
+            commands::set_audio_format,
+            commands::convert_library,
             commands::fetch_lyrics,
             commands::library_align_scan,
             commands::library_align_apply,

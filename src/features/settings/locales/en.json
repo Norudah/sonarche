@@ -43,6 +43,45 @@
     "importOptions": {
       "name": "Unfold the options once a folder is scanned",
       "why": "Once the folder is read, the panel opens on the import's grouping and category. Turn it off if you always import the same way."
+    },
+    "audioFormat": {
+      "name": "Audio file format",
+      "why": "What your tracks are actually made of. By default Sonarche stores the audio exactly as it arrives: nothing is decoded or recompressed. Pick something else if your gear needs it — that costs a real re-encode, and quality nothing brings back.",
+      "formats": {
+        "m4a": {
+          "name": "Original (AAC · m4a)",
+          "why": "The stream as it arrives, stored untouched. No added loss, no CPU time. The recommended setting, and the only free one."
+        },
+        "mp3": {
+          "name": "MP3",
+          "why": "The format everything reads: car stereo, old player, a USB stick plugged into a hi-fi. Worse than AAC byte for byte, but “worse” is not the question when the alternative is silence."
+        },
+        "flac": {
+          "name": "FLAC",
+          "why": "Lossless — but lossless of an original that already lost something. Files 4 to 6 times bigger, for exactly the same sound. Only worth it if a device insists on FLAC."
+        }
+      },
+      "convert": {
+        "pitchNative": "The setting only applies to future downloads. If your library still holds files converted at some point, you can put them all back to the original format.",
+        "pitch": "The setting only applies to future downloads. What is already on disk stays as it is — unless you convert the whole library to {{format}}.",
+        "action": "Convert the whole library",
+        "title": "Convert everything to {{format}}?",
+        "intro": "Every file that is not already {{format}} will be re-encoded, then the original deleted. Tags, covers and filing are untouched.",
+        "warnings": {
+          "time": "This takes a while: a few seconds of CPU per track, so hours on a large library.",
+          "blocked": "Sonarche stays on this window for the whole run. No browsing, no listening, no downloading.",
+          "quality": "A re-encode loses quality, and a second conversion loses more. None of it comes back."
+        },
+        "running": "Converting to {{format}}. Leave this window open.",
+        "starting": "Getting ready…",
+        "current": "{{title}} — {{artist}}",
+        "doneTitle": "Conversion finished",
+        "recap": "{{count}} track(s) converted to {{format}}.",
+        "skipped": "{{count}} track(s) were already in the right format and were left alone.",
+        "failed": "{{count}} track(s) could not be converted — they are intact, in their original format.",
+        "confirm": "Convert",
+        "close": "Close"
+      }
     }
   },
   "metadata": {

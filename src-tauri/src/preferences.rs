@@ -38,7 +38,20 @@ pub const ACOUSTID_DELAY: RateLimit = RateLimit {
     default: 1.0,
 };
 
-/// Base pause between two YouTube downloads of a batch (jittered up to 2x at
+/// The audio formats the app is willing to produce, and the one it picks when
+/// nobody has chosen. Mirrors `sidecar/audio_format.py`, which is the side that
+/// actually encodes — this list only exists so a value crossing the IPC boundary
+/// is validated rather than trusted.
+///
+/// `m4a` first and by default because it is the one that costs nothing: it is
+/// the stream the download already received, stored as-is. The other two are a
+/// real re-encode the user asked for — mp3 for a device that reads nothing else,
+/// flac for one that wants lossless input.
+pub const AUDIO_FORMATS: &[&str] = &["m4a", "mp3", "flac"];
+
+pub const DEFAULT_AUDIO_FORMAT: &str = "m4a";
+
+/// Base pause between two downloads of a batch (jittered up to 2x at
 /// use site). Sequential same-IP hammering is what gets clients flagged.
 ///
 /// The one delay whose default sits well above the one-second floor, and it
@@ -77,6 +90,15 @@ pub struct Preferences {
     /// the tour on every release.
     #[serde(default)]
     pub home_tour_seen: bool,
+    /// Which container and codec a download lands in.
+    ///
+    /// Stored as the file extension, which is also the wire value and what the
+    /// sidecar reads: one string, so nothing has to map between "the format",
+    /// "the container" and "the suffix". Anything unreadable is stamped back to
+    /// the default on load — a hand-edited preferences file must not be able to
+    /// stop a download.
+    #[serde(default = "default_audio_format")]
+    pub audio_format: String,
     /// Where the music lives, when the user has moved it off the default.
     ///
     /// `None` means "wherever the app would put it", which is not the same as
@@ -96,6 +118,9 @@ fn default_acoustid() -> f64 {
 fn default_download() -> f64 {
     DOWNLOAD_DELAY.default
 }
+fn default_audio_format() -> String {
+    DEFAULT_AUDIO_FORMAT.to_string()
+}
 
 impl Default for Preferences {
     fn default() -> Self {
@@ -103,6 +128,7 @@ impl Default for Preferences {
             lastfm_fetch_delay_seconds: LASTFM_DELAY.default,
             acoustid_lookup_delay_seconds: ACOUSTID_DELAY.default,
             download_delay_seconds: DOWNLOAD_DELAY.default,
+            audio_format: default_audio_format(),
             onboarding_completed: false,
             home_tour_seen: false,
             library_dir: None,
@@ -128,6 +154,11 @@ pub async fn load(app: &AppHandle) -> AppResult<Preferences> {
     // are stamped back to the defaults here rather than honoured.
     prefs.lastfm_fetch_delay_seconds = LASTFM_DELAY.default;
     prefs.acoustid_lookup_delay_seconds = ACOUSTID_DELAY.default;
+    // A format nobody can encode is not a preference, it is a download that
+    // fails on every track. Unknown values fall back rather than propagate.
+    if !AUDIO_FORMATS.contains(&prefs.audio_format.as_str()) {
+        prefs.audio_format = default_audio_format();
+    }
     Ok(prefs)
 }
 
@@ -158,6 +189,23 @@ pub async fn set_home_tour_seen(app: &AppHandle, seen: bool) -> AppResult<Prefer
 pub async fn set_library_dir(app: &AppHandle, dir: Option<PathBuf>) -> AppResult<Preferences> {
     let mut prefs = load(app).await?;
     prefs.library_dir = dir.map(|path| path.display().to_string());
+    save(app, &prefs).await?;
+    Ok(prefs)
+}
+
+/// Records the container downloads should land in. Rejects anything the sidecar
+/// could not encode: the IPC boundary validates, it does not guess.
+///
+/// Only the *next* download is affected — what is already on disk is the
+/// conversion pass's business, and deliberately a separate, explicit gesture.
+pub async fn set_audio_format(app: &AppHandle, format: &str) -> AppResult<Preferences> {
+    if !AUDIO_FORMATS.contains(&format) {
+        return Err(AppError::InvalidInput(format!(
+            "unknown audio format '{format}'"
+        )));
+    }
+    let mut prefs = load(app).await?;
+    prefs.audio_format = format.to_string();
     save(app, &prefs).await?;
     Ok(prefs)
 }

@@ -26,6 +26,7 @@ def _handlers():
     import acoustid_key
     import album_kind
     import artist_image
+    import convert
     import cover_cleanup
     import cover_set
     import download
@@ -63,6 +64,7 @@ def _handlers():
         "library_list": library.handle,
         "library_remux": remux.handle,
         "library_relayout": relayout.handle,
+        "library_convert": convert.handle,
         "cover_cleanup": cover_cleanup.handle,
         "library_remove": library.remove,
         "library_update": library.update,

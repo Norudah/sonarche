@@ -43,6 +43,45 @@
     "importOptions": {
       "name": "Déplier les options après l'analyse d'un dossier",
       "why": "Une fois le dossier lu, le panneau s'ouvre sur le regroupement et la catégorie de l'import. Désactive-le si tu importes toujours de la même façon."
+    },
+    "audioFormat": {
+      "name": "Format des fichiers audio",
+      "why": "Ce que tes morceaux sont, concrètement. Par défaut Sonarche stocke l'audio tel qu'il arrive : rien n'est décodé ni recompressé. Choisis autre chose si ton matériel l'exige — ça vaut alors un vrai ré-encodage, et une perte de qualité que rien ne rattrape.",
+      "formats": {
+        "m4a": {
+          "name": "Original (AAC · m4a)",
+          "why": "Le flux tel qu'il arrive, stocké sans y toucher. Aucune perte ajoutée, aucun temps de calcul. C'est le réglage recommandé, et le seul qui soit gratuit."
+        },
+        "mp3": {
+          "name": "MP3",
+          "why": "Le format que tout lit : autoradio, vieux baladeur, clé USB branchée sur une chaîne. Moins bon que l'AAC à taille égale, mais « moins bon » n'est pas la question quand l'alternative est le silence."
+        },
+        "flac": {
+          "name": "FLAC",
+          "why": "Sans perte — mais sans perte d'un original qui, lui, en a déjà. Des fichiers 4 à 6 fois plus gros, pour exactement le même son. À prendre seulement si un appareil réclame du FLAC."
+        }
+      },
+      "convert": {
+        "pitchNative": "Le réglage ne concerne que les prochains téléchargements. Si ta bibliothèque contient encore des fichiers convertis autrefois, tu peux tout remettre au format original.",
+        "pitch": "Le réglage ne concerne que les prochains téléchargements. Ce qui est déjà sur le disque reste tel quel — sauf si tu convertis toute la bibliothèque en {{format}}.",
+        "action": "Convertir toute la bibliothèque",
+        "title": "Tout convertir en {{format}} ?",
+        "intro": "Chaque fichier qui n'est pas déjà en {{format}} va être ré-encodé, puis l'original supprimé. Les tags, les pochettes et le classement ne bougent pas.",
+        "warnings": {
+          "time": "C'est long : quelques secondes de calcul par morceau, donc des heures sur une grande bibliothèque.",
+          "blocked": "Sonarche reste bloqué sur cette fenêtre pendant toute l'opération. Tu ne peux ni naviguer, ni écouter, ni télécharger.",
+          "quality": "Un ré-encodage perd de la qualité, et une deuxième conversion en perd encore. Rien ne revient en arrière."
+        },
+        "running": "Conversion en {{format}} en cours. Laisse la fenêtre ouverte.",
+        "starting": "Préparation…",
+        "current": "{{title}} — {{artist}}",
+        "doneTitle": "Conversion terminée",
+        "recap": "{{count}} morceau(x) converti(s) en {{format}}.",
+        "skipped": "{{count}} morceau(x) étaient déjà au bon format et n'ont pas été touchés.",
+        "failed": "{{count}} morceau(x) n'ont pas pu être convertis — ils sont intacts, dans leur format d'origine.",
+        "confirm": "Convertir",
+        "close": "Fermer"
+      }
     }
   },
   "metadata": {

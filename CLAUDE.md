@@ -34,7 +34,7 @@
 - The beets library is the source of truth. Read its SQLite; never write it directly.
 - Never `pip install` into the user's Python. Always the app-owned venv (avoids conflicts + `externally-managed-environment`).
 - Bundle `yt-dlp`, `ffmpeg`, `fpcalc`. Call them by absolute path, never via `PATH`.
-- Keep the native AAC/m4a stream from YouTube. No lossy→lossy re-encode.
+- Keep the native AAC/m4a stream as received. No lossy→lossy re-encode, unless the user has explicitly picked another audio format (see `sidecar/audio_format.py`).
 - Rust↔Python go through one stdio/NDJSON channel. `stdout` carries protocol JSON only; all logs to `stderr`.
 - The sidecar dies with the app. Health-check the venv on launch; rebuild it if broken.
 
