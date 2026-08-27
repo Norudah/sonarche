@@ -96,7 +96,7 @@ const ATTEMPT_DOT: Record<AttemptOutcome, string> = {
 };
 
 /** One dot per allowed download attempt: it shows at a glance whether a file
- * came down first try or only after YouTube 403s. */
+ * came down first try or only after the source's 403s. */
 export function AttemptDots({ outcomes, label }: { outcomes: AttemptOutcome[]; label: string }) {
   const tried = outcomes.filter((outcome) => outcome !== "untried").length;
   if (tried === 0) return null;

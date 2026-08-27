@@ -81,7 +81,7 @@ class SummarizeTest(unittest.TestCase):
         self.assertEqual(summarize(info, max_entries=10)["artist"], "Rammstein - Topic")
 
     def test_a_blocked_video_is_kept_because_the_listing_cannot_tell(self):
-        # Measured on a real playlist: a video YouTube has blocked is listed
+        # Measured on a real playlist: a video the source has blocked is listed
         # with a full title, duration, channel and view count, exactly like a
         # healthy one. Guessing here would drop real music; the truth only
         # exists at download time (see download.py's unavailable classifier).

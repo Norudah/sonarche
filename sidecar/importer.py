@@ -72,7 +72,7 @@ def handle(request_id: str, params: dict) -> dict:
     # Separate process: beets' own stdout stays out of our protocol stream.
     # Encoding spelled out, like in `library_import`: left to the locale it is
     # cp1252 on Windows, and beets echoes the staged filename — which carries
-    # the YouTube title, emoji and all. `replace` because a byte we cannot read
+    # the video's own title, emoji and all. `replace` because a byte we cannot read
     # should cost a garbled log line, never the import.
     proc = subprocess.run(
         cmd,

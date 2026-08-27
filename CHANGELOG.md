@@ -10,7 +10,7 @@
 
 ### Bug Fixes
 
-* **sidecar:** bump yt-dlp to 2026.8.19 for the YouTube 403 ([a2c4822](https://github.com/Norudah/sonarche/commit/a2c4822b1a83eac4710bc8bce872cbd4bca14c8a))
+* **sidecar:** bump yt-dlp to 2026.8.19 for the 403s ([a2c4822](https://github.com/Norudah/sonarche/commit/a2c4822b1a83eac4710bc8bce872cbd4bca14c8a))
 
 ## [2.1.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.0.0...sonarche-v2.1.0) (2026-08-15)
 
@@ -409,7 +409,7 @@
 
 ### Features
 
-* **download:** download YouTube playlists as album jobs ([f1f1bd3](https://github.com/Norudah/sonarche/commit/f1f1bd30ad2a3fedf444d0b2e08b74d0a1b14994))
+* **download:** download playlists as album jobs ([f1f1bd3](https://github.com/Norudah/sonarche/commit/f1f1bd30ad2a3fedf444d0b2e08b74d0a1b14994))
 * **download:** mark content duplicates in the queue table ([e7d518d](https://github.com/Norudah/sonarche/commit/e7d518db4bc878fe0cd7367d560d52254541f6db))
 * **download:** retry downloads with backoff and trace the pipeline ([244e42c](https://github.com/Norudah/sonarche/commit/244e42c20ff6265ee29109256e3ff340b0652eab))
 * **download:** stream per-track enrich progress to the queue table ([99671f7](https://github.com/Norudah/sonarche/commit/99671f7fda7d5cab4eb6f854eb0d03fe50f98e1b))
@@ -418,7 +418,7 @@
 * **shell:** dev-only full library reset in settings ([6d9408f](https://github.com/Norudah/sonarche/commit/6d9408f3ca8e783eac9c90965aa4931a622c6ff4))
 * **sidecar:** fingerprint-first album enrich with dedupe and adoption ([ed95a5d](https://github.com/Norudah/sonarche/commit/ed95a5dc389a03eaf1c13c6499569558c6a8a3c7))
 * **sidecar:** keep HQ cover on disk, embed the 500px thumb ([c9d4c63](https://github.com/Norudah/sonarche/commit/c9d4c63481b231d341ebdb4f2780da1ac562f900))
-* YouTube album downloads with fingerprint-first enrichment ([575b65f](https://github.com/Norudah/sonarche/commit/575b65fd7898f56b2452d27cd2b524bab045637e))
+* album downloads with fingerprint-first enrichment ([575b65f](https://github.com/Norudah/sonarche/commit/575b65fd7898f56b2452d27cd2b524bab045637e))
 
 
 ### Bug Fixes

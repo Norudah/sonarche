@@ -9,9 +9,9 @@ describe("detectUrlKind", () => {
     expect(detectUrlKind("youtube.com/watch?v=abc")).toBeNull(); // no scheme
   });
 
-  it("rejects hosts other than YouTube", () => {
-    expect(detectUrlKind("https://vimeo.com/watch?v=abc")).toBeNull();
-    expect(detectUrlKind("https://soundcloud.com/artist/track")).toBeNull();
+  it("rejects hosts the app does not handle", () => {
+    expect(detectUrlKind("https://example.com/watch?v=abc")).toBeNull();
+    expect(detectUrlKind("https://elsewhere.test/artist/track")).toBeNull();
     // Lookalike host: the check must be on the whole hostname, not a substring.
     expect(detectUrlKind("https://youtube.com.evil.test/watch?v=abc")).toBeNull();
   });
@@ -53,7 +53,7 @@ describe("detectUrlKind", () => {
     expect(detectUrlKind("https://youtube.com/playlist")).toBeNull();
   });
 
-  it("rejects YouTube paths that are neither watch nor playlist", () => {
+  it("rejects paths that are neither watch nor playlist", () => {
     expect(detectUrlKind("https://youtube.com/")).toBeNull();
     expect(detectUrlKind("https://youtube.com/@channel")).toBeNull();
     expect(detectUrlKind("https://youtube.com/results?search_query=abc")).toBeNull();

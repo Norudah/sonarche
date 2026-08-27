@@ -19,7 +19,7 @@ export type TrackStatus =
   | "imported"
   | "done"
   | "failed"
-  /** YouTube will never serve this one — deleted, private, blocked or claimed
+  /** The source will never serve this one — deleted, private, blocked or claimed
    * since the playlist was assembled. Not a failure of ours, and not
    * retryable: the playlist lists a video that no longer plays. */
   | "unavailable";
@@ -97,7 +97,7 @@ export interface DownloadJob {
   /** One record for the whole playlist (auto mode); what a re-download reuses. */
   singleAlbum: boolean;
   /** Playlist slots whose video was deleted, private or claimed — skipped
-   * before download (they could only fail), but the set has holes YouTube
+   * before download (they could only fail), but the set has holes the source
    * cannot even name, and the user deserves to know. */
   unavailable: number;
   /** When the job's library output was taken back out (undo), or null. The

@@ -89,7 +89,7 @@ FPCALC_ASSETS["x86_64-apple-darwin"] = FPCALC_ASSETS["aarch64-apple-darwin"];
  * Static ffmpeg, pinned by triple and by digest, from eugeneware/ffmpeg-static
  * (evermeet/osxexperts/gyan builds republished as bare per-arch binaries).
  *
- * ffmpeg exists in the bundle for exactly one job: remuxing YouTube's DASH
+ * ffmpeg exists in the bundle for exactly one job: remuxing the fragmented DASH
  * m4a into a classic MP4 (`-c copy`, no re-encode) — yt-dlp's own FixupM4a
  * does it at download time, and the library repair pass does it for files
  * downloaded before ffmpeg shipped. Without that remux, every player that

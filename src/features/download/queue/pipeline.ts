@@ -7,7 +7,7 @@ import type { AlbumTrackJob, DownloadJob, JobStep, MetadataReport } from "@/feat
  * a check there claims a match the Match column reports as absent.
  *
  * `partial` is an album step that ran to the end while some of its tracks fell
- * out along the way (a video pulled from YouTube, a copyright block). The batch
+ * out along the way (a video pulled from the source, a copyright block). The batch
  * succeeded and the library gained the rest, so painting it `failed` — which is
  * what the row used to do — claimed a run that never happened. */
 export type StepState = "pending" | "active" | "done" | "empty" | "failed" | "partial";
@@ -147,7 +147,7 @@ export function trackPipeline(track: AlbumTrackJob, isEnriched: boolean): StepSt
       return ["failed", "pending", "pending"];
     case "unavailable":
       // `empty`, not `failed`: the step never had a video to work on. Painting
-      // it red would blame the run for something YouTube did to the playlist.
+      // it red would blame the run for something the source did to the playlist.
       return ["empty", "empty", "empty"];
   }
 }

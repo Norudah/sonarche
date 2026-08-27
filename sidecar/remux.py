@@ -1,6 +1,6 @@
 """Repair pass: remux fragmented DASH m4a files into classic MP4.
 
-Files downloaded before the app shipped ffmpeg kept YouTube's container as-is:
+Files downloaded before the app shipped ffmpeg kept the source container as-is:
 a fragmented MP4 (`moof`/`mdat` fragments, empty classic sample tables). Our
 own player reads fragments fine, but Music.app, iOS and CarPlay read the
 classic tables and see an empty file — 0:00 durations, broken seeking, silent

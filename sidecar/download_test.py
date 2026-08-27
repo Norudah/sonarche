@@ -7,7 +7,7 @@ from download import UNAVAILABLE_PREFIX, is_unavailable_error, scrub
 
 
 class UnavailableErrorTest(unittest.TestCase):
-    """A playlist keeps listing videos YouTube has since pulled: full title,
+    """A playlist keeps listing videos the source has since pulled: full title,
     duration and channel, indistinguishable from a healthy entry until the
     download is attempted. This is where that verdict is made — get it wrong
     and either a dead slot is retried forever, or a genuine network failure is
@@ -79,7 +79,9 @@ class ScrubTest(unittest.TestCase):
         for message in (
             "ERROR: [youtube] abc: Video unavailable",
             "ERROR: [youtube:tab] PL123: The playlist does not exist",
-            "ERROR: [soundcloud] 123: Track is not available",
+            # Any tag at all, not just the ones we expect: the extractor name is
+            # yt-dlp's to change, and the scrub has to hold whatever it prints.
+            "ERROR: [somewhere] 123: Track is not available",
         ):
             self.assertNotIn("[", scrub(message), message)
 

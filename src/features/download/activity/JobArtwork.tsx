@@ -6,7 +6,7 @@ import { springs } from "@/shared/motion/tokens";
 interface JobArtworkProps {
   /** Real cover art, once the enrich step found one. */
   coverUrl: string | null;
-  /** The YouTube thumbnail the job was queued with — 16:9, cropped square. */
+  /** The video thumbnail the job was queued with — 16:9, cropped square. */
   thumbnail: string | null;
   isAlbum: boolean;
   /** The job is through: the artwork stops being provisional. */
@@ -20,7 +20,7 @@ const GLYPH = { lg: "size-5", sm: "size-4" } as const;
 /**
  * The download's face, and the one place the app's whole point is visible.
  *
- * A job starts as a YouTube thumbnail — a 16:9 frame of a video, usually a face
+ * A job starts as a video thumbnail — a 16:9 frame of a video, usually a face
  * or a wall of title text — and ends as a record with real cover art. That
  * substitution is the work this app does, and until now it happened inside a
  * 32px cell in a table where nobody ever saw it. Here it is staged: the

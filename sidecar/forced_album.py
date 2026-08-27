@@ -23,7 +23,7 @@ import unicodedata
 import enrich
 import protocol
 
-# The album the cover came from is a YouTube thumbnail, not real cover art:
+# The album the cover came from is a video thumbnail, not real cover art:
 # right shape, wrong picture, and the user is told to replace it. Carried on
 # the items (not the album row) because that is the axis the library listing
 # already reads flexible attributes on.

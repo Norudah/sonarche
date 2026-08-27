@@ -11,7 +11,7 @@ sys.stdout = sys.stderr
 
 # UTF-8 on all three, before anything is written. Python picks the locale
 # encoding for stdio, which on Windows is cp1252 — and `_send` serializes with
-# `ensure_ascii=False`, so the line carries raw characters. A YouTube title with
+# `ensure_ascii=False`, so the line carries raw characters. A video title with
 # an emoji in it was enough: `'charmap' codec can't encode characters`, and the
 # job died. It never showed on macOS, where the locale encoding is already
 # UTF-8.

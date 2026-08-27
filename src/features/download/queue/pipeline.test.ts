@@ -41,7 +41,7 @@ describe("jobPipeline", () => {
   });
 
   it("reads a finished album that lost a track as partial, not failed", () => {
-    // Regression: a 24-track playlist with one video pulled from YouTube used
+    // Regression: a 24-track playlist with one video pulled at the source used
     // to come back `failed`, so the row painted all three stages red and
     // claimed the import never ran — while 23 tracks had in fact landed.
     const album = job({

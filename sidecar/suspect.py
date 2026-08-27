@@ -6,7 +6,7 @@ fingerprints, and AcoustID's crowd data links them to each other's recordings.
 Ranking candidates by popularity then lands the French "Sonne le clairon" on
 the English "Sound the Bugle". The one signal that survives is the video's own
 title: a correct match nearly always shares a word with it. Zero overlap does
-not prove the match wrong — YouTube titles are junk — so this only *marks* the
+not prove the match wrong — video titles are junk — so this only *marks* the
 item for human review; the triage page surfaces the flag.
 """
 
