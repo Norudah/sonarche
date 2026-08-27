@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
 import { SettingsHero } from "@/features/settings/SettingsHero";
-import { ChangelogCard } from "@/features/update/changelog/ChangelogCard";
 import { useAppVersion, useInstallUpdate, useUpdateCheck } from "@/features/update/hooks";
 import { parseReleaseNotes } from "@/features/update/notes";
 import { updateStatus, type Tone } from "@/features/update/status";
@@ -84,11 +83,6 @@ export function UpdateSection() {
           <UpdateNotesCard version={update.version} notes={notes} />
         </SettingCard>
       )}
-
-      {/* The installed version's own story, bundled with the app. Below the
-       * offer on purpose: what is new *here* is a look back, and it must not
-       * come before the reason to move forward. */}
-      <ChangelogCard version={version.data ?? null} />
     </>
   );
 }

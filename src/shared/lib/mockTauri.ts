@@ -301,12 +301,6 @@ const preferenceFields: Record<
  * reachable by clicking a row rather than only in a real install. */
 const MOCK_RELEASE_BODY = `## [0.9.0](https://github.com/Norudah/sonarche/compare/sonarche-v0.8.0...sonarche-v0.9.0) (2026-08-12)
 
-### En bref
-
-* Un clic sur une pochette l'agrandit, et tu peux la recadrer sans la remplacer.
-* La langue se choisit dès l'installation.
-* Chaque suppression demande confirmation, partout.
-
 ### Features
 
 * **library:** let a cover be recropped in place ([1a2b3c4](https://github.com/Norudah/sonarche/commit/1a2b3c4d))
@@ -968,9 +962,9 @@ export function installMockTauri() {
       if (cmd === "plugin:app|version") return "0.8.0";
       // Opt-in: an update prompt on every preview would sit over whatever is
       // being looked at. `?update` is how you go and look at it on purpose.
-      // The body is a faithful release-please changelog with the hand-written
-      // `En bref` section on top — the exact shape `parseReleaseNotes` is fed
-      // in production, so `?update` previews the notes modal too.
+      // The body is a faithful release-please changelog — the exact shape
+      // `parseReleaseNotes` is fed in production, so `?update` previews the
+      // notes section too.
       if (cmd === "plugin:updater|check") {
         return new URLSearchParams(window.location.search).has("update")
           ? { rid: 1, currentVersion: "0.8.0", version: "0.9.0", date: null, body: MOCK_RELEASE_BODY, rawJson: {} }
