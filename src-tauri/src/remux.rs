@@ -1,6 +1,6 @@
 //! One-shot library repair: remux fragmented DASH m4a files into classic MP4s.
 //!
-//! Downloads made before the app bundled ffmpeg kept YouTube's fragmented
+//! Downloads made before the app bundled ffmpeg kept the fragmented
 //! container — fine for our own player, unreadable durations (0:00) and broken
 //! seeking everywhere Apple's parsers read the classic sample tables. The
 //! shell fires this once per launch after the setup gate opens.
@@ -33,6 +33,22 @@ const CLEANUP_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 /// One rename per file on its own volume; an hour covers a huge library on a
 /// network share without letting a wedged pass hold the slot forever.
 const RELAYOUT_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+
+/// The file that says the library already sits where the current templates put
+/// it. **Its name is the version of those templates**: change a path template
+/// and this name changes with it, which is the whole mechanism — every install
+/// that has not seen the new name re-files itself once, on the next launch, and
+/// never again.
+///
+/// - `library-zoned` — the `Library/` + `Unidentified/` split.
+/// - `library-filed-v2` — compilations left `Compilations/` and file under
+///   their album artist like every other record.
+const LAYOUT_MARKER: &str = "library-filed-v2";
+
+/// Every name [`LAYOUT_MARKER`] has ever had. The erase removes all of them: a
+/// stale marker from a library that no longer exists is debt, whichever
+/// generation wrote it.
+pub const LAYOUT_MARKERS: &[&str] = &["library-zoned", LAYOUT_MARKER];
 
 #[derive(Default)]
 pub struct RemuxState {
@@ -86,13 +102,17 @@ impl RemuxState {
         Ok(report)
     }
 
-    /// The one-time re-file of the library into the `Library/` +
-    /// `Unidentified/` zones (see `APP_PATHS` in python_env.rs). Same launch
-    /// slot and same marker pattern as the archive sweep: debt left by older
-    /// versions whose templates filed everything at the root of `Music/`.
-    /// Returns how many records moved, or None when the pass did not run.
+    /// The one-time re-file of the library onto the current path templates (see
+    /// `APP_PATHS` in python_env.rs). Same launch slot and same marker pattern
+    /// as the archive sweep: debt left by older versions whose templates filed
+    /// music somewhere the app no longer points at. Returns how many records
+    /// moved, or None when the pass did not run.
+    ///
+    /// beets recomputes a destination only when something moves, so a template
+    /// change reaches nothing already on disk — the pass is what makes it
+    /// retroactive, and [`LAYOUT_MARKER`] is what makes it happen once.
     async fn relayout_zones(&self, app: &AppHandle, paths: &AppPaths) -> Option<i64> {
-        let marker = app.path().app_data_dir().ok()?.join("library-zoned");
+        let marker = app.path().app_data_dir().ok()?.join(LAYOUT_MARKER);
         if tokio::fs::try_exists(&marker).await.unwrap_or(false) {
             return None;
         }

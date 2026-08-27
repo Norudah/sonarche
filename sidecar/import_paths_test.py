@@ -24,7 +24,11 @@ DEFAULT = (
     "%if{$track,$track ,}$title"
 )
 SINGLETON = "%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title"
-COMP = "Library/Compilations/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title"
+# `comp` restates `default`, and must keep doing so — see the note on
+# `APP_PATHS`. Spelled out rather than omitted: beets merges our config over its
+# own defaults key by key, so a missing `comp` is beets' `Compilations/$album`,
+# not "no compilation rule".
+COMP = DEFAULT
 
 # Copied from `APP_PATHS` in src-tauri/src/python_env.rs.
 APP_DEFAULT = (
@@ -33,7 +37,7 @@ APP_DEFAULT = (
     "%if{$track,$track ,}$title"
 )
 APP_SINGLETON = "%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title"
-APP_COMP = "Library/Compilations/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title"
+APP_COMP = APP_DEFAULT
 
 _FUNCTIONS = DefaultTemplateFunctions().functions()
 
@@ -73,12 +77,6 @@ class DefaultPathTest(unittest.TestCase):
         self.assertEqual(render(DEFAULT, albumartist="Sigrid", title="Fort Knox"), "Library/Sigrid/Unknown Album/Fort Knox")
 
 
-class OtherPathsTest(unittest.TestCase):
-    def test_a_compilation_keeps_its_own_shelf(self):
-        self.assertEqual(render(COMP, album="OST", track="02", title="Java"), "Library/Compilations/OST/02 Java")
-        self.assertEqual(render(COMP, title="Java"), "Library/Compilations/Unknown Album/Java")
-
-
 class AppPathsTest(unittest.TestCase):
     """The app flavour: same guards, plus %aunique (which renders empty here —
     no library behind the template — exactly like a unique album), and the
@@ -98,8 +96,63 @@ class AppPathsTest(unittest.TestCase):
             "Library/Green Day/American Idiot/Holiday",
         )
 
-    def test_a_compilation_keeps_its_own_shelf(self):
-        self.assertEqual(render(APP_COMP, album="OST", track="02", title="Java"), "Library/Compilations/OST/02 Java")
+class CompilationShelfTest(unittest.TestCase):
+    """A compilation files under its album artist like every other record.
+
+    beets' stock `comp` template sends it to `Compilations/$album` instead: the
+    album artist is thrown away, the record leaves the `Library/` zone, and the
+    flag is carried per *item* — so one unidentified track keeping `comp` at 0
+    split a soundtrack across two folders while the app showed it whole.
+
+    Rendered against a real Library rather than the dict renderer above: which
+    template beets *picks* is the thing under test, and only a library with a
+    flagged album row makes that choice."""
+
+    def test_a_compilation_files_under_its_album_artist(self):
+        import os
+        import shutil
+        import tempfile
+
+        import beets
+        from beets.library import Item, Library
+
+        root = tempfile.mkdtemp()
+        old = {key: beets.config["paths"][key].get() for key in ("default", "comp")}
+        beets.config["paths"]["default"] = APP_DEFAULT
+        beets.config["paths"]["comp"] = APP_COMP
+        try:
+            lib = Library(os.path.join(root, "library.db"), directory=root)
+            path = os.path.join(root, "x.m4a")
+            with open(path, "wb") as fh:
+                fh.write(b"audio")
+            items = [
+                Item(
+                    path=path.encode(),
+                    format="AAC",
+                    title=title,
+                    track=n,
+                    album="High School Musical 2",
+                    albumartist="Various Artists",
+                    artist="Cast",
+                    # The disagreement that used to split the folder: the
+                    # identified sibling carries the flag, the guessed one does
+                    # not, and both belong to the same record.
+                    comp=(n == 1),
+                )
+                for n, title in enumerate(["What Time Is It", "All For One"], start=1)
+            ]
+            album = lib.add_album(items)
+            album.comp = True
+            album.store()
+            for item in lib.get_album(album.id).items():
+                destination = item.destination().decode()
+                self.assertIn("Library/Various Artists/High School Musical 2/", destination)
+                self.assertNotIn("Compilations", destination)
+            lib._close()
+        finally:
+            for key, value in old.items():
+                beets.config["paths"][key] = value
+            shutil.rmtree(root, ignore_errors=True)
 
 
 class SingletonZoneTest(unittest.TestCase):

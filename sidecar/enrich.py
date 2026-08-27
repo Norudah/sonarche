@@ -402,6 +402,12 @@ def apply_provisional(lib, item, params: dict, album=None, file: bool = True) ->
         return True
     if album is not None:
         item.album_id = album.id
+        # Not one of the borrowed *tags*: `comp` states that the record is a
+        # compilation, and beets reads it per item to pick a path template. A
+        # guess sitting on a matched compilation with `comp` still at 0 is one
+        # track of the record disagreeing with its ten siblings about what the
+        # record is — which is how one soundtrack ended up in two folders.
+        item.comp = album.comp
         store_and_file(lib, item, sync_album=False)
         return True
 
