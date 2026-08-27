@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.3.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.2.0...sonarche-v2.3.0) (2026-08-27)
+
+
+### Features
+
+* **settings:** choose the audio format, and convert the library to it ([71d6a4f](https://github.com/Norudah/sonarche/commit/71d6a4f9f3699e24210cfcc793843f5edc3e93f5))
+
+
+### Bug Fixes
+
+* **library:** a track joining a record takes its cover ([f5a1e41](https://github.com/Norudah/sonarche/commit/f5a1e41fc3c86bc95054be41b92f054374c5e432))
+* **library:** one filing rule for every record ([c3c920a](https://github.com/Norudah/sonarche/commit/c3c920a7dce71bfe4f14666bb705bd45e1e39da4))
+* **ui:** one grid/list choice for both shelves ([cda3d66](https://github.com/Norudah/sonarche/commit/cda3d6653e1d2cdb9a28a58b410b93ae0a18dac8))
+
 ## [2.2.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.1.0...sonarche-v2.2.0) (2026-08-21)
 
 
