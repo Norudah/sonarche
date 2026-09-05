@@ -29,6 +29,16 @@ const FFMPEG_BIN: &str = if cfg!(windows) {
     "ffmpeg"
 };
 
+/// The JavaScript runtime yt-dlp runs YouTube's player code in. Same provenance
+/// story as the two above.
+///
+/// YouTube scrambles the signature and the `n` parameter of every stream URL
+/// and ships the descrambler as obfuscated JavaScript; yt-dlp's own Python
+/// interpreter no longer keeps up with it. Without a real engine, only the one
+/// client that needs no JavaScript answers — and that client dying is what
+/// took every download down in August.
+const DENO_BIN: &str = if cfg!(windows) { "deno.exe" } else { "deno" };
+
 /// Fixed candidate locations, most specific first. Never rely on PATH.
 ///
 /// The fallback for a build made without `npm run prepare:runtime`, and for
@@ -120,6 +130,13 @@ pub struct AppPaths {
     pub bundled_fpcalc: PathBuf,
     /// The ffmpeg the build shipped, same lifecycle as `bundled_fpcalc`.
     pub bundled_ffmpeg: PathBuf,
+    /// The deno the build shipped. Unlike the two above it is never copied out:
+    /// 81 MB is worth reading from the read-only resource rather than keeping
+    /// twice. See [`deno`].
+    pub bundled_deno: PathBuf,
+    /// Deno's own cache. Named so it lands in app data instead of the user's
+    /// cache folder, which puts it inside what a reinstall can clear.
+    pub deno_cache_dir: PathBuf,
 }
 
 /// Where the library lives, when the user has moved it off the default.
@@ -194,6 +211,8 @@ impl AppPaths {
             wheels_dir: resource("wheels"),
             bundled_fpcalc: resource("tools").join(FPCALC_BIN),
             bundled_ffmpeg: resource("tools").join(FFMPEG_BIN),
+            bundled_deno: resource("tools").join(DENO_BIN),
+            deno_cache_dir: data.join("deno"),
         })
     }
 
@@ -299,6 +318,23 @@ pub async fn ensure_ffmpeg(paths: &AppPaths) -> AppResult<()> {
         &paths.tools_dir,
     )
     .await
+}
+
+/// The bundled deno, when this build has one.
+///
+/// No `ensure_` twin: the binary is run straight from the resource directory,
+/// because copying 81 MB into app data to gain what fpcalc and ffmpeg only gain
+/// by history — they used to be downloaded at first use — would double it on
+/// disk for nothing.
+///
+/// `None` is not an error either. It means a build made without
+/// `npm run prepare:runtime`; a download still works without a JS runtime, just
+/// on the one client that needs none. Every release ships the binary.
+pub async fn deno(paths: &AppPaths) -> Option<PathBuf> {
+    tokio::fs::try_exists(&paths.bundled_deno)
+        .await
+        .unwrap_or(false)
+        .then(|| paths.bundled_deno.clone())
 }
 
 async fn ensure_tool(name: &str, source: &Path, dest: &Path, tools_dir: &Path) -> AppResult<()> {
@@ -979,6 +1015,8 @@ mod tests {
             wheels_dir: data.join("wheels"),
             bundled_fpcalc: data.join("tools").join(FPCALC_BIN),
             bundled_ffmpeg: data.join("tools").join(FFMPEG_BIN),
+            bundled_deno: data.join("tools").join(DENO_BIN),
+            deno_cache_dir: data.join("deno"),
         }
     }
 

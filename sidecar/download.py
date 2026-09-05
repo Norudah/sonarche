@@ -106,12 +106,29 @@ def _progress_hook(request_id):
     return hook
 
 
+def js_runtimes(deno: str | None) -> dict:
+    """yt-dlp's `js_runtimes`, for the bundled runtime or for none.
+
+    YouTube scrambles the signature and the `n` parameter of every stream URL
+    and ships the descrambler as obfuscated JavaScript; the runtime is what
+    reads it. Without one, only the single client that needs no JavaScript
+    answers — a lone point of failure rather than a fallback. The solver
+    scripts themselves come from the `yt-dlp-ejs` package in the venv, so a
+    download reaches for neither npm nor GitHub.
+
+    Stated in both directions on purpose: left unset, yt-dlp falls back to
+    `{"deno": {}}`, which searches PATH — and PATH is never trusted here.
+    """
+    return {"deno": {"path": deno}} if deno else {}
+
+
 def handle(request_id: str, params: dict) -> dict:
     import yt_dlp
 
     url = params["url"]
     staging_dir = params["staging_dir"]
     ffmpeg = params.get("ffmpeg")
+    deno = params.get("deno")
     fmt = audio_format.normalize(params.get("audio_format"))
     os.makedirs(staging_dir, exist_ok=True)
 
@@ -142,6 +159,9 @@ def handle(request_id: str, params: dict) -> dict:
         opts["ffmpeg_location"] = ffmpeg
     else:
         protocol.log("download: no ffmpeg passed — DASH m4a will stay fragmented")
+    opts["js_runtimes"] = js_runtimes(deno)
+    if not deno:
+        protocol.log("download: no JS runtime passed — YouTube formats may be missing")
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:

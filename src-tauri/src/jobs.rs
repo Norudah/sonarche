@@ -567,6 +567,9 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
     // DASH container — 0:00 durations and broken seeking on every player that
     // reads classic sample tables (Music.app, iOS, CarPlay).
     python_env::ensure_ffmpeg(&paths).await?;
+    // Optional where ffmpeg is not: without it yt-dlp falls back to the single
+    // client that needs no JavaScript, which still downloads.
+    let deno = python_env::deno(&paths).await;
     // Read per track rather than carried on the job: the setting is what it is
     // at the moment a file is written, and a playlist queued before the user
     // changed it has no claim on the old answer.
@@ -580,6 +583,7 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
                 "url": url,
                 "staging_dir": paths.staging_dir.to_string_lossy(),
                 "ffmpeg": paths.ffmpeg().to_string_lossy(),
+                "deno": deno.as_ref().map(|path| path.to_string_lossy()),
                 "audio_format": format,
             }),
             DOWNLOAD_TIMEOUT,
