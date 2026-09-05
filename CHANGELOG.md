@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.3.0...sonarche-v2.4.0) (2026-09-05)
+
+
+### Features
+
+* **sidecar:** bundle deno so yt-dlp can read protected player JS ([69339de](https://github.com/Norudah/sonarche/commit/69339ded3b75c6b39c10a29be58e845966f668a0))
+* **sidecar:** log which JS runtime solved the challenge ([d69de62](https://github.com/Norudah/sonarche/commit/d69de62cc18e8105972cf0cc12dabc928e26021f))
+* **sidecar:** run YouTube's player JS in a bundled deno ([c779254](https://github.com/Norudah/sonarche/commit/c7792541d933cb436c77c75d942cab3ed991dd2e))
+
 ## [2.3.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.2.0...sonarche-v2.3.0) (2026-08-27)
 
 
