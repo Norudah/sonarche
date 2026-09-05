@@ -3,7 +3,7 @@
 
 import unittest
 
-from download import UNAVAILABLE_PREFIX, is_unavailable_error, scrub
+from download import UNAVAILABLE_PREFIX, is_unavailable_error, js_runtimes, scrub
 
 
 class UnavailableErrorTest(unittest.TestCase):
@@ -88,6 +88,22 @@ class ScrubTest(unittest.TestCase):
     def test_survives_an_empty_message(self):
         self.assertEqual(scrub(""), "")
         self.assertEqual(scrub(None), "")
+
+
+class JsRuntimesTest(unittest.TestCase):
+    """The one option where an absent key does not mean "off": yt-dlp reads a
+    missing `js_runtimes` as `{"deno": {}}` and goes hunting through PATH."""
+
+    def test_names_the_bundled_binary_by_absolute_path(self):
+        self.assertEqual(
+            js_runtimes("/Applications/Sonarche.app/Contents/Resources/tools/deno"),
+            {"deno": {"path": "/Applications/Sonarche.app/Contents/Resources/tools/deno"}},
+        )
+
+    def test_no_runtime_disables_the_search_rather_than_leaving_it_default(self):
+        for missing in (None, ""):
+            with self.subTest(missing=missing):
+                self.assertEqual(js_runtimes(missing), {})
 
 
 if __name__ == "__main__":
