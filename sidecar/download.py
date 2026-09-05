@@ -70,7 +70,14 @@ class _Logger:
     the sidecar log."""
 
     def debug(self, message):
-        pass
+        # Everything yt-dlp would have printed to the screen lands here — it
+        # routes `to_screen` to the logger's `debug`, not its `info`. Dropped,
+        # with one exception: the line naming the JavaScript runtime that
+        # solved the challenge. It is the only place the runtime reports
+        # itself, and the difference between having handed yt-dlp a path and
+        # having it actually use one. `[jsc:` is yt-dlp's own tag for it.
+        if "[jsc:" in message:
+            protocol.log(f"yt-dlp: {message}")
 
     def info(self, message):
         pass
