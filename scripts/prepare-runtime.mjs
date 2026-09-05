@@ -15,7 +15,7 @@
  *   ships 24 MB instead of the 66 MB it becomes.
  * - `wheels/` is a plain directory. Wheels are inert files with nothing to
  *   preserve, and pip wants a directory to point `--find-links` at.
- * - `tools/` (fpcalc, ffmpeg) is unpacked here rather than fetched at first
+ * - `tools/` (fpcalc, ffmpeg, deno) is unpacked here rather than fetched at first
  *   use. The app used to download fpcalc itself, which is the one behaviour an
  *   unsigned binary cannot afford: a program nobody signed pulling an
  *   executable off the network and running it is what a dropper looks like,
@@ -119,6 +119,30 @@ const FFMPEG_ASSETS = {
     sha256: "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77",
     licenceSha256: "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
   },
+};
+
+/**
+ * Deno, pinned by triple and by digest.
+ *
+ * YouTube hands out its stream URLs with the signature and the `n` parameter
+ * scrambled, and ships the descrambler as obfuscated JavaScript. yt-dlp used to
+ * evaluate that with an interpreter written in Python; it no longer keeps up,
+ * and without a real engine only the `visionos` client answers — the single
+ * client whose death took every download down in August.
+ *
+ * Deno is the runtime yt-dlp enables by default, and the one it runs with no
+ * permissions at all: no disk, no network, no npm (see `download.py`). 81 MB
+ * unpacked, which nearly doubles what the app ships. quickjs would cost 1 MB
+ * and four to six seconds more per track — paid on every download, and worst on
+ * the oldest machine we support.
+ *
+ * The zip holds the bare binary at its root, so there is nothing to strip.
+ */
+const DENO = { version: "2.9.6" };
+const DENO_ASSETS = {
+  "aarch64-apple-darwin": { sha256: "213a2f304f04d3c9cb5220669afad138f60a5aab1fe80962abdeb8f35807a472" },
+  "x86_64-apple-darwin": { sha256: "7d4524b82bcc557fe020a1a5b56956ed42b992ae5b28026e8ad5d17329533f5f" },
+  "x86_64-pc-windows-msvc": { sha256: "15e5300b0ba3c3695a7621d90160a746ec9e710228cee639afa9d580f6e3cd11" },
 };
 
 /** System tar, by absolute path. Windows has shipped bsdtar in System32 since
@@ -291,14 +315,37 @@ async function fetchFfmpeg(triple, tools) {
   console.log(`[runtime] ffmpeg ${FFMPEG.release}, ${(size / 1e6).toFixed(1)} MB`);
 }
 
+/** Unpacks deno (a zip holding the bare binary) into `tools`. */
+async function fetchDeno(triple, tools) {
+  const asset = DENO_ASSETS[triple];
+  if (!asset) throw new Error(`no deno asset pinned for ${triple} — see DENO_ASSETS in this file`);
+
+  const name = `deno-${triple}.zip`;
+  const url = `https://github.com/denoland/deno/releases/download/v${DENO.version}/${name}`;
+  const bytes = await fetchVerified(url, asset.sha256, name);
+
+  const archive = path.join(tools, "deno-archive");
+  await fs.writeFile(archive, bytes);
+  const member = triple.includes("windows") ? "deno.exe" : "deno";
+  run(TAR, ["-xf", archive, "-C", tools, member]);
+  await fs.rm(archive, { force: true });
+
+  const binary = path.join(tools, member);
+  if (!(await exists(binary))) throw new Error(`deno missing after extraction (expected ${binary})`);
+  if (process.platform !== "win32") await fs.chmod(binary, 0o755);
+
+  const { size } = await fs.stat(binary);
+  console.log(`[runtime] deno ${DENO.version}, ${(size / 1e6).toFixed(1)} MB`);
+}
+
 /**
- * Populates `resources/tools/` (fpcalc + ffmpeg), ready to be copied into
- * place on first use. One joint stamp for the directory: the two fetchers
- * share it, so bumping either pin rebuilds both — cheaper than teaching each
- * to clean up around the other.
+ * Populates `resources/tools/` — fpcalc and ffmpeg, which the app copies into
+ * place on first use, and deno, which it runs from here. One joint stamp for
+ * the directory: the three fetchers share it, so bumping any pin rebuilds all
+ * of them — cheaper than teaching each to clean up around the others.
  */
 async function fetchTools(triple) {
-  const stamp = `fpcalc-${FPCALC.version}+ffmpeg-${FFMPEG.release}-${triple}`;
+  const stamp = `fpcalc-${FPCALC.version}+ffmpeg-${FFMPEG.release}+deno-${DENO.version}-${triple}`;
   const tools = path.join(resources, "tools");
   if (await isCurrent(tools, stamp)) {
     console.log(`[runtime] tools already at ${stamp}`);
@@ -309,6 +356,7 @@ async function fetchTools(triple) {
   await fs.mkdir(tools, { recursive: true });
   await fetchFpcalc(triple, tools);
   await fetchFfmpeg(triple, tools);
+  await fetchDeno(triple, tools);
   await stampAs(tools, stamp);
 }
 

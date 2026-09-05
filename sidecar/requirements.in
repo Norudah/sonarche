@@ -18,6 +18,13 @@
 
 beets==2.12.0
 yt-dlp==2026.8.19
+# The challenge solver scripts yt-dlp feeds to the JS runtime. Shipping them as
+# a Python package is what keeps a download offline: the scripts vendored in the
+# yt-dlp wheel import their parser from npm, and the only other source is a
+# GitHub fetch at download time. Its major.minor has to match the version yt-dlp
+# expects (`yt_dlp/extractor/youtube/jsc/_builtin/vendor/_info.py`), so it is
+# bumped with the pin above, never on its own.
+yt-dlp-ejs==0.8.0
 mutagen==1.47.0
 pillow==12.3.0
 requests==2.32.4
