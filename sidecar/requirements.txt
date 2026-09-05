@@ -4,6 +4,7 @@
 
 beets==2.12.0
 yt-dlp==2026.8.19
+yt-dlp-ejs==0.8.0
 mutagen==1.47.0
 pillow==12.3.0
 requests==2.32.4
@@ -16,7 +17,7 @@ lap==0.5.13
 mediafile==0.17.0
 numpy==2.5.2
 packaging==26.3
-platformdirs==4.11.4
+platformdirs==4.11.7
 PyYAML==6.0.3
 requests-ratelimiter==0.10.0
 typing_extensions==4.16.0
@@ -26,7 +27,7 @@ Unidecode==1.4.0
 colorama==0.4.6 ; sys_platform == "win32"
 
 # Transitive.
-anyio==4.14.2
+anyio==4.15.1
 certifi==2026.7.22
 charset-normalizer==3.5.1
 filetype==1.2.0
@@ -34,6 +35,6 @@ h11==0.16.0
 httpcore2==2.12.0
 httpx2==2.12.0
 idna==3.19
-pyrate-limiter==4.4.0
+pyrate-limiter==4.5.0
 truststore==0.10.4
 urllib3==2.7.0

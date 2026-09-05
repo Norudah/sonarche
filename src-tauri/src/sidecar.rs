@@ -184,6 +184,10 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         // Where the user's genre placements live, and where the sidecar
         // regenerates the derived tree/whitelist the config above names.
         .env("SONARCHE_GENRES_DIR", &paths.genres_dir)
+        // deno writes a small cache wherever this points, and defaults to the
+        // user's own cache folder — outside anything a reinstall can clear, and
+        // shared with a deno they may have installed themselves.
+        .env("DENO_DIR", &paths.deno_cache_dir)
         .current_dir(
             paths
                 .sidecar_main

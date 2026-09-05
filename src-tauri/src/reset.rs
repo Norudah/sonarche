@@ -82,6 +82,9 @@ fn dirs_to_remove(paths: &AppPaths, targets: &ResetTargets) -> Vec<PathBuf> {
     }
     if targets.tools {
         dirs.push(paths.tools_dir.clone());
+        // deno itself lives in the read-only resources, so its cache is the
+        // only part of it that app data holds — and the only part to clear.
+        dirs.push(paths.deno_cache_dir.clone());
     }
     dirs
 }
@@ -430,7 +433,12 @@ pub async fn reinstall_environment(app: &AppHandle, sidecar: &SidecarState) -> A
     // answering, out of a venv that no longer exists.
     sidecar.shutdown().await;
 
-    for dir in [&paths.venv_dir, &paths.runtime_dir, &paths.tools_dir] {
+    for dir in [
+        &paths.venv_dir,
+        &paths.runtime_dir,
+        &paths.tools_dir,
+        &paths.deno_cache_dir,
+    ] {
         if tokio::fs::try_exists(dir).await.unwrap_or(false) {
             tokio::fs::remove_dir_all(dir).await?;
         }
@@ -467,6 +475,8 @@ mod tests {
             wheels_dir: data.join("resources").join("wheels"),
             bundled_fpcalc: data.join("resources").join("tools").join("fpcalc"),
             bundled_ffmpeg: data.join("resources").join("tools").join("ffmpeg"),
+            bundled_deno: data.join("resources").join("tools").join("deno"),
+            deno_cache_dir: data.join("deno"),
         }
     }
 
@@ -499,7 +509,12 @@ mod tests {
     fn erasing_data_and_reinstalling_the_engine_touch_nothing_in_common() {
         let paths = paths();
         let data = user_data_to_remove(&paths, &PathBuf::from("/data"));
-        let engine = [&paths.venv_dir, &paths.runtime_dir, &paths.tools_dir];
+        let engine = [
+            &paths.venv_dir,
+            &paths.runtime_dir,
+            &paths.tools_dir,
+            &paths.deno_cache_dir,
+        ];
 
         for user_path in &data {
             for engine_path in engine {
@@ -590,7 +605,7 @@ mod tests {
         };
         assert_eq!(
             dirs_to_remove(&paths, &tools),
-            vec![paths.tools_dir.clone()]
+            vec![paths.tools_dir.clone(), paths.deno_cache_dir.clone()]
         );
 
         assert!(dirs_to_remove(&paths, &ResetTargets::default()).is_empty());
