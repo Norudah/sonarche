@@ -1,6 +1,6 @@
 [package]
 name = "sonarche"
-version = "2.3.0"
+version = "2.4.0"
 description = "Your music, from the stream into the ark."
 license = "MIT"
 edition = "2021"
