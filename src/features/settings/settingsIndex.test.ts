@@ -53,7 +53,7 @@ describe("buildSettingsIndex", () => {
   it("indexes the panes on their own lede", () => {
     const services = entries.find((entry) => entry.key === "services");
     expect(services?.name).toBe("Services externes");
-    expect(services?.parentLabel).toBe("Ta bibliothèque");
+    expect(services?.parentLabel).toBe("Bibliothèque");
     expect(services?.why).toContain("identifier ta musique");
   });
 

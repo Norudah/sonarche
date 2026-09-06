@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { MetadataChecksRow } from "@/app/layout/MetadataChecksRow";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import { SettingsTaskHost } from "@/features/settings/SettingsTaskHost";
 import { AddingSection } from "@/features/settings/sections/AddingSection";
@@ -25,7 +26,9 @@ import { openSettings, useSettingsDialog, type SettingsCategoryId } from "@/shar
 const PANES: Record<SettingsCategoryId, () => React.ReactElement> = {
   appearance: AppearanceSection,
   adding: AddingSection,
-  metadata: MetadataSection,
+  // The only pane the shell has to compose: its last row points at a
+  // preference owned by the library feature. See `MetadataChecksRow`.
+  metadata: () => <MetadataSection checks={<MetadataChecksRow />} />,
   files: FilesSection,
   services: ServicesSection,
   updates: UpdateSection,

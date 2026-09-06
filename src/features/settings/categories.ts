@@ -34,8 +34,10 @@ export interface SettingsGroup {
  * a setting had been filed on, so finding one meant guessing the axis first.
  *
  * Each group answers a different question, and every category belongs to
- * exactly one of them: how the app behaves *for you*, what it *owns* on your
- * machine, and what it *is*. Two consequences worth naming, because both moved
+ * exactly one of them: what the app does when you use it, what it holds on
+ * your disk, and what the app itself is. The labels are the ordinary ones —
+ * Préférences / Bibliothèque / Application — because a menu is a place to find
+ * your way, not a place to be addressed. Two consequences worth naming, because both moved
  * a setting out of the folder someone might remember:
  *
  * - the audio format now sits with the files it describes, not with the
@@ -48,7 +50,7 @@ export interface SettingsGroup {
  */
 export const settingsGroups: SettingsGroup[] = [
   {
-    labelKey: "groups.you",
+    labelKey: "groups.preferences",
     categories: [
       { id: "appearance", labelKey: "appearance.category", icon: Palette },
       { id: "adding", labelKey: "adding.category", icon: Download },

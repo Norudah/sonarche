@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { clearSettingsHighlight, useSettingsDialog } from "@/shared/lib/settingsDialog";
-import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
+import { FieldHelp } from "@/shared/ui/FieldHelp";
 
 /** How long the ring a search result leaves stays on. Long enough to be seen
  * after the scroll settles, short enough not to become a selection. */
@@ -86,12 +86,14 @@ export function SettingRow({ settingKey, align = "center", children }: SettingRo
     >
       <div className={cn("flex min-w-0 flex-1 items-center gap-1.5", align === "start" && "pt-1")}>
         <span className="min-w-0 text-[0.8125rem] font-medium">{name}</span>
-        {/* The full reason, folded. Nothing is lost — it is one click away, and
-            it reads better in a panel of its own than as a paragraph competing
-            with the ten around it. */}
-        <FieldHelpPopover label={t("explain")} title={name} tone="muted">
-          <p className="text-[0.8125rem] leading-relaxed text-muted">{t(`${settingKey}.why`)}</p>
-        </FieldHelpPopover>
+        {/* The full reason, on hover rather than behind a click. It is not
+            help the reader has to ask for — it is the setting's own sentence,
+            moved out of the way so the panel can be skimmed; making it cost a
+            click would put it further away than it was on the old cards.
+            Longer than the app's usual 200 ms: eleven marks down a panel, a
+            quick delay would fire them one after another as the pointer
+            crosses the rows. */}
+        <FieldHelp label={t("explain")} delay={450} text={t(`${settingKey}.why`)} />
       </div>
       <div className="shrink-0">{children}</div>
     </div>

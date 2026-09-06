@@ -10,8 +10,8 @@
   },
   "instant": "Instant",
   "groups": {
-    "you": "You",
-    "library": "Your library",
+    "preferences": "Preferences",
+    "library": "Library",
     "app": "Application"
   },
   "appearance": {
@@ -70,6 +70,12 @@
     "rematchConfirm": {
       "name": "Ask before a re-match",
       "why": "A re-match queries MusicBrainz again and rewrites every tag it recognises, including your manual fixes. With this on, the app asks for confirmation before starting, on a track as on an album."
+    },
+    "checks": {
+      "name": "Active checks",
+      "why": "The eight checks the app knows how to raise: missing year, no artwork, off-tree genre, duplicate… Each switches off on its own, and a check that is off leaves the queue and the badge without losing its count. They live on the Metadata page, next to what there is to fix.",
+      "count": "{{enabled}} of {{total}}",
+      "action": "Open the page"
     }
   },
   "files": {

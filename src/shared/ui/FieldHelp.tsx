@@ -27,9 +27,9 @@ import type { ReactNode } from "react";
 const TRIGGER =
   "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
-export function FieldHelp({ label, text }: { label: string; text: ReactNode }) {
+export function FieldHelp({ label, text, delay = 200 }: { label: string; text: ReactNode; delay?: number }) {
   return (
-    <Tooltip delay={200}>
+    <Tooltip delay={delay}>
       <Tooltip.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer text-muted/70 hover:text-muted`}>
         <CircleHelp className="size-3.5" />
       </Tooltip.Trigger>
@@ -62,32 +62,13 @@ export function ActionHelp({ children, text }: { children: ReactNode; text: stri
   );
 }
 
-/**
- * `accent` is the mark on a field nobody would think to ask about — it has to
- * offer itself, which is why it is filled. `muted` is for a surface where every
- * row carries one: settings, where the mark is not an offer but a fold, and an
- * accent dot repeated eleven times down a panel stops being seen and starts
- * being texture.
- */
-const POPOVER_TONES = {
-  accent: "bg-accent-soft text-accent hover:brightness-95",
-  muted: "text-muted/60 hover:text-muted",
-} as const;
-
-export function FieldHelpPopover({
-  label,
-  title,
-  tone = "accent",
-  children,
-}: {
-  label: string;
-  title: string;
-  tone?: keyof typeof POPOVER_TONES;
-  children: ReactNode;
-}) {
+export function FieldHelpPopover({ label, title, children }: { label: string; title: string; children: ReactNode }) {
   return (
     <Popover>
-      <Popover.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer ${POPOVER_TONES[tone]}`}>
+      <Popover.Trigger
+        aria-label={label}
+        className={`${TRIGGER} cursor-pointer bg-accent-soft text-accent hover:brightness-95`}
+      >
         <CircleHelp className="size-3" />
       </Popover.Trigger>
       <Popover.Content className="max-w-80">

@@ -10,8 +10,8 @@
   },
   "instant": "Instantané",
   "groups": {
-    "you": "Toi",
-    "library": "Ta bibliothèque",
+    "preferences": "Préférences",
+    "library": "Bibliothèque",
     "app": "Application"
   },
   "appearance": {
@@ -70,6 +70,12 @@
     "rematchConfirm": {
       "name": "Confirmation avant un re-match",
       "why": "Le re-match ré-interroge MusicBrainz et réécrit tous les tags reconnus, y compris tes corrections manuelles. Avec cette option, l'app demande confirmation avant de lancer, sur un morceau comme sur un album."
+    },
+    "checks": {
+      "name": "Contrôles activés",
+      "why": "Les huit contrôles que l'app sait signaler : année manquante, pochette absente, genre hors arbre, doublon… Chacun s'éteint séparément, et un contrôle éteint quitte la file et la pastille sans rien perdre de son compte. Ça se règle sur la page Métadonnées, à côté de ce qu'il y a à corriger.",
+      "count": "{{enabled}} sur {{total}}",
+      "action": "Ouvrir la page"
     }
   },
   "files": {
