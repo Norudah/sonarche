@@ -1,10 +1,9 @@
-import { Button } from "@heroui/react";
-import { toast } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingRow } from "@/features/settings/SettingsPanel";
 import { useReinstallEnvironment } from "@/features/settings/hooks";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
@@ -17,7 +16,7 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
  * A plain yes/no, not the typed phrase the erases ask for. Putting the typing
  * exercise on both is how people learn to type through it.
  */
-export function ReinstallCard() {
+export function ReinstallRow() {
   const { t } = useTranslation("settings");
   const [asking, setAsking] = useState(false);
   const reinstall = useReinstallEnvironment();
@@ -35,22 +34,11 @@ export function ReinstallCard() {
   };
 
   return (
-    <SettingCard>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <p className="text-[0.8125rem] font-semibold">{t("advanced.reinstall.name")}</p>
-          <p className="text-[0.8125rem] leading-relaxed text-muted">{t("advanced.reinstall.why")}</p>
-        </div>
-        <Button
-          variant="secondary"
-          className="h-10 shrink-0 rounded-xl"
-          onPress={() => setAsking(true)}
-          isDisabled={reinstall.isPending}
-        >
-          <RotateCcw className="size-4" />
-          {t("advanced.reinstall.action")}
-        </Button>
-      </div>
+    <SettingRow name={t("advanced.reinstall.name")} why={t("advanced.reinstall.why")}>
+      <Button variant="secondary" onPress={() => setAsking(true)} isDisabled={reinstall.isPending}>
+        <RotateCcw className="size-4" />
+        {t("advanced.reinstall.action")}
+      </Button>
 
       <ConfirmDialog
         isOpen={asking}
@@ -65,6 +53,6 @@ export function ReinstallCard() {
       >
         <p>{t("advanced.reinstall.dialogBody")}</p>
       </ConfirmDialog>
-    </SettingCard>
+    </SettingRow>
   );
 }

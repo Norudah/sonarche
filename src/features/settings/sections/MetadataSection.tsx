@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { SectionHeader } from "@/features/settings/SectionHeader";
-import { SwitchCard } from "@/features/settings/SwitchCard";
+import { SettingsPanel, SwitchRow } from "@/features/settings/SettingsPanel";
 import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { storeRematchConfirm, useRematchConfirm } from "@/shared/lib/rematchConfirm";
 
@@ -19,21 +19,22 @@ export function MetadataSection() {
     <>
       <SectionHeader title={t("metadata.title")} description={t("metadata.description")} />
 
-      <SwitchCard
-        name={t("metadata.badges.name")}
-        why={t("metadata.badges.why")}
-        isSelected={badges}
-        onChange={storeNotificationBadges}
-      />
-
-      {/* The same preference the dialog's "don't ask again" writes — the two
-          surfaces read one store, so they can never disagree. */}
-      <SwitchCard
-        name={t("metadata.rematchConfirm.name")}
-        why={t("metadata.rematchConfirm.why")}
-        isSelected={rematchConfirm}
-        onChange={storeRematchConfirm}
-      />
+      <SettingsPanel>
+        <SwitchRow
+          name={t("metadata.badges.name")}
+          why={t("metadata.badges.why")}
+          isSelected={badges}
+          onChange={storeNotificationBadges}
+        />
+        {/* The same preference the dialog's "don't ask again" writes — the two
+            surfaces read one store, so they can never disagree. */}
+        <SwitchRow
+          name={t("metadata.rematchConfirm.name")}
+          why={t("metadata.rematchConfirm.why")}
+          isSelected={rematchConfirm}
+          onChange={storeRematchConfirm}
+        />
+      </SettingsPanel>
     </>
   );
 }

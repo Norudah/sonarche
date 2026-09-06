@@ -5,7 +5,7 @@ import { DelaySlider } from "@/features/settings/DelaySlider";
 import { RATE_LIMITS } from "@/features/settings/rateLimits";
 import { SectionHeader } from "@/features/settings/SectionHeader";
 import { SettingCard } from "@/features/settings/SettingCard";
-import { SwitchCard } from "@/features/settings/SwitchCard";
+import { SettingsPanel, SwitchRow } from "@/features/settings/SettingsPanel";
 import { usePreferences, useSetRateLimitDelay } from "@/features/settings/hooks";
 import { storeAutoExpand, useAutoExpand } from "@/shared/lib/optionPanels";
 
@@ -35,19 +35,20 @@ export function AddingSection() {
     <>
       <SectionHeader title={t("adding.title")} description={t("adding.description")} />
 
-      <SwitchCard
-        name={t("adding.downloadOptions.name")}
-        why={t("adding.downloadOptions.why")}
-        isSelected={download}
-        onChange={(on) => storeAutoExpand("download", on)}
-      />
-
-      <SwitchCard
-        name={t("adding.importOptions.name")}
-        why={t("adding.importOptions.why")}
-        isSelected={importing}
-        onChange={(on) => storeAutoExpand("import", on)}
-      />
+      <SettingsPanel>
+        <SwitchRow
+          name={t("adding.downloadOptions.name")}
+          why={t("adding.downloadOptions.why")}
+          isSelected={download}
+          onChange={(on) => storeAutoExpand("download", on)}
+        />
+        <SwitchRow
+          name={t("adding.importOptions.name")}
+          why={t("adding.importOptions.why")}
+          isSelected={importing}
+          onChange={(on) => storeAutoExpand("import", on)}
+        />
+      </SettingsPanel>
 
       {/* Auto-saves on slider release — nothing here has a footer to press. */}
       {preferences.isPending ? (

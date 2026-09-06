@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 
-import { LogFileCard } from "@/features/settings/LogFileCard";
-import { ReinstallCard } from "@/features/settings/ReinstallCard";
+import { LogFileRow } from "@/features/settings/LogFileRow";
+import { ReinstallRow } from "@/features/settings/ReinstallRow";
 import { SectionHeader } from "@/features/settings/SectionHeader";
+import { SettingsPanel } from "@/features/settings/SettingsPanel";
 
 /**
  * The two things you reach for when the app misbehaves: the file that says
@@ -19,8 +20,10 @@ export function AdvancedSection() {
   return (
     <>
       <SectionHeader title={t("advanced.title")} description={t("advanced.description")} />
-      <LogFileCard />
-      <ReinstallCard />
+      <SettingsPanel>
+        <LogFileRow />
+        <ReinstallRow />
+      </SettingsPanel>
     </>
   );
 }

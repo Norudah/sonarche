@@ -1,35 +1,25 @@
-import { RadioGroup } from "@heroui/react";
+import { Button, RadioGroup } from "@heroui/react";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { readLaunchWelcome, storeLaunchWelcome } from "@/features/settings/launchWelcome";
-import { SettingCard } from "@/features/settings/SettingCard";
 import { SectionHeader } from "@/features/settings/SectionHeader";
-import { SwitchCard } from "@/features/settings/SwitchCard";
+import { SettingRow, SettingsPanel, SwitchRow } from "@/features/settings/SettingsPanel";
 import { ThemeTile } from "@/features/settings/ThemeTile";
 import { useTheme } from "@/features/settings/ThemeContext";
 import { THEME_PREFERENCES, type ThemePreference } from "@/features/settings/theme";
+import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { requestHomeTour } from "@/shared/lib/homeTour";
 
-/** One setting's title and reason, above whatever control it drives. */
-function Setting({ name, why, children }: { name: string; why: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-[0.8125rem] font-semibold">{name}</p>
-        <p className="text-[0.8125rem] leading-relaxed text-muted">{why}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 /**
- * How the app presents itself: what it wears and what it speaks. Both apply on
- * the click rather than on a save — the whole point of either control is seeing
- * the answer.
+ * How the app presents itself: what it wears and what it speaks. Everything
+ * here applies on the click rather than on a save — the whole point of either
+ * control is seeing the answer.
+ *
+ * One panel, four rows. The theme tiles are the widest control in the app's
+ * settings and they still fit beside their own name, which is the test for
+ * whether something is a row: they are 3:2 drawings, not a surface of their own.
  */
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
@@ -48,48 +38,40 @@ export function AppearanceSection() {
     <>
       <SectionHeader title={t("appearance.title")} description={t("appearance.description")} />
 
-      <SettingCard>
-        <Setting name={t("appearance.theme.name")} why={t("appearance.theme.why")}>
+      <SettingsPanel>
+        <SettingRow name={t("appearance.theme.name")} why={t("appearance.theme.why")} align="start">
           <RadioGroup
             value={preference}
             onChange={(next) => choose(next as ThemePreference)}
             aria-label={t("appearance.theme.name")}
-            className="grid w-full grid-cols-3 gap-3"
+            className="grid w-80 grid-cols-3 gap-2.5"
           >
             {THEME_PREFERENCES.map((option) => (
               <ThemeTile key={option} value={option} selected={preference} label={t(`appearance.theme.${option}`)} />
             ))}
           </RadioGroup>
-        </Setting>
-      </SettingCard>
+        </SettingRow>
 
-      <SettingCard>
-        <Setting name={t("appearance.language.name")} why={t("appearance.language.why")}>
-          <LanguageChoice label={t("appearance.language.name")} />
-        </Setting>
-      </SettingCard>
-
-      <SwitchCard
-        name={t("appearance.launchWelcome.name")}
-        why={t("appearance.launchWelcome.why")}
-        isSelected={welcome}
-        onChange={chooseWelcome}
-      />
-
-      <SettingCard>
-        <Setting name={t("appearance.tour.name")} why={t("appearance.tour.why")}>
-          <div>
-            <button
-              type="button"
-              onClick={requestHomeTour}
-              className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
-            >
-              <RotateCcw className="size-3.5" />
-              {t("appearance.tour.replay")}
-            </button>
+        <SettingRow name={t("appearance.language.name")} why={t("appearance.language.why")}>
+          <div className="w-56">
+            <LanguageChoice label={t("appearance.language.name")} />
           </div>
-        </Setting>
-      </SettingCard>
+        </SettingRow>
+
+        <SwitchRow
+          name={t("appearance.launchWelcome.name")}
+          why={t("appearance.launchWelcome.why")}
+          isSelected={welcome}
+          onChange={chooseWelcome}
+        />
+
+        <SettingRow name={t("appearance.tour.name")} why={t("appearance.tour.why")}>
+          <Button variant="secondary" onPress={requestHomeTour}>
+            <RotateCcw className="size-4" />
+            {t("appearance.tour.replay")}
+          </Button>
+        </SettingRow>
+      </SettingsPanel>
     </>
   );
 }

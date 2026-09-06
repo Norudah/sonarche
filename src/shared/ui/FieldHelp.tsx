@@ -62,13 +62,32 @@ export function ActionHelp({ children, text }: { children: ReactNode; text: stri
   );
 }
 
-export function FieldHelpPopover({ label, title, children }: { label: string; title: string; children: ReactNode }) {
+/**
+ * `accent` is the mark on a field nobody would think to ask about — it has to
+ * offer itself, which is why it is filled. `muted` is for a surface where every
+ * row carries one: settings, where the mark is not an offer but a fold, and an
+ * accent dot repeated eleven times down a panel stops being seen and starts
+ * being texture.
+ */
+const POPOVER_TONES = {
+  accent: "bg-accent-soft text-accent hover:brightness-95",
+  muted: "text-muted/60 hover:text-muted",
+} as const;
+
+export function FieldHelpPopover({
+  label,
+  title,
+  tone = "accent",
+  children,
+}: {
+  label: string;
+  title: string;
+  tone?: keyof typeof POPOVER_TONES;
+  children: ReactNode;
+}) {
   return (
     <Popover>
-      <Popover.Trigger
-        aria-label={label}
-        className={`${TRIGGER} cursor-pointer bg-accent-soft text-accent hover:brightness-95`}
-      >
+      <Popover.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer ${POPOVER_TONES[tone]}`}>
         <CircleHelp className="size-3" />
       </Popover.Trigger>
       <Popover.Content className="max-w-80">
