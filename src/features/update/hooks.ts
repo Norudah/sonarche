@@ -15,6 +15,18 @@ export function useAppVersion() {
 const CHECK_KEY = ["update", "check"];
 
 /**
+ * `check()` compares the running version against the real GitHub endpoint,
+ * and a dev build's version (whatever `tauri.conf.json` says) is routinely
+ * behind the latest release — so left unguarded, every `npm run tauri dev`
+ * session "finds" an update it has no way to install. Isolated from the two
+ * call sites below so the guard itself is unit-testable without mounting a
+ * query.
+ */
+function checkForUpdateUnlessDev(): Promise<Update | null> {
+  return import.meta.env.DEV ? Promise.resolve(null) : check();
+}
+
+/**
  * The check, as a disabled query rather than a mutation: it still runs only
  * when someone asks — `checkForUpdate` at launch, `refetch` from the settings
  * button — never on focus or mount, so a deliberate question stays one. But
@@ -24,7 +36,7 @@ const CHECK_KEY = ["update", "check"];
 export function useUpdateCheck() {
   return useQuery({
     queryKey: CHECK_KEY,
-    queryFn: () => check(),
+    queryFn: checkForUpdateUnlessDev,
     enabled: false,
     staleTime: Infinity,
     gcTime: Infinity,
@@ -36,7 +48,7 @@ export function useUpdateCheck() {
 export function checkForUpdate(queryClient: QueryClient): Promise<Update | null> {
   return queryClient.fetchQuery({
     queryKey: CHECK_KEY,
-    queryFn: () => check(),
+    queryFn: checkForUpdateUnlessDev,
     staleTime: Infinity,
     retry: false,
   });
