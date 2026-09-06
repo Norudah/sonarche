@@ -1,14 +1,11 @@
 import { Button, Spinner, toast } from "@heroui/react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { Folder } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { MoveCheck } from "@/features/settings/api";
-import { MoveLibraryDialog } from "@/features/settings/MoveLibraryDialog";
 import { SettingCard } from "@/features/settings/SettingCard";
-import { useCheckLibraryMove, useLibraryLocation, useMoveLibrary } from "@/features/settings/hooks";
+import { useSettingsTasks } from "@/features/settings/tasks";
+import { useCheckLibraryMove, useLibraryLocation } from "@/features/settings/hooks";
 
 /**
  * Where the music lives, and the way to move it.
@@ -22,30 +19,17 @@ export function LibraryLocationCard() {
   const { t } = useTranslation("settings");
   const location = useLibraryLocation();
   const preflight = useCheckLibraryMove();
-  const move = useMoveLibrary();
-  const [pending, setPending] = useState<{ parent: string; check: MoveCheck } | null>(null);
+  const { start } = useSettingsTasks();
 
+  // The picker and the preflight belong here — both happen while settings is
+  // open, and both are cheap. The move itself ends in a relaunch, so it is
+  // handed to `SettingsTaskHost` along with what the preflight found.
   const pick = async () => {
     const chosen = await open({ directory: true, multiple: false });
     if (typeof chosen !== "string") return;
     try {
-      setPending({ parent: chosen, check: await preflight.mutateAsync(chosen) });
+      start({ kind: "move", parent: chosen, check: await preflight.mutateAsync(chosen) });
     } catch (error) {
-      toast.danger(t("files.move.failedTitle"), { description: String(error) });
-    }
-  };
-
-  const confirm = async () => {
-    if (!pending) return;
-    try {
-      await move.mutateAsync(pending.parent);
-      // A relaunch and not a cache invalidation: playback was stopped, the
-      // sidecar was taken down, and every track path the app is holding points
-      // at the old folder. Restarting is the only way to be sure none of it
-      // survives — and the dialog said it would.
-      await relaunch();
-    } catch (error) {
-      setPending(null);
       toast.danger(t("files.move.failedTitle"), { description: String(error) });
     }
   };
@@ -75,19 +59,12 @@ export function LibraryLocationCard() {
         <Button
           variant="secondary"
           className="h-10 self-start rounded-xl"
-          onPress={pick}
-          isDisabled={preflight.isPending || move.isPending}
+          onPress={() => void pick()}
+          isDisabled={preflight.isPending}
         >
           {t("files.location.action")}
         </Button>
       </div>
-
-      <MoveLibraryDialog
-        check={pending?.check ?? null}
-        isMoving={move.isPending}
-        onClose={() => setPending(null)}
-        onConfirm={confirm}
-      />
     </SettingCard>
   );
 }

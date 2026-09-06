@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
+import { SettingsTaskHost } from "@/features/settings/SettingsTaskHost";
 import { AddingSection } from "@/features/settings/sections/AddingSection";
 import { AdvancedSection } from "@/features/settings/sections/AdvancedSection";
 import { AppearanceSection } from "@/features/settings/sections/AppearanceSection";
@@ -9,6 +10,7 @@ import { DeveloperSection } from "@/features/settings/sections/DeveloperSection"
 import { FilesSection } from "@/features/settings/sections/FilesSection";
 import { MetadataSection } from "@/features/settings/sections/MetadataSection";
 import { ServicesSection } from "@/features/settings/sections/ServicesSection";
+import { SettingsTasksProvider } from "@/features/settings/tasks";
 import { UpdateSection } from "@/features/update/UpdateSection";
 import { openSettings, useSettingsDialog, type SettingsCategoryId } from "@/shared/lib/settingsDialog";
 
@@ -60,8 +62,14 @@ export function SettingsHost() {
   const Pane = PANES[category];
 
   return (
-    <SettingsDialog>
-      <Pane />
-    </SettingsDialog>
+    // The provider wraps both: the panes start the long operations, and the
+    // host — mounted beside the dialog, not inside it — runs them for as long
+    // as they take. See `features/settings/tasks`.
+    <SettingsTasksProvider>
+      <SettingsDialog>
+        <Pane />
+      </SettingsDialog>
+      <SettingsTaskHost />
+    </SettingsTasksProvider>
   );
 }

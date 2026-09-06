@@ -1,12 +1,11 @@
 import { Button, Radio, RadioGroup } from "@heroui/react";
 import { FileAudio2 } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AUDIO_FORMATS, isNativeFormat, parseAudioFormat, type AudioFormat } from "@/features/settings/audioFormats";
-import { ConvertLibraryDialog } from "@/features/settings/ConvertLibraryDialog";
 import { SettingCard } from "@/features/settings/SettingCard";
-import { useConvertLibrary, useConvertProgress, usePreferences, useSetAudioFormat } from "@/features/settings/hooks";
+import { useSettingsTasks } from "@/features/settings/tasks";
+import { usePreferences, useSetAudioFormat } from "@/features/settings/hooks";
 
 /* `data-selected` lands on the Content, not the Root — same as the composer's
  * segmented controls, which is why the chrome lives here rather than one level
@@ -53,16 +52,9 @@ export function AudioFormatCard() {
   const { t } = useTranslation("settings");
   const preferences = usePreferences();
   const setFormat = useSetAudioFormat();
-  const convert = useConvertLibrary();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const progress = useConvertProgress(convert.isPending);
+  const { start } = useSettingsTasks();
 
   const format = parseAudioFormat(preferences.data?.audioFormat);
-
-  const close = () => {
-    setDialogOpen(false);
-    convert.reset();
-  };
 
   return (
     <SettingCard settingKey="files.audioFormat">
@@ -98,27 +90,19 @@ export function AudioFormatCard() {
                   format: t(`files.audioFormat.formats.${format}.name`),
                 })}
           </p>
+          {/* Hours of work that must survive this dialog being dismissed, so
+              pressing it hands the job to `SettingsTaskHost` and closes
+              settings — see `tasks.tsx`. */}
           <Button
             variant="secondary"
             className="self-start"
-            onPress={() => setDialogOpen(true)}
-            isDisabled={preferences.isPending || convert.isPending}
+            onPress={() => start({ kind: "convert" })}
+            isDisabled={preferences.isPending}
           >
             {t("files.audioFormat.convert.action")}
           </Button>
         </div>
       </div>
-
-      <ConvertLibraryDialog
-        isOpen={dialogOpen}
-        format={format}
-        progress={progress}
-        report={convert.data ?? null}
-        error={convert.isError ? String(convert.error) : null}
-        isRunning={convert.isPending}
-        onClose={close}
-        onConfirm={() => convert.mutate()}
-      />
     </SettingCard>
   );
 }
