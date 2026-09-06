@@ -84,7 +84,3 @@ export const settingsGroups: SettingsGroup[] = [
 
 /** Flattened, in menu order — what the search index and the pane resolver walk. */
 export const settingsCategories: SettingsCategory[] = settingsGroups.flatMap((group) => group.categories);
-
-export function isSettingsCategory(id: string): id is SettingsCategoryId {
-  return settingsCategories.some((category) => category.id === id);
-}

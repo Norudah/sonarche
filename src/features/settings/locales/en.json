@@ -1,11 +1,8 @@
 {
   "title": "Settings",
-  "open": "Open settings",
   "close": "Close settings",
   "loading": "Loading",
   "save": "Save",
-  "saving": "Saving…",
-  "saved": "Settings saved",
   "explain": "Why this setting",
   "search": {
     "placeholder": "Search settings",

@@ -1,11 +1,8 @@
 {
   "title": "Paramètres",
-  "open": "Ouvrir les paramètres",
   "close": "Fermer les paramètres",
   "loading": "Chargement",
   "save": "Enregistrer",
-  "saving": "Enregistrement…",
-  "saved": "Paramètres enregistrés",
   "explain": "Pourquoi ce réglage",
   "search": {
     "placeholder": "Rechercher un réglage",
