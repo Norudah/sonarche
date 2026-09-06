@@ -61,7 +61,7 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
   const busy = setKey.isPending || check.isPending;
 
   return (
-    <SettingCard>
+    <SettingCard settingKey={`services.${status.name}`}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <h3 className="font-medium">{t(`services.${status.name}.name`)}</h3>

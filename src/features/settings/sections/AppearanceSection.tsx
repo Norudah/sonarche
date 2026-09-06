@@ -39,7 +39,7 @@ export function AppearanceSection() {
       <SectionHeader title={t("appearance.title")} description={t("appearance.description")} />
 
       <SettingsPanel>
-        <SettingRow name={t("appearance.theme.name")} why={t("appearance.theme.why")} align="start">
+        <SettingRow settingKey="appearance.theme" align="start">
           <RadioGroup
             value={preference}
             onChange={(next) => choose(next as ThemePreference)}
@@ -52,20 +52,15 @@ export function AppearanceSection() {
           </RadioGroup>
         </SettingRow>
 
-        <SettingRow name={t("appearance.language.name")} why={t("appearance.language.why")}>
+        <SettingRow settingKey="appearance.language">
           <div className="w-56">
             <LanguageChoice label={t("appearance.language.name")} />
           </div>
         </SettingRow>
 
-        <SwitchRow
-          name={t("appearance.launchWelcome.name")}
-          why={t("appearance.launchWelcome.why")}
-          isSelected={welcome}
-          onChange={chooseWelcome}
-        />
+        <SwitchRow settingKey="appearance.launchWelcome" isSelected={welcome} onChange={chooseWelcome} />
 
-        <SettingRow name={t("appearance.tour.name")} why={t("appearance.tour.why")}>
+        <SettingRow settingKey="appearance.tour">
           <Button variant="secondary" onPress={requestHomeTour}>
             <RotateCcw className="size-4" />
             {t("appearance.tour.replay")}

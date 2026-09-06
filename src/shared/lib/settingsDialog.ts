@@ -27,9 +27,14 @@ export interface SettingsDialogState {
   isOpen: boolean;
   /** Kept while closed, so reopening lands where you left. */
   category: SettingsCategoryId;
+  /** The setting a search result asked for, by its i18n base key. The pane
+   * scrolls it into view and rings it once, then clears this — landing on the
+   * right pane and still having to hunt is most of the way to no search at
+   * all. */
+  highlight: string | null;
 }
 
-let state: SettingsDialogState = { isOpen: false, category: "appearance" };
+let state: SettingsDialogState = { isOpen: false, category: "appearance", highlight: null };
 
 const listeners = new Set<() => void>();
 
@@ -42,7 +47,7 @@ function set(next: SettingsDialogState): void {
  * wherever the user was last — the app has no opinion about where they
  * belong, only about where they were. */
 export function openSettings(category?: SettingsCategoryId): void {
-  set({ isOpen: true, category: category ?? state.category });
+  set({ ...state, isOpen: true, category: category ?? state.category });
 }
 
 export function closeSettings(): void {
@@ -50,7 +55,16 @@ export function closeSettings(): void {
 }
 
 export function selectSettingsCategory(category: SettingsCategoryId): void {
-  set({ ...state, category });
+  set({ ...state, category, highlight: null });
+}
+
+/** Jump to a setting: its pane, then the setting itself. */
+export function revealSetting(category: SettingsCategoryId, key: string): void {
+  set({ isOpen: true, category, highlight: key });
+}
+
+export function clearSettingsHighlight(): void {
+  if (state.highlight !== null) set({ ...state, highlight: null });
 }
 
 function subscribe(listener: () => void): () => void {

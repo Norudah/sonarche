@@ -56,7 +56,7 @@ export function ServiceHealthCard() {
   const byName = new Map((check.data ?? []).map((status) => [status.name, status]));
 
   return (
-    <SettingCard>
+    <SettingCard settingKey="services.health">
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">

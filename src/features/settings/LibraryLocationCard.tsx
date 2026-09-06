@@ -51,7 +51,7 @@ export function LibraryLocationCard() {
   };
 
   return (
-    <SettingCard>
+    <SettingCard settingKey="files.location">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">{t("files.location.name")}</h3>

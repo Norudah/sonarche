@@ -37,14 +37,12 @@ export function AddingSection() {
 
       <SettingsPanel>
         <SwitchRow
-          name={t("adding.downloadOptions.name")}
-          why={t("adding.downloadOptions.why")}
+          settingKey="adding.downloadOptions"
           isSelected={download}
           onChange={(on) => storeAutoExpand("download", on)}
         />
         <SwitchRow
-          name={t("adding.importOptions.name")}
-          why={t("adding.importOptions.why")}
+          settingKey="adding.importOptions"
           isSelected={importing}
           onChange={(on) => storeAutoExpand("import", on)}
         />
@@ -55,7 +53,7 @@ export function AddingSection() {
         <Spinner size="sm" aria-label={t("loading")} />
       ) : (
         RATE_LIMITS.map((def) => (
-          <SettingCard key={def.key}>
+          <SettingCard key={def.key} settingKey={def.labelBase}>
             <DelaySlider
               def={def}
               seconds={preferences.data![def.field]}

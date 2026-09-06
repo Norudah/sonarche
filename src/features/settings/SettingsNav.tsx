@@ -1,10 +1,12 @@
 import { cn } from "@heroui/react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { settingsCategories, settingsGroups, type SettingsCategory } from "@/features/settings/categories";
-import { selectSettingsCategory, type SettingsCategoryId } from "@/shared/lib/settingsDialog";
+import { buildSettingsIndex, filterSettings } from "@/features/settings/settingsIndex";
+import { SettingsSearchField, SettingsSearchResults } from "@/features/settings/SettingsSearch";
+import { revealSetting, selectSettingsCategory, type SettingsCategoryId } from "@/shared/lib/settingsDialog";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
 function CategoryButton({
@@ -56,31 +58,56 @@ function CategoryButton({
  * axis first. A heading over each group answers that before you read a single
  * entry: how the app behaves for you, what it owns on your disk, what it is.
  */
-export function SettingsNav({ current, search }: { current: SettingsCategoryId; search?: ReactNode }) {
-  const { t } = useTranslation("settings");
+export function SettingsNav({ current }: { current: SettingsCategoryId }) {
+  const { t, i18n } = useTranslation("settings");
+  const [query, setQuery] = useState("");
+
+  // Rebuilt only when the language changes: the bundle is the translated one,
+  // so a switch to English has to re-read it — nothing else can move it.
+  const language = i18n.resolvedLanguage ?? "fr";
+  const entries = useMemo(
+    () => buildSettingsIndex(i18n.getResourceBundle(language, "settings"), (key) => t(key)),
+    [i18n, language, t],
+  );
+
+  const isSearching = query.trim().length > 0;
+  const results = isSearching ? filterSettings(entries, query) : [];
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-separator bg-panel md:flex">
       <div className="flex flex-col gap-3 px-4 pt-5 pb-3">
         <p className="px-1 text-[0.9375rem] font-semibold tracking-tight">{t("title")}</p>
-        {search}
+        <SettingsSearchField value={query} onChange={setQuery} />
       </div>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pt-1 pb-4">
-        {settingsGroups.map((group) => (
-          <div key={group.labelKey} className="flex flex-col gap-1">
-            {/* Same register as the app sidebar's section labels: a signpost to
-                be found when looked for, not read on the way past. */}
-            <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">
-              {t(group.labelKey)}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {group.categories.map((category) => (
-                <CategoryButton key={category.id} category={category} isActive={category.id === current} />
-              ))}
+        {isSearching ? (
+          <SettingsSearchResults
+            results={results}
+            onPick={(entry) => {
+              // The query goes with the pick: the menu is a menu again, and
+              // the pane it just opened is the answer — leaving the results up
+              // would put the user back in front of the question.
+              setQuery("");
+              revealSetting(entry.category, entry.key);
+            }}
+          />
+        ) : (
+          settingsGroups.map((group) => (
+            <div key={group.labelKey} className="flex flex-col gap-1">
+              {/* Same register as the app sidebar's section labels: a signpost
+                  to be found when looked for, not read on the way past. */}
+              <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">
+                {t(group.labelKey)}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.categories.map((category) => (
+                  <CategoryButton key={category.id} category={category} isActive={category.id === current} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </nav>
     </aside>
   );
@@ -94,6 +121,10 @@ export function SettingsNav({ current, search }: { current: SettingsCategoryId; 
  *
  * The frame around it (border, ground, and the close button beside it) belongs
  * to the caller: this is one scrolling lane in that row, not the row itself.
+ *
+ * No search down here. It needs a field, a result list and somewhere to put
+ * them, and this layout exists precisely because there is no room — the rail
+ * comes back with the width.
  */
 export function SettingsNavStrip({ current }: { current: SettingsCategoryId }) {
   return (

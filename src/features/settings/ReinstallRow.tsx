@@ -34,7 +34,7 @@ export function ReinstallRow() {
   };
 
   return (
-    <SettingRow name={t("advanced.reinstall.name")} why={t("advanced.reinstall.why")}>
+    <SettingRow settingKey="advanced.reinstall">
       <Button variant="secondary" onPress={() => setAsking(true)} isDisabled={reinstall.isPending}>
         <RotateCcw className="size-4" />
         {t("advanced.reinstall.action")}

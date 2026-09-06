@@ -48,7 +48,7 @@ function CloseButton({ label, className }: { label: string; className: string })
  * and nowhere else on purpose: every other modal in the app covers an object
  * on the page it opened from, and this one covers the whole app.
  */
-export function SettingsDialog({ children, search }: { children: ReactNode; search?: ReactNode }) {
+export function SettingsDialog({ children }: { children: ReactNode }) {
   const { t } = useTranslation("settings");
   const { isOpen, category } = useSettingsDialog();
 
@@ -62,7 +62,7 @@ export function SettingsDialog({ children, search }: { children: ReactNode; sear
       <Modal.Backdrop className="backdrop-blur-[3px]">
         <Modal.Container>
           <Modal.Dialog className="flex h-[82vh] max-h-[46rem] w-[94vw] max-w-[64rem] flex-row! overflow-hidden rounded-2xl p-0!">
-            <SettingsNav current={category} search={search} />
+            <SettingsNav current={category} />
 
             <div className="relative flex min-w-0 flex-1 flex-col bg-surface">
               {/* Below md the cross shares a row with the category strip rather

@@ -20,20 +20,10 @@ export function MetadataSection() {
       <SectionHeader title={t("metadata.title")} description={t("metadata.description")} />
 
       <SettingsPanel>
-        <SwitchRow
-          name={t("metadata.badges.name")}
-          why={t("metadata.badges.why")}
-          isSelected={badges}
-          onChange={storeNotificationBadges}
-        />
+        <SwitchRow settingKey="metadata.badges" isSelected={badges} onChange={storeNotificationBadges} />
         {/* The same preference the dialog's "don't ask again" writes — the two
             surfaces read one store, so they can never disagree. */}
-        <SwitchRow
-          name={t("metadata.rematchConfirm.name")}
-          why={t("metadata.rematchConfirm.why")}
-          isSelected={rematchConfirm}
-          onChange={storeRematchConfirm}
-        />
+        <SwitchRow settingKey="metadata.rematchConfirm" isSelected={rematchConfirm} onChange={storeRematchConfirm} />
       </SettingsPanel>
     </>
   );

@@ -7,6 +7,10 @@
   "saving": "Saving…",
   "saved": "Settings saved",
   "explain": "Why this setting",
+  "search": {
+    "placeholder": "Search settings",
+    "empty": "No setting matches."
+  },
   "instant": "Instant",
   "groups": {
     "you": "You",
@@ -151,7 +155,7 @@
   "services": {
     "category": "External services",
     "title": "External services",
-    "description": "The services the app asks to identify your music: the key one of them wants, whether they all answer, and how fast it is allowed to ask.",
+    "description": "The services the app asks to identify your music: the key one of them wants, whether they all answer, and how fast it is allowed to ask. Keys are stored in the system keychain, never in a file.",
     "configured": "Configured",
     "notConfigured": "Not configured",
     "fieldLabel": "API key",

@@ -7,6 +7,10 @@
   "saving": "Enregistrement…",
   "saved": "Paramètres enregistrés",
   "explain": "Pourquoi ce réglage",
+  "search": {
+    "placeholder": "Rechercher un réglage",
+    "empty": "Aucun réglage ne correspond."
+  },
   "instant": "Instantané",
   "groups": {
     "you": "Toi",
@@ -151,7 +155,7 @@
   "services": {
     "category": "Services externes",
     "title": "Services externes",
-    "description": "Les services que l'app interroge pour identifier ta musique : la clef que l'un d'eux demande, l'état de tous, et le rythme auquel on les sollicite.",
+    "description": "Les services que l'app interroge pour identifier ta musique : la clef que l'un d'eux demande, l'état de tous, et le rythme auquel on les sollicite. Les clefs sont stockées dans le trousseau du système, jamais dans un fichier.",
     "configured": "Configurée",
     "notConfigured": "Non configurée",
     "fieldLabel": "Clef API",

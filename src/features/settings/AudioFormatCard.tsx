@@ -65,7 +65,7 @@ export function AudioFormatCard() {
   };
 
   return (
-    <SettingCard>
+    <SettingCard settingKey="files.audioFormat">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <FileAudio2 className="size-3.5 text-muted" aria-hidden />

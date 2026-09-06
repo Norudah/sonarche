@@ -26,7 +26,7 @@ export function LogFileRow() {
   };
 
   return (
-    <SettingRow name={t("advanced.logs.name")} why={t("advanced.logs.why")}>
+    <SettingRow settingKey="advanced.logs">
       <Button variant="secondary" onPress={() => void reveal()}>
         <FolderOpen className="size-4" />
         {isMacOS ? t("advanced.logs.actionMac") : t("advanced.logs.actionWindows")}
