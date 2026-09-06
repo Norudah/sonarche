@@ -4,6 +4,7 @@ import { Outlet } from "react-router";
 import { JobProgressToasts } from "@/app/layout/JobProgressToasts";
 import { RouteTransition } from "@/app/layout/RouteTransition";
 import { HomeTourHost } from "@/app/tour/HomeTourHost";
+import { SettingsHost } from "@/app/layout/SettingsHost";
 import { Sidebar } from "@/app/layout/Sidebar";
 import { Topbar } from "@/app/layout/Topbar";
 import { useScrollRestoration } from "@/app/layout/useScrollRestoration";
@@ -54,6 +55,9 @@ export function AppLayout() {
               and the toast viewport it needs is only mounted in here anyway. */}
           <UpdatePrompt />
           <HomeTourHost />
+          {/* Over the whole shell, and inside the gate: there is nothing to
+              configure while the environment is still being checked. */}
+          <SettingsHost />
           <div className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1">
               <Sidebar />

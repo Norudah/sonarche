@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { SettingsHero } from "@/features/settings/SettingsHero";
+import { SectionHeader } from "@/features/settings/SectionHeader";
 import { SwitchCard } from "@/features/settings/SwitchCard";
 import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { storeRematchConfirm, useRematchConfirm } from "@/shared/lib/rematchConfirm";
@@ -17,7 +17,7 @@ export function MetadataSection() {
 
   return (
     <>
-      <SettingsHero eyebrow={t("title")} title={t("metadata.title")} description={t("metadata.description")} />
+      <SectionHeader title={t("metadata.title")} description={t("metadata.description")} />
 
       <SwitchCard
         name={t("metadata.badges.name")}

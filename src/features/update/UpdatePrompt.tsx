@@ -2,13 +2,12 @@ import { toast } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 
-import { paths } from "@/app/routes";
 import { checkForUpdate } from "@/features/update/hooks";
 import type { Update } from "@/features/update/install";
 import { installUpdate } from "@/features/update/install";
 import { parseReleaseNotes } from "@/features/update/notes";
+import { openSettings } from "@/shared/lib/settingsDialog";
 import { TOAST_EXPLAINED, TOAST_OFFER } from "@/shared/toast/durations";
 
 /**
@@ -32,7 +31,6 @@ import { TOAST_EXPLAINED, TOAST_OFFER } from "@/shared/toast/durations";
  */
 export function UpdatePrompt() {
   const { t } = useTranslation("update");
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   // Effects run twice in StrictMode, and two identical prompts stacked on top
   // of each other is how a careful check reads as a bug.
@@ -56,12 +54,12 @@ export function UpdatePrompt() {
           // notice that outstays its welcome is the one people learn to swat.
           timeout: TOAST_OFFER,
           actionProps: hasNotes
-            ? { children: t("notes.view"), onPress: () => void navigate(paths.settingsUpdates) }
+            ? { children: t("notes.view"), onPress: () => openSettings("updates") }
             : { children: t("install"), onPress: () => void install(update, t) },
         });
       })
       .catch(() => undefined);
-  }, [t, navigate, queryClient]);
+  }, [t, queryClient]);
 
   return null;
 }

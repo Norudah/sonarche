@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { readLaunchWelcome, storeLaunchWelcome } from "@/features/settings/launchWelcome";
 import { SettingCard } from "@/features/settings/SettingCard";
-import { SettingsHero } from "@/features/settings/SettingsHero";
+import { SectionHeader } from "@/features/settings/SectionHeader";
 import { SwitchCard } from "@/features/settings/SwitchCard";
 import { ThemeTile } from "@/features/settings/ThemeTile";
 import { useTheme } from "@/features/settings/ThemeContext";
@@ -46,7 +46,7 @@ export function AppearanceSection() {
 
   return (
     <>
-      <SettingsHero eyebrow={t("title")} title={t("appearance.title")} description={t("appearance.description")} />
+      <SectionHeader title={t("appearance.title")} description={t("appearance.description")} />
 
       <SettingCard>
         <Setting name={t("appearance.theme.name")} why={t("appearance.theme.why")}>

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppearanceSection } from "@/features/settings/AppearanceSection";
+import { AppearanceSection } from "@/features/settings/sections/AppearanceSection";
 import { ThemeProvider } from "@/features/settings/ThemeContext";
 
 /** The state moved to the root provider so the OS subscription outlives this

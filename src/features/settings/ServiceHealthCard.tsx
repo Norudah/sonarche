@@ -21,17 +21,17 @@ function ServiceRow({ name, status }: { name: string; status: ServiceStatus | un
 
   return (
     <div className="flex items-center justify-between gap-3 py-2 text-sm">
-      <span className="font-medium">{t(`apiKeys.services.${name}`)}</span>
+      <span className="font-medium">{t(`services.names.${name}`)}</span>
       {status ? (
         <span className="flex items-center gap-2 text-muted">
           <span className={`size-1.5 shrink-0 rounded-full ${DOT[status.state]}`} />
-          {t(`apiKeys.serviceState.${status.state}`)}
+          {t(`services.state.${status.state}`)}
           {status.state !== "up" && status.detail && (
             <span className="text-[0.75rem] text-muted/70">({status.detail})</span>
           )}
         </span>
       ) : (
-        <span className="text-[0.8125rem] text-muted/70">{t("apiKeys.serviceState.unknown")}</span>
+        <span className="text-[0.8125rem] text-muted/70">{t("services.state.unknown")}</span>
       )}
     </div>
   );
@@ -60,8 +60,8 @@ export function ServiceHealthCard() {
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h3 className="font-medium">{t("apiKeys.health.name")}</h3>
-            <p className="max-w-prose text-sm text-muted">{t("apiKeys.health.why")}</p>
+            <h3 className="font-medium">{t("services.health.name")}</h3>
+            <p className="max-w-prose text-sm text-muted">{t("services.health.why")}</p>
           </div>
           <Button
             variant="secondary"
@@ -70,7 +70,7 @@ export function ServiceHealthCard() {
             isDisabled={check.isPending}
           >
             {check.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            {check.isPending ? t("apiKeys.health.checking") : t("apiKeys.health.action")}
+            {check.isPending ? t("services.health.checking") : t("services.health.action")}
           </Button>
         </div>
 
@@ -80,7 +80,7 @@ export function ServiceHealthCard() {
           ))}
         </div>
 
-        {check.isError && <p className="text-sm text-danger">{t("apiKeys.health.failed")}</p>}
+        {check.isError && <p className="text-sm text-danger">{t("services.health.failed")}</p>}
       </div>
     </SettingCard>
   );

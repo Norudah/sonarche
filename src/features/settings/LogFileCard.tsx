@@ -20,7 +20,7 @@ export function LogFileCard() {
     try {
       await revealLogFile();
     } catch (error) {
-      toast.danger(t("library.logs.failed"), { description: String(error) });
+      toast.danger(t("advanced.logs.failed"), { description: String(error) });
     }
   };
 
@@ -28,11 +28,11 @@ export function LogFileCard() {
     <SettingCard>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h3 className="font-medium">{t("library.logs.name")}</h3>
-          <p className="max-w-prose text-sm text-muted">{t("library.logs.why")}</p>
+          <h3 className="font-medium">{t("advanced.logs.name")}</h3>
+          <p className="max-w-prose text-sm text-muted">{t("advanced.logs.why")}</p>
         </div>
         <Button variant="secondary" className="h-10 self-start rounded-xl" onPress={reveal}>
-          {isMacOS ? t("library.logs.actionMac") : t("library.logs.actionWindows")}
+          {isMacOS ? t("advanced.logs.actionMac") : t("advanced.logs.actionWindows")}
         </Button>
       </div>
     </SettingCard>

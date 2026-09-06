@@ -58,10 +58,10 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
   const { t, i18n } = useTranslation("settings");
   const stops = stopsFor(def.max);
   const [index, setIndex] = useState(() => nearestStopIndex(stops, seconds));
-  const base = `rateLimits.delays.${def.key}`;
+  const base = def.labelBase;
 
   const value = stops[index];
-  const instantLabel = t("rateLimits.instant");
+  const instantLabel = t("instant");
   const locale = i18n.resolvedLanguage ?? "fr";
   const isPolite = value >= def.politeThreshold;
 
@@ -105,7 +105,7 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning/8 p-3 text-[0.8125rem] leading-relaxed text-foreground">
           <TriangleAlert className="mt-px size-4 shrink-0 text-warning" />
           <p>
-            <span className="font-medium">{t("rateLimits.impoliteTitle")}</span> {t(`${base}.warning`)}
+            <span className="font-medium">{t("adding.impoliteTitle")}</span> {t(`${base}.warning`)}
           </p>
         </div>
       )}

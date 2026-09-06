@@ -2,7 +2,7 @@ import { Button, Spinner } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import { SettingCard } from "@/features/settings/SettingCard";
-import { SettingsHero } from "@/features/settings/SettingsHero";
+import { SectionHeader } from "@/features/settings/SectionHeader";
 import { useAppVersion, useInstallUpdate, useUpdateCheck } from "@/features/update/hooks";
 import { parseReleaseNotes } from "@/features/update/notes";
 import { updateStatus, type Tone } from "@/features/update/status";
@@ -25,7 +25,7 @@ const TONES: Record<Tone, string> = {
  * imported by the settings feature — the two share a pane, not a dependency.
  */
 export function UpdateSection() {
-  const { t } = useTranslation(["update", "settings"]);
+  const { t } = useTranslation("update");
   const version = useAppVersion();
   const check = useUpdateCheck();
   const install = useInstallUpdate();
@@ -47,7 +47,7 @@ export function UpdateSection() {
 
   return (
     <>
-      <SettingsHero eyebrow={t("settings:title")} title={t("category")} description={t("description")} />
+      <SectionHeader title={t("category")} description={t("description")} />
 
       <SettingCard>
         <div className="flex flex-col gap-4">

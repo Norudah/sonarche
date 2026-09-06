@@ -31,7 +31,7 @@ export function LibraryLocationCard() {
     try {
       setPending({ parent: chosen, check: await preflight.mutateAsync(chosen) });
     } catch (error) {
-      toast.danger(t("library.move.failedTitle"), { description: String(error) });
+      toast.danger(t("files.move.failedTitle"), { description: String(error) });
     }
   };
 
@@ -46,7 +46,7 @@ export function LibraryLocationCard() {
       await relaunch();
     } catch (error) {
       setPending(null);
-      toast.danger(t("library.move.failedTitle"), { description: String(error) });
+      toast.danger(t("files.move.failedTitle"), { description: String(error) });
     }
   };
 
@@ -54,8 +54,8 @@ export function LibraryLocationCard() {
     <SettingCard>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h3 className="font-medium">{t("library.location.name")}</h3>
-          <p className="max-w-prose text-sm text-muted">{t("library.location.why")}</p>
+          <h3 className="font-medium">{t("files.location.name")}</h3>
+          <p className="max-w-prose text-sm text-muted">{t("files.location.why")}</p>
         </div>
 
         {location.isPending ? (
@@ -67,7 +67,7 @@ export function LibraryLocationCard() {
               {location.data?.path}
             </p>
             {location.data?.isDefault && (
-              <span className="shrink-0 text-[0.75rem] text-muted">{t("library.location.isDefault")}</span>
+              <span className="shrink-0 text-[0.75rem] text-muted">{t("files.location.isDefault")}</span>
             )}
           </div>
         )}
@@ -78,7 +78,7 @@ export function LibraryLocationCard() {
           onPress={pick}
           isDisabled={preflight.isPending || move.isPending}
         >
-          {t("library.location.action")}
+          {t("files.location.action")}
         </Button>
       </div>
 

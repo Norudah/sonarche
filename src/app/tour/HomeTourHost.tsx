@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
 
-import { paths } from "@/app/routes";
 import { runHomeTour } from "@/app/tour/homeTourDriver";
 import { homeTourSeen, markHomeTourSeen, onHomeTourRequest } from "@/shared/lib/homeTour";
+import { closeSettings } from "@/shared/lib/settingsDialog";
 
 /** How long after the shell appears the first-run tour waits: past the longest
  * splash beat (`aboard`, 2400 ms) and its cross-fade, so the spotlight lands on
@@ -20,8 +19,6 @@ const FIRST_RUN_DELAY_MS = 3200;
 export function HomeTourHost() {
   const { t, i18n } = useTranslation("common");
   const [isOpen, setIsOpen] = useState(false);
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -39,12 +36,12 @@ export function HomeTourHost() {
   useEffect(
     () =>
       onHomeTourRequest(() => {
-        // The tour points at the main nav, which settings mode swaps out —
-        // step out of settings before the first spotlight looks for it.
-        if (pathname.startsWith(paths.settings)) navigate(paths.download);
+        // The request comes from the settings dialog, which is sitting over
+        // the very chrome the first spotlight is about to point at.
+        closeSettings();
         setIsOpen(true);
       }),
-    [pathname, navigate],
+    [],
   );
 
   // Read through refs so the driver is not torn down and relaunched because a

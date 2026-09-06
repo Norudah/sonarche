@@ -35,9 +35,9 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
     try {
       await setKey.mutateAsync({ name: status.name, value: typed });
       setDraft("");
-      toast.success(t("apiKeys.savedTitle"), { description: t(`apiKeys.${status.name}.savedDetail`) });
+      toast.success(t("services.savedTitle"), { description: t(`services.${status.name}.savedDetail`) });
     } catch (error) {
-      toast.danger(t("apiKeys.saveFailedTitle"), { description: String(error) });
+      toast.danger(t("services.saveFailedTitle"), { description: String(error) });
     }
   };
 
@@ -47,14 +47,14 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
       // is on screen matters more than testing what is filed.
       const verdict = await check.mutateAsync({ name: status.name, key: typed || undefined });
       if (verdict.valid) {
-        toast.success(t("apiKeys.testOkTitle"), { description: t("apiKeys.testOkDetail") });
+        toast.success(t("services.testOkTitle"), { description: t("services.testOkDetail") });
       } else {
-        toast.danger(t("apiKeys.testFailedTitle"), {
-          description: t(`apiKeys.testReason.${verdict.reason ?? "unknown"}`),
+        toast.danger(t("services.testFailedTitle"), {
+          description: t(`services.testReason.${verdict.reason ?? "unknown"}`),
         });
       }
     } catch (error) {
-      toast.danger(t("apiKeys.testUnreachableTitle"), { description: String(error) });
+      toast.danger(t("services.testUnreachableTitle"), { description: String(error) });
     }
   };
 
@@ -64,15 +64,15 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
     <SettingCard>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <h3 className="font-medium">{t(`apiKeys.${status.name}.name`)}</h3>
+          <h3 className="font-medium">{t(`services.${status.name}.name`)}</h3>
           <Chip variant="soft" size="sm" color={status.configured ? "success" : "default"}>
-            {status.configured ? t("apiKeys.configured") : t("apiKeys.notConfigured")}
+            {status.configured ? t("services.configured") : t("services.notConfigured")}
           </Chip>
         </div>
-        <p className="max-w-prose text-sm text-muted">{t(`apiKeys.${status.name}.why`)}</p>
+        <p className="max-w-prose text-sm text-muted">{t(`services.${status.name}.why`)}</p>
 
         <TextField value={draft} onChange={setDraft} className="flex flex-col">
-          <Label className="text-sm font-medium text-muted">{t("apiKeys.fieldLabel")}</Label>
+          <Label className="text-sm font-medium text-muted">{t("services.fieldLabel")}</Label>
           {/* The field and its two actions on one line: the buttons act on
               what is in the box, and a row is the only layout that says so. */}
           <div className="mt-1.5 flex items-center gap-2">
@@ -82,7 +82,7 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
             <Input
               type="password"
               autoComplete="off"
-              placeholder={status.configured ? "••••••••••••" : t("apiKeys.placeholder")}
+              placeholder={status.configured ? "••••••••••••" : t("services.placeholder")}
               className="h-10 w-full rounded-xl"
             />
             <Button
@@ -92,7 +92,7 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
               isDisabled={!canTest || busy}
             >
               {check.isPending && <Loader2 className="size-4 animate-spin" />}
-              {t("apiKeys.test")}
+              {t("services.test")}
             </Button>
             <PrimaryButton onPress={save} isPending={setKey.isPending} isDisabled={!canSave || busy}>
               {t("save")}

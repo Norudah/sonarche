@@ -25,9 +25,9 @@ function FormatOption({ format }: { format: AudioFormat }) {
           <Radio.Indicator />
         </Radio.Control>
         <span className="min-w-0">
-          <span className="block text-[0.8125rem] font-semibold">{t(`adding.audioFormat.formats.${format}.name`)}</span>
+          <span className="block text-[0.8125rem] font-semibold">{t(`files.audioFormat.formats.${format}.name`)}</span>
           <span className="mt-0.5 block text-[0.8125rem] leading-relaxed text-muted">
-            {t(`adding.audioFormat.formats.${format}.why`)}
+            {t(`files.audioFormat.formats.${format}.why`)}
           </span>
         </span>
       </Radio.Content>
@@ -69,15 +69,15 @@ export function AudioFormatCard() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <FileAudio2 className="size-3.5 text-muted" aria-hidden />
-          <h3 className="text-[0.8125rem] font-semibold">{t("adding.audioFormat.name")}</h3>
+          <h3 className="text-[0.8125rem] font-semibold">{t("files.audioFormat.name")}</h3>
         </div>
-        <p className="text-[0.8125rem] leading-relaxed text-muted">{t("adding.audioFormat.why")}</p>
+        <p className="text-[0.8125rem] leading-relaxed text-muted">{t("files.audioFormat.why")}</p>
 
         <RadioGroup
           value={format}
           onChange={(next) => setFormat.mutate(parseAudioFormat(next))}
           isDisabled={preferences.isPending || setFormat.isPending}
-          aria-label={t("adding.audioFormat.name")}
+          aria-label={t("files.audioFormat.name")}
           className="flex flex-col gap-2"
         >
           {AUDIO_FORMATS.map((option) => (
@@ -93,9 +93,9 @@ export function AudioFormatCard() {
                 said here rather than left for someone to discover by finding
                 their old files untouched. */}
             {isNativeFormat(format)
-              ? t("adding.audioFormat.convert.pitchNative")
-              : t("adding.audioFormat.convert.pitch", {
-                  format: t(`adding.audioFormat.formats.${format}.name`),
+              ? t("files.audioFormat.convert.pitchNative")
+              : t("files.audioFormat.convert.pitch", {
+                  format: t(`files.audioFormat.formats.${format}.name`),
                 })}
           </p>
           <Button
@@ -104,7 +104,7 @@ export function AudioFormatCard() {
             onPress={() => setDialogOpen(true)}
             isDisabled={preferences.isPending || convert.isPending}
           >
-            {t("adding.audioFormat.convert.action")}
+            {t("files.audioFormat.convert.action")}
           </Button>
         </div>
       </div>
