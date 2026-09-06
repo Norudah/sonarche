@@ -129,3 +129,17 @@ export function gateState(input: {
   if (!canFinishSetup(input.steps)) return "onboarding";
   return input.onboardingCompleted ? "ready" : "onboarding";
 }
+
+/**
+ * Why the walkthrough is on screen.
+ *
+ * The steps are the same either way — an engine is an engine — but the words
+ * around them cannot be: someone whose venv was wiped by an update is not
+ * "before their first play", and greeting them as a newcomer every time their
+ * dependencies move is the app forgetting them.
+ */
+export type SetupMode =
+  /** Never been through it: the flag has never been set. */
+  | "firstRun"
+  /** Been here before; the environment is what came undone. */
+  | "repair";

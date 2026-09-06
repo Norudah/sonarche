@@ -28,14 +28,12 @@ export function SetupGate({ children, welcome }: { children: ReactNode; welcome:
     acoustidConfigured: onboarding.data?.acoustidConfigured ?? false,
   });
 
-  const gate = gateState({
-    steps,
-    envKnown: status.isSuccess && !onboarding.isPending,
-    // Fail open: a walkthrough flag we cannot read must not lock anyone out of
-    // their own library. A genuinely broken environment still holds the window,
-    // because that verdict comes from the steps, not from this flag.
-    onboardingCompleted: onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true),
-  });
+  // Fail open: a walkthrough flag we cannot read must not lock anyone out of
+  // their own library. A genuinely broken environment still holds the window,
+  // because that verdict comes from the steps, not from this flag.
+  const onboardingCompleted = onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true);
+
+  const gate = gateState({ steps, envKnown: status.isSuccess && !onboarding.isPending, onboardingCompleted });
 
   const { phase, revealed } = useSplashPhase(gate, welcome);
 
@@ -63,6 +61,10 @@ export function SetupGate({ children, welcome }: { children: ReactNode; welcome:
     <SplashHandover phase={phase} revealed={revealed}>
       {walkthroughHoldsTheGround ? (
         <SetupWalkthrough
+          // Past this point the gate has already ruled the environment
+          // unusable, so a completed flag can only mean it came undone after a
+          // setup that once worked.
+          mode={onboardingCompleted ? "repair" : "firstRun"}
           env={status.data ?? null}
           acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
           onRecheckPython={() => status.refetch()}

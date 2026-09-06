@@ -568,7 +568,15 @@ const env = {
   libraryDir: "/Users/dev/Music/Sonarche",
 };
 
-const onboarding = { completed: requestedSetup == null, acoustidConfigured: false };
+/**
+ * `?returning` is the other half of `?setup=`: the same broken environment, but
+ * on an install that has been through the walkthrough before — what Settings ›
+ * Avancé › "Réinstaller l'environnement" and a dependency bump both leave
+ * behind. The gate reopens either way; only the words change.
+ */
+const isReturning = new URLSearchParams(window.location.search).has("returning");
+
+const onboarding = { completed: requestedSetup == null || isReturning, acoustidConfigured: isReturning };
 
 /** The lines `python_env.rs` emits, plus pip's, at a watchable pace. */
 const SETUP_SCRIPT = [

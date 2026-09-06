@@ -12,12 +12,21 @@
     }
   },
   "walkthrough": {
-    "eyebrow": "Welcome",
-    "title": "Before the first play",
-    "lead": "Long enough to put the engine in place, and to give you real tags instead of guessed ones.",
     "language": "Language",
-    "enter": "Enter {{app}}",
-    "libraryHint": "Your music will be filed in {{path}}"
+    "firstRun": {
+      "eyebrow": "Welcome",
+      "title": "Before the first play",
+      "lead": "Long enough to put the engine in place, and to give you real tags instead of guessed ones.",
+      "enter": "Enter {{app}}",
+      "libraryHint": "Your music will be filed in {{path}}"
+    },
+    "repair": {
+      "eyebrow": "Maintenance",
+      "title": "The engine needs reinstalling",
+      "lead": "The tools that fetch and file your music have to be put back in place — after an update, or because the environment was reset. Your library itself stays where it is.",
+      "enter": "Back to the music",
+      "libraryHint": "Your music is filed in {{path}}"
+    }
   },
   "steps": {
     "python": {
@@ -35,6 +44,7 @@
       "done": "Installed",
       "body": "yt-dlp to fetch the audio, beets to file and tag it. Both are installed into an environment that belongs to Sonarche alone — your system Python is left untouched.",
       "action": "Install the engine",
+      "reinstall": "Reinstall the engine",
       "retry": "Try again",
       "duration": "A few minutes, depending on your connection.",
       "detail": "Show the detail",
