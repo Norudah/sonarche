@@ -73,9 +73,9 @@
     },
     "checks": {
       "name": "Active checks",
-      "why": "The eight checks the app knows how to raise: missing year, no artwork, off-tree genre, duplicate… Each switches off on its own, and a check that is off leaves the queue and the badge without losing its count. They live on the Metadata page, next to what there is to fix.",
+      "why": "The eight checks the app knows how to raise: missing year, no artwork, off-tree genre, duplicate… Each switches off on its own, and a check that is off leaves the queue and the badge without losing its count. The Metadata page carries the same switches, next to how many tracks each one is about.",
       "count": "{{enabled}} of {{total}}",
-      "action": "Open the page"
+      "action": "See the counts on the page"
     }
   },
   "files": {
