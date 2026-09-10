@@ -546,6 +546,14 @@
    Imported after @heroui/styles, so this wins at equal specificity. */
 .toast-region-lifted {
   bottom: calc(var(--spacing-player) + 1rem);
+
+  /* Above a modal, not beside it. Region and backdrop are both `z-50` siblings
+     of <body>, so which one won came down to which react-aria portal had been
+     appended last — and the loser was usually the toast. Every dialog in the
+     app raises them: saving an API key answers inside settings, an erase
+     answers from a dialog that is still up. A message about what just happened
+     cannot be hidden by the thing that made it happen. */
+  z-index: 60;
 }
 
 /* A toast is the quietest thing the app says: it reports something that already
