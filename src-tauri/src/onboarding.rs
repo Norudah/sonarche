@@ -22,13 +22,17 @@ pub struct OnboardingState {
 
 pub async fn state(app: &AppHandle) -> AppResult<OnboardingState> {
     let prefs = preferences::load(app).await?;
-    // A keychain read that fails (locked keychain, denied prompt) must not take
-    // the whole walkthrough down: an unreadable key is, for this screen, the
-    // same as a missing one — the step stays open and the user can re-enter it.
-    let acoustid_configured = settings::read("acoustid")
+    // The mirror, not the keychain. This runs on every launch, and asking the
+    // keychain whether an entry exists means asking macOS for the secret, which
+    // means a password dialog over the splash screen of an app the user only
+    // wanted to open. See `settings::configured_names`. A probe that fails
+    // still answers "not configured" here: the step stays open, which is the
+    // recoverable side of the mistake.
+    let acoustid_configured = settings::configured_names(app)
         .await
-        .unwrap_or(None)
-        .is_some_and(|key| !key.trim().is_empty());
+        .unwrap_or_default()
+        .iter()
+        .any(|name| name == "acoustid");
     Ok(OnboardingState {
         completed: prefs.onboarding_completed,
         acoustid_configured,

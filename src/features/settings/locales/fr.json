@@ -209,7 +209,10 @@
         "name": "Last.fm",
         "role": "récupération des genres manquants"
       }
-    }
+    },
+    "reveal": "Afficher la clef",
+    "hide": "Masquer la clef",
+    "revealFailedTitle": "Impossible d'afficher la clef"
   },
   "updates": {
     "category": "Mises à jour"

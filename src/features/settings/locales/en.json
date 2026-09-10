@@ -209,7 +209,10 @@
         "name": "Last.fm",
         "role": "fetching missing genres"
       }
-    }
+    },
+    "reveal": "Show the key",
+    "hide": "Hide the key",
+    "revealFailedTitle": "Could not show the key"
   },
   "updates": {
     "category": "Updates"

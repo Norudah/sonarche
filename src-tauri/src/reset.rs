@@ -119,7 +119,7 @@ pub async fn reset_setup(
         }
     }
     if targets.api_keys {
-        settings::set("acoustid".into(), String::new()).await?;
+        settings::set(app, "acoustid".into(), String::new()).await?;
         eprintln!("[dev] setup reset: cleared the AcoustID key");
     }
     if targets.history {

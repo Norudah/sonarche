@@ -19,6 +19,7 @@ import {
   listApiKeys,
   moveLibrary,
   reinstallEnvironment,
+  revealApiKey,
   type ServiceName,
   type RateLimitKey,
   resetLibraryDev,
@@ -43,6 +44,17 @@ export function useSetApiKey() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: apiKeysKey });
     },
+  });
+}
+
+/** A mutation and not a query, for the same reason as the check below: reading
+ * the secret is a gesture, and a query would run it on mount — which on macOS
+ * means a keychain password box every time the pane is opened. Nothing caches
+ * the result either; the key lives in component state until the field is
+ * hidden again. */
+export function useRevealApiKey() {
+  return useMutation({
+    mutationFn: (name: ApiKeyName) => revealApiKey(name),
   });
 }
 

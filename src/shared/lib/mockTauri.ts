@@ -277,6 +277,11 @@ const jobs = [
 ];
 
 const apiKeys = [{ name: "acoustid", configured: false }];
+
+/** What `set_api_key` was handed this session, so `reveal_api_key` has
+ * something truthful to give back. Never persisted — the real one is in the
+ * OS keychain, which a browser preview has no business touching. */
+const storedKeys = new Map<string, string>();
 // The API delays mirror the backend's fixed defaults — `preferences.rs` stamps
 // them on every load, so the mock must never show a value the app can't hold.
 const preferences = {
@@ -782,9 +787,20 @@ export function installMockTauri() {
       if (cmd.startsWith("plugin:opener|")) return null;
       if (cmd === "set_api_key") {
         const key = apiKeys.find((k) => k.name === payload?.name);
-        if (key) key.configured = String(payload?.value ?? "").trim() !== "";
+        const value = String(payload?.value ?? "").trim();
+        if (key) key.configured = value !== "";
         if (key?.name === "acoustid") onboarding.acoustidConfigured = key.configured;
+        storedKeys.set(String(payload?.name), value);
         return key;
+      }
+      // The real one reads the OS keychain and can raise a password prompt;
+      // here it just hands back whatever this session saved, or a shape that
+      // looks like a real AcoustID key so the reveal field can be looked at.
+      if (cmd === "reveal_api_key") {
+        const name = String(payload?.name);
+        const key = apiKeys.find((k) => k.name === name);
+        if (!key?.configured) return null;
+        return storedKeys.get(name) ?? "mock8AcoUsTid";
       }
       // The OS picker, standing in for a choice that cannot be made in a
       // browser. A folder request gets the import folder; a file request is the

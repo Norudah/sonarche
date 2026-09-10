@@ -339,13 +339,25 @@ pub async fn change_job_destination(
 }
 
 #[tauri::command]
-pub async fn list_api_keys() -> AppResult<Vec<ApiKeyStatus>> {
-    settings::list().await
+pub async fn list_api_keys(app: AppHandle) -> AppResult<Vec<ApiKeyStatus>> {
+    settings::list(&app).await
 }
 
 #[tauri::command]
-pub async fn set_api_key(name: String, value: String) -> AppResult<ApiKeyStatus> {
-    settings::set(name, value).await
+pub async fn set_api_key(app: AppHandle, name: String, value: String) -> AppResult<ApiKeyStatus> {
+    settings::set(&app, name, value).await
+}
+
+/// Hand the stored key back so it can be read on screen.
+///
+/// The one command in the app that returns a secret, and it exists because the
+/// alternative was worse: a field showing eight bullets and no way to check
+/// what is behind them means the only way to verify a key is to paste a new one
+/// over it. The gesture is explicit, it is the owner asking for their own key,
+/// and the keychain gets to ask them about it in its own dialog.
+#[tauri::command]
+pub async fn reveal_api_key(name: String) -> AppResult<Option<String>> {
+    settings::read(&name).await
 }
 
 /// Extensions the engine can decode, so the library can mark what it cannot.

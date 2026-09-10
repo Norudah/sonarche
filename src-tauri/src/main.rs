@@ -163,6 +163,7 @@ fn main() {
             commands::preview_import_undo,
             commands::undo_import,
             commands::list_api_keys,
+            commands::reveal_api_key,
             commands::set_api_key,
             commands::erase_all_data,
             commands::erase_library,

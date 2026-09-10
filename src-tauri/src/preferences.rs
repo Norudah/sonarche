@@ -113,6 +113,21 @@ pub struct Preferences {
     /// than a path frozen at first launch.
     #[serde(default)]
     pub library_dir: Option<String>,
+    /// Which API keys are on file — the *names*, never the secrets.
+    ///
+    /// A mirror of the keychain, kept because asking the keychain itself costs
+    /// a password prompt. macOS answers "does this entry exist" only by handing
+    /// over the secret, and it guards that with the same dialog whether the
+    /// caller wants the value or not — so a launch that merely wanted to know
+    /// whether the optional AcoustID step is done was putting up a password
+    /// box before the window had even painted (see `onboarding::state`).
+    ///
+    /// `None` means "never mirrored": an install that predates this field, or a
+    /// fresh one. That is the single case that still probes the keychain, once,
+    /// and writes the answer here. The keychain stays the only place a secret
+    /// lives; this is a yes/no about it, and a yes/no is not worth a prompt.
+    #[serde(default)]
+    pub api_keys_configured: Option<Vec<String>>,
 }
 
 fn default_lastfm() -> f64 {
@@ -138,6 +153,7 @@ impl Default for Preferences {
             onboarding_completed: false,
             home_tour_seen: false,
             library_dir: None,
+            api_keys_configured: None,
         }
     }
 }
@@ -212,6 +228,18 @@ pub async fn set_audio_format(app: &AppHandle, format: &str) -> AppResult<Prefer
     }
     let mut prefs = load(app).await?;
     prefs.audio_format = format.to_string();
+    save(app, &prefs).await?;
+    Ok(prefs)
+}
+
+/// Records which API keys are on file. Called by `settings` after every write
+/// to the keychain, and once by the migration that fills the mirror in.
+pub async fn set_api_keys_configured(
+    app: &AppHandle,
+    names: Vec<String>,
+) -> AppResult<Preferences> {
+    let mut prefs = load(app).await?;
+    prefs.api_keys_configured = Some(names);
     save(app, &prefs).await?;
     Ok(prefs)
 }
