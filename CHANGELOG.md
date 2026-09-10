@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.5.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.4.0...sonarche-v2.5.0) (2026-09-10)
+
+
+### Features
+
+* **onboarding:** tell a returning user the engine is being reinstalled ([946b553](https://github.com/Norudah/sonarche/commit/946b553eda4722ba3c2de969b6dee6c632ee719e))
+* **settings:** bench the toasts, and draw the setup checklist's boxes ([1ccc24e](https://github.com/Norudah/sonarche/commit/1ccc24eb7a5a3221eaeb71d18c87fa072b148fad))
+* **settings:** choose the audio format on a segmented control, without flac ([d96e1b8](https://github.com/Norudah/sonarche/commit/d96e1b8cd082867c69935353440376b8df95ab92))
+* **settings:** name the groups plainly, and open the reasons on hover ([54437d2](https://github.com/Norudah/sonarche/commit/54437d28ca0d77106be7ed96df090026f7a7e062))
+* **settings:** open settings in a dialog with a grouped menu ([3e4843b](https://github.com/Norudah/sonarche/commit/3e4843bd41bdcb1b4e121ab47f93d6669a96e1f9))
+* **settings:** search settings by name and by reason ([c91052c](https://github.com/Norudah/sonarche/commit/c91052cec62ec17390b426ab7476f1297561624c))
+* **settings:** switch the metadata checks from the pane itself ([d9dfc82](https://github.com/Norudah/sonarche/commit/d9dfc82f00ccbec182092afe257caada72cb02e3))
+
+
+### Bug Fixes
+
+* **settings:** run long operations outside the settings dialog ([b5a5216](https://github.com/Norudah/sonarche/commit/b5a5216a5b73d11a9c54065a823245f100a6fdd2))
+* **shell:** keep the walkthrough flag on an environment reinstall ([961b796](https://github.com/Norudah/sonarche/commit/961b796718335d59027b3c684f6913f764173427))
+* **shell:** skip the update check in dev builds ([ec78a78](https://github.com/Norudah/sonarche/commit/ec78a784f15ea6837b6e4c57bf405913b7298653))
+* **shell:** stop asking for the keychain password on every launch ([2247963](https://github.com/Norudah/sonarche/commit/224796373e1aa01a82c1548c1b72e749de5a0a52))
+* **ui:** keep a toast above the dialog that raised it ([391c8e4](https://github.com/Norudah/sonarche/commit/391c8e4df67389f984a89e240a86cded35a179f1))
+
 ## [2.4.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.3.0...sonarche-v2.4.0) (2026-09-05)
 
 
