@@ -15,6 +15,8 @@ describe("parseAudioFormat", () => {
     expect(parseAudioFormat(null)).toBe("m4a");
     expect(parseAudioFormat("")).toBe("m4a");
     expect(parseAudioFormat("wav")).toBe("m4a");
+    // flac was offered up to 2.4 and is no longer a target the app encodes to.
+    expect(parseAudioFormat("flac")).toBe("m4a");
   });
 });
 
@@ -22,6 +24,5 @@ describe("isNativeFormat", () => {
   it("is true only for the stream the download already receives", () => {
     expect(isNativeFormat("m4a")).toBe(true);
     expect(isNativeFormat("mp3")).toBe(false);
-    expect(isNativeFormat("flac")).toBe(false);
   });
 });

@@ -109,6 +109,10 @@ export const layoutIds = {
   /** The auto/existing/new pill in the composer's destination control. Its own
    * id: it lives one line under the kind pill, which must not tween into it. */
   destinationChoice: "sonarche-destination-choice",
+  /** The m4a/mp3 pill in the audio-format card. Its own id: it is the only
+   * segmented control on that pane, but the pane it shares a dialog with has
+   * the language one, and a shared id would fly a pill between two panes. */
+  audioFormat: "sonarche-audio-format",
   /** The Écoute/Inspection pill in the topbar. Its own id: a library page can
    * show the view-mode switch below this one, and the two must not tween. */
   inspectLens: "sonarche-inspect-lens",

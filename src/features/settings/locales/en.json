@@ -117,7 +117,7 @@
     },
     "audioFormat": {
       "name": "Audio file format",
-      "why": "What your tracks are actually made of. By default Sonarche stores the audio exactly as it arrives: nothing is decoded or recompressed. Pick something else if your gear needs it — that costs a real re-encode, and quality nothing brings back.",
+      "why": "What your tracks are actually made of — the one setting in the app that rewrites the files themselves.",
       "formats": {
         "m4a": {
           "name": "Original (AAC · m4a)",
@@ -126,10 +126,6 @@
         "mp3": {
           "name": "MP3",
           "why": "The format everything reads: car stereo, old player, a USB stick plugged into a hi-fi. Worse than AAC byte for byte, but “worse” is not the question when the alternative is silence."
-        },
-        "flac": {
-          "name": "FLAC",
-          "why": "Lossless — but lossless of an original that already lost something. Files 4 to 6 times bigger, for exactly the same sound. Only worth it if a device insists on FLAC."
         }
       },
       "convert": {

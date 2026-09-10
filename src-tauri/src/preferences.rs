@@ -44,10 +44,16 @@ pub const ACOUSTID_DELAY: RateLimit = RateLimit {
 /// is validated rather than trusted.
 ///
 /// `m4a` first and by default because it is the one that costs nothing: it is
-/// the stream the download already received, stored as-is. The other two are a
-/// real re-encode the user asked for — mp3 for a device that reads nothing else,
-/// flac for one that wants lossless input.
-pub const AUDIO_FORMATS: &[&str] = &["m4a", "mp3", "flac"];
+/// the stream the download already received, stored as-is. `mp3` is the one
+/// real re-encode the app offers, for a device that reads nothing else.
+///
+/// flac used to be a third entry and was removed: everything this app writes
+/// comes from a lossy stream, so a flac target produces a file that is
+/// lossless *of something that already lost* — bigger, never better, and the
+/// only honest label for it is a paragraph of caveats. A setting that has to
+/// be argued out of is not a setting. A flac file already on disk is still
+/// read, played and imported; it just is not something Sonarche will make.
+pub const AUDIO_FORMATS: &[&str] = &["m4a", "mp3"];
 
 pub const DEFAULT_AUDIO_FORMAT: &str = "m4a";
 

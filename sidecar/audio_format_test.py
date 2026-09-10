@@ -10,7 +10,7 @@ class NormalizeTest(unittest.TestCase):
 
     def test_tolerates_the_shapes_a_setting_arrives_in(self):
         self.assertEqual(audio_format.normalize("MP3"), "mp3")
-        self.assertEqual(audio_format.normalize(" .flac "), "flac")
+        self.assertEqual(audio_format.normalize(" .m4a "), "m4a")
 
     def test_anything_unreadable_is_the_default(self):
         # A preference file from another build, a hand-edit, a null. None of
@@ -19,13 +19,17 @@ class NormalizeTest(unittest.TestCase):
         self.assertEqual(audio_format.normalize(""), "m4a")
         self.assertEqual(audio_format.normalize("wav"), "m4a")
 
+    def test_a_format_the_app_no_longer_offers_falls_back(self):
+        # flac was offered up to 2.4: a library still carrying it as its stored
+        # preference must download m4a, not fail on every track.
+        self.assertEqual(audio_format.normalize("flac"), "m4a")
+
 
 class NativeTest(unittest.TestCase):
     def test_only_the_downloaded_stream_counts_as_native(self):
         self.assertTrue(audio_format.is_native("m4a"))
         self.assertTrue(audio_format.is_native(None))
         self.assertFalse(audio_format.is_native("mp3"))
-        self.assertFalse(audio_format.is_native("flac"))
 
 
 class EncoderTest(unittest.TestCase):
@@ -33,10 +37,6 @@ class EncoderTest(unittest.TestCase):
         self.assertEqual(
             audio_format.encoder_args("mp3"), ["-vn", "-c:a", "libmp3lame", "-q:a", "0"]
         )
-
-    def test_flac_is_the_lossless_encoder_not_a_copy(self):
-        self.assertIn("-c:a", audio_format.encoder_args("flac"))
-        self.assertIn("flac", audio_format.encoder_args("flac"))
 
     def test_every_format_drops_the_attached_picture(self):
         # Each container spells cover art differently; one writer re-embeds it
@@ -84,7 +84,7 @@ class DownloadOptionsTest(unittest.TestCase):
     def test_a_transcode_asks_for_the_best_source_of_any_kind(self):
         # The encoder decodes it either way; the widest source is the one that
         # survives the re-encode best.
-        self.assertEqual(audio_format.source_selector("flac"), "bestaudio/best")
+        self.assertEqual(audio_format.source_selector("mp3"), "bestaudio/best")
 
 
 if __name__ == "__main__":
