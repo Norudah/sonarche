@@ -83,8 +83,11 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
                 {/* A bounded reading column, not the full pane width: a settings
                     control has a natural size, so a card stretched edge to edge
                     would just be half-empty. The space to its right is
-                    deliberate, the way system-settings panes leave it. */}
-                <div className="flex w-full max-w-2xl flex-col gap-5 px-8 py-7">{children}</div>
+                    deliberate, the way system-settings panes leave it.
+                    `settings-pane` is what gives every button in here one
+                    height, one type size and one minimum width — see
+                    theme.css. It is a scope, not a look. */}
+                <div className="settings-pane flex w-full max-w-2xl flex-col gap-5 px-8 py-7">{children}</div>
               </div>
             </div>
           </Modal.Dialog>

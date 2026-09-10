@@ -3,6 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SettingCardHeader } from "@/features/settings/SettingCard";
 import {
   formatDelay,
   formatDuration,
@@ -67,13 +68,15 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-medium">{t(`${base}.name`)}</h3>
-        <span className={`text-sm font-medium tabular-nums ${isPolite ? "text-accent" : "text-warning"}`}>
-          {formatDelay(value, locale, instantLabel)}
-        </span>
-      </div>
-      <p className="text-sm text-muted">{t(`${base}.why`)}</p>
+      <SettingCardHeader
+        title={t(`${base}.name`)}
+        description={t(`${base}.why`)}
+        trailing={
+          <span className={`text-[0.8125rem] font-semibold tabular-nums ${isPolite ? "text-accent" : "text-warning"}`}>
+            {formatDelay(value, locale, instantLabel)}
+          </span>
+        }
+      />
 
       <div>
         <Slider
@@ -94,7 +97,7 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
         <Scale max={def.max} instantLabel={instantLabel} locale={locale} />
       </div>
 
-      <p className="text-sm text-muted">
+      <p className="text-[0.8125rem] leading-relaxed text-muted">
         {t(`${base}.estimate`, {
           count: def.sampleCount,
           duration: formatDuration(value * def.sampleCount),

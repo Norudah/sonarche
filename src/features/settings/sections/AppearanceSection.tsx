@@ -1,5 +1,4 @@
 import { Button, RadioGroup } from "@heroui/react";
-import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -62,7 +61,6 @@ export function AppearanceSection() {
 
         <SettingRow settingKey="appearance.tour">
           <Button variant="secondary" onPress={requestHomeTour}>
-            <RotateCcw className="size-4" />
             {t("appearance.tour.replay")}
           </Button>
         </SettingRow>

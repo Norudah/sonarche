@@ -1,9 +1,9 @@
 import { Button } from "@heroui/react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SERVICE_NAMES, type ServiceState, type ServiceStatus } from "@/features/settings/api";
-import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useCheckServices } from "@/features/settings/hooks";
 
 /* Three states, three registers. `unreachable` is amber and not red on
@@ -20,7 +20,7 @@ function ServiceRow({ name, status }: { name: string; status: ServiceStatus | un
   const { t } = useTranslation("settings");
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2 text-sm">
+    <div className="flex items-center justify-between gap-3 py-1.5 text-[0.8125rem]">
       <span className="font-medium">{t(`services.names.${name}`)}</span>
       {status ? (
         <span className="flex items-center gap-2 text-muted">
@@ -31,7 +31,7 @@ function ServiceRow({ name, status }: { name: string; status: ServiceStatus | un
           )}
         </span>
       ) : (
-        <span className="text-[0.8125rem] text-muted/70">{t("services.state.unknown")}</span>
+        <span className="text-muted/70">{t("services.state.unknown")}</span>
       )}
     </div>
   );
@@ -58,29 +58,24 @@ export function ServiceHealthCard() {
   return (
     <SettingCard settingKey="services.health">
       <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h3 className="font-medium">{t("services.health.name")}</h3>
-            <p className="max-w-prose text-sm text-muted">{t("services.health.why")}</p>
-          </div>
-          <Button
-            variant="secondary"
-            className="shrink-0 rounded-xl"
-            onPress={() => check.mutate(undefined)}
-            isDisabled={check.isPending}
-          >
-            {check.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            {check.isPending ? t("services.health.checking") : t("services.health.action")}
-          </Button>
-        </div>
+        <SettingCardHeader
+          title={t("services.health.name")}
+          description={t("services.health.why")}
+          trailing={
+            <Button variant="secondary" onPress={() => check.mutate(undefined)} isDisabled={check.isPending}>
+              {check.isPending && <Loader2 className="size-4 animate-spin" />}
+              {check.isPending ? t("services.health.checking") : t("services.health.action")}
+            </Button>
+          }
+        />
 
-        <div className="divide-y divide-separator border-t border-separator">
+        <div className="divide-y divide-separator/60 border-t border-separator/60">
           {SERVICE_NAMES.map((name) => (
             <ServiceRow key={name} name={name} status={byName.get(name)} />
           ))}
         </div>
 
-        {check.isError && <p className="text-sm text-danger">{t("services.health.failed")}</p>}
+        {check.isError && <p className="text-[0.8125rem] text-danger">{t("services.health.failed")}</p>}
       </div>
     </SettingCard>
   );

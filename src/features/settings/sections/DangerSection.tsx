@@ -7,20 +7,35 @@ import { useSettingsTasks } from "@/features/settings/tasks";
 
 /** One erase: what it takes away, and the button that takes it. The reason
  * stays on screen here rather than folding behind a mark the way an ordinary
- * setting's does — you do not hide what an irreversible action destroys. */
-function DangerAction({ def }: { def: EraseDef }) {
+ * setting's does — you do not hide what an irreversible action destroys.
+ *
+ * `solid` is the full erase alone. Four crimson slabs in a column read as an
+ * alarm that is permanently on, which is the fastest way to stop being read at
+ * all — and the wording under each name is what actually carries the warning.
+ * Outlined is the register for "destructive, and you came to this pane on
+ * purpose"; the one filled button is kept for the action that covers all the
+ * others. */
+function DangerAction({ def, solid = false }: { def: EraseDef; solid?: boolean }) {
   const { t } = useTranslation("settings");
   const { start } = useSettingsTasks();
-  const { icon: Icon, key } = def;
+  const { key } = def;
 
   return (
-    <div className="flex items-start justify-between gap-4 py-4">
+    <div className="flex items-start justify-between gap-4 py-3.5">
       <div className="flex flex-col gap-1">
         <p className="text-[0.8125rem] font-semibold">{t(`danger.${key}.name`)}</p>
         <p className="text-[0.8125rem] leading-relaxed text-muted">{t(`danger.${key}.why`)}</p>
       </div>
-      <Button variant="danger" className="h-10 shrink-0 rounded-xl" onPress={() => start({ kind: "erase", key })}>
-        <Icon className="size-4" />
+      {/* No glyph, and the width is the pane's floor rather than the label's:
+          four buttons in a column that each said "Supprimer" behind a different
+          icon were four different widths, which reads as four different
+          actions. The icon is not lost — the confirmation dialog still shows
+          the erase's own, where there is one thing to look at. */}
+      <Button
+        variant={solid ? "danger" : "danger-soft"}
+        className="mt-0.5 shrink-0"
+        onPress={() => start({ kind: "erase", key })}
+      >
         {t(`danger.${key}.action`)}
       </Button>
     </div>
@@ -54,7 +69,7 @@ export function DangerSection() {
       <SectionHeader title={t("danger.title")} description={t("danger.description")} />
 
       <div className="overflow-hidden rounded-xl border border-danger/30 bg-surface">
-        <div className="divide-y divide-separator px-5">
+        <div className="divide-y divide-separator px-4">
           {AIMED_ERASES.map((def) => (
             <DangerAction key={def.key} def={def} />
           ))}
@@ -63,8 +78,8 @@ export function DangerSection() {
         {/* The full erase closes the card in its own tinted band: it is the one
             row that covers all the others, and the eye should have to cross a
             visible boundary to reach it. */}
-        <div className="border-t border-danger/20 bg-danger/5 px-5">
-          <DangerAction def={FULL_ERASE} />
+        <div className="border-t border-danger/20 bg-danger/5 px-4">
+          <DangerAction def={FULL_ERASE} solid />
         </div>
       </div>
     </>

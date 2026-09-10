@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Folder } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useSettingsTasks } from "@/features/settings/tasks";
 import { useCheckLibraryMove, useLibraryLocation } from "@/features/settings/hooks";
 
@@ -37,31 +37,23 @@ export function LibraryLocationCard() {
   return (
     <SettingCard settingKey="files.location">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h3 className="font-medium">{t("files.location.name")}</h3>
-          <p className="max-w-prose text-sm text-muted">{t("files.location.why")}</p>
-        </div>
+        <SettingCardHeader title={t("files.location.name")} description={t("files.location.why")} />
 
         {location.isPending ? (
           <Spinner size="sm" aria-label={t("loading")} />
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-separator bg-default/40 px-3.5 py-3">
-            <Folder className="size-4 shrink-0 text-muted" />
-            <p className="min-w-0 flex-1 truncate font-mono text-[0.8125rem]" title={location.data?.path}>
+          <div className="flex items-center gap-2.5 rounded-lg border border-separator bg-default/40 px-3 py-2">
+            <Folder className="size-3.5 shrink-0 text-muted" />
+            <p className="min-w-0 flex-1 truncate font-mono text-[0.75rem]" title={location.data?.path}>
               {location.data?.path}
             </p>
             {location.data?.isDefault && (
-              <span className="shrink-0 text-[0.75rem] text-muted">{t("files.location.isDefault")}</span>
+              <span className="shrink-0 text-[0.6875rem] text-muted">{t("files.location.isDefault")}</span>
             )}
           </div>
         )}
 
-        <Button
-          variant="secondary"
-          className="h-10 self-start rounded-xl"
-          onPress={() => void pick()}
-          isDisabled={preflight.isPending}
-        >
+        <Button variant="secondary" className="self-start" onPress={() => void pick()} isDisabled={preflight.isPending}>
           {t("files.location.action")}
         </Button>
       </div>

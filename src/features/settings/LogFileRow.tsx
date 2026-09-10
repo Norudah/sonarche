@@ -1,5 +1,4 @@
 import { Button, toast } from "@heroui/react";
-import { FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { revealLogFile } from "@/features/settings/api";
@@ -28,7 +27,6 @@ export function LogFileRow() {
   return (
     <SettingRow settingKey="advanced.logs">
       <Button variant="secondary" onPress={() => void reveal()}>
-        <FolderOpen className="size-4" />
         {isMacOS ? t("advanced.logs.actionMac") : t("advanced.logs.actionWindows")}
       </Button>
     </SettingRow>
