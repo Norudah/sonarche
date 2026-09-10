@@ -20,7 +20,8 @@
 //! * [`reinstall_environment`] — the harmless one. The Python environment and
 //!   the downloaded tools, which the app rebuilds on the next launch. Named
 //!   apart from the one above precisely so the two can never be confused at
-//!   the moment of clicking.
+//!   the moment of clicking. It leaves the walkthrough flag standing: the
+//!   setup screen it sends you back to is a repair, not a first run.
 //!
 //! Dev builds only, for testing:
 //!
@@ -118,7 +119,7 @@ pub async fn reset_setup(
         }
     }
     if targets.api_keys {
-        settings::set("acoustid".into(), String::new()).await?;
+        settings::set(app, "acoustid".into(), String::new()).await?;
         eprintln!("[dev] setup reset: cleared the AcoustID key");
     }
     if targets.history {
@@ -443,8 +444,13 @@ pub async fn reinstall_environment(app: &AppHandle, sidecar: &SidecarState) -> A
             tokio::fs::remove_dir_all(dir).await?;
         }
     }
-    // The walkthrough is what puts the engine back, so it has to run again.
-    preferences::set_onboarding_completed(app, false).await?;
+    // The walkthrough flag is deliberately left alone. The gate reopens on its
+    // own — a missing venv is an unfinished step, and that verdict comes from
+    // the steps, not from this flag. Clearing it here would also erase the one
+    // thing that tells the walkthrough who it is talking to, and someone
+    // rebuilding an engine they installed months ago would be greeted as a
+    // newcomer, "before their first play". Only the dev reset drops the flag,
+    // because replaying the first run is exactly what it is for.
 
     crate::logs::write("[reset] environment removed, the walkthrough will rebuild it");
     Ok(())

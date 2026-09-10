@@ -32,15 +32,6 @@ export const paths = {
   libraryCategory: "/library/categories/:category",
   libraryPlaylists: "/library/playlists",
   libraryPlaylist: "/library/playlists/:id",
-  settings: "/settings",
-  settingsAppearance: "/settings/appearance",
-  settingsAdding: "/settings/adding",
-  settingsMetadata: "/settings/metadata",
-  settingsApiKeys: "/settings/api-keys",
-  settingsRateLimits: "/settings/rate-limits",
-  settingsLibrary: "/settings/library",
-  settingsUpdates: "/settings/updates",
-  settingsDeveloper: "/settings/developer",
 } as const;
 
 /**

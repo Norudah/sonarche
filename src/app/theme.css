@@ -445,6 +445,85 @@
   }
 }
 
+/* --- Neutral and destructive buttons -------------------------------------- */
+
+/* A secondary button is still a button: it has a surface.
+   HeroUI ships it as a grey slab with an accent-tinted label, which is what a
+   component kit looks like before anyone has decided anything — the tint says
+   "accent" on a control that is explicitly not the accent one. Taking the fill
+   away entirely went too far the other way: a ghost with a hairline reads as a
+   region, not as something to press, and a settings pane made of them has
+   nothing on it that looks clickable.
+   So: the fill comes back, the tint does not. `--default` under `--foreground`
+   ink, with the `--border` hairline the palette already reserves for "fields
+   and secondary buttons" giving it an edge against the card it sits on. Hover
+   walks the fill toward the ink — which darkens on paper and lightens at
+   night, in one expression, instead of two rules disagreeing about which way
+   "more" goes.
+   Shape is the app's standing rule and is set above: round is for the
+   transport, where a circle is the shape of the thing; everything that
+   manipulates the interface is a rounded rectangle. */
+@layer components {
+  .button--secondary {
+    --button-bg: var(--default);
+    --button-bg-hover: color-mix(in oklab, var(--default) 88%, var(--foreground));
+    --button-bg-pressed: color-mix(in oklab, var(--default) 80%, var(--foreground));
+    --button-fg: var(--foreground);
+    border: 1px solid var(--border);
+  }
+
+  /* The same button in the danger register: tinted rather than flooded.
+     Four solid crimson slabs down the danger pane read as an alarm that is
+     permanently on, and an alarm that is always on stops being read — the
+     sentence under each name is what carries the warning. `danger` stays solid
+     and is spent on the single action that covers all the others. */
+  .button--danger-soft {
+    --button-bg: var(--danger-soft);
+    --button-bg-hover: var(--danger-soft-hover);
+    --button-bg-pressed: var(--danger-soft-hover);
+    --button-fg: var(--danger);
+    border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+  }
+
+  /* A small button is a small label. HeroUI keeps `sm` at 14px and only takes
+     the box down, which is how a 32px control ends up wearing the same ink as
+     a page lede. */
+  .button--sm {
+    font-size: 0.8125rem;
+  }
+}
+
+/* --- Buttons inside the settings dialog ----------------------------------- */
+
+/* One button, one size, stated once for the whole pane.
+   Settings panes that are pleasant to use — macOS's, Windows's — share a
+   detail that is easy to miss until it is missing: every button in them is the
+   same height, the same type size, and no narrower than a floor, so a column
+   of them lines up on both edges whether the label is "Tester" or "Supprimer".
+   Ours had grown the opposite way, each call site pinning its own height and
+   the primary being a different component entirely, so a row of two buttons
+   was two different buttons.
+   Scoped to the pane rather than applied globally: an album hero's "Tout lire"
+   and a composer's "Récupérer" are page actions and have their own weight.
+   `min-width` is the part that does the aligning; it never clips, a longer
+   label just makes a wider button. */
+@layer components {
+  .settings-pane .button {
+    height: 2rem;
+    min-width: 6.25rem;
+    padding-inline: 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  /* A glyph with a hit area around it has no label to fit, so the floor would
+     only make it a wide blank. None today; the rule is here so the first one
+     does not have to discover this. */
+  .settings-pane .button--icon-only {
+    width: 2rem;
+    min-width: 0;
+  }
+}
+
 /* --- Destructive menu items ----------------------------------------------- */
 
 /* HeroUI's `variant="danger"` only reddens what it finds in the `label` slot,
@@ -467,6 +546,14 @@
    Imported after @heroui/styles, so this wins at equal specificity. */
 .toast-region-lifted {
   bottom: calc(var(--spacing-player) + 1rem);
+
+  /* Above a modal, not beside it. Region and backdrop are both `z-50` siblings
+     of <body>, so which one won came down to which react-aria portal had been
+     appended last — and the loser was usually the toast. Every dialog in the
+     app raises them: saving an API key answers inside settings, an erase
+     answers from a dialog that is still up. A message about what just happened
+     cannot be hidden by the thing that made it happen. */
+  z-index: 60;
 }
 
 /* A toast is the quietest thing the app says: it reports something that already

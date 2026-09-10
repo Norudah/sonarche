@@ -27,9 +27,9 @@ import type { ReactNode } from "react";
 const TRIGGER =
   "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
-export function FieldHelp({ label, text }: { label: string; text: ReactNode }) {
+export function FieldHelp({ label, text, delay = 200 }: { label: string; text: ReactNode; delay?: number }) {
   return (
-    <Tooltip delay={200}>
+    <Tooltip delay={delay}>
       <Tooltip.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer text-muted/70 hover:text-muted`}>
         <CircleHelp className="size-3.5" />
       </Tooltip.Trigger>

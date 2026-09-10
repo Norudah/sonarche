@@ -15,12 +15,14 @@ class ExtensionTest(unittest.TestCase):
 class NeedsConversionTest(unittest.TestCase):
     def test_a_file_already_in_the_target_format_is_left_alone(self):
         self.assertFalse(needs_conversion("a.mp3", "mp3"))
-        self.assertFalse(needs_conversion("a.FLAC", "flac"))
+        self.assertFalse(needs_conversion("a.M4A", "m4a"))
 
     def test_anything_else_is_re_encoded(self):
         self.assertTrue(needs_conversion("a.m4a", "mp3"))
-        self.assertTrue(needs_conversion("a.mp3", "flac"))
         self.assertTrue(needs_conversion("a.wav", "m4a"))
+        # A format the app no longer offers as a target is still one it finds
+        # on disk — imported flac, or a library an older build transcoded.
+        self.assertTrue(needs_conversion("a.flac", "m4a"))
 
     def test_the_mp4_container_under_its_other_names_is_already_m4a(self):
         """Re-encoding an `.m4b` or an `.mp4` to `.m4a` would burn a generation

@@ -44,10 +44,16 @@ pub const ACOUSTID_DELAY: RateLimit = RateLimit {
 /// is validated rather than trusted.
 ///
 /// `m4a` first and by default because it is the one that costs nothing: it is
-/// the stream the download already received, stored as-is. The other two are a
-/// real re-encode the user asked for — mp3 for a device that reads nothing else,
-/// flac for one that wants lossless input.
-pub const AUDIO_FORMATS: &[&str] = &["m4a", "mp3", "flac"];
+/// the stream the download already received, stored as-is. `mp3` is the one
+/// real re-encode the app offers, for a device that reads nothing else.
+///
+/// flac used to be a third entry and was removed: everything this app writes
+/// comes from a lossy stream, so a flac target produces a file that is
+/// lossless *of something that already lost* — bigger, never better, and the
+/// only honest label for it is a paragraph of caveats. A setting that has to
+/// be argued out of is not a setting. A flac file already on disk is still
+/// read, played and imported; it just is not something Sonarche will make.
+pub const AUDIO_FORMATS: &[&str] = &["m4a", "mp3"];
 
 pub const DEFAULT_AUDIO_FORMAT: &str = "m4a";
 
@@ -107,6 +113,21 @@ pub struct Preferences {
     /// than a path frozen at first launch.
     #[serde(default)]
     pub library_dir: Option<String>,
+    /// Which API keys are on file — the *names*, never the secrets.
+    ///
+    /// A mirror of the keychain, kept because asking the keychain itself costs
+    /// a password prompt. macOS answers "does this entry exist" only by handing
+    /// over the secret, and it guards that with the same dialog whether the
+    /// caller wants the value or not — so a launch that merely wanted to know
+    /// whether the optional AcoustID step is done was putting up a password
+    /// box before the window had even painted (see `onboarding::state`).
+    ///
+    /// `None` means "never mirrored": an install that predates this field, or a
+    /// fresh one. That is the single case that still probes the keychain, once,
+    /// and writes the answer here. The keychain stays the only place a secret
+    /// lives; this is a yes/no about it, and a yes/no is not worth a prompt.
+    #[serde(default)]
+    pub api_keys_configured: Option<Vec<String>>,
 }
 
 fn default_lastfm() -> f64 {
@@ -132,6 +153,7 @@ impl Default for Preferences {
             onboarding_completed: false,
             home_tour_seen: false,
             library_dir: None,
+            api_keys_configured: None,
         }
     }
 }
@@ -206,6 +228,18 @@ pub async fn set_audio_format(app: &AppHandle, format: &str) -> AppResult<Prefer
     }
     let mut prefs = load(app).await?;
     prefs.audio_format = format.to_string();
+    save(app, &prefs).await?;
+    Ok(prefs)
+}
+
+/// Records which API keys are on file. Called by `settings` after every write
+/// to the keychain, and once by the migration that fills the mirror in.
+pub async fn set_api_keys_configured(
+    app: &AppHandle,
+    names: Vec<String>,
+) -> AppResult<Preferences> {
+    let mut prefs = load(app).await?;
+    prefs.api_keys_configured = Some(names);
     save(app, &prefs).await?;
     Ok(prefs)
 }

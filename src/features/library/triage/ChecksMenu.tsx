@@ -1,8 +1,10 @@
-import { Popover, Switch } from "@heroui/react";
+import { Popover } from "@heroui/react";
 import { SlidersHorizontal } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CHECK_KEYS, setCheckEnabled, type CheckKey } from "@/features/library/triage/enabledChecks";
+import { ChecksList } from "@/features/library/triage/ChecksList";
+import type { CheckKey } from "@/features/library/triage/enabledChecks";
 import type { TriageLine } from "@/features/library/triage/queue";
 
 /**
@@ -13,15 +15,15 @@ import type { TriageLine } from "@/features/library/triage/queue";
  * turn it back on, and a line reading "0" is itself the answer to "is this
  * still worth watching".
  *
- * A popover rather than a settings page: the question only occurs to someone
+ * A popover rather than only a settings page: the question occurs to someone
  * looking at the queue, and an answer three screens away from the annoyance is
  * an answer nobody finds — the same reasoning that moved the badge switch onto
- * this hero.
+ * this hero. Settings carries the same switches (see `ChecksList`) for whoever
+ * arrives from the other direction; the counts are this surface's alone.
  */
 export function ChecksMenu({ queue, disabled }: { queue: TriageLine[]; disabled: CheckKey[] }) {
   const { t } = useTranslation("metadata");
-
-  const countOf = (check: CheckKey) => queue.find((line) => line.key === check)?.count ?? 0;
+  const counts = useMemo(() => new Map(queue.map((line) => [line.key, line.count])), [queue]);
 
   return (
     <Popover>
@@ -40,26 +42,7 @@ export function ChecksMenu({ queue, disabled }: { queue: TriageLine[]; disabled:
             <p className="text-xs leading-relaxed text-muted">{t("checks.why")}</p>
           </div>
 
-          <div className="flex flex-col gap-2.5">
-            {CHECK_KEYS.map((check) => (
-              <Switch
-                key={check}
-                isSelected={!disabled.includes(check)}
-                onChange={(enabled) => setCheckEnabled(check, enabled)}
-                className="w-full"
-              >
-                <Switch.Content className="w-full flex-row-reverse justify-between gap-3">
-                  <Switch.Control>
-                    <Switch.Thumb />
-                  </Switch.Control>
-                  <span className="flex min-w-0 items-center gap-1.5 text-[0.8125rem]">
-                    <span className="truncate">{t(`queue.${check}`)}</span>
-                    <span className="shrink-0 tabular-nums text-muted">{countOf(check)}</span>
-                  </span>
-                </Switch.Content>
-              </Switch>
-            ))}
-          </div>
+          <ChecksList disabled={disabled} counts={counts} />
         </Popover.Dialog>
       </Popover.Content>
     </Popover>

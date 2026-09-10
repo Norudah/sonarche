@@ -65,34 +65,34 @@ export function MoveLibraryDialog({
       onClose={onClose}
       status="warning"
       icon={FolderInput}
-      title={t(refusal ? "library.move.refusedTitle" : "library.move.title")}
-      cancelLabel={t(refusal ? "library.move.close" : "library.move.cancel")}
-      confirmLabel={t("library.move.confirm")}
+      title={t(refusal ? "files.move.refusedTitle" : "files.move.title")}
+      cancelLabel={t(refusal ? "files.move.close" : "files.move.cancel")}
+      confirmLabel={t("files.move.confirm")}
       onConfirm={onConfirm}
       isPending={isMoving || refusal != null}
     >
       {refusal ? (
-        <p>{t(`library.move.refusal.${refusal}`)}</p>
+        <p>{t(`files.move.refusal.${refusal}`)}</p>
       ) : (
         <>
-          <p>{t("library.move.body")}</p>
+          <p>{t("files.move.body")}</p>
 
           <div className="mt-3 divide-y divide-separator border-y border-separator text-[0.8125rem]">
-            <Fact label={t("library.move.factDestination")} value={check?.target ?? ""} />
+            <Fact label={t("files.move.factDestination")} value={check?.target ?? ""} />
             <Fact
-              label={t("library.move.factContents")}
-              value={t("library.move.contents", {
+              label={t("files.move.factContents")}
+              value={t("files.move.contents", {
                 count: check?.fileCount ?? 0,
                 size: formatBytes(check?.sizeBytes ?? 0, locale),
               })}
             />
             <Fact
-              label={t("library.move.factHow")}
-              value={t(check?.sameVolume ? "library.move.sameVolume" : "library.move.otherVolume")}
+              label={t("files.move.factHow")}
+              value={t(check?.sameVolume ? "files.move.sameVolume" : "files.move.otherVolume")}
             />
           </div>
 
-          <p className="mt-3">{t("library.move.consequences")}</p>
+          <p className="mt-3">{t("files.move.consequences")}</p>
 
           {isMoving && (
             <div className="mt-3 flex flex-col gap-1.5">
@@ -106,8 +106,8 @@ export function MoveLibraryDialog({
                 {/* A same-volume move is a rename: it is over before the bar
                     can draw, so there is nothing to count. */}
                 {progress
-                  ? t("library.move.progress", { copied: progress.copied, total: progress.total })
-                  : t("library.move.starting")}
+                  ? t("files.move.progress", { copied: progress.copied, total: progress.total })
+                  : t("files.move.starting")}
               </p>
             </div>
           )}

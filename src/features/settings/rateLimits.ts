@@ -35,6 +35,10 @@ export interface RateLimitDef {
   politeThreshold: number;
   /** Round reference batch used for the duration estimate line. */
   sampleCount: number;
+  /** Where this delay's strings live in the `settings` namespace. Carried on
+   * the def rather than built from `key`: the download pause is filed with the
+   * page it paces, not with the services pane it used to share. */
+  labelBase: string;
 }
 
 const POLITE_FLOOR = 1;
@@ -42,7 +46,14 @@ const POLITE_FLOOR = 1;
 /** Only the download delay keeps a dial. The API delays became fixed — shared
  * keys, see `FIXED_API_DELAYS` — so their slider defs went with them. */
 export const RATE_LIMITS: RateLimitDef[] = [
-  { key: "download", field: "downloadDelaySeconds", max: 15, politeThreshold: POLITE_FLOOR, sampleCount: 15 },
+  {
+    key: "download",
+    field: "downloadDelaySeconds",
+    max: 15,
+    politeThreshold: POLITE_FLOOR,
+    sampleCount: 15,
+    labelBase: "adding.delay",
+  },
 ];
 
 /** The two pauses the app imposes rather than offers, in display order. Read

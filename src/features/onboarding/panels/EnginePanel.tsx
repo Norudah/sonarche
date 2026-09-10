@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { useSetupEnv, useSetupLogs } from "@/features/onboarding/hooks";
 import { installPhase } from "@/features/onboarding/installPhase";
+import type { SetupMode } from "@/features/onboarding/steps";
 import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 import { springs } from "@/shared/motion/tokens";
 import { Swap } from "@/shared/motion/Swap";
@@ -32,6 +33,9 @@ function ScanRail({ label }: { label: string }) {
 }
 
 export interface EnginePanelProps {
+  /** Only the verb changes: "install" reads as new work to someone who has
+   * already installed this engine once. */
+  mode: SetupMode;
   isInstalled: boolean;
   /** The app carries its own interpreter and its own wheels, so this step
    * unpacks rather than downloads — which changes both what it is and how
@@ -39,7 +43,7 @@ export interface EnginePanelProps {
   isBundled: boolean;
 }
 
-export function EnginePanel({ isInstalled, isBundled }: EnginePanelProps) {
+export function EnginePanel({ mode, isInstalled, isBundled }: EnginePanelProps) {
   const { t } = useTranslation("onboarding");
   const setup = useSetupEnv();
   const logs = useSetupLogs(setup.isPending);
@@ -80,7 +84,9 @@ export function EnginePanel({ isInstalled, isBundled }: EnginePanelProps) {
           <div className="flex items-center gap-3">
             <Button variant="primary" onPress={() => setup.mutate()}>
               <Download className="size-4" />
-              {setup.isError ? t("steps.engine.retry") : t("steps.engine.action")}
+              {setup.isError
+                ? t("steps.engine.retry")
+                : t(mode === "repair" ? "steps.engine.reinstall" : "steps.engine.action")}
             </Button>
             <p className="text-xs text-muted">
               {t(isBundled ? "steps.engine.durationBundled" : "steps.engine.duration")}

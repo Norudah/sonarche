@@ -24,6 +24,16 @@ export async function setApiKey(name: ApiKeyName, value: string): Promise<ApiKey
   return invoke<ApiKeyStatus>("set_api_key", { name, value });
 }
 
+/** The stored key itself, for the reveal button and nothing else.
+ *
+ * The only call in the app that brings a secret into the webview, and it is
+ * always a press: never on mount, never to decide what a card shows. `null` is
+ * both "no key" and "the keychain would not hand it over", which the caller
+ * treats the same way — it has nothing to display either way. */
+export async function revealApiKey(name: ApiKeyName): Promise<string | null> {
+  return invoke<string | null>("reveal_api_key", { name });
+}
+
 /** The verdict on a key: valid, or invalid with a machine-readable reason. */
 export interface KeyCheck {
   valid: boolean;

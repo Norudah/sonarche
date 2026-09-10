@@ -19,15 +19,6 @@ import { MetadataPage } from "@/features/library/triage/MetadataPage";
 import { PlaylistDetailView } from "@/features/library/views/PlaylistDetailView";
 import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
-import { ApiKeysSection } from "@/features/settings/ApiKeysSection";
-import { AddingSection } from "@/features/settings/AddingSection";
-import { AppearanceSection } from "@/features/settings/AppearanceSection";
-import { DeveloperSection } from "@/features/settings/DeveloperSection";
-import { MetadataSection } from "@/features/settings/MetadataSection";
-import { RateLimitsSection } from "@/features/settings/RateLimitsSection";
-import { LibrarySection } from "@/features/settings/LibrarySection";
-import { SettingsLayout } from "@/features/settings/SettingsLayout";
-import { UpdateSection } from "@/features/update/UpdateSection";
 
 // Paths and their builders live in the leaf module `@/app/paths` to keep them
 // out of this file's import cycle; re-exported so `@/app/routes` stays their
@@ -66,25 +57,6 @@ export const router = createMemoryRouter(
         // both ways music enters the ark, and neither feature may import the other.
         { path: paths.history, element: <HistoryRoute /> },
         { path: paths.metadata, element: <MetadataPage /> },
-        // Settings lives inside the shell like any other destination: same sidebar
-        // (which switches to a category menu here), same player bar. Each category
-        // is a route so the sidebar drives it through NavLink, active pill and all.
-        {
-          path: paths.settings,
-          element: <SettingsLayout />,
-          children: [
-            { index: true, element: <Navigate to={paths.settingsAppearance} replace /> },
-            { path: paths.settingsAppearance, element: <AppearanceSection /> },
-            { path: paths.settingsAdding, element: <AddingSection /> },
-            { path: paths.settingsMetadata, element: <MetadataSection /> },
-            { path: paths.settingsApiKeys, element: <ApiKeysSection /> },
-            { path: paths.settingsRateLimits, element: <RateLimitsSection /> },
-            { path: paths.settingsLibrary, element: <LibrarySection /> },
-            { path: paths.settingsUpdates, element: <UpdateSection /> },
-            // Dev builds only; the backend command refuses to run in release anyway.
-            ...(import.meta.env.DEV ? [{ path: paths.settingsDeveloper, element: <DeveloperSection /> }] : []),
-          ],
-        },
         {
           path: paths.library,
           element: <LibraryLayout />,

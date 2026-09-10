@@ -1,8 +1,8 @@
 import { Button, Spinner } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
-import { SettingCard } from "@/features/settings/SettingCard";
-import { SettingsHero } from "@/features/settings/SettingsHero";
+import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
+import { SectionHeader } from "@/features/settings/SectionHeader";
 import { useAppVersion, useInstallUpdate, useUpdateCheck } from "@/features/update/hooks";
 import { parseReleaseNotes } from "@/features/update/notes";
 import { updateStatus, type Tone } from "@/features/update/status";
@@ -25,7 +25,7 @@ const TONES: Record<Tone, string> = {
  * imported by the settings feature — the two share a pane, not a dependency.
  */
 export function UpdateSection() {
-  const { t } = useTranslation(["update", "settings"]);
+  const { t } = useTranslation("update");
   const version = useAppVersion();
   const check = useUpdateCheck();
   const install = useInstallUpdate();
@@ -47,17 +47,17 @@ export function UpdateSection() {
 
   return (
     <>
-      <SettingsHero eyebrow={t("settings:title")} title={t("category")} description={t("description")} />
+      <SectionHeader title={t("category")} description={t("description")} />
 
       <SettingCard>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="font-medium">{t("current")}</h3>
-            <span className="font-mono text-sm text-muted">{version.data ?? "—"}</span>
-          </div>
+        <div className="flex flex-col gap-3">
+          <SettingCardHeader
+            title={t("current")}
+            trailing={<span className="font-mono text-[0.8125rem] text-muted">{version.data ?? "—"}</span>}
+          />
 
-          <div className="flex items-center justify-between gap-3">
-            <p className={`flex items-center gap-2 text-sm ${status ? TONES[status.tone] : ""}`}>
+          <div className="flex items-center justify-between gap-3 border-t border-separator/60 pt-3">
+            <p className={`flex items-center gap-2 text-[0.8125rem] ${status ? TONES[status.tone] : ""}`}>
               {busy && <Spinner size="sm" aria-hidden />}
               {status && t(status.key, { version: status.version })}
             </p>

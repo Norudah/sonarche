@@ -2,7 +2,7 @@
 
 Everything else the app decides about a track is a tag or a path. This is the
 container and the codec, and it is the only preference that can make the file
-itself unreadable somewhere. Hence the shape of the list below: three answers,
+itself unreadable somewhere. Hence the shape of the list below: two answers,
 each one a real reason someone would pick it, and nothing that exists only to
 lengthen a dropdown.
 
@@ -12,10 +12,12 @@ lengthen a dropdown.
 - `mp3` — the format that plays *everywhere*. A car stereo from 2009, a cheap
   DAP, a bootloader-locked head unit. Worse per byte than AAC and the app says
   so, but "worse" is not the axis when the alternative is silence.
-- `flac` — asked for by devices and players that want lossless input. From a
-  lossy source it is lossless *of an original that already lost something*:
-  bigger files, not better sound, and the interface has to say that out loud
-  rather than let the word "lossless" do the lying.
+
+`flac` was a third entry and is gone. Everything this app writes comes from a
+lossy stream, so a flac target is lossless *of something that already lost*:
+bigger files, never better sound, and an option whose label has to be argued
+out of in the interface is not an option worth offering. flac files already on
+disk are still read, played and imported — the app simply does not make them.
 
 Everything here is pure and unit-tested: the encoder arguments are the part
 that is expensive to get wrong and free to check.
@@ -23,7 +25,7 @@ that is expensive to get wrong and free to check.
 
 # Extension = wire value = what the setting stores. One string, so nothing has
 # to map between "the format", "the container" and "the file suffix".
-FORMATS = ("m4a", "mp3", "flac")
+FORMATS = ("m4a", "mp3")
 
 DEFAULT = "m4a"
 
@@ -32,10 +34,6 @@ DEFAULT = "m4a"
 # download receives, which is the point: the transcode's loss should come from
 # the format change alone, not from a ceiling we chose.
 _MP3_QUALITY = "0"
-
-# ffmpeg's default (5) is the knee of the curve — level 8 buys about 1% for
-# several times the CPU, on files that are already lossless-of-lossy.
-_FLAC_COMPRESSION = "5"
 
 
 def normalize(value: str | None) -> str:
@@ -68,11 +66,9 @@ def encoder_args(fmt: str) -> list[str]:
     target = normalize(fmt)
     if target == "mp3":
         return ["-vn", "-c:a", "libmp3lame", "-q:a", _MP3_QUALITY]
-    if target == "flac":
-        return ["-vn", "-c:a", "flac", "-compression_level", _FLAC_COMPRESSION]
     # AAC in MP4: the shape a download already lands in, for a library being
-    # converted *back* from mp3 or flac. `-b:a 256k` sits comfortably above the
-    # streams the download receives.
+    # converted *back* from mp3, or from the flac an older build could produce.
+    # `-b:a 256k` sits comfortably above the streams the download receives.
     return ["-vn", "-c:a", "aac", "-b:a", "256k"]
 
 

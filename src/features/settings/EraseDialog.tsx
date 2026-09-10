@@ -81,9 +81,7 @@ export function EraseDialog({
               {note && <p className="mt-3">{note}</p>}
 
               <TextField value={typed} onChange={setTyped} className="mt-4 flex flex-col" isDisabled={isPending}>
-                <Label className="text-sm font-medium text-foreground">
-                  {t("library.danger.prompt", { phrase: PHRASE })}
-                </Label>
+                <Label className="text-sm font-medium text-foreground">{t("danger.prompt", { phrase: PHRASE })}</Label>
                 <Input
                   autoComplete="off"
                   autoCorrect="off"
@@ -95,7 +93,7 @@ export function EraseDialog({
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button variant="secondary" onPress={close} isDisabled={isPending}>
-                {t("library.danger.cancel")}
+                {t("danger.cancel")}
               </Button>
               <Button variant="danger" onPress={onConfirm} isDisabled={!armed || isPending}>
                 {isPending && <Loader2 className="size-4 animate-spin" />}

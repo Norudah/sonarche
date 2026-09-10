@@ -17,7 +17,7 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, useLocation, useNavigate } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 
 import { paths, playlistPath } from "@/app/routes";
 import { useCreatePlaylist, usePlaylists } from "@/features/library/playlists/hooks";
@@ -25,7 +25,6 @@ import { PlaylistMarkerGlyph } from "@/features/library/playlists/PlaylistGlyph"
 import { PlaylistNameDialog } from "@/features/library/playlists/PlaylistNameDialog";
 import { sidebarPlaylists } from "@/features/library/playlists/playlists";
 import { useTriageCount } from "@/features/library/triage/useTriageCount";
-import { settingsCategories } from "@/features/settings/categories";
 import { useNotificationBadges } from "@/shared/lib/notificationBadges";
 import { isMacOS } from "@/shared/lib/platform";
 import { layoutIds, springs } from "@/shared/motion/tokens";
@@ -38,7 +37,6 @@ function NavItem({
   glyph,
   end,
   badge = 0,
-  indicatorId = layoutIds.navIndicator,
 }: {
   to: string;
   label: string;
@@ -49,7 +47,6 @@ function NavItem({
   end?: boolean;
   /** A count worth a glance (things to fix behind this entry). Zero hides it. */
   badge?: number;
-  indicatorId?: string;
 }) {
   return (
     <NavLink
@@ -68,7 +65,7 @@ function NavItem({
               it from the previously active item instead of cross-fading two. */}
           {isActive && (
             <motion.span
-              layoutId={indicatorId}
+              layoutId={layoutIds.navIndicator}
               transition={springs.snappy}
               className="absolute inset-0 rounded-lg bg-accent/15"
             />
@@ -252,27 +249,8 @@ function PlaylistsNav() {
   );
 }
 
-/** The settings menu that takes the main nav's place. Headed by a "Paramètres"
- * signpost in the same style/position as "Explorer" — the only thing telling the
- * user the sidebar has switched context. Categories keep their own active pill so
- * it never inherits the main nav's. */
-function SettingsNav() {
-  const { t } = useTranslation("settings");
-
-  return (
-    <NavSection label={t("title")}>
-      {settingsCategories.map(({ path, labelKey, icon }) => (
-        <NavItem key={path} to={path} label={t(labelKey)} icon={icon} indicatorId={layoutIds.settingsNavIndicator} />
-      ))}
-    </NavSection>
-  );
-}
-
 export function Sidebar() {
   const { t } = useTranslation("common");
-  const { pathname } = useLocation();
-
-  const inSettings = pathname.startsWith(paths.settings);
 
   return (
     <aside className="flex w-sidebar shrink-0 flex-col border-r border-separator bg-surface">
@@ -299,37 +277,16 @@ export function Sidebar() {
         <span className="pointer-events-none text-base font-semibold tracking-tight">{t("appName")}</span>
       </div>
 
-      {/* Both nav bodies stay mounted and only their opacity crosses over — a
-          plain CSS transition, so it always settles cleanly at 0/1 with no
-          mount/unmount gap and nothing to stutter. The hidden layer drops
-          pointer events so its links aren't clickable through the fade. `flex-1`
-          floors the bottom entry in either mode. */}
-      <div className="relative flex-1">
-        <div
-          className={cn(
-            // Scrolls: the playlists section grows with the user's lists, and
-            // the column must clip and scroll rather than push Settings out.
-            "absolute inset-0 overflow-y-auto px-3 pb-2 transition-opacity duration-200 ease-out",
-            inSettings ? "pointer-events-none opacity-0" : "opacity-100",
-          )}
-          aria-hidden={inSettings}
-        >
-          <MainNav />
-        </div>
-        <div
-          className={cn(
-            "absolute inset-0 px-3 transition-opacity duration-200 ease-out",
-            inSettings ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          aria-hidden={!inSettings}
-        >
-          <SettingsNav />
-        </div>
+      {/* Scrolls: the playlists section grows with the user's lists, so the
+          column has to clip and scroll rather than push the nav out of view.
+          `flex-1` floors the padding below it. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+        <MainNav />
       </div>
 
-      {/* No bottom entry any more: the way into settings, and back out of it, is
-          one control in the topbar — see `SettingsToggle`. The column ends where
-          the nav does, and the padding below belongs to the nav. */}
+      {/* No settings entry down here: settings is a dialog opened from the
+          topbar (see `SettingsToggle`), not a destination in the nav. The
+          column ends where the nav does. */}
       <div className="pb-2" />
     </aside>
   );

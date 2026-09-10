@@ -2,7 +2,7 @@ import { Button, toast } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import { revealLogFile } from "@/features/settings/api";
-import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingRow } from "@/features/settings/SettingsPanel";
 import { isMacOS } from "@/shared/lib/platform";
 
 /**
@@ -13,28 +13,22 @@ import { isMacOS } from "@/shared/lib/platform";
  * The button reveals the file itself in the OS file manager, selected and
  * ready to drag into a message.
  */
-export function LogFileCard() {
+export function LogFileRow() {
   const { t } = useTranslation("settings");
 
   const reveal = async () => {
     try {
       await revealLogFile();
     } catch (error) {
-      toast.danger(t("library.logs.failed"), { description: String(error) });
+      toast.danger(t("advanced.logs.failed"), { description: String(error) });
     }
   };
 
   return (
-    <SettingCard>
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h3 className="font-medium">{t("library.logs.name")}</h3>
-          <p className="max-w-prose text-sm text-muted">{t("library.logs.why")}</p>
-        </div>
-        <Button variant="secondary" className="h-10 self-start rounded-xl" onPress={reveal}>
-          {isMacOS ? t("library.logs.actionMac") : t("library.logs.actionWindows")}
-        </Button>
-      </div>
-    </SettingCard>
+    <SettingRow settingKey="advanced.logs">
+      <Button variant="secondary" onPress={() => void reveal()}>
+        {isMacOS ? t("advanced.logs.actionMac") : t("advanced.logs.actionWindows")}
+      </Button>
+    </SettingRow>
   );
 }

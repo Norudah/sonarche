@@ -3,6 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SettingCardHeader } from "@/features/settings/SettingCard";
 import {
   formatDelay,
   formatDuration,
@@ -58,22 +59,24 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
   const { t, i18n } = useTranslation("settings");
   const stops = stopsFor(def.max);
   const [index, setIndex] = useState(() => nearestStopIndex(stops, seconds));
-  const base = `rateLimits.delays.${def.key}`;
+  const base = def.labelBase;
 
   const value = stops[index];
-  const instantLabel = t("rateLimits.instant");
+  const instantLabel = t("instant");
   const locale = i18n.resolvedLanguage ?? "fr";
   const isPolite = value >= def.politeThreshold;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-medium">{t(`${base}.name`)}</h3>
-        <span className={`text-sm font-medium tabular-nums ${isPolite ? "text-accent" : "text-warning"}`}>
-          {formatDelay(value, locale, instantLabel)}
-        </span>
-      </div>
-      <p className="text-sm text-muted">{t(`${base}.why`)}</p>
+      <SettingCardHeader
+        title={t(`${base}.name`)}
+        description={t(`${base}.why`)}
+        trailing={
+          <span className={`text-[0.8125rem] font-semibold tabular-nums ${isPolite ? "text-accent" : "text-warning"}`}>
+            {formatDelay(value, locale, instantLabel)}
+          </span>
+        }
+      />
 
       <div>
         <Slider
@@ -94,7 +97,7 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
         <Scale max={def.max} instantLabel={instantLabel} locale={locale} />
       </div>
 
-      <p className="text-sm text-muted">
+      <p className="text-[0.8125rem] leading-relaxed text-muted">
         {t(`${base}.estimate`, {
           count: def.sampleCount,
           duration: formatDuration(value * def.sampleCount),
@@ -105,7 +108,7 @@ export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning/8 p-3 text-[0.8125rem] leading-relaxed text-foreground">
           <TriangleAlert className="mt-px size-4 shrink-0 text-warning" />
           <p>
-            <span className="font-medium">{t("rateLimits.impoliteTitle")}</span> {t(`${base}.warning`)}
+            <span className="font-medium">{t("adding.impoliteTitle")}</span> {t(`${base}.warning`)}
           </p>
         </div>
       )}

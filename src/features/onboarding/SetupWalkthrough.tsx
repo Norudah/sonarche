@@ -9,13 +9,16 @@ import { AcoustidPanel } from "@/features/onboarding/panels/AcoustidPanel";
 import { EnginePanel } from "@/features/onboarding/panels/EnginePanel";
 import { PythonPanel } from "@/features/onboarding/panels/PythonPanel";
 import { StepRow, StepSummary } from "@/features/onboarding/StepRow";
-import { buildSetupSteps, canFinishSetup, type SetupStepId } from "@/features/onboarding/steps";
+import { buildSetupSteps, canFinishSetup, type SetupMode, type SetupStepId } from "@/features/onboarding/steps";
 import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { fade, springs } from "@/shared/motion/tokens";
 import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
 
 /**
- * The first thing anyone sees.
+ * The first thing anyone sees — and, after an update that moves the pinned
+ * versions or a reset of the environment, a screen someone already knows. The
+ * steps do not change between the two; the header and the closing line do, so
+ * a returning user is told what came undone rather than welcomed again.
  *
  * It owns the whole window rather than sitting in the shell — the sidebar leads
  * nowhere until the engine exists, and a half-live chrome reads as an app
@@ -27,6 +30,7 @@ import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
  * fact, not dressed up as a fourth task.
  */
 export interface SetupWalkthroughProps {
+  mode: SetupMode;
   env: EnvStatus | null;
   acoustidConfigured: boolean;
   onRecheckPython: () => void;
@@ -36,6 +40,7 @@ export interface SetupWalkthroughProps {
 }
 
 export function SetupWalkthrough({
+  mode,
   env,
   acoustidConfigured,
   onRecheckPython,
@@ -54,7 +59,13 @@ export function SetupWalkthrough({
 
   const panels: Record<SetupStepId, React.ReactNode> = {
     python: <PythonPanel python={env?.python ?? null} onRecheck={onRecheckPython} isChecking={isCheckingPython} />,
-    engine: <EnginePanel isInstalled={Boolean(env?.venvOk && env.depsOk)} isBundled={Boolean(env?.pythonBundled)} />,
+    engine: (
+      <EnginePanel
+        mode={mode}
+        isInstalled={Boolean(env?.venvOk && env.depsOk)}
+        isBundled={Boolean(env?.pythonBundled)}
+      />
+    ),
     acoustid: (
       <AcoustidPanel isConfigured={acoustidConfigured} onSkip={() => setSkipped((prev) => [...prev, "acoustid"])} />
     ),
@@ -95,10 +106,14 @@ export function SetupWalkthrough({
           <header className="flex items-start justify-between gap-8">
             <div className="min-w-0">
               <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
-                {t("walkthrough.eyebrow")}
+                {t(`walkthrough.${mode}.eyebrow`)}
               </p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("walkthrough.title")}</h1>
-              <p className="mt-2.5 max-w-prose text-[0.9375rem] leading-relaxed text-muted">{t("walkthrough.lead")}</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">
+                {t(`walkthrough.${mode}.title`)}
+              </h1>
+              <p className="mt-2.5 max-w-prose text-[0.9375rem] leading-relaxed text-muted">
+                {t(`walkthrough.${mode}.lead`)}
+              </p>
             </div>
             {/* The first screen is also the first thing to be *read*, and until
                 now the only way to change the language was three screens past
@@ -139,12 +154,12 @@ export function SetupWalkthrough({
               >
                 <div className="flex items-center gap-4">
                   <Button variant="primary" onPress={onFinish} isDisabled={isFinishing} className="px-5">
-                    {t("walkthrough.enter", { app: tCommon("appName") })}
+                    {t(`walkthrough.${mode}.enter`, { app: tCommon("appName") })}
                     <ArrowRight className="size-4" />
                   </Button>
                   {env?.libraryDir && (
                     <p className="min-w-0 flex-1 truncate text-xs text-muted" title={env.libraryDir}>
-                      {t("walkthrough.libraryHint", { path: env.libraryDir })}
+                      {t(`walkthrough.${mode}.libraryHint`, { path: env.libraryDir })}
                     </p>
                   )}
                 </div>

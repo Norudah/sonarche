@@ -41,7 +41,7 @@ export function ConvertLibraryDialog({
   onConfirm: () => void;
 }) {
   const { t } = useTranslation("settings");
-  const label = t(`adding.audioFormat.formats.${format}.name`);
+  const label = t(`files.audioFormat.formats.${format}.name`);
   const done = report != null || error != null;
   const percent = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
@@ -63,26 +63,26 @@ export function ConvertLibraryDialog({
             <AlertDialog.Header>
               <AlertDialog.Heading className="text-lg font-semibold tracking-tight">
                 {done
-                  ? t("adding.audioFormat.convert.doneTitle")
-                  : t("adding.audioFormat.convert.title", { format: label })}
+                  ? t("files.audioFormat.convert.doneTitle")
+                  : t("files.audioFormat.convert.title", { format: label })}
               </AlertDialog.Heading>
             </AlertDialog.Header>
 
             <AlertDialog.Body className="text-sm leading-relaxed text-muted">
               {!isRunning && !done && (
                 <>
-                  <p>{t("adding.audioFormat.convert.intro", { format: label })}</p>
+                  <p>{t("files.audioFormat.convert.intro", { format: label })}</p>
                   <ul className="mt-3 list-disc space-y-1 pl-5">
-                    <li>{t("adding.audioFormat.convert.warnings.time")}</li>
-                    <li>{t("adding.audioFormat.convert.warnings.blocked")}</li>
-                    <li>{t("adding.audioFormat.convert.warnings.quality")}</li>
+                    <li>{t("files.audioFormat.convert.warnings.time")}</li>
+                    <li>{t("files.audioFormat.convert.warnings.blocked")}</li>
+                    <li>{t("files.audioFormat.convert.warnings.quality")}</li>
                   </ul>
                 </>
               )}
 
               {isRunning && (
                 <>
-                  <p>{t("adding.audioFormat.convert.running", { format: label })}</p>
+                  <p>{t("files.audioFormat.convert.running", { format: label })}</p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-secondary">
                     <div
                       className="h-full rounded-full bg-accent transition-[width] duration-300"
@@ -92,11 +92,11 @@ export function ConvertLibraryDialog({
                   <p className="mt-2 flex items-baseline justify-between gap-3 text-[0.8125rem]">
                     <span className="min-w-0 truncate">
                       {progress?.title
-                        ? t("adding.audioFormat.convert.current", {
+                        ? t("files.audioFormat.convert.current", {
                             title: progress.title,
                             artist: progress.artist,
                           })
-                        : t("adding.audioFormat.convert.starting")}
+                        : t("files.audioFormat.convert.starting")}
                     </span>
                     <span className="shrink-0 font-medium text-foreground tabular-nums">
                       {progress ? `${progress.done} / ${progress.total}` : ""}
@@ -109,13 +109,13 @@ export function ConvertLibraryDialog({
 
               {report && !error && (
                 <>
-                  <p>{t("adding.audioFormat.convert.recap", { count: report.converted, format: label })}</p>
+                  <p>{t("files.audioFormat.convert.recap", { count: report.converted, format: label })}</p>
                   {report.skipped > 0 && (
-                    <p className="mt-1">{t("adding.audioFormat.convert.skipped", { count: report.skipped })}</p>
+                    <p className="mt-1">{t("files.audioFormat.convert.skipped", { count: report.skipped })}</p>
                   )}
                   {report.failed > 0 && (
                     <p className="mt-1 text-danger">
-                      {t("adding.audioFormat.convert.failed", { count: report.failed })}
+                      {t("files.audioFormat.convert.failed", { count: report.failed })}
                     </p>
                   )}
                 </>
@@ -125,18 +125,18 @@ export function ConvertLibraryDialog({
             <AlertDialog.Footer>
               {!done && (
                 <Button variant="secondary" onPress={onClose} isDisabled={isRunning}>
-                  {t("library.danger.cancel")}
+                  {t("danger.cancel")}
                 </Button>
               )}
               {!done && (
                 <Button variant="primary" onPress={onConfirm} isDisabled={isRunning}>
                   {isRunning && <Loader2 className="size-4 animate-spin" />}
-                  {t("adding.audioFormat.convert.confirm")}
+                  {t("files.audioFormat.convert.confirm")}
                 </Button>
               )}
               {done && (
                 <Button variant="primary" onPress={onClose}>
-                  {t("adding.audioFormat.convert.close")}
+                  {t("files.audioFormat.convert.close")}
                 </Button>
               )}
             </AlertDialog.Footer>
