@@ -1,10 +1,10 @@
 import { Button, Checkbox } from "@heroui/react";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SETUP_RESET_TARGET_NAMES, type SetupResetTargetName } from "@/features/settings/api";
-import { SettingCard } from "@/features/settings/SettingCard";
+import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useResetSetupDev } from "@/features/settings/hooks";
 
 /**
@@ -14,6 +14,12 @@ import { useResetSetupDev } from "@/features/settings/hooks";
  * dropping the AcoustID key, and having to paste a real key back after every
  * run would make the reset too expensive to use. Neutral on purpose — the
  * destructive reset lives in its own card, in its own register.
+ *
+ * The boxes are drawn now. HeroUI's checkbox is compound like its switch, and
+ * this was the app's only call site: a bare `<Checkbox>{label}</Checkbox>`
+ * renders the label, the state and the click target, and no box at all — five
+ * lines of text you had to guess were selectable, in the one pane whose whole
+ * job is being obvious to whoever is testing the app.
  */
 export function SetupResetCard() {
   const { t } = useTranslation("settings");
@@ -36,34 +42,34 @@ export function SetupResetCard() {
     reset.mutate(Object.fromEntries(SETUP_RESET_TARGET_NAMES.map((name) => [name, selected.has(name)])));
 
   return (
-    <SettingCard>
+    <SettingCard settingKey="developer.resetSetup">
       <div className="flex flex-col gap-3">
-        <h3 className="font-medium">{t("developer.resetSetup.name")}</h3>
-        <p className="max-w-prose text-sm text-muted">{t("developer.resetSetup.why")}</p>
+        <SettingCardHeader title={t("developer.resetSetup.name")} description={t("developer.resetSetup.why")} />
 
-        <div className="flex flex-col gap-2.5 py-1">
+        <div className="flex flex-col gap-2 rounded-lg border border-separator/60 bg-default/30 p-3">
           {SETUP_RESET_TARGET_NAMES.map((name) => (
             <Checkbox key={name} isSelected={selected.has(name)} onChange={(on) => toggle(name, on)}>
-              <span className="text-sm">
-                {t(`developer.resetSetup.targets.${name}.label`)}
-                <span className="text-muted"> — {t(`developer.resetSetup.targets.${name}.cost`)}</span>
-              </span>
+              <Checkbox.Content className="items-center gap-2.5">
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <span className="text-[0.8125rem]">
+                  {t(`developer.resetSetup.targets.${name}.label`)}
+                  <span className="text-muted"> — {t(`developer.resetSetup.targets.${name}.cost`)}</span>
+                </span>
+              </Checkbox.Content>
             </Checkbox>
           ))}
         </div>
 
-        <Button
-          variant="secondary"
-          className="self-start"
-          isDisabled={reset.isPending || selected.size === 0}
-          onPress={run}
-        >
-          {reset.isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
-          {reset.isPending ? t("developer.resetSetup.running") : t("developer.resetSetup.action")}
-        </Button>
-
-        {reset.isSuccess && <p className="text-sm text-success">{t("developer.resetSetup.done")}</p>}
-        {reset.isError && <p className="text-sm text-danger">{String(reset.error)}</p>}
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" isDisabled={reset.isPending || selected.size === 0} onPress={run}>
+            {reset.isPending && <Loader2 className="size-4 animate-spin" />}
+            {reset.isPending ? t("developer.resetSetup.running") : t("developer.resetSetup.action")}
+          </Button>
+          {reset.isSuccess && <p className="text-[0.8125rem] text-success">{t("developer.resetSetup.done")}</p>}
+          {reset.isError && <p className="text-[0.8125rem] text-danger">{String(reset.error)}</p>}
+        </div>
       </div>
     </SettingCard>
   );

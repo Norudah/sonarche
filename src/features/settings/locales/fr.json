@@ -355,6 +355,43 @@
       "warning": "Tous les fichiers de la bibliothèque et l'index beets seront définitivement supprimés.",
       "resetting": "Suppression…",
       "done": "Bibliothèque réinitialisée."
+    },
+    "toasts": {
+      "name": "Aperçu des notifications",
+      "why": "Les bandeaux que l'app affiche en bas à droite. Chaque bouton en déclenche un, et rien d'autre : aucune opération n'est lancée, rien n'est à annuler. C'est le seul moyen de regarder leur mise en page sans provoquer un vrai téléchargement ou une vraie erreur.",
+      "clear": "Tout fermer",
+      "samples": {
+        "success": {
+          "label": "Succès",
+          "title": "Clef enregistrée",
+          "body": "Les prochains imports pourront identifier tes morceaux par leur empreinte."
+        },
+        "danger": {
+          "label": "Erreur",
+          "title": "Le téléchargement a échoué",
+          "body": "La source a refusé la requête (403). Réessaie dans quelques minutes."
+        },
+        "warning": {
+          "label": "Avertissement",
+          "title": "Pochette introuvable",
+          "body": "Le morceau est bien arrivé, mais aucun service n'a proposé d'image."
+        },
+        "info": {
+          "label": "Information",
+          "title": "Nouvelle version disponible",
+          "body": "Sonarche 0.9.0 est prête à être installée."
+        },
+        "plain": {
+          "label": "Sans texte",
+          "title": "Import terminé",
+          "body": ""
+        },
+        "long": {
+          "label": "Texte long",
+          "title": "Le moteur n'a pas répondu",
+          "body": "Traceback (most recent call last): File \"beetsplug/sonarche_import.py\", line 214, in run — sqlite3.OperationalError: database is locked. L'environnement Python est peut-être en cours de réinstallation ; réessaie une fois le bandeau de progression disparu."
+        }
+      }
     }
   }
 }

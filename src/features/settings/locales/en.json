@@ -355,6 +355,43 @@
       "warning": "Every library file and the beets index will be permanently deleted.",
       "resetting": "Wiping…",
       "done": "Library reset."
+    },
+    "toasts": {
+      "name": "Notification preview",
+      "why": "The strips the app raises in the bottom right corner. Each button fires one and does nothing else: no operation starts, nothing is left to undo. It is the only way to look at their layout without provoking a real download or a real failure.",
+      "clear": "Dismiss all",
+      "samples": {
+        "success": {
+          "label": "Success",
+          "title": "Key saved",
+          "body": "The next imports will be able to identify your tracks by their fingerprint."
+        },
+        "danger": {
+          "label": "Error",
+          "title": "The download failed",
+          "body": "The source refused the request (403). Try again in a few minutes."
+        },
+        "warning": {
+          "label": "Warning",
+          "title": "No artwork found",
+          "body": "The track arrived fine, but no service offered an image."
+        },
+        "info": {
+          "label": "Info",
+          "title": "A new version is available",
+          "body": "Sonarche 0.9.0 is ready to install."
+        },
+        "plain": {
+          "label": "No body",
+          "title": "Import finished",
+          "body": ""
+        },
+        "long": {
+          "label": "Long text",
+          "title": "The engine did not answer",
+          "body": "Traceback (most recent call last): File \"beetsplug/sonarche_import.py\", line 214, in run — sqlite3.OperationalError: database is locked. The Python environment may be reinstalling; try again once the progress strip is gone."
+        }
+      }
     }
   }
 }
