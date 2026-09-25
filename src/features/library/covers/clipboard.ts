@@ -5,7 +5,7 @@ import { savePastedImage } from "@/features/library/api";
 
 /** Clipboard content for image pickers: an image (raw RGBA from the OS,
  * re-encoded to PNG, saved by Rust) or an image URL (fetched like a link). */
-export type ClipboardContent =
+type ClipboardContent =
   { kind: "image"; path: string } | { kind: "url"; url: string } | { kind: "oversized" } | { kind: "none" };
 
 // Raw RGBA is 4 bytes a pixel: 48 MP ≈ 192 MB.

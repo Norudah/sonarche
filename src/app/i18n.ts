@@ -54,5 +54,3 @@ i18n.use(initReactI18next).init({
 });
 
 applyDocumentLanguage(startingLanguage);
-
-export default i18n;

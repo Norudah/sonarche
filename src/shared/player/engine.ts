@@ -19,10 +19,6 @@ export function toggle(): Promise<boolean> {
   return invoke<boolean>("player_toggle");
 }
 
-export function pause(): Promise<void> {
-  return invoke("player_pause");
-}
-
 export function seek(seconds: number): Promise<void> {
   return invoke("player_seek", { seconds });
 }
@@ -37,7 +33,7 @@ export function stop(): Promise<void> {
 }
 
 /** Pushed on change. */
-export interface PlaybackStatus {
+interface PlaybackStatus {
   position: number;
   duration: number | null;
   isPlaying: boolean;
@@ -58,7 +54,7 @@ export function onEnded(handler: () => void) {
 
 /** The preloaded file the engine moved into. By path, since the front's
  * queue may have changed since. */
-export interface HandedOver {
+interface HandedOver {
   path: string;
   duration: number | null;
 }
@@ -69,7 +65,7 @@ export function onAdvanced(handler: (file: HandedOver) => void) {
 }
 
 /** OS media session info, separate from `load` which only takes a path. */
-export interface NowPlayingTrack {
+interface NowPlayingTrack {
   title?: string | null;
   artist?: string | null;
   album?: string | null;
@@ -83,7 +79,7 @@ export function setNowPlaying(track: NowPlayingTrack): Promise<void> {
 }
 
 /** A system control press; `seek` is an absolute position in seconds. */
-export type RemoteAction = "play" | "pause" | "toggle" | "next" | "previous" | "stop" | { seek: number };
+type RemoteAction = "play" | "pause" | "toggle" | "next" | "previous" | "stop" | { seek: number };
 
 export function onRemote(handler: (action: RemoteAction) => void) {
   return listen<RemoteAction>("player:remote", (event) => handler(event.payload));

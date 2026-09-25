@@ -7,7 +7,7 @@ import type { PythonInfo } from "@/features/onboarding/api";
 import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 
 /** The Python step, only shown when no interpreter is bundled. */
-export interface PythonPanelProps {
+interface PythonPanelProps {
   python: PythonInfo | null;
   onRecheck: () => void;
   isChecking: boolean;

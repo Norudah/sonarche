@@ -11,7 +11,7 @@ export interface UpdateState {
   available: string | null | undefined;
 }
 
-export interface Status {
+interface Status {
   key: string;
   tone: Tone;
   version?: string;

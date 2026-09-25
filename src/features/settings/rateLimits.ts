@@ -68,7 +68,7 @@ export function nearestStopIndex(stops: number[], seconds: number): number {
   return best;
 }
 
-export interface DelayMark {
+interface DelayMark {
   value: number;
   /** Percent along the track, by stop index. */
   position: number;

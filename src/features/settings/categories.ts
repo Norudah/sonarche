@@ -20,7 +20,7 @@ export interface SettingsCategory {
   icon: LucideIcon;
 }
 
-export interface SettingsGroup {
+interface SettingsGroup {
   labelKey: string;
   categories: SettingsCategory[];
 }

@@ -30,8 +30,8 @@ import {
   type SetupResetTargets,
 } from "@/features/settings/api";
 
-export const apiKeysKey = ["settings", "apiKeys"];
-export const preferencesKey = ["settings", "preferences"];
+const apiKeysKey = ["settings", "apiKeys"];
+const preferencesKey = ["settings", "preferences"];
 
 export function useApiKeys() {
   return useQuery({ queryKey: apiKeysKey, queryFn: listApiKeys });
@@ -67,7 +67,7 @@ export function useCheckServices() {
   });
 }
 
-export const libraryLocationKey = ["settings", "libraryLocation"];
+const libraryLocationKey = ["settings", "libraryLocation"];
 
 export function useLibraryLocation() {
   return useQuery({ queryKey: libraryLocationKey, queryFn: getLibraryLocation });

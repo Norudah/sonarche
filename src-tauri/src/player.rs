@@ -198,10 +198,6 @@ impl PlayerState {
         })
     }
 
-    pub fn pause(&self) -> AppResult<()> {
-        self.with_engine(|engine| engine.player.pause())
-    }
-
     /// Blocks until the audio thread picks the seek up; call via `off_runtime`.
     pub fn seek(&self, seconds: f64) -> AppResult<()> {
         let target = Duration::from_secs_f64(seconds.max(0.0));

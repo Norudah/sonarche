@@ -11,7 +11,7 @@ import { springs } from "@/shared/motion/tokens";
 export type SaveFeedback = { kind: "saved"; tracks: number } | { kind: "failed" } | null;
 
 /** The last re-match's counts, or its error. */
-export type RematchOutcome =
+type RematchOutcome =
   { kind: "failed" } | { kind: "finished"; matched: number; done: number; total: number; cancelled: boolean } | null;
 
 /** Action bar. Re-match is disabled while changes are pending (saving would

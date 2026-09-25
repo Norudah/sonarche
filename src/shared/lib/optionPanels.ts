@@ -6,7 +6,7 @@
 
 import { useSyncExternalStore } from "react";
 
-export type OptionPanel = "download" | "import";
+type OptionPanel = "download" | "import";
 
 const STORAGE_KEYS: Record<OptionPanel, string> = {
   download: "sonarche.autoExpand.download",
@@ -20,7 +20,7 @@ export function parseAutoExpand(raw: string | null | undefined): boolean {
   return raw !== "off";
 }
 
-export function readAutoExpand(panel: OptionPanel): boolean {
+function readAutoExpand(panel: OptionPanel): boolean {
   try {
     return parseAutoExpand(window.localStorage.getItem(STORAGE_KEYS[panel]));
   } catch {

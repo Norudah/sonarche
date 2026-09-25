@@ -28,7 +28,7 @@ export interface LibraryLookup {
   isLoaded: boolean;
 }
 
-export interface JobCardProps {
+interface JobCardProps {
   job: DownloadJob;
   /** Only for the job currently downloading. */
   downloadPercent: number | null;

@@ -1,7 +1,7 @@
 /** The installer's current activity, from pip's last meaningful log line.
  * Not a percentage: pip's dependency tree size isn't known up front. */
 
-export type InstallPhase =
+type InstallPhase =
   | { kind: "starting" }
   | { kind: "venv" }
   | { kind: "fetching"; pkg: string }

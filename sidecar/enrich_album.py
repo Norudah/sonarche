@@ -116,12 +116,6 @@ def slot_rescues(leftovers, tracks, hints: dict) -> dict:
     return assignments
 
 
-def _pair_plausible(file_length: float | None, track_length: float | None) -> bool:
-    if not file_length or not track_length:
-        return True
-    return abs(file_length - track_length) <= _MAX_DURATION_DIFF_SECONDS
-
-
 def find_content_duplicates(recording_lists: list[tuple[int, list[str]]]) -> dict[int, int]:
     """{duplicate item id: kept item id} for items sharing the same primary
     AcoustID recording. First occurrence wins.

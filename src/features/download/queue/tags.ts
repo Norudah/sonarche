@@ -1,7 +1,7 @@
 import type { DownloadJob, JobKind, MetadataReport } from "@/features/download/api";
 
 /** Tracks report their fields; albums the mean completion. */
-export type TagSummary = { provisional: boolean } & (
+type TagSummary = { provisional: boolean } & (
   { kind: "ratio"; filled: number; total: number } | { kind: "percent"; value: number }
 );
 

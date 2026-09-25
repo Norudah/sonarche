@@ -9,7 +9,7 @@ import { importRail } from "@/features/import/stages";
  * times) and `counter` (never animated: cross-fading it made the card jump on
  * every folder). `text` joins both for the rail's `aria-valuetext`.
  */
-export interface ImportLabel {
+interface ImportLabel {
   phase: string;
   counter: string | null;
   /** Both, for assistive tech. */

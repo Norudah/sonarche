@@ -5,7 +5,7 @@ import { allowCoverPreview } from "@/features/library/api";
 import { WHOLE_FRAME, type CropFrame, type SourceSize } from "@/features/library/covers/coverCrop";
 
 /** Mirrors the Rust whitelist (`COVER_SOURCE_EXTENSIONS`). */
-export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
 /** A local file admitted to the asset scope. */
 export interface LocalImage {

@@ -7,20 +7,6 @@ import traceback
 import protocol
 
 
-def _handle_ping(_request_id: str, _params: dict) -> dict:
-    import platform
-
-    import beets
-    import yt_dlp
-
-    return {
-        "pong": True,
-        "python": platform.python_version(),
-        "beets": beets.__version__,
-        "yt_dlp": yt_dlp.version.__version__,
-    }
-
-
 def _handlers():
     import accepted
     import acoustid_key
@@ -34,7 +20,6 @@ def _handlers():
     import enrich
     import enrich_album
     import genre_overrides
-    import genres
     import importer
     import library
     import import_undo
@@ -48,7 +33,6 @@ def _handlers():
     import services
 
     return {
-        "ping": _handle_ping,
         "probe": probe.handle,
         "download": download.handle,
         "import": importer.handle,
@@ -75,7 +59,6 @@ def _handlers():
         "cover_candidates": cover_set.candidates,
         "artist_image_set": artist_image.handle,
         "artist_image_fetch": artist_image.fetch,
-        "genres_recompute": genres.recompute,
         "genre_family_set": genre_overrides.handle_set,
         "genre_overrides_list": genre_overrides.handle_list,
         "lyrics_fetch": lyrics.fetch,

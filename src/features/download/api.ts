@@ -227,7 +227,7 @@ export async function listJobs(): Promise<DownloadJob[]> {
 }
 
 /** One archive page and its totals; `list_jobs` only covers the live window. */
-export interface JobsPage {
+interface JobsPage {
   jobs: DownloadJob[];
   /** All jobs, live included. */
   total: number;

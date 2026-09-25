@@ -19,7 +19,7 @@ import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
  * closing line differ). Owns the whole window: the shell is useless until the
  * engine exists. Steps are ordered by dependency.
  */
-export interface SetupWalkthroughProps {
+interface SetupWalkthroughProps {
   mode: SetupMode;
   env: EnvStatus | null;
   acoustidConfigured: boolean;

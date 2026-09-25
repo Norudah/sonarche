@@ -7,7 +7,6 @@ mod commands;
 mod convert;
 mod download_undo;
 mod error;
-mod genres;
 mod identity;
 mod import_undo;
 mod jobs;
@@ -49,7 +48,6 @@ fn main() {
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(remux::RemuxState::default())
-        .manage(genres::RecomputeGenresState::default())
         .manage(convert::ConvertLibraryState::default())
         .manage(library_align::LibraryAlignState::default())
         .manage(library_import::LibraryImportState::default())
@@ -103,7 +101,6 @@ fn main() {
             commands::playable_extensions,
             commands::reenrich_track,
             commands::remux_library,
-            commands::recompute_genres,
             commands::set_audio_format,
             commands::convert_library,
             commands::fetch_lyrics,
@@ -161,11 +158,9 @@ fn main() {
             commands::player_load,
             commands::player_enqueue,
             commands::player_toggle,
-            commands::player_pause,
             commands::player_seek,
             commands::player_set_volume,
             commands::player_stop,
-            commands::player_status,
             commands::now_playing_set,
             commands::set_window_theme,
         ])

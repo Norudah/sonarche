@@ -10,7 +10,6 @@ use tauri::{AppHandle, State};
 use crate::convert::ConvertLibraryState;
 use crate::download_undo;
 use crate::error::{AppError, AppResult};
-use crate::genres::RecomputeGenresState;
 use crate::identity;
 use crate::import_undo;
 use crate::jobs::{ForcedAlbum, Job, JobKind, JobsState};
@@ -21,7 +20,7 @@ use crate::library_scan::{self, ScanReport};
 use crate::lyrics;
 use crate::now_playing::{self, NowPlayingTrack};
 use crate::onboarding::{self, OnboardingState};
-use crate::player::{self, PlaybackStatus, PlayerState};
+use crate::player;
 use crate::preferences::{self, Preferences};
 use crate::python_env::{self, AppPaths, EnvStatus};
 use crate::reenrich::ReenrichState;
@@ -393,11 +392,6 @@ pub async fn player_toggle(app: AppHandle) -> AppResult<bool> {
 }
 
 #[tauri::command]
-pub async fn player_pause(app: AppHandle) -> AppResult<()> {
-    player::off_runtime(app, |player| player.pause()).await
-}
-
-#[tauri::command]
 pub async fn player_seek(app: AppHandle, seconds: f64) -> AppResult<()> {
     if !seconds.is_finite() {
         return Err(AppError::InvalidInput("seek target is not a number".into()));
@@ -424,12 +418,6 @@ pub async fn player_stop(app: AppHandle) -> AppResult<()> {
 pub async fn now_playing_set(app: AppHandle, track: NowPlayingTrack) -> AppResult<()> {
     now_playing::set_track(&app, &track);
     Ok(())
-}
-
-/// The current playback status, for a freshly mounted front.
-#[tauri::command]
-pub async fn player_status(state: State<'_, PlayerState>) -> AppResult<PlaybackStatus> {
-    Ok(state.status())
 }
 
 #[tauri::command]
@@ -469,14 +457,6 @@ pub async fn set_audio_format(app: AppHandle, format: String) -> AppResult<Prefe
 pub async fn convert_library(
     app: AppHandle,
     state: State<'_, ConvertLibraryState>,
-) -> AppResult<Value> {
-    state.run(&app).await
-}
-
-#[tauri::command]
-pub async fn recompute_genres(
-    app: AppHandle,
-    state: State<'_, RecomputeGenresState>,
 ) -> AppResult<Value> {
     state.run(&app).await
 }

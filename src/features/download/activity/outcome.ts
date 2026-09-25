@@ -15,7 +15,7 @@ export type JobOutcome =
   | { kind: "failed" }
   | { kind: "cancelled" };
 
-export type OutcomeTone = "accent" | "success" | "warning" | "danger";
+type OutcomeTone = "accent" | "success" | "warning" | "danger";
 
 export const OUTCOME_TONE: Record<JobOutcome["kind"], OutcomeTone> = {
   matched: "success",

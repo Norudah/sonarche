@@ -29,7 +29,7 @@ export async function revealApiKey(name: ApiKeyName): Promise<string | null> {
   return invoke<string | null>("reveal_api_key", { name });
 }
 
-export interface KeyCheck {
+interface KeyCheck {
   valid: boolean;
   reason: string | null;
 }
@@ -59,7 +59,7 @@ export async function checkServices(only?: ServiceName): Promise<ServiceStatus[]
   return reply.services;
 }
 
-export interface LibraryLocation {
+interface LibraryLocation {
   path: string;
   defaultPath: string;
   isDefault: boolean;

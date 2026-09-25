@@ -22,7 +22,7 @@ export function matchLanguage(locale: string | null | undefined): Language {
   return parseLanguage(primary) ?? FALLBACK;
 }
 
-export function readStoredLanguage(): Language | null {
+function readStoredLanguage(): Language | null {
   try {
     return parseLanguage(window.localStorage.getItem(STORAGE_KEY));
   } catch {

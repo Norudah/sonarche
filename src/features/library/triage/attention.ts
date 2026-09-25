@@ -15,7 +15,7 @@ import { buildTriageQueue, type DoorKey } from "@/features/library/triage/queue"
 const TRACK_PREFIX = "t:";
 
 /** Doors naming each pending track, most serious first; absent means nothing pending. */
-export type AlbumAttention = ReadonlyMap<number, DoorKey[]>;
+type AlbumAttention = ReadonlyMap<number, DoorKey[]>;
 
 /** Scoped to the given list: "duplicates" means within this list. */
 export function trackAttention(tracks: LibraryTrack[], albums: Album[], disabled: CheckKey[]): AlbumAttention {

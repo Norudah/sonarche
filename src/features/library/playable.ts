@@ -5,7 +5,7 @@ import type { LibraryTrack } from "@/features/library/api";
 
 /** The engine's playable extensions (from Rust, so there's no copy to drift),
  * used to flag imported tracks that won't play. */
-export const playableKey = ["playable-extensions"] as const;
+const playableKey = ["playable-extensions"] as const;
 
 export function usePlayableExtensions() {
   return useQuery({

@@ -10,7 +10,7 @@ import { useSyncExternalStore } from "react";
 export type SettingsCategoryId =
   "appearance" | "adding" | "metadata" | "files" | "services" | "updates" | "advanced" | "danger" | "developer";
 
-export interface SettingsDialogState {
+interface SettingsDialogState {
   isOpen: boolean;
   /** Kept while closed, so reopening lands where the user left. */
   category: SettingsCategoryId;

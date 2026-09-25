@@ -8,7 +8,6 @@ import {
   listDownloadTargetAlbums,
   listLibrary,
   moveTracks,
-  recomputeGenres,
   reenrichTrack,
   removeArtistImage,
   setAlbumCover,
@@ -24,8 +23,8 @@ import {
 import { playlistsKey } from "@/features/library/playlists/hooks";
 
 export const libraryKey = ["library"] as const;
-export const artistImagesKey = ["artist-images"] as const;
-export const downloadTargetsKey = ["download-target-albums"] as const;
+const artistImagesKey = ["artist-images"] as const;
+const downloadTargetsKey = ["download-target-albums"] as const;
 
 /** The whole library. `staleTime: Infinity`: it only changes through our own
  * commands, all of which invalidate this key. */
@@ -245,14 +244,4 @@ export function useDownloadTargetAlbums() {
   }, [queryClient]);
 
   return query;
-}
-
-export function useRecomputeGenres() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: recomputeGenres,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: libraryKey });
-    },
-  });
 }

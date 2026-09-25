@@ -66,7 +66,7 @@ export function cropRect(source: SourceSize, frame: CropFrame): CoverCrop | null
  * side `maxPx`. Inside the picture, the window moves over a still image;
  * beyond it, the window holds still and the picture moves.
  */
-export interface StageLayout {
+interface StageLayout {
   width: number;
   height: number;
   imageLeft: number;

@@ -99,10 +99,6 @@
   --playlist-sky: oklch(0.58 0.14 215);
   --playlist-blue: oklch(0.58 0.14 250);
 
-  /* Metadata drawer header gradient, starting darker than the accent. */
-  --metadata-header-from: oklch(0.375 0.145 277);
-  --metadata-header-to: var(--accent);
-
   /* Artwork hairline, strong enough to hold a pale cover. */
   --artwork-edge: oklch(0.3 0.03 279 / 0.09);
 
@@ -214,9 +210,6 @@
   --playlist-sky: oklch(0.7 0.13 215);
   --playlist-blue: oklch(0.7 0.13 250);
 
-  --metadata-header-from: oklch(0.26 0.12 277);
-  --metadata-header-to: var(--accent);
-
   --artwork-edge: oklch(1 0 0 / 0.1);
 
   /* No light from above at night, so elevation is a 1px tinted top edge, with
@@ -243,7 +236,7 @@
   --panel-wash: linear-gradient(to bottom, oklch(0.72 0.035 279 / 0.14), oklch(0.72 0.035 279 / 0.05) 45%, transparent);
 }
 
-/* --- Artist genre avatar -------------------------------------------------- */
+/* --- Artist avatar -------------------------------------------------------- */
 
 /* Placeholder disc, themed above. */
 .artist-avatar {
@@ -640,8 +633,6 @@
   /* App colours mapped to utilities through the raw vars, so they follow the theme. */
   --color-panel: var(--panel);
   --color-tray: var(--tray);
-  --color-metadata-header-from: var(--metadata-header-from);
-  --color-metadata-header-to: var(--metadata-header-to);
   --color-artwork-edge: var(--artwork-edge);
 
   /* As a border for cards clipped by an `overflow-hidden` parent, which would
@@ -794,25 +785,7 @@
   background-image: var(--panel-wash);
 }
 
-/* Reach two descendants with two animations. */
-
-/* Applied on a <tr>, driven from QueueTable. Utilities rather than a stack of
-   arbitrary variants at the call site, because both of these have to reach two
-   different descendants with two different animations — expressing that inline
-   made the className longer than the row it decorated. */
-
-/** A new row: an accent wash draining as the content rises. */
-@utility row-reveal {
-  & > td,
-  & > th {
-    animation: var(--animate-row-wash);
-  }
-
-  & > td > *,
-  & > th > * {
-    animation: var(--animate-row-rise);
-  }
-}
+/* --- Row and card entrances --------------------------------------------- */
 
 /** Staggered row entrance via `--row-stagger`; `backwards` keeps rows hidden
     during their delay. */
@@ -845,8 +818,6 @@
 
 /* Plain CSS animations opt out here (MotionProvider only covers Motion). */
 @media (prefers-reduced-motion: reduce) {
-  .row-reveal > td,
-  .row-reveal > th,
   .row-cascade > td > *,
   .row-cascade > th > *,
   .cascade-item,

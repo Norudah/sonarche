@@ -10,7 +10,7 @@ const TONES = {
   warning: "bg-warning-soft text-warning",
 } as const;
 
-export type ChromeTone = keyof typeof TONES;
+type ChromeTone = keyof typeof TONES;
 
 export function chromeButton(tone: ChromeTone = "idle"): string {
   return `${BASE} ${TONES[tone]}`;

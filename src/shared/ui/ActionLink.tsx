@@ -5,7 +5,7 @@ import { Link } from "react-router";
 /** Text-level action, as a router link or a button. Two components because
  * their props differ. */
 
-export type ActionTone = "accent" | "muted" | "danger";
+type ActionTone = "accent" | "muted" | "danger";
 
 const TONE: Record<ActionTone, string> = {
   accent: "text-accent hover:text-accent/80",

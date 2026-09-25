@@ -56,7 +56,7 @@ export function playlistNameTaken(
 }
 
 /** A track plus the stored position that mutations address. */
-export interface PlaylistViewRow {
+interface PlaylistViewRow {
   track: LibraryTrack;
   position: number;
 }
@@ -73,7 +73,7 @@ export function orderedPlaylists(playlists: Playlist[]): Playlist[] {
   return [...playlists].sort((a, b) => Number(b.kind === "favorites") - Number(a.kind === "favorites"));
 }
 
-export const SIDEBAR_PLAYLIST_LIMIT = 8;
+const SIDEBAR_PLAYLIST_LIMIT = 8;
 
 /** Favorites plus the most recently updated lists, displayed alphabetically
  * so rows don't move around. */

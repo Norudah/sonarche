@@ -8,7 +8,7 @@ import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { libraryKey } from "@/features/library/hooks";
 import { TOAST_EXPLAINED, TOAST_GLANCE, TOAST_UNDO } from "@/shared/toast/durations";
 
-export const genreOverridesKey = ["genre-overrides"] as const;
+const genreOverridesKey = ["genre-overrides"] as const;
 
 /** Lowercased keys, as the sidecar stores them. `staleTime: Infinity`. */
 export function useGenreOverrides() {

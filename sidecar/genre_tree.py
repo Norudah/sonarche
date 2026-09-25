@@ -78,10 +78,6 @@ def root_of_label(label: str) -> str | None:
     return None
 
 
-def family_labels() -> list[str]:
-    return list(_FAMILIES.values())
-
-
 def base_root_for(genre_lower: str) -> str | None:
     """Family root from the base tree alone, ignoring overrides."""
     root = _genre_to_root().get(genre_lower)

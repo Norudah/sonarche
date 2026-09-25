@@ -1,7 +1,7 @@
 import type { AlbumTrackJob, DownloadJob } from "@/features/download/api";
 
 /** Mirrors DOWNLOAD_ATTEMPTS in src-tauri/src/jobs.rs; only sets the dot count. */
-export const DOWNLOAD_ATTEMPTS = 3;
+const DOWNLOAD_ATTEMPTS = 3;
 
 export type AttemptOutcome = "success" | "failure" | "running" | "untried";
 

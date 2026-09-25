@@ -6,7 +6,7 @@ import type { AlbumTrackJob, DownloadJob, JobStep, MetadataReport } from "@/feat
  */
 export type StepState = "pending" | "active" | "done" | "empty" | "failed" | "partial";
 
-export interface PipelineStep {
+interface PipelineStep {
   step: JobStep;
   state: StepState;
   /** Running step's progress ("11/16", "43 %"). */

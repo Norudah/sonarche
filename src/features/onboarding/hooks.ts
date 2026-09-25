@@ -12,8 +12,8 @@ import {
   storeAcoustidKey,
 } from "@/features/onboarding/api";
 
-export const envStatusKey = ["env-status"] as const;
-export const onboardingStateKey = ["onboarding-state"] as const;
+const envStatusKey = ["env-status"] as const;
+const onboardingStateKey = ["onboarding-state"] as const;
 
 export function useEnvStatus() {
   return useQuery({

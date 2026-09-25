@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * `warning`: the commit is the safe path; a risky answer goes in
  * `alternative`. Corners reduced from HeroUI's 32px to `rounded-2xl`.
  */
-export interface ConfirmDialogProps {
+interface ConfirmDialogProps {
   isOpen: boolean;
   /** Called for every dismissal: button, backdrop, Escape. */
   onClose: () => void;

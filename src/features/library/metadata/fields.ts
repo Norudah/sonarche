@@ -83,18 +83,6 @@ export function diffFields(live: FieldValues, draft: FieldValues): TrackFieldPat
   return patch;
 }
 
-export function countFilled(values: FieldValues): number {
-  return COMPLETENESS_KEYS.filter((key) => values[key].trim() !== "").length;
-}
-
-/** Filled tags as a ratio ("5/7"). */
-export function tagCounts(track: LibraryTrack): { filled: number; total: number } {
-  return {
-    filled: countFilled(toFieldValues(track)),
-    total: COMPLETENESS_KEYS.length,
-  };
-}
-
 /** `192000` bps → `"192"` kbps. */
 export function formatBitrate(bitrate: number | null): string | null {
   if (bitrate == null || bitrate <= 0) return null;

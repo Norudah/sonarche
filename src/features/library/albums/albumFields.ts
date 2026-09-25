@@ -17,7 +17,7 @@ export interface AlbumCommonValues {
 
 export type AlbumCommonField = keyof AlbumCommonValues;
 
-export const ALBUM_COMMON_FIELDS: readonly AlbumCommonField[] = ["album", "albumartist", "year", "genre", "grouping"];
+const ALBUM_COMMON_FIELDS: readonly AlbumCommonField[] = ["album", "albumartist", "year", "genre", "grouping"];
 
 /** The value the tracks agree on, or `mixed` with an empty value. */
 export interface CommonCell {
@@ -68,8 +68,8 @@ export interface TrackRowValues {
 }
 
 /** Common fields that are a reading of the rows; editing them fans out. */
-export type RowCarriedField = "genre" | "year";
-export const ROW_CARRIED_FIELDS: readonly RowCarriedField[] = ["genre", "year"];
+type RowCarriedField = "genre" | "year";
+const ROW_CARRIED_FIELDS: readonly RowCarriedField[] = ["genre", "year"];
 
 export function trackRowValues(track: LibraryTrack): TrackRowValues {
   return {
@@ -100,7 +100,7 @@ export function toAlbumDraft(tracks: LibraryTrack[], baseline: AlbumCommonBaseli
  * value, so it never wipes the album. Row-carried fields are diffed on the
  * rows instead: diffing their stale seed caused phantom changes after a save.
  */
-export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
+function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
   const patch: Partial<AlbumCommonValues> = {};
   for (const field of ALBUM_COMMON_FIELDS) {
     if ((ROW_CARRIED_FIELDS as readonly AlbumCommonField[]).includes(field)) continue;

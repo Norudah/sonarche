@@ -133,7 +133,7 @@ export interface MoveSpec {
   renumber?: boolean;
 }
 
-export interface MoveResult {
+interface MoveResult {
   moved: number;
   skipped: number;
   created: boolean;
@@ -173,11 +173,7 @@ export async function reenrichTrack(id: number): Promise<{ matched: boolean }> {
   return { matched: result.matched };
 }
 
-export async function recomputeGenres(): Promise<{ total: number; updated: number }> {
-  return invoke<{ total: number; updated: number }>("recompute_genres");
-}
-
-export interface GenreOverride {
+interface GenreOverride {
   genre: string;
   family: string;
 }
@@ -253,7 +249,7 @@ export async function listCoverCandidates(albumId: number): Promise<CoverCandida
 }
 
 /** Keyed by albumartist. The filename is stable, so `updated_at` busts the cache. */
-export interface ArtistImage {
+interface ArtistImage {
   name: string;
   url: string;
   path: string;
@@ -290,7 +286,7 @@ export async function savePastedImage(bytes: Uint8Array): Promise<{ path: string
   return invoke("save_pasted_image", bytes);
 }
 
-export interface RemuxReport {
+interface RemuxReport {
   scanned: number;
   fragmented: number;
   remuxed: number;

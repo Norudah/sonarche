@@ -23,7 +23,7 @@ export interface SetupStep {
   blocking: boolean;
 }
 
-export interface SetupInput {
+interface SetupInput {
   /** `null` while the check is in flight. */
   env: EnvStatus | null;
   acoustidConfigured: boolean;

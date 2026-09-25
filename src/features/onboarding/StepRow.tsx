@@ -35,7 +35,7 @@ function Badge({ state, index }: { state: SetupStep["state"]; index: number }) {
   );
 }
 
-export interface StepRowProps {
+interface StepRowProps {
   index: number;
   step: SetupStep;
   isLast: boolean;

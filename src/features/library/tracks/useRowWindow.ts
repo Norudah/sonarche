@@ -10,12 +10,12 @@ export const ROW_HEIGHT = 58;
 export const INSPECT_ROW_HEIGHT = 32;
 
 /** Below this, all rows mount: the cascade plays once and find-in-page works. */
-export const VIRTUALIZE_ABOVE = 150;
+const VIRTUALIZE_ABOVE = 150;
 
 /** Rows kept beyond each edge for fast scrolling. */
 const OVERSCAN = 12;
 
-export interface RowWindow {
+interface RowWindow {
   /** Each with its index in the full list, which the row displays. */
   rows: { track: LibraryTrack; index: number }[];
   /** Spacer height; zero when not virtualizing. */

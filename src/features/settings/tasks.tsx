@@ -6,7 +6,7 @@ import { closeSettings } from "@/shared/lib/settingsDialog";
 
 /** Settings operations that must outlive the dialog (conversion, move,
  * erase). Starting one closes settings and hands it to `SettingsTaskHost`. */
-export type SettingsTask =
+type SettingsTask =
   { kind: "convert" } | { kind: "move"; parent: string; check: MoveCheck } | { kind: "erase"; key: EraseKey };
 
 interface SettingsTasks {

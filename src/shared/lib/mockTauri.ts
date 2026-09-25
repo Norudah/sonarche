@@ -650,7 +650,7 @@ let callbackId = 0;
 const listeners = new Map<string, Set<(payload: unknown) => void>>();
 const callbacks = new Map<number, (message: unknown) => void>();
 
-export function emitMockEvent(event: string, payload: unknown) {
+function emitMockEvent(event: string, payload: unknown) {
   for (const handler of listeners.get(event) ?? []) handler(payload);
 }
 
@@ -1514,9 +1514,6 @@ function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
     case "player_toggle":
       playback.isPlaying = !playback.isPlaying;
       return playback.isPlaying;
-    case "player_pause":
-      playback.isPlaying = false;
-      return null;
     case "player_seek":
       playback.position = Number(payload?.seconds ?? 0);
       emitPlaybackStatus();
@@ -1525,8 +1522,6 @@ function mockPlayback(cmd: string, payload?: Record<string, unknown>): unknown {
       playback.isPlaying = false;
       playback.loaded = false;
       return null;
-    case "player_status":
-      return { ...playback };
     case "now_playing_set":
       // Acknowledged; `emitMockEvent("player:remote", …)` simulates a media key.
       return null;

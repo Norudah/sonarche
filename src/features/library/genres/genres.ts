@@ -147,7 +147,7 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
 
 /** A genre identified by (family, name): one tagged inconsistently appears in
  * two families rather than hiding half its tracks. */
-export interface Genre {
+interface Genre {
   name: string;
   /** Also the route's first segment. */
   family: string;

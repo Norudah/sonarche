@@ -49,7 +49,7 @@ function PanelAction({
 }
 
 /** A job's queued filing as the destination control's state. */
-export function destinationOf(forced: ForcedAlbum | null): Destination {
+function destinationOf(forced: ForcedAlbum | null): Destination {
   if (!forced) return AUTO_DESTINATION;
   if (forced.albumId != null) {
     return { mode: "existing", target: { albumId: forced.albumId, title: forced.title, artist: forced.artist ?? "" } };

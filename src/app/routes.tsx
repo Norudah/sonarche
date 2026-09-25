@@ -21,7 +21,7 @@ import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
 
 // Re-exported from the cycle-free `@/app/paths`.
-export { albumPath, artistPath, categoryPath, genrePath, paths, playlistPath, triagePaths } from "@/app/paths";
+export { albumPath, artistPath, categoryPath, genrePath, paths, playlistPath } from "@/app/paths";
 
 // Dev only: `?route=` seeds the memory router's initial entry for deep links.
 function devInitialEntries(): string[] | undefined {

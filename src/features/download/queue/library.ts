@@ -3,7 +3,7 @@ import type { AlbumTrackJob, DownloadJob, MetadataReport } from "@/features/down
 import type { LibraryTrack } from "@/features/library/api";
 
 /** `duplicate`: nothing filed because the library already had the tracks. */
-export type LibraryPresence = "full" | "partial" | "none" | "duplicate";
+type LibraryPresence = "full" | "partial" | "none" | "duplicate";
 
 /** Subset of the deck's `LibraryLookup`, kept here for the pure functions. */
 export interface PresenceLookup {

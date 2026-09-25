@@ -17,7 +17,7 @@ interface Unreadable {
   kind: "unreadable";
 }
 
-export type PlaybackFailure = UnsupportedFormat | Unreadable;
+type PlaybackFailure = UnsupportedFormat | Unreadable;
 
 /** `AppError::UnsupportedFormat`'s `Display` prefix. */
 const UNSUPPORTED_PREFIX = "unsupported audio format: ";

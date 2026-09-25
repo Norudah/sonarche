@@ -23,7 +23,7 @@ export function setupEnv(): Promise<EnvStatus> {
 }
 
 /** Walkthrough state, separate from settings' `get_preferences`. */
-export interface OnboardingState {
+interface OnboardingState {
   completed: boolean;
   acoustidConfigured: boolean;
 }

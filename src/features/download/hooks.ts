@@ -23,9 +23,9 @@ import {
 import { HISTORY_PAGE_SIZE } from "@/features/download/queue/page";
 import { libraryKey } from "@/features/library/hooks";
 
-export const jobsKey = ["download", "jobs"];
+const jobsKey = ["download", "jobs"];
 /** Invalidated as a whole: one transition can move rows across pages. */
-export const jobsPagesKey = ["download", "jobs-pages"];
+const jobsPagesKey = ["download", "jobs-pages"];
 
 function upsertJob(queryClient: QueryClient, job: DownloadJob) {
   queryClient.setQueryData<DownloadJob[]>(jobsKey, (prev) => {

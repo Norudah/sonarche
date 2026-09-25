@@ -23,7 +23,7 @@ function ScanRail({ label }: { label: string }) {
   );
 }
 
-export interface EnginePanelProps {
+interface EnginePanelProps {
   /** Only the verb changes for a reinstall. */
   mode: SetupMode;
   isInstalled: boolean;

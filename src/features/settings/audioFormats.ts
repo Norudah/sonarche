@@ -5,7 +5,7 @@ export const AUDIO_FORMATS = ["m4a", "mp3"] as const;
 
 export type AudioFormat = (typeof AUDIO_FORMATS)[number];
 
-export const DEFAULT_AUDIO_FORMAT: AudioFormat = "m4a";
+const DEFAULT_AUDIO_FORMAT: AudioFormat = "m4a";
 
 /** The format that needs no re-encode. */
 export function isNativeFormat(format: AudioFormat): boolean {

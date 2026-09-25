@@ -5,7 +5,7 @@ import type { LibraryTrack, MoveSpec, TrackUpdate } from "@/features/library/api
 /** Undo is the same move pointed back, recreating emptied records, plus a
  * metadata batch restoring the old positions. */
 
-export interface MoveUndoPlan {
+interface MoveUndoPlan {
   /** One per source record. */
   specs: MoveSpec[];
   /** Restores the old track numbers and totals. */

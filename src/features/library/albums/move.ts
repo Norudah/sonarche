@@ -14,7 +14,7 @@ export function canonicalAlbumId(album: Album): number | null {
   return [...album.albumIds].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a - b)[0];
 }
 
-export interface MoveIntoTarget {
+interface MoveIntoTarget {
   targetAlbumId: number;
   /** Arrivals first (numbering order), then the card's strays on its other
    * rows, so the move heals a fractured card. */
