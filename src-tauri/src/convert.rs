@@ -1,11 +1,6 @@
-//! One-at-a-time guard for the library-wide audio conversion.
-//!
-//! The pass re-encodes every file that is not already in the chosen format, so
-//! two concurrent runs would fight over the same tracks — and, worse, over the
-//! same working files beside them. The guard is the same shape as the genre
-//! recompute's, for the same reason and with the same escape hatch: the flag is
-//! cleared by awaiting the lock rather than by a Drop guard, so a request that
-//! dies cannot leave the app permanently refusing to convert.
+//! One-at-a-time guard for the library-wide audio conversion: concurrent runs
+//! would fight over the same files. The flag is reset by awaiting the lock,
+//! not in a Drop guard, so a failed request can't leave it stuck.
 
 use std::time::Duration;
 
@@ -18,9 +13,7 @@ use crate::preferences;
 use crate::python_env::{self, AppPaths};
 use crate::sidecar::SidecarState;
 
-/// Seconds of CPU per track, over a library that can hold thousands. Six hours
-/// is not an estimate of how long this takes — it is the point past which a
-/// wedged ffmpeg has to be admitted rather than waited on.
+/// Only a guard against a wedged ffmpeg.
 const CONVERT_TIMEOUT: Duration = Duration::from_secs(3600 * 6);
 
 #[derive(Default)]
@@ -49,8 +42,7 @@ impl ConvertLibraryState {
 
 async fn request(app: &AppHandle) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
-    // The encoder itself. Laid down on demand exactly like the download path
-    // does, so a library converted before any download ever ran still finds it.
+    // A library may be converted before any download installed ffmpeg.
     python_env::ensure_ffmpeg(&paths).await?;
     let prefs = preferences::load(app).await?;
     let sidecar = app.state::<SidecarState>();
@@ -67,9 +59,7 @@ async fn request(app: &AppHandle) -> AppResult<Value> {
             CONVERT_TIMEOUT,
         )
         .await?;
-    // Every converted track changed its extension, and the M3U mirror renders
-    // absolute paths — left alone, every playlist file would point at audio
-    // that no longer exists.
+    // Every extension changed.
     crate::playlists_mirror::sync_after_library_change(app).await;
     Ok(report)
 }

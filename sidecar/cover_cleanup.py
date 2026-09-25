@@ -1,15 +1,7 @@
 """One-shot removal of the `cover-hq.*` archives Sonarche <= 2.x kept.
 
-Those versions archived every cover's full-size original beside the album,
-"for the day a full-size view exists". The day never came: nothing ever
-displayed the file, and it cost megabytes per album and a steady tax of
-follow-the-album bookkeeping. The convention is gone; this pass deletes what
-it left behind.
-
-Driven by the shell once per install (a marker file guards it, like the remux
-watermark), so the walk over album folders is paid a single time. Idempotent
-and safe to re-run: it only ever deletes files whose name carries the archive
-prefix, inside directories the beets database itself points at.
+Run once per install (guarded by a marker file). Only deletes files with
+the archive prefix, in folders the beets database points at.
 """
 
 import os
@@ -22,7 +14,6 @@ from library import expand_db_path
 
 def handle(_request_id: str, params: dict) -> dict:
     db_path = params["beets_db"]
-    # No database, no albums, nothing archived — first run or post-erase.
     if not os.path.exists(db_path):
         return {"removed": 0, "folders": 0}
 

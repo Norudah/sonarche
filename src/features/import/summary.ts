@@ -1,27 +1,12 @@
-/**
- * Turning a scan into the few things the confirmation screen says.
- *
- * Pure and apart from the page, because the interesting part is not the layout
- * — it is deciding what a number means. A folder with 12 000 tracks and one
- * with 3 need the same sentence to be true of both.
- */
+/** Pure helpers turning a scan into what the confirmation says. */
 
 import type { ScanReport } from "@/features/import/api";
 
-/** The fallback ladder, in SI symbols. Used when no translated one is given. */
+/** Fallback SI units when no translated ones are given. */
 const SI_UNITS = ["B", "kB", "MB", "GB", "TB"] as const;
 
-/**
- * Bytes as the OS would say it: powers of 1000, one decimal past a gigabyte.
- *
- * `Intl.NumberFormat` with `unit: "byte"` exists but only reaches "byte" and
- * "kilobyte" spelled out, and it never switches unit on its own — so the
- * stepping is ours while the number formatting is not.
- *
- * The unit names are handed in rather than held here: they are translated (a
- * French gigabyte is "Go", and macOS says so), and a util that reached for the
- * i18n instance would stop being a pure function over its arguments.
- */
+/** Bytes in powers of 1000 with a decimal from GB up. Units are passed in
+ * (translated: "Go" in French); `Intl` can't step between units itself. */
 export function formatBytes(bytes: number, locale: string, units: readonly string[] = SI_UNITS): string {
   let value = Math.max(bytes, 0);
   let unit = 0;
@@ -30,8 +15,6 @@ export function formatBytes(bytes: number, locale: string, units: readonly strin
     unit += 1;
   }
 
-  // A tenth of a gigabyte is a meaningful difference; a tenth of a kilobyte is
-  // noise. The decimal appears only where it earns its place.
   const digits = unit >= 3 && value < 100 ? 1 : 0;
   const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: digits,
@@ -41,43 +24,29 @@ export function formatBytes(bytes: number, locale: string, units: readonly strin
   return `${formatted} ${units[unit]}`;
 }
 
-/** Extensions of what cannot be decoded, most common first, dotted for reading.
- * Ties broken alphabetically so the same folder always reads the same.
- *
- * Takes the one field it reads rather than a whole `ScanReport`, so an import
- * recalled from the archive — which keeps the counts and not the report — names
- * its formats through this same function instead of a second copy of the rule. */
+/** Undecodable extensions, most common first, ties alphabetical. Takes only
+ * the field it reads, so archived imports can use it too. */
 export function unplayableFormats(report: { unplayableByExtension: Record<string, number> }): string[] {
   return Object.entries(report.unplayableByExtension)
     .sort(([aExt, aCount], [bExt, bCount]) => bCount - aCount || aExt.localeCompare(bExt))
     .map(([extension]) => `.${extension}`);
 }
 
-/** Whether there is anything to import at all. A folder of photographs scans
- * cleanly and would otherwise offer a button that does nothing. */
+/** A folder of photos scans fine but has nothing to import. */
 export function hasAudio(report: ScanReport): boolean {
   return report.playable + report.unplayable > 0;
 }
 
-/**
- * The path, shortened from the middle when it is too long for one line.
- *
- * Both ends carry meaning — the volume it lives on and the folder's own name —
- * and it is the middle, the six levels of nesting, that nobody reads. Cutting
- * the front (the usual ellipsis) throws away the half that says *where*.
- */
+/** Shortens from the middle, keeping the volume and the folder name. */
 export function shortenPath(path: string, maxSegments = 4): string {
-  // Both separators. The folder picker hands back the path exactly as the OS
-  // spells it, so on Windows this is `C:\Users\…` — split on "/" alone it was
-  // one segment, always under the ceiling, and nothing was ever shortened.
+  // Windows paths use backslashes.
   const separator = path.includes("\\") ? "\\" : "/";
   const segments = path.split(/[/\\]/).filter(Boolean);
   if (segments.length <= maxSegments) return path;
 
   const head = segments.slice(0, 1);
   const tail = segments.slice(-(maxSegments - 1));
-  // The leading separator belongs to a POSIX path only: `C:\…` is already
-  // absolute, and a backslash in front of it names something else entirely.
+  // Only POSIX paths start with a separator.
   const root = path.startsWith("/") ? "/" : "";
   return `${root}${head.join(separator)}${separator}…${separator}${tail.join(separator)}`;
 }

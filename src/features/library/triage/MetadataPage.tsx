@@ -20,17 +20,8 @@ import { QueueLine } from "@/features/library/triage/QueueLine";
 import { TriageHero } from "@/features/library/triage/TriageHero";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/**
- * The triage post: the count of things to fix as
- * the page's headline, and under it a queue of correction lines that each
- * deep-link into the filtered explorers. No score, no module you can only look
- * at — zero open lines is the win state, shown calm.
- *
- * The genre distribution used to be folded in underneath. It was the one thing
- * here you could only look at: a percentage per family, on a page whose whole
- * doctrine is that every number is a door. The families already have their own
- * page, which is where that browsing belongs.
- */
+/** The triage page: a count of things to complete and a queue of lines, each
+ * linking to the filtered explorer. */
 export function MetadataPage() {
   const { t } = useTranslation(["metadata", "library"]);
   const library = useLibrary();
@@ -38,9 +29,7 @@ export function MetadataPage() {
   const tracks = useMemo(() => library.data ?? [], [library.data]);
   const albums = useMemo(() => groupAlbums(tracks), [tracks]);
   const queue = useMemo(() => buildTriageQueue(tracks, albums), [tracks, albums]);
-  // The queue minus the checks this person switched off: what the page counts,
-  // queues and badges. The full queue still goes to the menu, which lists every
-  // check with the count it would report.
+  // The queue minus disabled checks; the menu still gets the full queue.
   const disabled = useDisabledChecks();
   const watched = useMemo(() => enabledLines(queue, disabled), [queue, disabled]);
   const answered = useMemo(() => acceptedTargets(tracks, albums), [tracks, albums]);
@@ -48,8 +37,7 @@ export function MetadataPage() {
   const answer = (target: AcceptTarget, accepted: boolean) =>
     accept.mutate({ scope: target.scope, ids: target.ids, check: target.check, accepted });
 
-  // The Sonarche-side gaps — not metadata, so they queue under their own
-  // heading and stay out of the headline tally and the sidebar badge.
+  // Artist images: app-side gaps, not metadata, and not in the tally or badge.
   const artists = useMemo(() => groupArtists(albums), [albums]);
   const artistImages = useArtistImages();
   const systemQueue = useMemo(() => buildSystemQueue(artists, artistImages.data), [artists, artistImages.data]);
@@ -99,9 +87,6 @@ export function MetadataPage() {
               </div>
             </div>
           ) : (
-            // Same cascade as the album grid and the track table: the rows are
-            // a result set, and they land in the same rhythm here as everywhere
-            // a query produces a list.
             lines.map((line, position) => (
               <QueueLine
                 key={line.key}
@@ -113,10 +98,7 @@ export function MetadataPage() {
             ))
           )}
 
-          {/* Not metadata, so not in the same stack: the files above are
-              missing facts about themselves, these artists are only missing
-              their portrait in the app. The heading is what keeps a mixed
-              reading — "one more defect line" — from happening. */}
+          {/* Separate heading: these aren't metadata defects. */}
           {systemLines.length > 0 && (
             <div className="mt-4 flex flex-col gap-2">
               <div className="flex items-baseline gap-2">

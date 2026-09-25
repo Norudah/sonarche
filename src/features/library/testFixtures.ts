@@ -1,6 +1,6 @@
 import type { LibraryTrack } from "@/features/library/api";
 
-/** A fully-empty library item, so a test only states the fields it is about. */
+/** An empty library item; tests set only what they need. */
 export function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
   return {
     id: 1,

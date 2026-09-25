@@ -7,17 +7,8 @@ import { RecordKindChoice } from "@/features/library/albums/inspect/RecordKindCh
 import type { TrackFilter } from "@/features/library/albums/inspect/trackFilter";
 import type { AlbumKind } from "@/features/library/api";
 
-/**
- * The record itself: how whole it is, and what it shares.
- *
- * Left column on purpose — the panel reads general to specific from left to
- * right, so the record's identity comes before its tracks, and anything more
- * specific than a track would open further right still.
- *
- * The bulk actions are deliberately *not* here. Renumbering and filling the
- * artist act on the rows, so they sit above the rows; keeping them in this
- * column pushed it past its own height on a two-track record.
- */
+/** The record's completion, shared fields and kind; general before specific.
+ * Bulk row actions live above the rows instead. */
 export function IdentityColumn({
   completion,
   baseline,
@@ -45,12 +36,11 @@ export function IdentityColumn({
   genreFamily: string;
   trackCount: number;
   soundtrack: boolean;
-  /** What the record is. Null for a group with no beets album behind it — a
-   * pile of singletons has no record to be a kind of, so no switch is shown. */
+  /** Null for singletons: no record to set a kind on. */
   kind: AlbumKind | null;
   isKindPending: boolean;
   onKindChange: (kind: AlbumKind) => void;
-  /** The cover is a stand-in the user should replace — see the notice. */
+  /** The cover is a placeholder to replace. */
   hasProvisionalCover: boolean;
   filter: TrackFilter | null;
   onFilter: (filter: TrackFilter | null) => void;

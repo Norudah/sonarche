@@ -21,8 +21,7 @@ import { useTrackFilter } from "@/features/library/tracks/useTrackFilter";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/** One array identity for every render with no album, so the explorer's memos
- * do not churn on the loading and gone-away frames. */
+/** Stable empty array, so memos don't churn. */
 const NO_TRACKS: LibraryTrack[] = [];
 
 export function AlbumDetailView() {
@@ -36,14 +35,13 @@ export function AlbumDetailView() {
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const [movingAlbum, setMovingAlbum] = useState(false);
   const [addingTracks, setAddingTracks] = useState(false);
-  /** The last record this route resolved to — see the rename note below. */
+  /** The last resolved record; see the rename handling below. */
   const [held, setHeld] = useState<Album | null>(null);
   const { ref: heroRef, passed: heroPassed } = useHeroPassed<HTMLElement>();
 
   const albums = groupAlbums(library.data ?? []);
   const album = useMemo(() => findAlbum(albums, artist, title), [albums, artist, title]);
-  // Every axis is a refinement here: a record answers none of them on its own,
-  // and the ones it happens to hold a single value of fold themselves away.
+  // Every axis is a refinement on a single record.
   const explorer = useTrackFilter(album?.tracks ?? NO_TRACKS);
 
   if (library.isPending) {
@@ -71,19 +69,14 @@ export function AlbumDetailView() {
 
   if (album && album !== held) setHeld(album);
 
-  // Renaming a record from the panel moves the very identity this route is built
-  // from, so the URL stops matching anything. The record is still there — find it
-  // by its tracks and send the route after it, rather than reading the mismatch
-  // as a deletion. `replace` so Back does not walk into the dead name.
+  // A rename changed the route's identity: find the record by its tracks and
+  // follow it (`replace`).
   if (!album && held) {
     const renamed = findAlbumLike(albums, held);
     if (renamed) return <Navigate to={albumPath(renamed.artist, renamed.title)} replace />;
   }
 
-  // Nothing left under this route and nothing that used to be: deleting the
-  // album's last track refetches the library and this page outlives its own
-  // subject. Bouncing back to the shelf beats stranding the user on an "album
-  // not found" screen they just caused.
+  // The album is gone (e.g. its last track was deleted): back to the shelf.
   if (!album) return <Navigate to={paths.libraryAlbums} replace />;
 
   return (
@@ -93,8 +86,7 @@ export function AlbumDetailView() {
       <AlbumHero
         ref={heroRef}
         album={album}
-        // The visible list is the queue, search and filters included — same
-        // contract the tracklist's rows already honour for the sort.
+        // Plays the visible list, filters included.
         onPlay={() => playOrdered(explorer.visible)}
         onShuffle={() => playShuffled(explorer.visible)}
         onEdit={() => setInspecting(true)}
@@ -106,8 +98,7 @@ export function AlbumDetailView() {
         onMoveToAlbum={() => setMovingAlbum(true)}
         onAddTracks={() => setAddingTracks(true)}
       />
-      {/* Unpinned: the album's own sticky header lands on this exact spot the
-          moment the hero scrolls past. */}
+      {/* Unpinned: the album's sticky header takes this spot. */}
       <TrackFilterBar state={explorer} pinned={false} />
       <AlbumTrackList album={album} state={explorer} />
       <DeleteAlbumDialog album={deleting} onClose={() => setDeleting(null)} />

@@ -1,17 +1,10 @@
 import type { Album } from "@/features/library/albums/albums";
 import type { LibraryTrack } from "@/features/library/api";
 
-/**
- * The pure half of "move these tracks onto that record": which beets row a
- * card's arrivals converge on, what one request must carry, and what the
- * dialog should propose. The sidecar verb takes item ids and one row id — a
- * card is a (artist, title) group over possibly several rows, and this module
- * is where that mismatch is resolved.
- */
+/** Pure helpers for moving tracks onto a card, which may span several beets
+ * rows while the sidecar takes a single row id. */
 
-/** The row a fractured card's tracks should converge on: the one already
- * holding most of them — it carries the cover and the answered checks — with
- * the oldest row breaking a tie. Null for a card of singletons. */
+/** The row holding most of the card's tracks (oldest on ties); null for singletons. */
 export function canonicalAlbumId(album: Album): number | null {
   if (album.albumIds.length === 0) return null;
   const counts = new Map<number, number>();
@@ -23,14 +16,12 @@ export function canonicalAlbumId(album: Album): number | null {
 
 export interface MoveIntoTarget {
   targetAlbumId: number;
-  /** The arrivals first (their order is the numbering order), then the card's
-   * own strays — tracks sitting on the card's other rows, absorbed in the same
-   * pass so the move heals a fractured card instead of adding to one side. */
+  /** Arrivals first (numbering order), then the card's strays on its other
+   * rows, so the move heals a fractured card. */
   itemIds: number[];
 }
 
-/** What one request must carry to land `moving` on `target`, or null when the
- * target has no row to receive anything (a card of singletons). */
+/** Null when the target has no row (singletons). */
 export function moveInto(moving: LibraryTrack[], target: Album): MoveIntoTarget | null {
   const canonical = canonicalAlbumId(target);
   if (canonical == null) return null;
@@ -46,23 +37,19 @@ function normalized(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
-/** Whether the dialog should pre-tick "collection". Tracks arriving from
- * another record turn the target into a personal gathering; tracks whose album
- * tag already names the target are a repair — a release coming back together,
- * whose tracklist check is about to be right again. */
+/** Pre-ticks "collection" when tracks come from another record; tracks
+ * already tagged with the target's album are a repair. */
 export function proposeCollection(moving: LibraryTrack[], target: Album): boolean {
   if (target.kind === "collection") return true;
   return moving.some((track) => normalized(track.album) !== normalized(target.title));
 }
 
-/** Every moving track already sits on the target card — nothing would move. */
 export function alreadyOn(moving: LibraryTrack[], target: Album): boolean {
   const residents = new Set(target.tracks.map((track) => track.id));
   return moving.length > 0 && moving.every((track) => residents.has(track.id));
 }
 
-/** Prefill for the new collection's artist: the one artist every moved track
- * agrees on, or nothing — a mixed pile has no name to suggest. */
+/** The one artist all moved tracks share, or empty. */
 export function suggestedArtist(moving: LibraryTrack[]): string {
   const names = new Set(moving.map((track) => track.artist.trim()).filter(Boolean));
   return names.size === 1 ? [...names][0] : "";

@@ -1,31 +1,12 @@
 import { useId } from "react";
 
 /**
- * The Sonarche mark: a loaded ark that looks back at you.
- *
- * Three registers stacked — hull, deck with its four containers, and a wide low
- * cabin with two eyes — under the onde borrowed from the landing mock-up. The
- * onde is the only part that escapes the vessel's flat shapes and arcs: the ship
- * is built, the sound is alive. That contrast carries the identity.
- *
- * Reference drawings and the full rule sheet live in `docs/brand/`. The rules
- * that are easy to break by accident:
- *
- * - Nothing goes under the eyes. Anything centred below the cabin becomes a nose.
- * - Containers keep two cells of bare deck at each end, or they read as arms.
- * - No roof above the cabin: the onde is the only thing sitting on the ark.
- * - Amber is the sole departure from the indigo ramp, and only on the two end
- *   containers — they anchor the drawing when everything else closes up.
- *
- * Colours are baked in rather than themed: this is an illustration, not a glyph,
- * and it reads on both the light and the dark surface as it is. Below 32px the
- * one-pixel details stop drawing and start dirtying — `docs/brand/
- * sonarche-mark-small.svg` holds the simplified twin for that case, unused so
- * far because nothing renders the mark that small yet.
+ * The Sonarche logo. Colours are baked in (an illustration, not a glyph).
+ * Rules and reference drawings live in `docs/brand/`; below 32px use
+ * `sonarche-mark-small.svg`.
  */
 export function SonarcheMark({ className }: { className?: string }) {
-  // The head's highlight and shadow are clipped to its arch. Scoped so several
-  // marks on one page can't resolve each other's clip path.
+  // Scoped id so several marks on a page don't share a clip path.
   const headClip = useId();
 
   return (
@@ -36,7 +17,7 @@ export function SonarcheMark({ className }: { className?: string }) {
         </clipPath>
       </defs>
 
-      {/* l'onde — six barres fines à bouts ronds */}
+      {/* Sound wave */}
       <g fill="#6163f2">
         <rect x="9.56" y="5.8" width="0.5" height="1.25" rx="0.25" />
         <rect x="10.44" y="4.8" width="0.5" height="2.25" rx="0.25" />
@@ -46,7 +27,7 @@ export function SonarcheMark({ className }: { className?: string }) {
         <rect x="13.94" y="5.55" width="0.5" height="1.5" rx="0.25" />
       </g>
 
-      {/* la tête — arc en anse de panier, à trois centres */}
+      {/* Cabin */}
       <path
         d="M7.5 12V9.75C7.5 8.85 8.4 8.2 9.7 8 10.5 7.88 13.5 7.88 14.3 8 15.6 8.2 16.5 8.85 16.5 9.75V12Z"
         fill="#c5cbef"
@@ -57,11 +38,11 @@ export function SonarcheMark({ className }: { className?: string }) {
       </g>
       <rect x="9" y="9.05" width="2" height="2" rx="0.75" fill="#222652" />
       <rect x="13" y="9.05" width="2" height="2" rx="0.75" fill="#222652" />
-      {/* l'éclat : sans lui ce sont deux hublots, avec lui c'est un regard */}
+      {/* Eye highlight */}
       <circle cx="9.6" cy="9.65" r="0.42" fill="#818cf9" />
       <circle cx="13.6" cy="9.65" r="0.42" fill="#818cf9" />
 
-      {/* la cargaison — un ambre à chaque extrémité, deux indigos au milieu */}
+      {/* Cargo */}
       <rect x="3" y="9" width="2" height="3" rx="0.5" fill="#efa831" />
       <rect x="3" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8" />
       <rect x="3" y="10.3" width="2" height="0.5" fill="#fae1b8" />
@@ -75,7 +56,7 @@ export function SonarcheMark({ className }: { className?: string }) {
       <rect x="19" y="9" width="2" height="0.45" rx="0.22" fill="#fae1b8" />
       <rect x="19" y="10.3" width="2" height="0.5" fill="#fae1b8" />
 
-      {/* la coque — plat-bord, deux bordés, quatre hublots */}
+      {/* Hull */}
       <rect x="1.6" y="12" width="20.8" height="1.1" rx="0.55" fill="#818cf9" />
       <path
         d="M2.2 13.2h19.6q.75 0 .65.75l-.45 2.6q-.6 3.25-3.4 3.25H5.4q-2.8 0-3.4-3.25l-.45-2.6q-.1-.75.65-.75Z"

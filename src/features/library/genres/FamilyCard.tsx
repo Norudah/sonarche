@@ -11,29 +11,23 @@ import { toneOf } from "@/features/library/genres/tone";
 import { DROP_ATTR } from "@/features/library/genres/useChipDrag";
 import { springs } from "@/shared/motion/tokens";
 
-/** Chips beyond this fold into a "+N" chip that opens the family page, where
- * SubGenreChips shows them all. Browse mode only: arrange mode unfolds them —
- * a genre that cannot be seen cannot be dragged. */
+/** Beyond this, a "+N" chip opens the family page. Arrange mode shows all. */
 const VISIBLE_SUBS = 5;
 
-/** Every affordance on this card is a link, and the app answers a pointer by
- * scaling under a snappy spring — the album and artist cards' play buttons do
- * exactly this. Motion cannot drive a bare <Link>, hence the wrapper. */
+/** Motion can't drive a bare <Link>. */
 const MotionLink = motion.create(Link);
 
-/** What the arrange mode hands each card: the drag plumbing and who is where.
- * One object for the whole shelf — the cards read their own part off it. */
+/** Drag plumbing shared by every card in arrange mode. */
 export interface ArrangeProps {
-  /** Spread onto a draggable chip. */
   chipProps: (
     genre: string,
     from: string,
   ) => {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   };
-  /** Card key currently under a live drag, or null. */
+  /** Card under a live drag. */
   over: string | null;
-  /** Genre in flight, to quiet the chip it was lifted from. */
+  /** Genre being dragged, to quiet its source chip. */
   dragging: string | null;
 }
 
@@ -41,21 +35,17 @@ interface FamilyCardProps {
   family: Family;
   label: string;
   style?: CSSProperties;
-  /** Present while the page is in arrange mode: chips become handles, links go
-   * quiet, the card becomes a drop target. */
+  /** Arrange mode: chips become handles, links go quiet, the card is a drop target. */
   arrange?: ArrangeProps;
 }
 
-/** Washed in the family tone rather than neutral: the chips are the card's
- * content, so they carry the identity at a lower volume than the rule. */
+/** Washed in the family tone. */
 const chipClass =
   "inline-block rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] px-2.5 py-1 text-[0.75rem] " +
   "text-foreground/85 outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_20%,transparent)] " +
   "focus-visible:ring-2 focus-visible:ring-accent/40";
 
-/** A draggable chip in arrange mode: grabbable, trembling, and — when motion
- * is reduced — dashed instead, so the mode never goes mute. `touch-none` keeps
- * a finger-drag from scrolling the page out from under the gesture. */
+/** Draggable: trembles (dashed under reduced motion); `touch-none` prevents scrolling. */
 const looseChipClass =
   "inline-block cursor-grab touch-none rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] px-2.5 py-1 " +
   "text-[0.75rem] text-foreground/85 outline-none select-none active:cursor-grabbing " +
@@ -64,26 +54,10 @@ const looseChipClass =
   "motion-reduce:outline-offset-2 motion-reduce:outline-[color-mix(in_oklab,var(--tone)_45%,transparent)]";
 
 /**
- * One browse family as a door, not a statistic.
- *
- * The family's identity is carried quietly: a short tone rule to the left of
- * the name — the same device the album drawer uses to head a section — plus
- * chips washed in that tone and a whisper of it behind the whole card. No
- * heavy colour block or full-height border: thirteen of these read as one
- * shelf, not a rainbow.
- *
- * Navigation is two kinds of link, kept apart so neither nests inside the
- * other: the arrow button opens the family page, and each chip deep-links to
- * one genre on that same page via the `genre` query param SubGenreChips
- * already understands. The title is deliberately not a link — one explicit
- * affordance beats a whole header that highlights on hover.
- *
- * The chips push rather than replace — from the index the family page is a new
- * place, unlike the refinement chips on the page itself.
- *
- * In arrange mode the card changes species: chips stop being doors and become
- * objects (they tremble, they drag), the arrow goes quiet, and the card itself
- * becomes a landing zone that lights in its own tone when a drag hovers it.
+ * A browse family as a door: a tone rule, tinted chips linking to each genre
+ * (push navigation, unlike the page's own chips) and an arrow to the family
+ * page. In arrange mode chips drag, links go quiet, and the card becomes a
+ * drop zone.
  */
 export function FamilyCard({ family, label, style, arrange }: FamilyCardProps) {
   const { t } = useTranslation("library");
@@ -115,9 +89,7 @@ export function FamilyCard({ family, label, style, arrange }: FamilyCardProps) {
           </span>
         </span>
         {arrange ? (
-          /* The door is closed while the furniture moves: a live link under a
-           * drop gesture is a misclick machine. Kept visible at low volume so
-           * the card's anatomy does not jump between modes. */
+          /* Inactive during arrange mode, but still visible so the layout doesn't jump. */
           <span
             aria-hidden
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_14%,transparent)] opacity-35"
@@ -154,9 +126,7 @@ export function FamilyCard({ family, label, style, arrange }: FamilyCardProps) {
                   <span className="ml-1.5 tabular-nums opacity-60">{sub.trackCount}</span>
                 </button>
               ) : (
-                /* A genre that IS a family root cannot move (the sidecar
-                 * refuses it); it sits still so stillness keeps meaning
-                 * "pinned" while everything loose trembles. */
+                /* Family roots can't move; they stay still. */
                 <span key={sub.name} className={`${chipClass} opacity-55`}>
                   {sub.name}
                   <span className="ml-1.5 tabular-nums opacity-60">{sub.trackCount}</span>
@@ -200,13 +170,8 @@ interface GhostFamilyCardProps {
   style?: CSSProperties;
 }
 
-/**
- * A family that holds nothing yet, conjured only for arrange mode — ordinarily
- * an empty family has no card, which means no landing zone. Dashed where the
- * real cards are solid, tone at a whisper, and it fills in (solid outline,
- * fuller wash) the moment a drag hovers: the card previews the shelf it would
- * become. Dropping here is what brings it to life for real.
- */
+/** An empty family, shown only in arrange mode as a drop target; fills in
+ * when a drag hovers it. */
 export function GhostFamilyCard({ familyKey, label, over, style }: GhostFamilyCardProps) {
   const { t } = useTranslation("library");
   const tone = toneOf(familyKey);

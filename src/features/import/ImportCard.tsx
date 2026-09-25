@@ -30,9 +30,7 @@ interface ImportCardProps {
   isCancelling: boolean;
 }
 
-/** The face of the folder as it goes through the pipeline: which glyph, and on
- * what tint. The tile is what carries the verdict's colour — a card that turns
- * green at the bottom and stays indigo at the top has two opinions. */
+/** Glyph and tint per phase; the tile carries the verdict's colour. */
 const FACE: Record<ImportPhase["kind"], { icon: LucideIcon; tile: string }> = {
   empty: { icon: FolderOpen, tile: "bg-default text-muted" },
   scanning: { icon: FolderSearch, tile: "bg-accent-soft text-accent" },
@@ -40,14 +38,12 @@ const FACE: Record<ImportPhase["kind"], { icon: LucideIcon; tile: string }> = {
   scanned: { icon: FolderCheck, tile: "bg-accent-soft text-accent" },
   importing: { icon: FolderInput, tile: "bg-accent-soft text-accent" },
   importFailed: { icon: FolderX, tile: "bg-danger-soft text-danger" },
-  // Amber, not red: a stop is the user's own act, and what landed is in.
+  // Amber: a stop is the user's choice, and what landed is kept.
   importCancelled: { icon: Square, tile: "bg-warning-soft text-warning" },
   imported: { icon: Check, tile: "bg-success-soft text-success" },
 };
 
-/* `scanned` has no verdict any more: the slot holds the Import button there, and
- * a pill reading "Prêt" beside a button that says so by existing was the same
- * sentence twice. */
+/* No verdict for `scanned`: the Import button already says it's ready. */
 const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: string }>> = {
   imported: { tone: "success", key: "verdict.done" },
   importCancelled: { tone: "warning", key: "verdict.cancelled" },
@@ -55,15 +51,8 @@ const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: str
   importFailed: { tone: "danger", key: "verdict.failed" },
 };
 
-/**
- * The import as the download feed would show it: one card on a tray, with the
- * artwork tile, the name, a line saying where it is, and the rail underneath.
- *
- * It is on screen before anything happens, holding an empty rail with its three
- * stages named. That is deliberate — the page used to be a lone button on white,
- * and someone landing on it had no idea what pressing it would set off. An empty
- * rail is a promise; a blank page is a shrug.
- */
+/** The import as a single job card, shown with its empty rail before anything
+ * starts so the page says what it will do. */
 export function ImportCard({
   folder,
   phase,
@@ -80,15 +69,12 @@ export function ImportCard({
   const rail = importRail(phase, progress);
   const label = useImportLabel(phase, progress);
   const canStart = phase.kind === "scanned" || phase.kind === "importFailed";
-  // Same treatment as the composer's Download button: it swells the moment the
-  // form becomes submittable. On the wrapper rather than the Button, because
-  // `usePopOnActivate` writes a transform and HeroUI's Button owns its own.
+  // On the wrapper: HeroUI's Button owns its transform.
   const startRef = usePopOnActivate<HTMLDivElement>(canStart);
 
   const face = FACE[phase.kind];
   const verdict = VERDICT[phase.kind];
-  // The folder's own name, not its path: the path is up in the picker, and what
-  // this card is about is the thing being copied.
+  // The folder name; the full path is in the picker.
   const name = folder?.split(/[/\\]/).filter(Boolean).at(-1);
 
   return (
@@ -110,10 +96,7 @@ export function ImportCard({
             {name ?? t("choosePlaceholder")}
           </p>
 
-          {/* The stage cross-fades, the counter does not — see `useImportLabel`
-              for why that split is what stopped the card jumping. `cross` and
-              not `wait`: the two versions share one grid cell, so the line's
-              box never collapses between them. */}
+          {/* Only the stage cross-fades, not the counter (see `useImportLabel`). */}
           <p className="flex min-w-0 items-baseline gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted">
             <Swap swapKey={label.phase} mode="cross">
               {label.phase}
@@ -134,14 +117,7 @@ export function ImportCard({
           </div>
         </div>
 
-        {/* One slot, three states, in the order they happen: start it, stop it,
-            read what it did. The button lives here and not in the picker above
-            because this card *is* the run — a commit point one panel away from
-            the thing it commits made the user hunt for what they had started,
-            and left the card that owns the import with no way to begin one.
-
-            Fixed width so the card's right edge does not step sideways as the
-            slot's contents change. */}
+        {/* One slot: start, stop, then the verdict. Fixed width so the edge doesn't shift. */}
         <div className="flex w-32 shrink-0 justify-end">
           {canStart ? (
             <div ref={startRef} className="flex">
@@ -170,9 +146,6 @@ export function ImportCard({
         </div>
       </div>
 
-      {/* Between the header and what the scan found: the order a decision is
-          made in — this is the folder, this is what will be done with it, this
-          is what is in it. */}
       <ImportOptions
         grouping={grouping}
         category={category}

@@ -1,28 +1,9 @@
-"""Records the import made up, said so at the moment it makes them.
+"""Mark album rows the import made out of unrelated files as collections.
 
-`album_kind.py` lets someone declare after the fact that a record is a
-collection rather than a release. This is the same statement, made by the
-import, for the rows nobody chose: beets files one album per *directory*, so a
-folder of forty one-shots becomes a single album row — and the metadata page
-then asks that row for its missing track 7, every time it is opened, forever.
-
-The judgement is made on what the *files* say, not on the row beets built out
-of them. A release states itself: its tracks carry the same album tag. So a row
-whose tracks never claimed to be one record, or claimed to be two, is not a
-release — it is a folder, and the import says so instead of leaving the
-question open.
-
-Deliberately narrow:
-
-- Only rows this run *created*. An import merging tracks into an album that was
-  already on the shelf must not relabel it; that album's kind is its owner's
-  business and may already have been answered.
-- Only rows with no kind yet, so a re-import can never overturn an answer.
-- Never the other way round. Nothing here ever marks a row as an album — the
-  absence of the attribute already means that, and a guess that *adds* a
-  tracklist check is a guess that nags.
-
-Reversible in one click on the album page, like any other kind.
+beets makes one album per directory, so a folder of one-shots becomes an
+"album" with a gapped tracklist. Judged on the files' own album tags.
+Only rows this run created and that have no kind yet are marked; nothing is
+ever marked as an album. Reversible from the album page.
 """
 
 from dataclasses import dataclass
@@ -31,19 +12,13 @@ import library
 import protocol
 from import_recap import BATCH_FIELD
 
-# Below this, there is nothing to disagree about. One or two files in a folder
-# say nothing about whether that folder is a record, and calling such a row a
-# collection would only trade one guess for another.
+# Too few tracks to judge.
 MIN_TRACKS = 3
 
 
 @dataclass(frozen=True)
 class TrackFacts:
-    """What one track says about the record it belongs to.
-
-    The album tag as the *file* carries it — not the album row's title, which
-    beets derived and which therefore cannot testify about its own origin.
-    """
+    """One track's own album tag (not the beets-derived row title)."""
 
     album: str
     artist: str
@@ -55,19 +30,13 @@ def _normalized(value: str) -> str:
 
 
 def looks_like_collection(tracks: list[TrackFacts]) -> bool:
-    """Whether these tracks disagree about being one release. Pure.
+    """Whether these tracks disagree about being one release.
 
-    Two ways of disagreeing, and one deliberate abstention:
+    - Two or more distinct album tags.
+    - No album tag and either several artists or no track number at all.
 
-    - Two or more distinct album tags: the folder held several records. beets
-      merged them because they shared a directory, and the tags say otherwise.
-    - No album tag anywhere *and* either several artists or not a single track
-      number: nothing here ever claimed to be a release, and nothing gives it
-      the shape of one.
-
-    A folder with no album tag but one artist and numbered tracks abstains: it
-    has the shape of a rip whose album tag was lost, and treating that as a
-    collection would silence a check that is about to be useful.
+    No album tag with one artist and numbered tracks abstains: it looks like a
+    rip that lost its album tag.
     """
     if len(tracks) < MIN_TRACKS:
         return False
@@ -83,12 +52,7 @@ def looks_like_collection(tracks: list[TrackFacts]) -> bool:
 
 
 def mark(db_path: str, library_dir: str, batch: str) -> int:
-    """Set the collection kind on the run's own heterogeneous rows.
-
-    Returns how many were marked, which is what the recap reports: the import
-    changed the reading of those records and must say so rather than let the
-    user find out from a check that stopped firing.
-    """
+    """Mark this run's heterogeneous rows as collections. Returns the count."""
     from beets.library import Library
 
     lib = Library(db_path, directory=library_dir)
@@ -104,8 +68,7 @@ def mark(db_path: str, library_dir: str, batch: str) -> int:
             if album is None or album.get(library.ALBUM_KIND_KEY):
                 continue
             items = list(album.items())
-            # An album the run merged into: some of its tracks were here
-            # before, so the row is not this import's to name.
+            # Some tracks predate this run: not ours to relabel.
             if any(item.id not in item_ids for item in items):
                 continue
             facts = [
@@ -115,8 +78,7 @@ def mark(db_path: str, library_dir: str, batch: str) -> int:
             if not looks_like_collection(facts):
                 continue
             album[library.ALBUM_KIND_KEY] = library.COLLECTION
-            # `store()` only: the kind is Sonarche's reading of the record and
-            # no tag any other player could carry. Same rule as `album_kind`.
+            # App-only attribute, not written to tags.
             album.store()
             marked += 1
     finally:

@@ -6,15 +6,8 @@ import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 
 afterEach(cleanup);
 
-/**
- * The primary says its own name; shuffle is an icon and borrows one from
- * `aria-label`. Losing that label would leave a screen reader with an
- * unnamed button and no way to tell the two modes apart, and nothing on
- * screen would look wrong.
- *
- * i18next is not initialised here, so `t` echoes the key back; the keys are the
- * names asserted below.
- */
+/** Shuffle is icon-only, so its `aria-label` matters. i18next isn't
+ * initialised here, so `t` echoes the keys asserted below. */
 describe("HeroPlayButtons", () => {
   it("names both modes for assistive tech", () => {
     render(<HeroPlayButtons onPlay={() => {}} onShuffle={() => {}} />);

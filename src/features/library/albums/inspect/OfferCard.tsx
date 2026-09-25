@@ -4,14 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { ArtistOffer, GenreOffer, Offer } from "@/features/library/albums/albumOffers";
 import type { LibraryTrack } from "@/features/library/api";
 
-/**
- * What an edit could also change, stated where it happened.
- *
- * The card lives against the row it comments on, and it does not go away when
- * focus moves — the previous panel tied the genre prompt to the cell's focus, so
- * clicking anything at all destroyed the offer while keeping the edit. An offer
- * leaves when it is answered, and only then.
- */
+/** An offer card anchored to its row. It stays until answered, not until focus moves. */
 
 const PRIMARY =
   "cursor-pointer rounded-full bg-accent px-3 py-1.5 text-[0.75rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
@@ -62,8 +55,7 @@ function GenreBody({
         <button type="button" onClick={() => onApply(offer.candidateIds)} className={PRIMARY}>
           {t("albumMetadata.offers.genre.applySame", { count: offer.candidateIds.length, from: offer.from })}
         </button>
-        {/* Only worth offering when it would reach further than the rows already
-            sharing the old value. */}
+        {/* Only when "all" reaches beyond the rows sharing the old value. */}
         {offer.allIds.length > offer.candidateIds.length + 1 && (
           <button type="button" onClick={() => onApply(offer.allIds)} className={SECONDARY}>
             {t("albumMetadata.offers.genre.applyAll", { count: offer.allIds.length })}
@@ -129,7 +121,7 @@ function ArtistBody({
                 />
                 <span className="w-4 shrink-0 text-right tabular-nums text-muted/70">{track?.track ?? ""}</span>
                 <span className="min-w-0 flex-1 truncate text-foreground">{track?.title}</span>
-                {/* What that row carries today — the reason to leave it alone. */}
+                {/* The row's current artist: a reason to leave it. */}
                 <span className="max-w-28 shrink-0 truncate text-muted/70">{track?.artist}</span>
               </label>
             </li>
@@ -157,8 +149,7 @@ export function OfferCard({
 }: {
   offer: Offer;
   tracks: LibraryTrack[];
-  /** The rows that take the new value — folded into the same draft, so the whole
-   * panel still ships as one save. */
+  /** Folded into the same draft, saved together. */
   onApply: (ids: number[], offer: Offer) => void;
   onDismiss: (offer: Offer) => void;
 }) {

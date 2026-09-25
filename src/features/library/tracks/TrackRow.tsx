@@ -16,24 +16,18 @@ import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 
-/* Underline on hover only. A row holds two of these and permanently underlined
- * text would turn the table into a page of links; the pointer plus the reveal is
- * enough to say they are one. */
+/* Underlined on hover only. */
 const CELL_LINK = "block truncate outline-none hover:text-foreground hover:underline focus-visible:text-foreground";
 
 interface TrackRowProps {
   track: LibraryTrack;
   index: number;
-  /** Play the entrance animation. Off when the table is windowed: rows then
-   * mount and unmount as the user scrolls, and the cascade would re-fire on
-   * every one of them instead of playing once for the list. */
+  /** Off when windowed: rows would re-animate on scroll. */
   cascade?: boolean;
   style?: CSSProperties;
-  /** Album artist of the page this row is on, when it has one. A row filed under
-   * anyone else is a guest spot and says so. */
+  /** The page's album artist; other rows are guest spots. */
   guestOwner?: string;
-  /** Launch playback at this row, in the list's own context. The table owns
-   * the list, so the table decides what the queue is. */
+  /** The table decides the queue. */
   onPlay: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -58,13 +52,9 @@ export function TrackRow({
   const { current, isPlaying } = usePlayer();
   const isCurrent = current?.id === track.id;
 
-  // Who the record is filed under — the album artist, or the track's own when
-  // beets left it empty. Both the album route and the guest test key off it.
+  // Album artist, else the track artist; used for routes and the guest test.
   const owner = track.albumArtist.trim() || track.artist.trim();
-  // An artist page exists per *album* artist, so only a credited artist who owns
-  // the record has one. A featuring credit on someone else's album leads
-  // nowhere, and a link into a page that redirects straight back out is worse
-  // than plain text.
+  // Artist pages exist per album artist, so a featuring credit isn't a link.
   const artistLink = owner === track.artist.trim() && owner !== "" ? artistPath(owner) : null;
   const albumLink = track.album.trim() !== "" ? albumPath(owner, track.album) : null;
   const isGuest = guestOwner != null && owner !== guestOwner;
@@ -81,8 +71,7 @@ export function TrackRow({
       }
     >
       <td className={`${CELL} w-14`}>
-        {/* Centred under its "#" header: the button is narrower than the column,
-         * so left-aligning it left every number visibly off its own label. */}
+        {/* Centred under the "#" header. */}
         <div className="flex justify-center">
           <TrackIndexCell
             index={index}
@@ -96,8 +85,7 @@ export function TrackRow({
 
       <td className={CELL}>
         <div className="flex items-center gap-3">
-          {/* Lazy: a library-wide tracklist holds one of these per row, and
-              eager loading fetched every cover in the library at once. */}
+          {/* Lazy: one cover per row across the whole library. */}
           <TrackThumb artUrl={track.artUrl} />
           <span
             className={
@@ -106,10 +94,7 @@ export function TrackRow({
           >
             {track.title || t("unknownTitle")}
           </span>
-          {/* The import takes these in on purpose — an unplayable file still
-              has tags and still holds its place in its album — but nothing said
-              so afterwards, and the news arrived as an error the one time
-              somebody pressed play. */}
+          {/* Imported but undecodable: flagged before anyone presses play. */}
           {isUnplayable && (
             <ActionHelp text={t("unplayable.why", { format: extensionOf(track.path).toUpperCase() })}>
               <span className="shrink-0 rounded bg-warning-soft px-1 text-[0.625rem] font-semibold text-warning uppercase">
@@ -148,8 +133,7 @@ export function TrackRow({
       </td>
 
       <td className={CELL}>
-        {/* Amber is the app's "incomplete metadata" signal — an untagged track
-         * is exactly that, so the missing genre reads as a nudge, not as noise. */}
+        {/* Amber: incomplete metadata. */}
         <span
           className={
             "inline-block max-w-full truncate rounded-md px-2 py-0.5 text-[0.6875rem] " +
@@ -160,17 +144,13 @@ export function TrackRow({
         </span>
       </td>
 
-      {/* Wrapped in a span, not raw text: the row cascade animates each cell's
-       * child element, and a bare text node has nothing to animate. */}
+      {/* A span: the row cascade animates child elements, not text nodes. */}
       <td className={`${CELL} w-20 ${NUMERIC} text-right`}>
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      {/* The wrapper is load-bearing: `row-cascade` animates `td > *`, and if
-       * the actions were that child the keyframe would override their idle
-       * opacity for the length of the entrance — every row would flash its icons
-       * on arrival. The animation lands on this div; the hover layer sits a
-       * level deeper. `pl-6` is the breathing room from the duration column. */}
+      {/* The wrapper takes `row-cascade`'s `td > *` animation, which would
+          otherwise override the actions' idle opacity. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
           <RowActions

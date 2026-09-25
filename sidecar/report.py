@@ -6,8 +6,7 @@ import provisional
 
 
 def build_report(item) -> dict:
-    """Which metadata fields are actually filled; the frontend derives a
-    completion score from it."""
+    """Which metadata fields are filled; the front derives a completion score."""
     album = None
     try:
         album = item.get_album()
@@ -20,15 +19,12 @@ def build_report(item) -> dict:
 
     return {
         "item_id": item.id,
-        # The tags as filed, kept on the report so a history row can later
-        # recognise its item: beets recycles deleted rowids, and an id alone
-        # cannot say "this is still the track I filed" months later.
+        # Lets a history row recognise its item later: beets recycles deleted rowids.
         "title": item.title or None,
         "artist": item.artist or None,
         "album": item.album or None,
-        # Empty mb_trackid means no trusted match was ever applied.
         "mb_matched": bool(item.mb_trackid),
-        # Tags were written, but guessed from the video rather than matched.
+        # Tags guessed from the video rather than matched.
         "provisional": bool(item.get(provisional.FLAG)),
         "source": item.get("data_source") or None,
         "fields": {
@@ -37,7 +33,6 @@ def build_report(item) -> dict:
             "album": bool(item.album),
             "year": bool(item.year),
             "track": bool(item.track),
-            # beets 2.12 stores genres as a list field (`genres`).
             "genre": bool(item.get("genres")),
         },
         "cover": bool(art_path and os.path.exists(art_path)),

@@ -130,9 +130,7 @@ class ShapeCandidatesTest(unittest.TestCase):
         self.assertEqual([c["id"] for c in out], ["ok"])
 
     def test_http_urls_from_the_index_are_upgraded_to_https(self):
-        # The live CAA index returns http:// URLs; left as-is they fail the
-        # https-pinned validation on both sides of the IPC and the replacement
-        # dies before any work.
+        # The live CAA index returns http:// URLs; the IPC validators require https.
         fetched = []
 
         def fetch(url):

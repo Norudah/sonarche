@@ -2,15 +2,13 @@ import type { Album } from "@/features/library/albums/albums";
 import type { LibraryTrack } from "@/features/library/api";
 import { createTextFilter } from "@/shared/lib/search";
 
-/** A genre that resolves to no browse family — the sidecar's `genre_tree`
- * only promotes 13 roots, everything else (african, asian, world…) lands here. */
+/** A genre outside the tree's family roots (african, asian, world…). */
 export const FAMILY_OTHER = "__other__";
-/** No genre at all. The only actionable family: it points at Metadata. */
+/** No genre at all; points at the Metadata page. */
 export const FAMILY_NONE = "__none__";
 
-/** The 13 browse families, by the display labels the sidecar produces — the
- * same closed set `tone.ts` colours. Ordered for the classify menu: the
- * sidecar's own family order, which is also the tree's. */
+/** The browse families, by the sidecar's display labels (same set `tone.ts`
+ * colours), in the tree's order. */
 export const FAMILY_KEYS = [
   "Metal",
   "Rock",
@@ -27,10 +25,8 @@ export const FAMILY_KEYS = [
   "World",
 ] as const;
 
-/** A genre string that *is* a family root cannot be refiled — moving it would
- * fold one browse shelf into another, and the sidecar refuses it. Both the
- * tree's root spelling ("hip hop", "r&b") and the display label ("Hip-Hop")
- * count: either can show up as a stored genre. */
+/** A genre that is a family root can't be refiled (the sidecar refuses). Both
+ * the tree spelling ("hip hop") and the label ("Hip-Hop") count. */
 const FAMILY_ROOT_GENRES = new Set([...FAMILY_KEYS.map((key) => key.toLowerCase()), "hip hop", "r&b"]);
 
 export function isFamilyRootGenre(genre: string): boolean {
@@ -43,26 +39,20 @@ export interface SubGenre {
 }
 
 export interface Family {
-  /** Browse family as computed by the sidecar, or one of the two sentinels.
-   * Also the identity and the route segment. */
+  /** Family from the sidecar, or a sentinel; identity and route segment. */
   key: string;
-  /** Every track whose own genre resolves to this family. */
+  /** Tracks whose own genre resolves here. */
   trackCount: number;
-  /** Albums whose *majority* of tracks belong here — see `majorityFamilyOf`.
-   * Chronology is not meaningful across artists, so the album order is
-   * whatever `groupAlbums` produced; the view sorts. */
+  /** Albums whose majority of tracks belong here (see `majorityFamilyOf`). */
   albums: Album[];
-  /** Distinct album artists across `albums`. */
   artistCount: number;
-  /** Share of the whole library, 0…1. The bar's only input. */
+  /** 0…1 of the library. */
   share: number;
-  /** Specific genres found under this family, most frequent first. Empty for
-   * `FAMILY_NONE`, which is defined by the absence of one. */
+  /** Most frequent first; empty for `FAMILY_NONE`. */
   subs: SubGenre[];
 }
 
-/** The two sentinels always sink, however big they get: a large pile of
- * unclassified tracks is a problem to fix, not the headline of the page. */
+/** Sentinels always sort last. */
 function rankOf(key: string): number {
   if (key === FAMILY_OTHER) return 1;
   if (key === FAMILY_NONE) return 2;
@@ -74,11 +64,7 @@ export function familyKeyOf(track: LibraryTrack): string {
   return track.genre ? FAMILY_OTHER : FAMILY_NONE;
 }
 
-/**
- * Each genre name's family key, for turning a genre label into its page's
- * route. First occurrence wins — the sidecar buckets a given genre string
- * deterministically, so later tracks cannot disagree.
- */
+/** Genre name → family key, for genre routes. */
 export function genreFamilyIndex(tracks: LibraryTrack[]): Map<string, string> {
   const index = new Map<string, string>();
   for (const track of tracks) {
@@ -92,15 +78,8 @@ interface Tally {
   subs: Map<string, number>;
 }
 
-/**
- * The family that owns an album, by plurality of its tracks.
- *
- * An album genuinely split across two families has to land in exactly one, or
- * the same record would show up twice on two different pages with no way to
- * tell which is "the" one. Ties break on the bigger family, then on the key —
- * never on iteration order, which would let an album jump between pages
- * between two renders of the same library.
- */
+/** The family owning an album, by plurality, so an album appears on one page
+ * only. Ties break on family size, then key. */
 function majorityFamilyOf(album: Album, tallies: Map<string, Tally>): string {
   const counts = new Map<string, number>();
   for (const track of album.tracks) {
@@ -123,14 +102,8 @@ function majorityFamilyOf(album: Album, tallies: Map<string, Tally>): string {
   return best ?? FAMILY_NONE;
 }
 
-/**
- * The whole page in one pass over the tracks plus one over the albums.
- *
- * `trackCount` and `albums.length` are counted on two different units and do
- * not derive from each other: a track is filed under its own genre, an album
- * under its plurality. A family can hold tracks and no album (they are all
- * minorities on records that belong elsewhere) — that is correct, not a bug.
- */
+/** The genres page in two passes. Tracks count by their own genre, albums by
+ * plurality, so a family can hold tracks and no album. */
 export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[] {
   const tallies = new Map<string, Tally>();
 
@@ -172,36 +145,20 @@ export function groupFamilies(tracks: LibraryTrack[], albums: Album[]): Family[]
     .sort((a, b) => rankOf(a.key) - rankOf(b.key) || b.trackCount - a.trackCount || a.key.localeCompare(b.key));
 }
 
-/**
- * A specific genre, as its own browsable object rather than as a filter on its
- * family.
- *
- * Identity is the pair (family, name), not the name alone. A genre tagged
- * inconsistently across the library — some tracks bucketed, some not — really
- * does exist in two families, and collapsing it into one row would have to pick
- * a winner and lie about the other half. It shows up twice, and the family line
- * under the name says why.
- */
+/** A genre identified by (family, name): one tagged inconsistently appears in
+ * two families rather than hiding half its tracks. */
 export interface Genre {
   name: string;
-  /** Family key this genre was counted under. Also its route's first segment. */
+  /** Also the route's first segment. */
   family: string;
   trackCount: number;
   albums: Album[];
   artistCount: number;
-  /** Share of the whole library, 0…1 — the same scale as `Family.share`, so a
-   * genre row and a family row can be read against each other. */
+  /** 0…1 of the library, like `Family.share`. */
   share: number;
 }
 
-/**
- * Flattens the families into their genres, largest first.
- *
- * Scoped inside the family rather than swept library-wide: a genre's albums are
- * its family's albums that carry it, which is what the family page's chip
- * already showed. Widening it would let a record filed under Rock surface under
- * an Electronic genre, and the page would stop agreeing with itself.
- */
+/** Genres from every family, largest first. Albums are scoped within the family. */
 export function listGenres(families: Family[], totalTracks: number): Genre[] {
   return families
     .flatMap((family) =>
@@ -224,9 +181,7 @@ export function findGenre(genres: Genre[], family: string, name: string): Genre 
   return genres.find((genre) => genre.family === family && genre.name === name) ?? null;
 }
 
-/** Distinct specific genres across the whole library — the header's second
- * figure. Counted here rather than summed from `subs` so that a genre filed
- * under two families is not counted twice. */
+/** Distinct genres; one in two families counts once. */
 export function countGenres(families: Family[]): number {
   const names = new Set<string>();
   for (const family of families) {
@@ -235,15 +190,7 @@ export function countGenres(families: Family[]): number {
   return names.size;
 }
 
-/**
- * Names only — the family's own and those of the genres under it.
- *
- * Deliberately *not* the albums and artists it contains, unlike the other
- * shelves' filters. On a page whose subject is genres, matching a record would
- * answer "which genre holds this artist?" — a question the artist and album
- * shelves already answer — and it made typing a name that appears nowhere on
- * screen surface a card, which reads as a bug rather than a search.
- */
+/** Matches family and genre names only, not the albums or artists inside. */
 export const filterFamilies = createTextFilter<Family>((family) =>
   [family.key, ...family.subs.map((sub) => sub.name)].join(" "),
 );
@@ -252,9 +199,7 @@ export function findFamily(families: Family[], key: string): Family | null {
   return families.find((family) => family.key === key) ?? null;
 }
 
-/** Albums of a family carrying a given specific genre — what a sub-genre chip
- * filters down to. An album qualifies as soon as one of its tracks matches:
- * the chip narrows the shelf, it does not re-run the plurality rule. */
+/** Albums of a family with at least one track in the genre. */
 export function albumsWithGenre(family: Family, genre: string | null): Album[] {
   if (genre == null) return family.albums;
   return family.albums.filter((album) => album.tracks.some((track) => track.genre === genre));

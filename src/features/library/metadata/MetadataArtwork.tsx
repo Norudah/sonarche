@@ -4,17 +4,15 @@ import { motion } from "motion/react";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 import { springs } from "@/shared/motion/tokens";
 
-/** The panel's face: the cover pops in when it opens, rather than being already
- * there. With `onEdit` it is also the way to the cover — hover says so, same
- * grammar as the album panel's header. Without it (a singleton with no album
- * row to write to) it stays a plain picture rather than a dead control. */
+/** The panel's cover, popping in. With `onEdit` it opens the cover modal;
+ * without (a singleton) it's a plain picture. */
 export function MetadataArtwork({
   artUrl,
   editLabel,
   onEdit,
 }: {
   artUrl: string | null;
-  /** Accessible name for the edit affordance — required when `onEdit` is set. */
+  /** Required when `onEdit` is set. */
   editLabel?: string;
   onEdit?: () => void;
 }) {

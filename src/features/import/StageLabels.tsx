@@ -2,15 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { IMPORT_STAGES, STAGE_WEIGHTS, type ImportRail } from "@/features/import/stages";
 
-/**
- * The three stages named under the rail, each label sitting over its own
- * segment — same weights, so a name is always above the bar it describes.
- *
- * The download feed can do without this: its cards arrive one behind another and
- * the phase line under the bar is enough. Here there is a single card and it is
- * on screen before anything happens, so the rail doubles as the page saying what
- * it is about to do — which is only true if the segments are named.
- */
+/** Stage names under the rail, with the rail's weights so each sits over its segment. */
 export function StageLabels({ rail }: { rail: ImportRail }) {
   const { t } = useTranslation("import");
 

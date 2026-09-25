@@ -43,19 +43,8 @@ import {
 } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 
-/**
- * Album metadata, edited in one place.
- *
- * A modal rather than the old 40rem drawer: the panel holds a block of shared
- * fields *and* a table of N rows *and* the consequences of editing them, which a
- * single 640 px column turned into three screens of scrolling with half the
- * window sitting unused behind it. Left to right it reads record → tracks, so
- * anything more specific than a track would open further right still.
- *
- * There is no read mode. Everything is editable, and what the panel makes
- * visible is not "can you type here" but "what have you changed" — the accent
- * rules on moved fields, and the count in the footer that adds them up.
- */
+/** Album metadata in one modal: record fields, then tracks, left to right.
+ * Always editable; moved fields and the footer count show what changed. */
 function InspectBody({
   album,
   onClose,
@@ -63,14 +52,12 @@ function InspectBody({
 }: {
   album: Album;
   onClose: () => void;
-  /** Where the Modal's own dismiss gestures (backdrop, Escape) find the
-   * guard-aware close — only this body knows whether a draft is at stake. */
+  /** Guard-aware close for the modal's backdrop and Escape. */
   requestCloseRef: RefObject<() => void>;
 }) {
   const { t } = useTranslation("library");
   const update = useUpdateTracks();
-  // Its own mutation, not part of the draft: the kind is not a tag, so it does
-  // not belong in the batch the footer saves.
+  // Not a tag, so not part of the draft.
   const setKind = useSetAlbumKind();
   const rematch = useReenrichAlbum();
 
@@ -78,12 +65,9 @@ function InspectBody({
   const completion = useMemo(() => albumCompletion(album.tracks), [album.tracks]);
   const [draft, setDraft] = useState<AlbumDraft>(() => toAlbumDraft(album.tracks, baseline));
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
-  // The row whose consequences are on screen. Anchored to the *row* rather than
-  // to an offer's key on purpose: the key changes with every keystroke (it is
-  // derived from the value being typed), so pinning the key would make the card
-  // flicker in and out letter by letter.
+  // Anchored to the row: offer keys change with every keystroke.
   const [activeRow, setActiveRow] = useState<number | null>(null);
-  /** An offer belonging to no row — the album-artist fill. */
+  /** An offer with no row (the album-artist fill). */
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<TrackFilter | null>(null);
   const [feedback, setFeedback] = useState<SaveFeedback>(null);
@@ -93,14 +77,11 @@ function InspectBody({
   const [isRematchConfirmOpen, setIsRematchConfirmOpen] = useState(false);
 
   const startRematch = () => rematch.mutate(album.tracks.map((track) => track.id));
-  // The dialog is the default; the preference (or its own switch) silences it.
   const requestRematch = () => {
     if (readRematchConfirm()) setIsRematchConfirmOpen(true);
     else startRematch();
   };
 
-  // The record's artist, resolved on the shelf — their disc sits beside the
-  // cover in the header and opens the same image modal as the artist page.
   const { data: libraryTracks } = useLibrary();
   const artistImages = useArtistImages();
   const artist = useMemo(
@@ -111,9 +92,7 @@ function InspectBody({
 
   const summary = changeSummary(album.tracks, baseline, draft);
 
-  // The library refetches after a save (and after a re-match), handing us a new
-  // tracks array. Re-seed the draft from it — but only when nothing is pending,
-  // so a refetch can never swallow an edit in progress.
+  // Re-seed from a refetch only when nothing is pending.
   const [syncedTracks, setSyncedTracks] = useState(album.tracks);
   if (album.tracks !== syncedTracks) {
     setSyncedTracks(album.tracks);
@@ -123,8 +102,7 @@ function InspectBody({
   const offers = useMemo(() => {
     const raised = pendingOffers(album.tracks, draft, dismissed);
     const fill = fillArtistOffer(album.tracks, draft, draft.common.albumartist);
-    // The fill only shows once asked for: it is a bulk action, not something the
-    // record raises on its own.
+    // The fill only shows once requested.
     return fill && pinnedKey === fill.key ? [fill, ...raised] : raised;
   }, [album.tracks, draft, dismissed, pinnedKey]);
 
@@ -135,8 +113,7 @@ function InspectBody({
         ? offers.find((offer) => offer.trackId === activeRow)
         : undefined) ?? null;
 
-  // Genre and year are read off the rows rather than held beside them, so the
-  // common field and the column can never show two different answers.
+  // Read off the rows, so the common field and the column always agree.
   const genreCell = draftRowCell(album.tracks, draft, "genre");
   const yearCell = draftRowCell(album.tracks, draft, "year");
   const shownCommon: AlbumCommonValues = { ...draft.common, genre: genreCell.value, year: yearCell.value };
@@ -153,16 +130,14 @@ function InspectBody({
     grouping: distinctCommonCount(album.tracks, "grouping"),
   };
 
-  // One family, or none stated: at the album's scale a mixed family says
-  // nothing actionable, since the genre it derives from is right above it.
+  // A mixed family says nothing useful at album scale.
   const families = new Set(album.tracks.map((track) => track.genreBucket ?? "").filter(Boolean));
   const genreFamily = families.size === 1 ? [...families][0] : "";
 
   const origins = commonOrigins(album.tracks, baseline, draft);
 
   const setCommon = (field: AlbumCommonField, value: string) => {
-    // Writing the shared genre or year *is* writing every row's — the field is
-    // a shortcut into the column, not a value of its own.
+    // Writing the shared genre or year writes every row.
     if (field === "genre" || field === "year") {
       setDraft((prev) => {
         const rows = { ...prev.rows };
@@ -178,8 +153,7 @@ function InspectBody({
 
   const setRow = (id: number, field: keyof TrackRowValues, value: string) => {
     setDraft((prev) => ({ ...prev, rows: { ...prev.rows, [id]: { ...prev.rows[id], [field]: value } } }));
-    // Typing here is what raises a consequence, so this is where it gets shown —
-    // the user should not have to go looking for the offer their own edit made.
+    // Show the offer this edit raised.
     setActiveRow(id);
     setPinnedKey(null);
   };
@@ -189,8 +163,6 @@ function InspectBody({
     setDraft((prev) => {
       const rows = { ...prev.rows };
       for (const id of ids) rows[id] = { ...rows[id], [field]: offer.to };
-      // Nothing to mirror into the common block: the shared genre is read off
-      // these very rows, so it already says whatever they now say.
       return { ...prev, rows };
     });
     answerOffer(offer);
@@ -202,7 +174,7 @@ function InspectBody({
     setPinnedKey(null);
   };
 
-  /** Bring an offer back on screen — from a row's dot, or the header counter. */
+  /** From a row's dot or the header counter. */
   const openOffer = (offer: Offer) => {
     if (offer.trackId != null) {
       setActiveRow(offer.trackId);
@@ -229,9 +201,7 @@ function InspectBody({
       onSuccess: () => {
         setFeedback({ kind: "saved", tracks: updates.length });
         setDismissed(new Set());
-        // Nothing to do about a rename here: the record keeps its track ids, and
-        // the surfaces that hold it (the album route, the shelf's open panel)
-        // find it again through those.
+        // A rename keeps the track ids, through which the record is found again.
         if (isLeaving) onClose();
       },
       onError: () => {
@@ -249,24 +219,20 @@ function InspectBody({
     setIsLeaving(false);
   };
 
-  /** Closing with a pending draft raises the guard instead of dropping it. */
+  /** A pending draft raises the guard. */
   const requestClose = () => {
     if (summary.fields > 0) setIsLeaving(true);
     else onClose();
   };
 
-  // The backdrop click lands on the Modal, outside this body; hand it the
-  // current requestClose so that gesture meets the same guard as the ✕.
-  // Escape rides the same effect: on macOS a button click leaves focus on the
-  // body — outside both this tree and react-aria's overlay — so an element
-  // handler misses the key. One document listener owns it instead; overlays
-  // that answer Escape themselves (help popovers, the guard) preventDefault
-  // first, and `isKeyboardDismissDisabled` keeps react-aria from competing.
+  // A document-level Escape handler: on macOS a clicked button leaves focus on
+  // the body, where element handlers miss it. Overlays handling Escape
+  // themselves call preventDefault first.
   const escapeRef = useRef(() => {});
   useEffect(() => {
     requestCloseRef.current = requestClose;
     escapeRef.current = () => {
-      // An open suggestion is the innermost thing on screen, so it goes first.
+      // An open suggestion is innermost, so it closes first.
       if (activeOffer) answerOffer(activeOffer);
       else requestClose();
     };
@@ -285,7 +251,7 @@ function InspectBody({
     return new Set(album.tracks.map((track) => track.id).filter((id) => !incomplete.has(id)));
   }, [album.tracks, completion.incompleteIds]);
 
-  /** ⌘S writes without leaving. Escape lives on the document, above. */
+  /** ⌘S saves without closing. */
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -296,8 +262,7 @@ function InspectBody({
   return (
     <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
       <header className="flex shrink-0 items-center gap-4 border-b border-separator panel-wash px-5 py-3.5">
-        {/* The cover is the way to the cover: hover says so, and the same
-            modal is reachable from the provisional-cover notice below. */}
+        {/* Opens the cover modal. */}
         <button
           type="button"
           onClick={() => setIsCoverOpen(true)}
@@ -385,8 +350,7 @@ function InspectBody({
           onCopyArtist={() => {
             const fill = fillArtistOffer(album.tracks, draft, draft.common.albumartist);
             if (!fill) return;
-            // Re-open it even if it was answered earlier: asking again is the
-            // whole point of pressing the button a second time.
+            // Reopen even if answered before.
             setDismissed((prev) => {
               const next = new Set(prev);
               next.delete(fill.key);
@@ -449,9 +413,7 @@ function InspectBody({
 }
 
 export function AlbumInspectModal({ album, onClose }: { album: Album | null; onClose: () => void }) {
-  // `isOpen` is controlled, so react-aria can never close this on its own
-  // terms: Escape and the backdrop click only *request* it, and the body
-  // answers — straight close, or the exit guard when a draft is at stake.
+  // Controlled: Escape and backdrop only request a close; the body decides.
   const requestCloseRef = useRef(onClose);
   return (
     <Modal
@@ -460,9 +422,7 @@ export function AlbumInspectModal({ album, onClose }: { album: Album | null; onC
         if (!open) requestCloseRef.current();
       }}
     >
-      {/* Keyboard dismiss stays off: Escape is handled by the body's own
-          document listener (react-aria's would miss it whenever focus sits on
-          the body, and would double-handle it whenever it does not). */}
+      {/* Escape is handled by the body's document listener. */}
       <Modal.Backdrop isKeyboardDismissDisabled>
         <Modal.Container>
           <Modal.Dialog className="flex h-[94vh] max-h-[58rem] w-[97vw] max-w-[80rem] flex-col overflow-hidden p-0!">

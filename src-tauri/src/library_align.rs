@@ -1,9 +1,5 @@
-//! One-at-a-time guard for the library-wide align pass (scan + apply).
-//!
-//! One lock for both phases: an apply landing while a scan rewalks the same
-//! rows — or a second scan piling onto MusicBrainz — could only fight the
-//! first. The scan pays one MusicBrainz search per album (~1 req/s, paced by
-//! beets' client); the apply is local writes plus Cover Art Archive fetches.
+//! One-at-a-time guard for the library-wide align pass, shared by scan and
+//! apply so they never overlap.
 
 use std::time::Duration;
 
@@ -16,12 +12,8 @@ use crate::preferences;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// A few hundred album searches at MusicBrainz pace lands in the tens of
-/// minutes; sized like the genre recompute, with the same generosity.
 const SCAN_TIMEOUT: Duration = Duration::from_secs(3600 * 2);
-/// Apply hits the network for covers (two CAA requests per album) and for the
-/// Last.fm genre fallback on items MusicBrainz gave no genre, paced like the
-/// genre recompute — hence the same generosity.
+/// Covers and paced Last.fm fallbacks.
 const APPLY_TIMEOUT: Duration = Duration::from_secs(3600 * 2);
 
 #[derive(Default)]
@@ -36,12 +28,10 @@ impl LibraryAlignState {
     }
 
     pub async fn apply(&self, app: &AppHandle, plan: Value) -> AppResult<Value> {
-        // Boundary check only: the sidecar re-validates every field against
-        // its whitelist. This just refuses a payload that isn't even a plan.
+        // Shape check only; the sidecar validates every field.
         if !plan.get("albums").map(Value::is_array).unwrap_or(false) {
             return Err(AppError::InvalidInput("not an align plan".into()));
         }
-        // The user's Last.fm politeness delay, for the genre fallback.
         let prefs = preferences::load(app).await?;
         self.run(
             app,

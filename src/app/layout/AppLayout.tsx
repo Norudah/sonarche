@@ -20,60 +20,36 @@ import { ToastViewport } from "@/shared/toast/ToastViewport";
 import { ScrollportProvider } from "@/shared/ui/Scrollport";
 
 export function AppLayout() {
-  // <main> is the app's scroll container, not the window — so scroll handling
-  // is ours to do; nothing upstream resets or restores it.
+  // <main> is the scroll container, not the window.
   const scrollRef = useRef<HTMLElement>(null);
   useScrollRestoration(scrollRef);
 
-  // Read here rather than in the gate, because `features` do not import each
-  // other and this preference belongs to Settings; the shell is the one place
-  // allowed to know about both. Once, at mount: it decides what the launch
-  // looks like, and the launch is over before anyone can reach the switch that
-  // changes it.
+  // Read in the shell: the preference belongs to Settings, the gate to onboarding.
   const [welcome] = useState(readLaunchWelcome);
 
   return (
-    // The provider wraps everything and lives outside the gate: the count has to
-    // start at the session's first location and survive every page, and one
-    // mounted per route would reset to zero on the very navigation it exists to
-    // remember.
+    // Outside the gate so the history depth counts from the session's first location.
     <HistoryDepthProvider>
-      {/* The gate is inside it but outside the chrome on purpose: while the
-          environment check is in flight no route can render, so a live sidebar
-          would only let the user click nav items that appear to do nothing. */}
+      {/* Outside the chrome: no route can render until the environment check ends. */}
       <SetupGate welcome={welcome}>
-        {/* Outside every page: the lens is a way of looking at the library, so
-            it has to survive opening an album and coming back — state mounted
-            per route would be reset by the very navigation it exists to
-            outlast. */}
+        {/* Above the routes so the lens survives navigation. */}
         <InspectModeProvider>
-          {/* Inside the gate: the repair pass needs a healthy environment, and
-              the gate opening is exactly that signal. */}
+          {/* Needs a healthy environment, which the gate opening guarantees. */}
           <LibraryRepair />
           <JobProgressToasts />
-          {/* Inside the gate, so the offer never lands on top of onboarding —
-              and the toast viewport it needs is only mounted in here anyway. */}
+          {/* Inside the gate so it never covers onboarding. */}
           <UpdatePrompt />
           <HomeTourHost />
-          {/* Over the whole shell, and inside the gate: there is nothing to
-              configure while the environment is still being checked. */}
           <SettingsHost />
           <div className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1">
               <Sidebar />
-              {/* `min-w-0` so a page with a wide, horizontally scrollable child (the
-                  download queue's table) scrolls that child instead of forcing the
-                  whole content column — and the viewport — wider than the window. */}
+              {/* `min-w-0` lets wide children scroll instead of widening the column. */}
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                {/* Above the scrollport, not inside it: the bar belongs to the
-                    column, not to the page, so it must not scroll away with
-                    whatever page happens to be open. */}
+                {/* Outside the scrollport so it doesn't scroll with the page. */}
                 <Topbar />
-                {/* No padding here: this is the scrollport, and `sticky top-0`
-                    resolves against its padding box. Padding on the scrollport
-                    would offset every sticky child by 2rem and let content scroll
-                    visibly through the gap above it. Pages own their padding via
-                    PageContainer, which keeps the scrollport edge available. */}
+                {/* No padding: `sticky top-0` resolves against the scrollport's padding
+                    box. Pages pad themselves via PageContainer. */}
                 <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
                   <ScrollportProvider value={scrollRef}>
                     <RouteTransition>
@@ -84,10 +60,7 @@ export function AppLayout() {
               </div>
             </div>
             <PlayerBar accessory={<FavoriteCurrentButton />} />
-            {/* Mounted beside the player bar, not above it in the tree: the
-                viewport is positioned against the bar, and the two only ever
-                appear together — the onboarding walkthrough replaces this whole
-                chrome and speaks for itself. */}
+            {/* Positioned against the player bar. */}
             <ToastViewport />
           </div>
         </InspectModeProvider>

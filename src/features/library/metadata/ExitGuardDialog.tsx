@@ -4,15 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
-/**
- * The confirmation that stands between a pending draft and the ✕.
- *
- * Closing used to throw the draft away without a word — backdrop, ✕ and Escape
- * all did it, and five minutes of typing were easier to lose than to keep.
- * Three ways out, because the honest answer to "you are about to lose this" is
- * usually "then save it", not just yes or no — so saving is what the loud
- * button does, and discarding sits in the quiet slot beside it.
- */
+/** Guards a pending draft on close: save (primary), discard, or keep editing. */
 export function ExitGuardDialog({
   pendingFields,
   isSaving,
@@ -20,7 +12,7 @@ export function ExitGuardDialog({
   onDiscard,
   onSave,
 }: {
-  /** Zero closes the dialog — the guard only exists while something is at stake. */
+  /** Zero closes the dialog. */
   pendingFields: number;
   isSaving: boolean;
   onKeepEditing: () => void;
@@ -29,8 +21,7 @@ export function ExitGuardDialog({
 }) {
   const { t } = useTranslation("library");
 
-  // Hold the last count so the sentence doesn't read "0 changes" while the
-  // dialog animates out.
+  // Keeps the count during the closing animation.
   const [lastCount, setLastCount] = useState(pendingFields);
   if (pendingFields > 0 && pendingFields !== lastCount) setLastCount(pendingFields);
 

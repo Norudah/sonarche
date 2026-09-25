@@ -1,21 +1,10 @@
 //! Moving the music library to another folder.
 //!
-//! Cheaper than it sounds, thanks to one beets detail: since 2.x, beets stores
-//! a track's path *relative* to `directory:` whenever the file lives under it
-//! (see `beets/dbcore/pathutils.py`, and the note in `sidecar/library.py`).
-//! Everything Sonarche imports lands under the library, so every path in the
-//! database is relative — which means moving the folder and repointing
-//! `directory:` is the whole job. There is no database rewrite, and no window
-//! in which the index disagrees with the disk.
-//!
-//! The rare item stored with an absolute path is one that lives *outside* the
-//! library. Moving the library does not touch it, so it keeps working.
-//!
-//! What does need care is everything holding the old folder open: the player
-//! has a file mapped, the sidecar has beets loaded against the old config, and
-//! a download in flight is about to write into a directory that is moving. So
-//! the move refuses to start while work is queued, stops playback, and takes
-//! the sidecar down before the first byte moves.
+//! beets stores paths relative to `directory:` for files under it, so moving
+//! the folder and repointing `directory:` is enough: no database rewrite.
+//! Items stored with absolute paths live outside the library and are
+//! unaffected. The move refuses while work is queued, stops playback and
+//! shuts the sidecar down first.
 
 use std::path::{Path, PathBuf};
 
@@ -30,37 +19,30 @@ use crate::sidecar::SidecarState;
 
 pub use crate::library_layout::FOLDER_NAME;
 
-/// Why a move cannot go ahead. Machine-readable: the frontend turns each into
-/// its own sentence, and "invalid path" is not a sentence anyone can act on.
+/// Why a move can't proceed; the front words each case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Refusal {
-    /// The library already lives there.
     SameLocation,
-    /// The destination sits inside the library being moved.
+    /// The destination is inside the library.
     IntoItself,
-    /// The destination sits inside the app's own data folder, where a reset is
-    /// allowed to delete everything.
+    /// The destination is inside app data, which a reset may delete.
     InsideAppData,
-    /// A non-empty `Sonarche` folder is already there, and it is not ours.
+    /// A non-empty `Sonarche` folder that isn't ours is already there.
     Occupied,
-    /// The parent is not a directory we can write into.
     NotWritable,
-    /// Downloads or an import are running.
     Busy,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MoveCheck {
-    /// Where the library would end up: the chosen parent plus `Sonarche`.
+    /// The chosen parent plus `Sonarche`.
     pub target: String,
-    /// `None` when the move can go ahead.
     pub refusal: Option<Refusal>,
     pub file_count: u64,
     pub size_bytes: u64,
-    /// A rename within one volume is instantaneous; across volumes every byte
-    /// is copied, which is the difference between a click and a coffee.
+    /// Same volume: instant rename. Otherwise every byte is copied.
     pub same_volume: bool,
 }
 
@@ -79,11 +61,7 @@ pub struct MoveProgress {
     pub total: u64,
 }
 
-/// The one refusal set that does not need the filesystem.
-///
-/// Split out so the containment rules — the two ways a move eats itself, and
-/// the one that hides the library where a reset can reach it — are testable
-/// without building a directory tree. See the tests at the bottom.
+/// The refusals that don't need the filesystem, testable in isolation.
 pub fn validate_paths(current: &Path, app_data: &Path, target: &Path) -> Option<Refusal> {
     if target == current {
         return Some(Refusal::SameLocation);
@@ -97,8 +75,7 @@ pub fn validate_paths(current: &Path, app_data: &Path, target: &Path) -> Option<
     None
 }
 
-/// Files and bytes under a directory. Returns `(0, 0)` for a path that is not
-/// there, which is the honest answer for a library nothing has been added to.
+/// Files and bytes under a directory; `(0, 0)` if missing.
 fn measure(dir: &Path) -> (u64, u64) {
     let mut files = 0;
     let mut bytes = 0;
@@ -123,9 +100,8 @@ fn measure(dir: &Path) -> (u64, u64) {
     (files, bytes)
 }
 
-/// Whether two paths sit on the same filesystem, which decides whether the move
-/// is a rename or a copy. Unknown counts as "not the same": promising an
-/// instant move and then copying 40 GB is the worse way to be wrong.
+/// Unknown counts as different volumes: promising an instant move and then
+/// copying is the worse mistake.
 fn same_volume(a: &Path, b: &Path) -> bool {
     #[cfg(unix)]
     {
@@ -137,8 +113,7 @@ fn same_volume(a: &Path, b: &Path) -> bool {
     }
     #[cfg(not(unix))]
     {
-        // Windows has no cheap device id through std; the drive letter is the
-        // question being asked, and comparing prefixes answers it.
+        // No cheap device id on Windows: compare drive prefixes.
         match (a.components().next(), b.components().next()) {
             (Some(left), Some(right)) => left == right,
             _ => false,
@@ -164,8 +139,7 @@ async fn any_work_in_flight(jobs: &JobsState) -> bool {
     })
 }
 
-/// Everything the confirmation needs to say, and whether there is anything to
-/// confirm. Runs the filesystem work off the runtime.
+/// What the confirmation shows, and whether the move is allowed.
 pub async fn check(app: &AppHandle, jobs: &JobsState, parent: PathBuf) -> AppResult<MoveCheck> {
     let paths = AppPaths::resolve(app)?;
     let app_data = app.path().app_data_dir()?;
@@ -193,8 +167,7 @@ pub async fn check(app: &AppHandle, jobs: &JobsState, parent: PathBuf) -> AppRes
     .map_err(|err| AppError::Setup(err.to_string()))?
 }
 
-/// Copy a tree file by file, reporting as it goes. The fallback for a move
-/// across volumes, where `rename` cannot help.
+/// File-by-file copy with progress, for moves across volumes.
 fn copy_tree(
     from: &Path,
     to: &Path,
@@ -220,8 +193,7 @@ fn copy_tree(
             } else {
                 std::fs::copy(&path, &destination)?;
                 copied += 1;
-                // Every fifty, not every file: a 10 000-track library would
-                // otherwise spend the move flooding the event channel.
+                // Throttled: one event per file would flood the channel.
                 if copied % 50 == 0 {
                     on_progress(copied, total);
                 }
@@ -232,8 +204,7 @@ fn copy_tree(
     Ok(copied)
 }
 
-/// Do the move. Refuses rather than half-doing it — see the module docs for
-/// what has to let go of the old folder first.
+/// Performs the move, refusing rather than half-doing it.
 pub async fn perform(
     app: &AppHandle,
     jobs: &JobsState,
@@ -252,16 +223,9 @@ pub async fn perform(
     let current = paths.library_root.clone();
     let target = parent.join(FOLDER_NAME);
 
-    // The player first: it holds an open file, and on Windows an open file is
-    // a file that cannot be moved. Stopping is not a courtesy here.
-    //
-    // Through `off_runtime` like every other player call: `stop` waits on the
-    // audio thread's mutex, and the runtime's threads are not the ones to wait
-    // on it.
+    // The player holds a file open, which Windows can't move.
     crate::player::off_runtime(app.clone(), |player| player.stop()).await?;
-    // Then the sidecar, which has beets loaded against the old `directory:`.
-    // It is restarted lazily on the next request, by which time the config
-    // will have been rewritten.
+    // The sidecar has beets loaded on the old config; it restarts lazily.
     sidecar.shutdown().await;
 
     let total = verdict.file_count;
@@ -270,9 +234,7 @@ pub async fn perform(
         if let Some(parent_of_target) = target.parent() {
             std::fs::create_dir_all(parent_of_target)?;
         }
-        // A rename is atomic and instant when both ends share a volume. It
-        // fails for a dozen reasons across volumes and none of them are worth
-        // telling apart — any failure falls through to the copy.
+        // Any rename failure (typically cross-volume) falls back to a copy.
         if std::fs::rename(&current, &target).is_ok() {
             let _ = handle.emit(
                 "library-move-progress",
@@ -286,7 +248,6 @@ pub async fn perform(
         copy_tree(&current, &target, total, |copied, total| {
             let _ = handle.emit("library-move-progress", MoveProgress { copied, total });
         })?;
-        // Only once every byte is on the other side.
         std::fs::remove_dir_all(&current)?;
         Ok(())
     })
@@ -298,14 +259,12 @@ pub async fn perform(
     preferences::set_library_dir(app, Some(target.clone())).await?;
     app.state::<LibraryRoot>().set(Some(target.clone()));
 
-    // Rewrites `directory:` in both beets configs and widens the asset scope to
-    // the new folder — without which every cover in the app would 404.
+    // Rewrites `directory:` and widens the asset scope to the new folder.
     python_env::adopt_library_dir(app).await?;
 
     location(app)
 }
 
-/// Where the library is, and whether that is still the app's own choice.
 pub fn location(app: &AppHandle) -> AppResult<LibraryLocation> {
     let paths = AppPaths::resolve(app)?;
     let default_path = python_env::default_library_dir(app);
@@ -338,8 +297,6 @@ mod tests {
         assert_eq!(check(CURRENT), Some(Refusal::SameLocation));
     }
 
-    /// The move would be a folder swallowing itself: `rename` would either fail
-    /// or, on the copy path, walk into what it is writing.
     #[test]
     fn moving_into_the_library_is_refused() {
         assert_eq!(
@@ -348,8 +305,7 @@ mod tests {
         );
     }
 
-    /// The one that matters most: app data is what "reset the app" is allowed
-    /// to delete, and a library filed in there would go with it.
+    /// A library inside app data would be deleted by a reset.
     #[test]
     fn moving_into_app_data_is_refused() {
         assert_eq!(check("/data/Sonarche"), Some(Refusal::InsideAppData));
@@ -359,9 +315,7 @@ mod tests {
         );
     }
 
-    /// A sibling whose name merely starts with the same letters is not inside
-    /// it — `starts_with` on `Path` compares components, not characters, and
-    /// this is the test that says so on purpose.
+    /// `Path::starts_with` compares components, not characters.
     #[test]
     fn a_sibling_with_a_similar_name_is_not_inside() {
         assert_eq!(check("/music/Sonarche-old/Sonarche"), None);

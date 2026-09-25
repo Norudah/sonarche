@@ -1,6 +1,5 @@
 //! Download job queue: one sequential worker drives each job through
-//! `download → import`, persists state to app data, and pushes every
-//! transition to the webview as a `jobs:updated` event.
+//! `download → import → enrich`, persists state, and emits `jobs:updated`.
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex as StdMutex};
@@ -26,19 +25,15 @@ const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const IMPORT_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const ENRICH_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3 * 60);
-/// Plain library writes (the post-enrich category stamp): a DB session and N
-/// tag writes, no network.
+/// Library writes only (DB session + tag writes), no network.
 const LIBRARY_TIMEOUT: Duration = Duration::from_secs(60);
-/// One request covers the whole album: N fingerprints + MB calls + covers.
+/// Covers the whole album: fingerprints, MusicBrainz calls and covers.
 const ENRICH_ALBUM_TIMEOUT: Duration = Duration::from_secs(20 * 60);
-/// The configured download delay is a floor, not a metronome: jittering it up
-/// to 2x keeps the batch from looking like a scripted, perfectly-timed loop.
+/// Up to 2x jitter on the configured delay, so requests don't look scripted.
 const TRACK_SLEEP_JITTER: f64 = 1.0;
-/// The source's 403s are transient flow protection, not permanent failures: retry
-/// each URL a few times before giving up on it. A handful of polite, spaced
-/// attempts doesn't escalate throttling; hammering without pause does.
+/// The source's 403s are usually transient throttling.
 const DOWNLOAD_ATTEMPTS: u32 = 3;
-/// Pause before the first retry; doubles per attempt (6s, then 12s).
+/// Doubles per attempt.
 const DOWNLOAD_RETRY_PAUSE_SECS: u64 = 6;
 const MAX_ALBUM_TRACKS: u64 = 100;
 
@@ -58,14 +53,12 @@ pub enum JobStatus {
     Enriching,
     Done,
     Failed,
-    /// Stopped by the user. Terminal like `Failed`, but nothing went wrong:
-    /// per-track resume markers survive, so a retry picks up where it stopped.
+    /// Stopped by the user. Resume markers survive for a retry.
     Cancelled,
 }
 
 impl JobStatus {
-    /// The job has stopped moving, however it ended. Whatever it was going to
-    /// write to the library, it has written.
+    /// The job has stopped, however it ended, and written everything it will.
     pub fn is_settled(self) -> bool {
         matches!(self, Self::Done | Self::Failed | Self::Cancelled)
     }
@@ -84,25 +77,19 @@ pub enum JobStep {
 pub enum TrackStatus {
     Pending,
     Downloading,
-    /// Staged file on disk, not yet imported.
     Downloaded,
-    /// beets item exists, not yet enriched.
     Imported,
     Done,
     Failed,
-    /// The source will never serve this one: removed, made private, blocked or
-    /// claimed since the playlist was assembled. Distinct from `Failed` because
-    /// there is nothing to retry and nothing went wrong on our side — the
-    /// playlist simply lists a video that no longer plays.
+    /// Removed, private or blocked at the source: nothing to retry.
     Unavailable,
 }
 
-/// One entry of an album job's playlist. `staged_path`/`item_id` encode the
-/// per-track resume position, mirroring the same fields on a single job.
+/// One playlist entry. `staged_path`/`item_id` are the per-track resume point.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlbumTrack {
-    /// 1-based playlist position.
+    /// 1-based.
     pub index: u32,
     pub video_id: String,
     pub url: String,
@@ -112,15 +99,11 @@ pub struct AlbumTrack {
     pub error: Option<String>,
     pub staged_path: Option<String>,
     pub item_id: Option<i64>,
-    /// Per-track metadata report, verbatim from the sidecar.
     pub report: Option<Value>,
-    /// Kept item this track duplicated: the enrich step removed it from the
-    /// library (same AcoustID recording, so same audio under another title).
+    /// Kept item this track duplicated (same recording); enrich removed it.
     #[serde(default)]
     pub duplicate_of: Option<i64>,
-    /// How many download attempts have been started (0 before the first, up to
-    /// DOWNLOAD_ATTEMPTS). Combined with `status` it says which tries failed:
-    /// every attempt before the last one did, by construction.
+    /// Download attempts started; every attempt but the last has failed.
     #[serde(default)]
     pub download_attempts: u32,
 }
@@ -139,79 +122,61 @@ pub struct Job {
     pub thumbnail: Option<String>,
     pub duration: Option<f64>,
     pub staged_path: Option<String>,
-    /// beets item id once imported; lets a retry resume at the enrich step.
+    /// Set once imported; a retry resumes at enrich.
     #[serde(default)]
     pub item_id: Option<i64>,
-    /// Post-import/enrich metadata report, verbatim from the sidecar.
     pub report: Option<Value>,
-    /// Playlist entries of an album job; empty for singles (and until probe).
-    /// `report` stays None on album jobs — the frontend aggregates per track.
+    /// Empty for singles. Album jobs keep `report` at `None`; the front
+    /// aggregates per track.
     #[serde(default)]
     pub tracks: Vec<AlbumTrack>,
-    /// Download attempts started for a single job; album jobs count per track.
+    /// Single jobs only; album jobs count per track.
     #[serde(default)]
     pub download_attempts: u32,
-    /// The library category (beets' `grouping`) the user picked when queueing —
-    /// context, not musical style. Written onto every item the job produced,
-    /// after enrich so the user's choice wins over whatever the pipeline set.
-    /// `None` means "don't touch it", which is what every pre-existing job does.
+    /// Library category (beets' `grouping`), applied after enrich so the user's
+    /// choice wins. `None` leaves it untouched.
     #[serde(default)]
     pub category: Option<String>,
-    /// The album the user declared this playlist to *be*, overriding whatever
-    /// releases its tracks turn out to belong to. `None` is the normal path.
+    /// Album the user assigned to this playlist; `None` is the normal path.
     #[serde(default)]
     pub forced_album: Option<ForcedAlbum>,
-    /// One record for the whole playlist, on by default: the auto pipeline
-    /// must not scatter a set across editions or per-track releases. Only
-    /// consulted when no `forced_album` already decides the filing.
+    /// File the playlist as one record. Ignored when `forced_album` is set.
     #[serde(default = "default_single_album")]
     pub single_album: bool,
-    /// Playlist slots whose video was deleted, made private or claimed:
-    /// skipped before download (they can only fail) but counted, because the
-    /// record has holes the source cannot even name.
+    /// Unavailable playlist slots, skipped but counted.
     #[serde(default)]
     pub unavailable: u32,
-    /// When the job's library output was taken back out (see `download_undo`).
-    /// The row stays — the history still says what happened — but the front
-    /// reads this instead of asking the library whether the tracks survive.
+    /// When the job's library output was undone. The row stays in the history.
     #[serde(default)]
     pub undone_at: Option<u64>,
     pub created_at: u64,
     pub updated_at: u64,
 }
 
-/// On, for jobs written before the option existed too: a retry of an old job
-/// should scatter no more than a new one — the option's default is the fix.
+/// Also the default for jobs persisted before the option existed.
 fn default_single_album() -> bool {
     true
 }
 
-/// The album the download must land on, because the user said so — a record
-/// assembled by hand (a film, a series, a game), or one already on the shelf.
-/// Per-track identity is still looked up; only the filing is decided here.
+/// The album a download must land on: a new user-named record or an existing
+/// one. Tracks are still identified individually.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForcedAlbum {
     pub title: String,
-    /// Left to the sidecar's compilation default when the user names none.
     #[serde(default)]
     pub artist: Option<String>,
-    /// An existing beets album row to land on, instead of standing up a new
-    /// one. With an id, `title`/`artist` only describe the target (history
-    /// cards, fallbacks) — the move verb does the filing, post-enrich.
+    /// An existing album row to land on; `title`/`artist` then only describe it.
     #[serde(default)]
     pub album_id: Option<i64>,
 }
 
 struct JobsInner {
-    /// Our own history DB (jobs.db), guarded for serialized access. rusqlite is
-    /// sync, so every touch runs inside `spawn_blocking` via `with_conn`.
+    /// History DB (jobs.db). rusqlite is sync, so access goes through `with_conn`.
     conn: Arc<StdMutex<Connection>>,
     tx: mpsc::UnboundedSender<String>,
-    /// Jobs the user asked to stop. In-memory on purpose: a cancel only makes
-    /// sense against a live worker, and startup recovery already fails whatever
-    /// a dead app left behind. The worker consumes an entry at its next
-    /// checkpoint and writes the terminal `Cancelled` state.
+    /// Pending cancel requests, consumed by the worker at its next checkpoint.
+    /// In-memory: startup recovery fails whatever a dead app left running.
     cancels: StdMutex<HashSet<String>>,
 }
 
@@ -248,8 +213,7 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// Run a blocking DB operation off the async runtime. The connection mutex is
-/// only ever held on the blocking thread, never across an await.
+/// Runs a blocking DB operation off the async runtime.
 async fn with_conn<T, F>(inner: &JobsInner, f: F) -> AppResult<T>
 where
     T: Send + 'static,
@@ -264,27 +228,19 @@ where
     .map_err(|err| AppError::Sidecar(format!("jobs db task panicked: {err}")))?
 }
 
-/// Open the history DB, migrate any legacy `jobs.json` and fail whatever the
-/// previous run left unfinished. Called once from Tauri setup.
+/// Opens the history DB, migrates legacy `jobs.json`, and fails jobs left
+/// unfinished. Called once from Tauri setup.
 ///
-/// Deliberately does NOT start the worker: the launch migration runs between
-/// this and [`JobsState::start`], and a worker resuming a queued download must
-/// only ever see the migrated layout. The receiver comes back to the caller so
-/// forgetting to start is a compile error, not a silent dead queue.
+/// Doesn't start the worker: the launch migration must run first. Returning
+/// the receiver makes forgetting [`JobsState::start`] a compile error.
 pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
     let data_dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
     let db_path = data_dir.join("sonarche.db");
     let legacy_json = data_dir.join("jobs.json");
 
-    // The DB shipped briefly as jobs.db before it became the app-wide store;
-    // adopt any such file in place rather than starting empty.
-    //
-    // All three files, not just the main one. The store runs in WAL mode, so a
-    // `-wal` holding committed-but-uncheckpointed pages is part of the database
-    // and not a cache: renaming `jobs.db` alone hands SQLite a file whose most
-    // recent writes are sitting in a `-wal` it will never look at again, and
-    // leaves the orphans behind for good measure.
+    // Adopt the legacy jobs.db with its WAL/SHM files: the WAL may hold
+    // committed pages.
     let legacy_db = data_dir.join("jobs.db");
     if legacy_db.exists() && !db_path.exists() {
         for suffix in ["", "-wal", "-shm"] {
@@ -297,13 +253,11 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
 
     let conn = jobs_store::open(&db_path)?;
 
-    // The one playlist the app itself owns; idempotent, so every launch may ask.
     if let Err(err) = playlists::ensure_favorites(&conn, now_ms()) {
         eprintln!("[playlists] favorites seed failed: {err}");
     }
 
-    // One-time import of the pre-SQLite history, then retire the JSON file.
-    // INSERT OR REPLACE keeps it idempotent if a prior attempt half-finished.
+    // One-time import; INSERT OR REPLACE keeps it idempotent.
     if legacy_json.exists() {
         match std::fs::read_to_string(&legacy_json)
             .ok()
@@ -333,7 +287,6 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
     Ok((JobsState(inner), JobsWorker(rx)))
 }
 
-/// The queue's receiving end, waiting to be handed to [`JobsState::start`].
 pub struct JobsWorker(mpsc::UnboundedReceiver<String>);
 
 fn spawn_worker(app: AppHandle, inner: Arc<JobsInner>, mut rx: mpsc::UnboundedReceiver<String>) {
@@ -355,9 +308,7 @@ async fn snapshot(inner: &JobsInner, id: &str) -> Option<Job> {
     }
 }
 
-/// Apply a mutation to one job, persist it (job row + all its tracks) and
-/// broadcast the new state. Use this whenever job-level fields or several
-/// tracks may change at once.
+/// Mutates one job, persists it with all its tracks, and broadcasts it.
 async fn update_job(
     app: &AppHandle,
     inner: &JobsInner,
@@ -376,9 +327,8 @@ async fn update_job(
     Some(job)
 }
 
-/// Apply a mutation to one track of an album job, writing only that row plus the
-/// parent's `updated_at` — the hot path during a download loop, so it never
-/// rewrites the whole playlist. Still broadcasts the full job snapshot.
+/// Mutates one album track, writing only that row (the download loop's hot
+/// path). Still broadcasts the full job.
 async fn update_track(
     app: &AppHandle,
     inner: &JobsInner,
@@ -411,8 +361,7 @@ async fn run_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
-    // Cancelled while still in line: the cancel command already wrote the
-    // terminal state, this side only consumes the flag it left armed.
+    // Cancelled while queued: the command already wrote the terminal state.
     if job.status == JobStatus::Cancelled {
         take_cancel(inner, id);
         return;
@@ -421,8 +370,7 @@ async fn run_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         JobKind::Album => run_album_job(app, inner, id).await,
         JobKind::Single => run_single_job(app, inner, id).await,
     }
-    // A cancel that landed after the last checkpoint changed nothing; drop it
-    // so it cannot bleed into a later retry of the same job.
+    // Drop a late cancel so it can't hit a later retry.
     take_cancel(inner, id);
 }
 
@@ -431,8 +379,7 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         return;
     };
 
-    // Retries resume after the last completed step: an item id means the
-    // import already succeeded; a staged file means the download did.
+    // Resume after the last completed step.
     let mut item_id = job.item_id;
     if item_id.is_none() {
         let staged = job
@@ -472,7 +419,7 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         }
     }
 
-    // Without an item id (e.g. duplicate skipped) there is nothing to enrich.
+    // No item id (duplicate skipped): nothing to enrich.
     let Some(item_id) = item_id else {
         update_job(app, inner, id, |j| j.status = JobStatus::Done).await;
         return;
@@ -489,8 +436,7 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 apply_category(app, id, category, &[item_id]).await;
             }
             if let Some(forced) = job.forced_album.as_ref() {
-                // Re-read for the artist fallback: probe and enrich have
-                // filled it in since the job was snapshotted.
+                // Re-read: probe and enrich may have filled the artist since.
                 let artist = snapshot(inner, id).await.and_then(|j| j.artist);
                 apply_destination(app, id, forced, &[item_id], artist.as_deref()).await;
             }
@@ -507,10 +453,8 @@ async fn run_single_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     }
 }
 
-/// Terminal write of a user cancellation, if one was requested: the job stops
-/// where it stands, keeping every per-track resume marker; a track caught
-/// mid-download goes back to pending — its file never finished. Returns whether
-/// the job was settled, in which case the caller must stop driving it.
+/// Writes a requested cancellation, keeping resume markers; a track caught
+/// mid-download goes back to pending. Returns whether the caller must stop.
 async fn settle_cancel(app: &AppHandle, inner: &JobsInner, id: &str) -> bool {
     if !take_cancel(inner, id) {
         return false;
@@ -531,8 +475,7 @@ async fn settle_cancel(app: &AppHandle, inner: &JobsInner, id: &str) -> bool {
 }
 
 async fn fail(app: &AppHandle, inner: &JobsInner, id: &str, step: JobStep, err: AppError) {
-    // Killing the work process to interrupt a step surfaces here as a sidecar
-    // error; the user's stop must not be recorded as a failure.
+    // Killing the work process surfaces as a sidecar error; record a cancel.
     if settle_cancel(app, inner, id).await {
         return;
     }
@@ -545,34 +488,25 @@ async fn fail(app: &AppHandle, inner: &JobsInner, id: &str, step: JobStep, err: 
     .await;
 }
 
-/// Workflow trace for the dev terminal: one readable line per pipeline step,
-/// prefixed with the job's short id so parallel history stays attributable.
+/// One trace line per pipeline step, prefixed with the job's short id.
 fn job_log(id: &str, msg: &str) {
     eprintln!("[job {}] {msg}", &id[..id.len().min(8)]);
 }
 
-/// The marker `sidecar/download.py` puts on a video the source will never serve.
-/// The wording of yt-dlp's own message stays the sidecar's business; this side
-/// only needs to know the verdict.
+/// Set by `sidecar/download.py` on videos the source will never serve.
 const UNAVAILABLE_PREFIX: &str = "video-unavailable:";
 
 fn is_unavailable(message: &str) -> bool {
     message.contains(UNAVAILABLE_PREFIX)
 }
 
-/// Raw sidecar download of one URL into the staging dir.
 async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
     let paths = AppPaths::resolve(app)?;
-    // Without ffmpeg beside it, yt-dlp leaves the m4a as a fragmented
-    // DASH container — 0:00 durations and broken seeking on every player that
-    // reads classic sample tables (Music.app, iOS, CarPlay).
+    // Without ffmpeg, yt-dlp leaves a fragmented DASH m4a.
     python_env::ensure_ffmpeg(&paths).await?;
-    // Optional where ffmpeg is not: without it yt-dlp falls back to the single
-    // client that needs no JavaScript, which still downloads.
+    // Optional: without it yt-dlp uses the one client needing no JavaScript.
     let deno = python_env::deno(&paths).await;
-    // Read per track rather than carried on the job: the setting is what it is
-    // at the moment a file is written, and a playlist queued before the user
-    // changed it has no claim on the old answer.
+    // Read per track: the setting applies when a file is written.
     let format = preferences::load(app).await?.audio_format;
     let sidecar = app.state::<SidecarState>();
     sidecar
@@ -591,17 +525,14 @@ async fn download_request(app: &AppHandle, url: &str) -> AppResult<Value> {
         .await
 }
 
-/// Which row carries the attempt counter for a download: a single's own job row,
-/// or one track of an album playlist.
+/// Which row carries a download's attempt counter.
 #[derive(Clone, Copy)]
 enum AttemptTarget {
     Job,
     Track(u32),
 }
 
-/// Publish "we are now on attempt N" so the UI can light its attempt dots while
-/// the retry pauses run — those pauses last 6s then 12s, far too long to leave
-/// the row looking idle.
+/// Publishes the attempt number before the retry pause, so the row shows it.
 async fn record_attempt(
     app: &AppHandle,
     inner: &JobsInner,
@@ -619,9 +550,7 @@ async fn record_attempt(
     };
 }
 
-/// One URL through the retry policy: transient failures (403s, network
-/// blips) get DOWNLOAD_ATTEMPTS tries with growing pauses; the row keeps its
-/// live status and its attempt count, the terminal log carries the full trail.
+/// Downloads one URL with up to DOWNLOAD_ATTEMPTS tries and growing pauses.
 async fn download_with_retry(
     app: &AppHandle,
     inner: &JobsInner,
@@ -642,17 +571,12 @@ async fn download_with_retry(
                 job_log(job_id, "downloaded ok");
                 return Ok(result);
             }
-            // A video that no longer exists will not exist on the third try
-            // either. Retrying cost two more round-trips and 18s of sleeping
-            // per dead entry — on a playlist with four of them, a minute of
-            // waiting for an answer the first attempt already gave.
+            // An unavailable video won't come back on retry.
             Err(err) if is_unavailable(&err.to_string()) => {
                 job_log(job_id, &format!("unavailable, not retrying: {err}"));
                 return Err(err);
             }
-            // A stop request killed the request out from under us; retrying
-            // would restart the sidecar and download the file the user just
-            // refused. The caller's cancel checkpoint settles the job.
+            // Killed by a stop request; the caller's checkpoint settles the job.
             Err(err) if cancel_requested(inner, job_id) => {
                 return Err(err);
             }
@@ -714,10 +638,9 @@ async fn run_enrich(
     enrich_item(app, item_id, title, artist).await
 }
 
-/// Run the enrich stage for a beets item. `title`/`artist` are only used by the
-/// text fallback; pass `None` to let the sidecar reuse the item's own tags (the
-/// re-enrich path has no download hints). Shared by the download worker and the
-/// standalone re-enrich command.
+/// Runs the enrich stage for a beets item. `title`/`artist` only feed the
+/// text fallback; `None` reuses the item's own tags. Shared by the worker and
+/// the re-enrich command.
 pub async fn enrich_item(
     app: &AppHandle,
     item_id: i64,
@@ -727,7 +650,7 @@ pub async fn enrich_item(
     let paths = AppPaths::resolve(app)?;
     python_env::ensure_fpcalc(&paths).await?;
 
-    // The key never transits through the webview; keychain → sidecar directly.
+    // The key goes from the keychain to the sidecar, never through the webview.
     let acoustid_key = match settings::read("acoustid").await {
         Ok(key) => key,
         Err(err) => {
@@ -755,14 +678,10 @@ pub async fn enrich_item(
         .await
 }
 
-/// Stamp the job's category onto the items it produced, through the same
-/// `library_update` path the metadata editor uses — beets stays the one writer.
+/// Writes the job's category on its items via `library_update`.
 ///
-/// Runs *after* enrich, not before: enrich rewrites tags from the MusicBrainz
-/// match, and the category is the user's own axis, so it has to land last.
-/// Never fatal — a job that downloaded, imported and identified has done its
-/// work; a failed grouping write is a missing tag the user can set by hand, not
-/// a reason to paint the whole run red.
+/// Runs after enrich, which rewrites tags. Never fatal: the category can be
+/// set by hand.
 async fn apply_category(app: &AppHandle, id: &str, category: &str, item_ids: &[i64]) {
     if item_ids.is_empty() {
         return;
@@ -803,12 +722,8 @@ async fn apply_category(app: &AppHandle, id: &str, category: &str, item_ids: &[i
     }
 }
 
-/// Land the job's items on the album the user picked — an existing row, or one
-/// created on the spot — through the same sidecar verb as the library's own
-/// "move onto a record". Runs last, after enrich and the category, so the
-/// user's filing wins over whatever the pipeline decided. Never fatal, for the
-/// same reason as `apply_category`: the music has landed, and a failed refile
-/// is a move the user can redo by hand, not a red job.
+/// Moves the job's items onto the user-picked album, last so it wins over
+/// the pipeline's filing. Never fatal: the move can be redone by hand.
 async fn apply_destination(
     app: &AppHandle,
     id: &str,
@@ -832,10 +747,8 @@ async fn apply_destination(
     }
 }
 
-/// The move request `apply_destination` and the after-the-fact "change the
-/// destination" command share: same sidecar verb, same artist fallback, same
-/// renumbering — only what happens to a failure differs (a log line mid-run,
-/// a surfaced error when the user asked directly).
+/// Move request shared by `apply_destination` and the later
+/// "change destination" command.
 pub(crate) async fn move_to_destination(
     app: &AppHandle,
     forced: &ForcedAlbum,
@@ -846,8 +759,8 @@ pub(crate) async fn move_to_destination(
     let (target_album_id, new_album) = match forced.album_id {
         Some(album_id) => (Some(album_id), Value::Null),
         None => {
-            // A single into a new record keeps its own artist unless the user
-            // named one; the compilation default only backstops a mixed pile.
+            // The compilation default only applies to a new record without a named artist
+            // and more than one track.
             let artist = forced
                 .artist
                 .clone()
@@ -878,9 +791,7 @@ pub(crate) async fn move_to_destination(
         .await
 }
 
-/// The beets items a job filed, as recorded on its row: an album's tracks
-/// minus the duplicates enrich dropped, a single's one item. What the undo
-/// removes and the destination change moves.
+/// The beets items a job filed (album tracks minus dropped duplicates).
 pub fn library_item_ids(job: &Job) -> Vec<i64> {
     match job.kind {
         JobKind::Album => job
@@ -946,11 +857,9 @@ fn parse_probe_entries(probe: &Value) -> Vec<AlbumTrack> {
         .collect()
 }
 
-/// The whole album pipeline: probe the playlist, then drive each track through
-/// the same sidecar commands as a single job — the sidecar stays serial and
-/// responsive between tracks, timeouts stay per-track, and per-track
-/// `staged_path`/`item_id` give resume for free. Only the enrich step is one
-/// album-wide request (the release must be matched across all items at once).
+/// Album pipeline: probe the playlist, then download and import each track
+/// through the same sidecar calls as a single job (per-track timeouts and
+/// resume). Enrich is one album-wide request so a single release is matched.
 async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     let Some(job) = snapshot(inner, id).await else {
         return;
@@ -958,7 +867,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
 
     update_job(app, inner, id, |j| j.status = JobStatus::Downloading).await;
 
-    // Probe — skipped on retry, the entry list is already persisted.
+    // Skipped on retry: the entries are persisted.
     if job.tracks.is_empty() {
         job_log(id, "━━ probe phase (playlist listing) ━━");
         let probe = match run_probe(app, &job.url).await {
@@ -973,8 +882,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             .and_then(Value::as_bool)
             .unwrap_or(false);
         if !is_playlist {
-            // Stale/emptied playlist or a plain video: fall back to the
-            // single pipeline instead of failing the job.
+            // Empty playlist or plain video: fall back to the single pipeline.
             update_job(app, inner, id, |j| j.kind = JobKind::Single).await;
             run_single_job(app, inner, id).await;
             return;
@@ -994,8 +902,6 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .await;
     }
 
-    // Download loop: one sidecar request per track, jittered pauses between
-    // network hits so the batch never hammers the source.
     job_log(id, "━━ download phase ━━");
     let tracks = snapshot(inner, id)
         .await
@@ -1015,7 +921,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
             continue;
         }
         if track.item_id.is_some() {
-            // Imported in a previous attempt; only enrich remains.
+            // Imported by a previous attempt.
             update_track(app, inner, id, track.index, |t| {
                 t.status = TrackStatus::Imported;
             })
@@ -1070,10 +976,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                     t.status = TrackStatus::Downloaded;
                 })
                 .await;
-                // The first video's thumbnail stands in as the record's cover
-                // when a forced album finds no artwork of its own. Only the
-                // first: they are per-video, and a playlist's cover should not
-                // change with whichever track happened to finish last.
+                // The first video's thumbnail is the fallback cover for a forced album.
                 if let Some(thumbnail) = as_string("thumbnail") {
                     update_job(app, inner, id, |j| {
                         j.thumbnail.get_or_insert(thumbnail);
@@ -1081,9 +984,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                     .await;
                 }
             }
-            // The stop request killed this track's request; it did nothing
-            // wrong, so it rejoins the pending set for a future retry. The
-            // checkpoint at the top of the next iteration settles the job.
+            // Interrupted by a stop: back to pending for a future retry.
             Err(_) if cancel_requested(inner, id) => {
                 update_track(app, inner, id, track.index, |t| {
                     t.status = TrackStatus::Pending;
@@ -1092,7 +993,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 .await;
             }
             Err(err) => {
-                // One dead video must not sink the album; the row shows it.
+                // One dead video must not sink the album.
                 let message = err.to_string();
                 let gone = is_unavailable(&message);
                 job_log(
@@ -1120,8 +1021,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         return;
     }
 
-    // Import loop: singleton per file (the real album row is created by
-    // enrich_album once every item is known).
+    // Singletons; enrich_album creates the album row.
     job_log(id, "━━ import phase ━━");
     update_job(app, inner, id, |j| j.status = JobStatus::Importing).await;
     let tracks = snapshot(inner, id)
@@ -1143,7 +1043,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 update_track(app, inner, id, track.index, |t| {
                     t.item_id = item_id;
                     t.report = report;
-                    // No item id = duplicate skipped by beets: nothing to enrich.
+                    // No item id: duplicate skipped by beets.
                     t.status = if item_id.is_some() {
                         TrackStatus::Imported
                     } else {
@@ -1152,8 +1052,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 })
                 .await;
             }
-            // Interrupted by the stop request, not broken: the staged file is
-            // intact and a retry re-imports it.
+            // Interrupted by a stop; the staged file is intact.
             Err(_) if cancel_requested(inner, id) => {
                 if settle_cancel(app, inner, id).await {
                     return;
@@ -1174,8 +1073,6 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         return;
     }
 
-    // Enrich: one album-wide request so a single MusicBrainz release covers
-    // every track (coherent album name, one cover fetch).
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
@@ -1219,20 +1116,17 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
                 .await;
             }
             Err(err) => {
-                // Job-level failure: tracks keep `Imported`, so a retry
-                // resumes straight at the enrich step.
+                // Tracks stay `Imported`, so a retry resumes at enrich.
                 fail(app, inner, id, JobStep::Enrich, err).await;
                 return;
             }
         }
     }
 
-    // Final status from the per-track outcomes.
     let Some(job) = snapshot(inner, id).await else {
         return;
     };
 
-    // Duplicates dropped by enrich have no item left to tag or to move.
     let kept: Vec<i64> = job
         .tracks
         .iter()
@@ -1242,8 +1136,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     if let Some(category) = job.category.as_deref() {
         apply_category(app, id, category, &kept).await;
     }
-    // An existing target only: a *new* forced album was already stood up by
-    // the enrich step, cover hunt included.
+    // Only an existing target: a new forced album was created by enrich.
     if let Some(forced) = job
         .forced_album
         .as_ref()
@@ -1258,9 +1151,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
         .iter()
         .filter(|t| t.status == TrackStatus::Failed)
         .count();
-    // Videos the source pulled out from under the playlist. Counted on the job so
-    // the card can say the record has holes, and kept out of `failed`: nothing
-    // went wrong here, and there is nothing to retry.
+    // Counted apart from `failed`: nothing to retry.
     let unavailable = job
         .tracks
         .iter()
@@ -1274,13 +1165,8 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     }
     update_job(app, inner, id, |j| j.unavailable = unavailable).await;
 
-    // `Failed` means the batch produced nothing — a dead playlist, a network
-    // that never answered. One dead video out of twenty-four is not that: the
-    // run reached the end and the library gained twenty-three tracks, so the
-    // job is `Done` and `error` carries the tally. Calling it failed made the
-    // row paint its whole pipeline red and claim the import never happened.
-    // Every video gone is a dead end, not a success with nothing in it: the
-    // `failed == 0` branch below would otherwise call this run `Done`.
+    // `Failed` only when nothing could be produced. Some dead videos still make
+    // the job `Done`, with the tally in `error`.
     if unavailable as usize == total {
         job_log(id, &format!("job FAILED: all {total} video(s) unavailable"));
         update_job(app, inner, id, |j| {
@@ -1302,8 +1188,7 @@ async fn run_album_job(app: &AppHandle, inner: &JobsInner, id: &str) {
     }
     if failed == total {
         job_log(id, &format!("job FAILED: all {total} track(s) failed"));
-        // The earliest failing phase: a failed track without a staged file
-        // never downloaded; with a file but no item it failed the import.
+        // The earliest failing phase.
         let step = if job
             .tracks
             .iter()
@@ -1349,7 +1234,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
     let paths = AppPaths::resolve(app)?;
     python_env::ensure_fpcalc(&paths).await?;
 
-    // The key never transits through the webview; keychain → sidecar directly.
+    // The key goes from the keychain to the sidecar, never through the webview.
     let acoustid_key = match settings::read("acoustid").await {
         Ok(key) => key,
         Err(err) => {
@@ -1373,10 +1258,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
         })
         .collect();
 
-    // The category rides along so the cover lookup knows whether there is a
-    // medium to search for; the thumbnail is the stand-in when there is not.
-    // An *existing* target is not this path's business: the pipeline files
-    // normally and `apply_destination` moves the items afterwards.
+    // An existing target is handled afterwards by `apply_destination`.
     let forced_album = job
         .forced_album
         .as_ref()
@@ -1417,15 +1299,12 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
 }
 
 impl JobsState {
-    /// Bring the worker to life. Its own step, after the launch migration —
-    /// see [`init`].
+    /// Starts the worker, after the launch migration (see [`init`]).
     pub fn start(&self, app: AppHandle, worker: JobsWorker) {
         spawn_worker(app, self.0.clone(), worker.0);
     }
 
-    /// A blocking touch of the DB, for the setup hook only: the worker is not
-    /// born yet, the runtime is not being blocked, and `with_conn`'s
-    /// spawn_blocking would be ceremony with nothing to protect.
+    /// Setup hook only: no worker yet, and blocking is acceptable there.
     pub fn with_conn_blocking<T>(
         &self,
         f: impl FnOnce(&Connection) -> AppResult<T>,
@@ -1484,9 +1363,8 @@ impl JobsState {
         Ok(job)
     }
 
-    /// Stop a job. A queued one is settled on the spot; a running one gets its
-    /// in-flight sidecar request killed — the worker's next checkpoint records
-    /// the terminal state. Resume markers survive, so a retry can pick it up.
+    /// Stops a job: a queued one is settled immediately; a running one has its
+    /// sidecar request killed and is settled at the next checkpoint.
     pub async fn cancel(
         &self,
         app: &AppHandle,
@@ -1504,16 +1382,12 @@ impl JobsState {
         }
         request_cancel(&self.0, id);
         if current.status == JobStatus::Queued {
-            // Nothing in flight to interrupt; write the terminal state here.
-            // The flag stays armed on purpose: if the worker picked the job up
-            // between our snapshot and this write, its next checkpoint wins;
-            // otherwise `run_job` (or a retry) consumes the leftover.
+            // The flag stays armed: if the worker picked the job up meanwhile, its
+            // checkpoint wins; otherwise `run_job` consumes it.
             update_job(app, &self.0, id, |j| j.status = JobStatus::Cancelled).await;
         } else {
-            // The worker is blocked on this job's request — the queue is
-            // serial, so whatever the work channel is running belongs to this
-            // job. Killing the process is the only way to interrupt it; the
-            // channel restarts itself on the next request.
+            // The queue is serial, so the work channel is running this job. The channel
+            // restarts on the next request.
             sidecar.abort_work().await;
         }
         snapshot(&self.0, id)
@@ -1525,13 +1399,9 @@ impl JobsState {
         let current = snapshot(&self.0, id)
             .await
             .ok_or_else(|| AppError::InvalidInput("unknown job".into()))?;
-        // A cancel armed but never consumed (the job was already queued when it
-        // arrived) must not shoot down the run it is now asked to redo.
+        // A stale cancel must not stop the retried run.
         take_cancel(&self.0, id);
-        // A partly-successful album is `Done` (see the album worker's final
-        // status) yet still holds dead tracks worth another try, so "failed"
-        // alone is too narrow a gate. A cancelled job is the user changing
-        // their mind: it resumes from its per-track markers.
+        // A partly-failed album is `Done` but still has tracks to retry.
         let has_failed_tracks = current
             .tracks
             .iter()
@@ -1544,8 +1414,7 @@ impl JobsState {
             j.status = JobStatus::Queued;
             j.failed_step = None;
             j.error = None;
-            // Failed tracks rejoin the batch; staged_path/item_id survive so
-            // the album worker's skip conditions resume where each one left off.
+            // Resume markers survive so each track restarts where it stopped.
             for track in &mut j.tracks {
                 if track.status == TrackStatus::Failed {
                     track.status = TrackStatus::Pending;
@@ -1562,14 +1431,11 @@ impl JobsState {
         Ok(job)
     }
 
-    /// One job by id, tracks included.
     pub async fn get(&self, id: &str) -> AppResult<Option<Job>> {
         let owned = id.to_string();
         with_conn(&self.0, move |c| jobs_store::get_job(c, &owned)).await
     }
 
-    /// Stamp a job undone and tell the front: the write is the fact, the emit
-    /// is what flips the history row without a reload.
     pub async fn mark_undone(&self, app: &AppHandle, id: &str, when: u64) -> AppResult<Job> {
         let owned = id.to_string();
         with_conn(&self.0, move |c| {
@@ -1584,9 +1450,7 @@ impl JobsState {
         Ok(job)
     }
 
-    /// Re-file what a settled job put in the library onto another record — the
-    /// after-the-fact edition of the composer's destination option, for the
-    /// playlist the pipeline split into albums it should not have.
+    /// Re-files a settled job's items onto another album.
     pub async fn change_destination(
         &self,
         app: &AppHandle,
@@ -1610,15 +1474,12 @@ impl JobsState {
             ));
         }
         move_to_destination(app, &forced, &item_ids, job.artist.as_deref()).await?;
-        // The row records the filing the user last chose, so the history card
-        // tells the story as it now stands.
         update_job(app, &self.0, id, move |j| j.forced_album = Some(forced))
             .await
             .ok_or_else(|| AppError::InvalidInput("unknown job".into()))
     }
 
-    /// The live window — every moving job plus the most recent terminal ones.
-    /// What the Downloads page and the in-flight checks read; the archive is
+    /// Every running job plus the most recent finished ones. The full archive is
     /// paged through `page`.
     pub async fn list(&self) -> Vec<Job> {
         match with_conn(&self.0, |conn| {
@@ -1634,13 +1495,8 @@ impl JobsState {
         }
     }
 
-    /// The album rows a job still in flight is going to file its tracks into.
-    ///
-    /// Deleting one of them mid-download would take the move's destination out
-    /// from under it: the tracks would land on whatever release the pipeline
-    /// guessed, and the failure is logged rather than raised — so the guard has
-    /// to sit in front of the delete, not behind it. Reads the live window,
-    /// which already holds every moving job.
+    /// Album rows that in-flight jobs will file into, so they can't be deleted
+    /// from under them.
     pub async fn target_albums(&self) -> Vec<i64> {
         self.list()
             .await
@@ -1650,9 +1506,7 @@ impl JobsState {
             .collect()
     }
 
-    /// One page of the whole archive, newest first, with the totals the
-    /// history page paginates on. Unlike `list`, an unreadable store surfaces
-    /// as an error: the page would otherwise claim an empty history.
+    /// One page of the archive, newest first. Unlike `list`, errors surface.
     pub async fn page(&self, offset: u64, limit: u64) -> AppResult<jobs_store::JobsPage> {
         with_conn(&self.0, move |conn| {
             jobs_store::list_jobs_page(conn, offset, limit)
@@ -1660,13 +1514,8 @@ impl JobsState {
         .await
     }
 
-    /// File a finished library import in the same store the download history
-    /// lives in — it is the app's own database, not the download feature's, and
-    /// an import is the other way music enters the ark.
-    ///
-    /// Swallows: the import itself has already happened and its result is on its
-    /// way back to the page. Losing the archive row is worth a log line, never
-    /// turning a successful import into a reported failure.
+    /// Archives a finished library import. Errors are only logged: the import
+    /// itself succeeded.
     pub async fn record_import(&self, record: library_import::ImportRecord) {
         if let Err(err) = with_conn(&self.0, move |conn| {
             jobs_store::insert_import(conn, &record)
@@ -1677,18 +1526,13 @@ impl JobsState {
         }
     }
 
-    /// One archived import. Unlike `list_imports`, a failure is returned
-    /// rather than logged and flattened: everything asking for a single row is
-    /// about to act on it, and acting on "not found" and on "the archive is
-    /// unreadable" are not the same decision.
+    /// One archived import; unlike `list_imports`, errors are returned.
     pub async fn get_import(&self, id: &str) -> AppResult<Option<library_import::ImportRecord>> {
         let id = id.to_string();
         with_conn(&self.0, move |conn| jobs_store::get_import(conn, &id)).await
     }
 
-    /// Record that a run was taken back out. Logged rather than raised: the
-    /// tracks are already gone, and a lost archive flag must not turn a
-    /// completed undo into a reported failure.
+    /// Errors are only logged: the tracks are already removed.
     pub async fn mark_import_undone(&self, id: &str, when: u64) {
         let owned = id.to_string();
         if let Err(err) = with_conn(&self.0, move |conn| {
@@ -1710,8 +1554,7 @@ impl JobsState {
         .await
     }
 
-    /// Drop every membership pointing at one of these items — a whole import
-    /// left the library.
+    /// Drops every playlist membership pointing at these items.
     pub async fn prune_playlists(
         &self,
         item_ids: std::collections::HashSet<i64>,
@@ -1733,8 +1576,7 @@ impl JobsState {
         }
     }
 
-    /// Drop terminal (done/failed) jobs and the whole import archive; in-flight
-    /// jobs are untouched. One sweep, because the history page shows both.
+    /// Drops finished jobs and the import archive; running jobs are kept.
     pub async fn clear_history(&self) -> Vec<Job> {
         if let Err(err) = with_conn(&self.0, jobs_store::clear_history).await {
             eprintln!("[jobs] clear history failed: {err}");
@@ -1742,15 +1584,14 @@ impl JobsState {
         self.list().await
     }
 
-    // Artist images live in the same store (app/user state, not a fact about
-    // an audio file); these thin wrappers keep the connection discipline —
-    // every touch through `with_conn`, off the async runtime.
+    // Artist images and playlists share this store; timestamps are set here so
+    // the store functions stay pure.
 
     pub async fn list_artist_images(&self) -> AppResult<Vec<jobs_store::ArtistImageRow>> {
         with_conn(&self.0, jobs_store::list_artist_images).await
     }
 
-    /// Returns the replaced file's name, if the write orphaned one.
+    /// Returns the replaced file's name, if any.
     pub async fn set_artist_image(
         &self,
         name: String,
@@ -1764,13 +1605,13 @@ impl JobsState {
         .await
     }
 
-    /// Returns the removed row's filename, if there was one.
+    /// Returns the removed row's filename, if any.
     pub async fn remove_artist_image(&self, name: String) -> AppResult<Option<String>> {
         with_conn(&self.0, move |c| jobs_store::remove_artist_image(c, &name)).await
     }
 
-    /// Returns the filename left ownerless by the rename, if any. `filename`
-    /// is the file's post-rename name — the caller renames it on disk first.
+    /// Returns the filename left unowned by the rename, if any. `filename` is the
+    /// new name; the caller renames the file first.
     pub async fn rename_artist_image(
         &self,
         old: String,
@@ -1787,9 +1628,6 @@ impl JobsState {
         with_conn(&self.0, jobs_store::clear_artist_images).await
     }
 
-    // Playlists: same store, same discipline as artist images. Timestamps are
-    // stamped here so the store functions stay pure over their inputs.
-
     pub async fn list_playlists(&self) -> AppResult<Vec<playlists::PlaylistRow>> {
         with_conn(&self.0, playlists::list).await
     }
@@ -1804,12 +1642,12 @@ impl JobsState {
         with_conn(&self.0, move |c| playlists::rename(c, id, &name, now)).await
     }
 
-    /// Returns the cover filename left ownerless, if the playlist wore one.
+    /// Returns the cover filename left unowned, if any.
     pub async fn delete_playlist(&self, id: i64) -> AppResult<Option<String>> {
         with_conn(&self.0, move |c| playlists::delete(c, id)).await
     }
 
-    /// Returns the replaced file's name, if the write orphaned one.
+    /// Returns the replaced file's name, if any.
     pub async fn set_playlist_cover(&self, id: i64, filename: String) -> AppResult<Option<String>> {
         let now = now_ms();
         with_conn(&self.0, move |c| {
@@ -1818,7 +1656,6 @@ impl JobsState {
         .await
     }
 
-    /// Repoint a cover row at its renamed file.
     pub async fn update_playlist_cover_filename(&self, id: i64, filename: String) -> AppResult<()> {
         let now = now_ms();
         with_conn(&self.0, move |c| {
@@ -1827,19 +1664,19 @@ impl JobsState {
         .await
     }
 
-    /// Returns the removed file's name, if there was one.
+    /// Returns the removed file's name, if any.
     pub async fn remove_playlist_cover(&self, id: i64) -> AppResult<Option<String>> {
         let now = now_ms();
         with_conn(&self.0, move |c| playlists::remove_cover(c, id, now)).await
     }
 
-    /// What the playlist wears in the navigation; an empty string clears it.
+    /// An empty string clears the marker.
     pub async fn set_playlist_marker(&self, id: i64, marker: String) -> AppResult<()> {
         let now = now_ms();
         with_conn(&self.0, move |c| playlists::set_marker(c, id, &marker, now)).await
     }
 
-    /// Returns (added, skipped-as-already-present).
+    /// Returns (added, skipped as already present).
     pub async fn add_playlist_tracks(
         &self,
         id: i64,
@@ -1852,7 +1689,7 @@ impl JobsState {
         .await
     }
 
-    /// Returns how many rows actually went.
+    /// Returns how many rows were removed.
     pub async fn remove_playlist_tracks(&self, id: i64, positions: Vec<u32>) -> AppResult<usize> {
         let now = now_ms();
         with_conn(&self.0, move |c| {
@@ -1869,8 +1706,7 @@ impl JobsState {
         .await
     }
 
-    /// Best-effort prune after a library delete — the caller logs, never fails
-    /// the user's action over it.
+    /// Best-effort; the caller only logs failures.
     pub async fn remove_item_from_playlists(&self, item_id: i64) -> AppResult<()> {
         let now = now_ms();
         with_conn(&self.0, move |c| {
@@ -1883,16 +1719,13 @@ impl JobsState {
         let now = now_ms();
         with_conn(&self.0, move |c| {
             playlists::clear(c)?;
-            // The built-in list survives an erase as an *empty* list — it is
-            // part of the app, only its contents belonged to the user.
+            // The built-in list survives an erase, emptied.
             playlists::ensure_favorites(c, now)
         })
         .await
     }
 
-    /// Empty every playlist without deleting any: the library-wipe companion,
-    /// where the lists are kept but their item ids just stopped meaning
-    /// anything.
+    /// Empties every playlist without deleting any (after a library wipe).
     pub async fn clear_playlist_memberships(&self) -> AppResult<()> {
         let now = now_ms();
         with_conn(&self.0, move |c| playlists::clear_memberships(c, now)).await

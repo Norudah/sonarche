@@ -1,16 +1,7 @@
-"""Taking one download back out of the library.
+"""Remove one download's tracks from the library.
 
-The download twin of `import_undo`, with a different address book: a download
-has no source folder and no beets mark — the item ids the app recorded on the
-job row are its only memory. Ids are resolved against the library as it is
-now, so a track already deleted by hand simply does not count, and an id that
-was recycled onto something else is still removed only if the caller sent it
-(the app's own guard decides what to send).
-
-Everything else — the survey, the foreign-file guard, beets doing the actual
-removal so albums, covers and emptied folders go along — is `undo_removal`,
-shared with the import undo. There is nothing to forget afterwards: downloads
-never touch beets' incremental import memory.
+The download counterpart of `import_undo`, keyed by the item ids recorded on
+the job; ids already gone are ignored. Removal itself is `undo_removal`.
 """
 
 import protocol

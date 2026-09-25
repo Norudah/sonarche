@@ -1,15 +1,7 @@
-//! The image an artist wears in the interface.
-//!
-//! An artist is an entity nowhere else — no beets table, no folder in the
-//! library, no audio tag — so their image lives entirely on our side: the file
-//! under the library's `Artwork/Artists/` (a 500px square rendition, same
-//! rules as a cover, named after the artist so the folder reads without the
-//! app), the index row in sonarche.db (`artist_images`, keyed by the exact
-//! albumartist string). The beets zone (`Music/`) stays 100% beets-clean.
-//!
-//! The sidecar only turns the picked file into the rendition (Pillow lives
-//! there); everything else — naming, the index, orphan cleanup, following a
-//! rename — happens here.
+//! Artist images. Artists exist nowhere in beets, so the image is ours: a
+//! 500px file under `Artwork/Artists/` named after the artist, indexed in
+//! sonarche.db (`artist_images`, keyed by albumartist). The sidecar only
+//! renders the file (Pillow); naming, indexing and cleanup happen here.
 
 use std::path::Path;
 use std::time::Duration;
@@ -24,15 +16,11 @@ use crate::jobs::JobsState;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// Longest name the index will key on. beets tags are unbounded; a name past
-/// this is a pasted essay, not an artist.
 const MAX_NAME_CHARS: usize = 300;
 
-/// Bound on a pasted image link. Far beyond any real URL; a longer one is a
-/// data: blob or an attack, not an address.
 const MAX_URL_CHARS: usize = 2000;
 
-/// What an artist name that sanitizes to nothing files under.
+/// File stem for a name that sanitizes to nothing.
 pub(crate) const ARTIST_STEM_FALLBACK: &str = "Artist";
 
 fn checked_name(name: &str) -> AppResult<String> {
@@ -46,8 +34,7 @@ fn checked_name(name: &str) -> AppResult<String> {
     Ok(name.to_string())
 }
 
-/// Shared with the playlist covers, which follow the same replace-then-sweep
-/// discipline in their own directory.
+/// Shared with playlist covers.
 pub(crate) fn remove_orphan(dir: &Path, filename: Option<String>) {
     if let Some(filename) = filename {
         let path = dir.join(&filename);
@@ -57,10 +44,8 @@ pub(crate) fn remove_orphan(dir: &Path, filename: Option<String>) {
     }
 }
 
-/// Every artist image on record, as absolute paths the webview can draw (the
-/// library root is in the asset scope). The filename is the artist's own name
-/// and survives a replacement, so the front busts its cache with
-/// `updated_at`.
+/// Every artist image as an absolute path. Filenames survive replacement, so
+/// the front cache-busts with `updated_at`.
 #[tauri::command]
 pub async fn list_artist_images(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<Value> {
     let dir = AppPaths::resolve(&app)?.artist_images_dir();
@@ -79,10 +64,8 @@ pub async fn list_artist_images(app: AppHandle, jobs: State<'_, JobsState>) -> A
     Ok(json!({ "images": images }))
 }
 
-/// Give an artist an image from a local file: the sidecar writes the 500px
-/// square rendition (optional crop, same geometry as a cover) under the
-/// artist's readable name, the index row points at it, and the file it
-/// replaces goes.
+/// Sets an artist image from a local file (optionally cropped); the replaced
+/// file is deleted.
 #[tauri::command]
 pub async fn set_artist_image(
     app: AppHandle,
@@ -101,9 +84,7 @@ pub async fn set_artist_image(
     let source = checked_cover_source(&source_path).await?;
     let dir = AppPaths::resolve(&app)?.artist_images_dir();
     tokio::fs::create_dir_all(&dir).await?;
-    // The file is named after the artist — it lives in the visible `Artwork/`
-    // zone, where a UUID would mean nothing. Replacing one's own image reuses
-    // one's own stem; only the *other* rows can collide.
+    // Named after the artist; only other rows can collide.
     let taken: Vec<String> = jobs
         .list_artist_images()
         .await?
@@ -139,8 +120,7 @@ pub async fn set_artist_image(
     Ok(json!({ "name": name, "filename": filename }))
 }
 
-/// Take an artist's image away: the generated avatar comes back, the row and
-/// the file both go.
+/// Removes the image; the generated avatar comes back.
 #[tauri::command]
 pub async fn remove_artist_image(
     app: AppHandle,
@@ -155,10 +135,8 @@ pub async fn remove_artist_image(
     Ok(json!({ "removed": had_image }))
 }
 
-/// Download a pasted image link into a temp file the modal then adopts like a
-/// local pick — the user chose the source, the app only executes the click.
-/// The sidecar does the fetch (https only, size cap, magic-byte sniff); the
-/// path it hands back re-runs the same checks as any picked file.
+/// Downloads a pasted image URL (https, size-capped, sniffed by the sidecar)
+/// into a temp file, then validated like a picked file.
 #[tauri::command]
 pub async fn fetch_artist_image_url(
     app: AppHandle,
@@ -193,10 +171,8 @@ pub async fn fetch_artist_image_url(
     }))
 }
 
-/// Follow the albumartist renames a `library_update` reported: the image goes
-/// with the name — the row in the index, and now the readable file on disk.
-/// Best-effort on purpose — the metadata edit already succeeded, and a
-/// stranded image row must not fail it after the fact.
+/// Moves images along with the albumartist renames a `library_update`
+/// reported. Best-effort: the edit already succeeded.
 pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &Value) {
     let Some(renames) = update_result
         .get("artist_renames")
@@ -232,8 +208,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
             continue;
         };
         if rows.iter().any(|row| row.name == new) {
-            // The rename merges a stray into an artist that already wears an
-            // image of their own; that one wins, the stray's row and file go.
+            // The target artist already has an image: it wins.
             match jobs.remove_artist_image(old.to_string()).await {
                 Ok(orphan) => remove_orphan(&dir, orphan),
                 Err(err) => eprintln!("[artist-images] rename {old:?} -> {new:?} failed: {err}"),
@@ -254,8 +229,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
             artwork::unique_stem(new, ARTIST_STEM_FALLBACK, &taken)
         );
         if filename != old_row.filename {
-            // File first, row second: a failed rename leaves the row pointing
-            // at the file that still exists, which keeps the image working.
+            // File first, so a failed rename keeps the row valid.
             if let Err(err) =
                 tokio::fs::rename(dir.join(&old_row.filename), dir.join(&filename)).await
             {

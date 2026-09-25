@@ -1,18 +1,9 @@
-//! API key storage backed by the OS keychain (macOS Keychain via the Security
-//! framework).
+//! API keys in the OS keychain.
 //!
-//! Two rules, and the second one is newer than the first:
-//!
-//! 1. The secret leaves the keychain only when someone asks for it — the app
-//!    itself, to hand it to the sidecar, or the user, through the reveal button
-//!    on the key's own card. Nothing else, and never as a side effect.
-//! 2. *Whether* a key exists is answered from a mirror in `preferences.json`,
-//!    not from the keychain. macOS has no "does this entry exist" that does not
-//!    also hand over the secret, and it guards that with a password dialog — so
-//!    the launch path, which only wanted to know if the optional AcoustID step
-//!    was done, put a password box on screen before the window had painted.
-//!    The mirror holds names, never values; the keychain remains the only place
-//!    a secret is stored.
+//! The secret only leaves the keychain on request (to the sidecar, or the
+//! reveal button). Whether a key exists is answered from a name-only mirror
+//! in `preferences.json`: on macOS, checking existence returns the secret
+//! and triggers a password prompt.
 
 use serde::Serialize;
 use tauri::AppHandle;
@@ -22,7 +13,7 @@ use crate::preferences;
 
 const SERVICE: &str = "com.rpierucci.sonarche";
 
-/// Keys the app understands; anything else is rejected at the IPC boundary.
+/// Anything else is rejected at the IPC boundary.
 const KNOWN_KEYS: &[&str] = &["acoustid"];
 
 #[derive(Debug, Clone, Serialize)]
@@ -36,35 +27,28 @@ fn entry(name: &str) -> AppResult<keyring::Entry> {
     keyring::Entry::new(SERVICE, name).map_err(|err| AppError::Keychain(err.to_string()))
 }
 
-/// The one function that still asks the keychain whether an entry exists, and
-/// therefore the one that can raise a password prompt. Called once per install,
-/// by the migration below.
+/// The only existence check against the keychain (it may prompt). Run once
+/// per install to seed the mirror.
 fn probe_keychain() -> AppResult<Vec<String>> {
     let mut configured = Vec::new();
     for name in KNOWN_KEYS {
         match entry(name)?.get_password() {
             Ok(value) if !value.trim().is_empty() => configured.push((*name).to_string()),
             Ok(_) | Err(keyring::Error::NoEntry) => {}
-            // A locked keychain or a refused prompt is not "no key" forever —
-            // but it is "no key" for now, and the mirror is not written, so the
-            // next launch asks again rather than freezing a wrong answer.
+            // Locked or refused: report no key, but don't write the mirror, so the next
+            // launch asks again.
             Err(err) => return Err(AppError::Keychain(err.to_string())),
         }
     }
     Ok(configured)
 }
 
-/// Which keys are on file, from the mirror — no keychain, no prompt.
-///
-/// The mirror being absent means this install has never written one: probe
-/// once, record the answer, and never ask again. A probe that fails answers
-/// "none" for this call and leaves the mirror unwritten, so a keychain that was
-/// locked at launch is re-read next time instead of being remembered as empty.
+/// Configured key names, from the mirror; probes the keychain once if the
+/// mirror was never written.
 pub async fn configured_names(app: &AppHandle) -> AppResult<Vec<String>> {
     if let Some(names) = preferences::load(app).await?.api_keys_configured {
         return Ok(names);
     }
-    // Keychain access is blocking; keep it off the async runtime.
     let probed = tauri::async_runtime::spawn_blocking(probe_keychain)
         .await
         .map_err(|err| AppError::Keychain(err.to_string()))?;
@@ -88,12 +72,7 @@ pub async fn list(app: &AppHandle) -> AppResult<Vec<ApiKeyStatus>> {
         .collect())
 }
 
-/// Read a key's value.
-///
-/// Two callers, both of them deliberate: the app handing the key to the
-/// sidecar, and the reveal button on the key's own card — which is a person
-/// asking to see their own secret, and the one moment a keychain prompt is
-/// exactly the right thing to happen.
+/// Reads a key's value: for the sidecar, or the user revealing it.
 pub async fn read(name: &str) -> AppResult<Option<String>> {
     let name = name.to_string();
     tauri::async_runtime::spawn_blocking(move || match entry(&name)?.get_password() {
@@ -105,11 +84,8 @@ pub async fn read(name: &str) -> AppResult<Option<String>> {
     .map_err(|err| AppError::Keychain(err.to_string()))?
 }
 
-/// Store (or clear, when the value is empty) one API key.
-///
-/// Writes the keychain first and the mirror second: a mirror that claims a key
-/// the keychain does not hold sends the user to a card that says "configured"
-/// over a service that refuses every request.
+/// Stores or clears (empty value) a key. Keychain first, then the mirror, so
+/// the mirror never claims a key that isn't stored.
 pub async fn set(app: &AppHandle, name: String, value: String) -> AppResult<ApiKeyStatus> {
     if !KNOWN_KEYS.contains(&name.as_str()) {
         return Err(AppError::InvalidInput(format!("unknown API key: {name}")));
@@ -139,8 +115,7 @@ pub async fn set(app: &AppHandle, name: String, value: String) -> AppResult<ApiK
     .await
     .map_err(|err| AppError::Keychain(err.to_string()))??;
 
-    // Rebuilt from what we just did rather than re-probed: re-probing would
-    // cost the prompt this whole mirror exists to avoid.
+    // Rebuilt locally: re-probing would prompt.
     let mut names: Vec<String> = preferences::load(app)
         .await?
         .api_keys_configured

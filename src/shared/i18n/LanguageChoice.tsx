@@ -5,17 +5,13 @@ import { LANGUAGES, type Language } from "@/shared/i18n/language";
 import { useLanguage } from "@/shared/i18n/useLanguage";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
-/* The segmented grammar the theme control used to wear, and the shape this
- * choice actually wants: two words, no picture to show, one pill sliding
- * between them. The theme moved to tiles because a theme can be drawn; a
- * language cannot, and a flag would name a country rather than a language. */
+/* Segmented control: a language has no picture, and a flag names a country. */
 const SEGMENT = "relative mt-0 flex-1 rounded-full";
 const SEGMENT_CONTENT =
   "relative w-full justify-center px-3 py-2 text-[0.8125rem] font-medium whitespace-nowrap " +
   "transition-colors text-muted hover:text-foreground data-[selected]:text-accent";
 
-/** Endonyms, untranslated on purpose: someone who cannot read the language the
- * app is currently in still has to recognise their own in this list. */
+/** Endonyms, so users can find their language whatever the current one. */
 const NAMES: Record<Language, string> = { fr: "Français", en: "English" };
 
 export function LanguageChoice({ label }: { label: string }) {

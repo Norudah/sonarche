@@ -7,19 +7,9 @@ import type { AudioFormat } from "@/features/settings/audioFormats";
 import type { ConvertProgress } from "@/features/settings/hooks";
 
 /**
- * The one modal in the app that is allowed to hold someone still.
- *
- * Everything else that takes a while — a download, an import, a genre
- * recompute — runs behind a toast and lets the user keep browsing. This cannot:
- * the pass deletes each original the moment its replacement lands, so a track
- * being converted is a track that exists in exactly one place for a few
- * hundred milliseconds. Playing it, moving it, editing its tags or erasing the
- * library while that is true is a race the app would lose quietly. Standing
- * still is the honest answer, and saying so up front is the price of asking.
- *
- * Three phases in one dialog, and the geometry barely moves between them —
- * warn, work, report. A separate "done" dialog would flash the backdrop and
- * read as a second question.
+ * The only blocking modal: each original is deleted as its replacement lands,
+ * so playing, editing or moving files mid-pass would race. Warn, work and
+ * report in one dialog.
  */
 export function ConvertLibraryDialog({
   isOpen,
@@ -49,8 +39,7 @@ export function ConvertLibraryDialog({
     <AlertDialog
       isOpen={isOpen}
       onOpenChange={(open) => {
-        // A pass in flight owns the screen: no backdrop click, no Escape, no
-        // way back to a library whose files are moving underneath it.
+        // Not dismissable while a pass runs.
         if (!open && !isRunning) onClose();
       }}
     >

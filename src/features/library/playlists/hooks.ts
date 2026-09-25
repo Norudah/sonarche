@@ -17,8 +17,7 @@ import {
 
 export const playlistsKey = ["playlists"] as const;
 
-/** Every playlist, once. Same `staleTime: Infinity` reasoning as the library:
- * only our own mutations move this data, and each one invalidates the key. */
+/** `staleTime: Infinity`: only our own mutations change it, and they invalidate it. */
 export function usePlaylists() {
   return useQuery({
     queryKey: playlistsKey,
@@ -57,9 +56,7 @@ export function useDeletePlaylist() {
   });
 }
 
-/** Optimistic like remove/move, and for the same reflex: the favorites heart
- * must fill on the click, not after the round-trip. The rewrite mirrors the
- * backend's dedup so a repeated id cannot land twice even transiently. */
+/** Optimistic, mirroring the backend's dedup. */
 export function useAddToPlaylist() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -80,8 +77,7 @@ export function useAddToPlaylist() {
   });
 }
 
-/** Rewrites the cached playlist before the round-trip: a removed row must
- * leave the screen on the click, not after refetch — same reflex as a reorder. */
+/** Optimistic. */
 export function useRemoveFromPlaylist() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -113,8 +109,7 @@ export function useSetPlaylistCover() {
   });
 }
 
-/** Optimistic: the picker's whole point is watching the sidebar row change, so
- * the cache has to move on the click rather than after the round-trip. */
+/** Optimistic, so the sidebar updates on click. */
 export function useSetPlaylistMarker() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -140,12 +135,7 @@ export function useRemovePlaylistCover() {
   });
 }
 
-/**
- * The favorites list as a fast membership question: is this id in it, and one
- * call to flip that. Built on the ordinary playlist mutations, so the heart,
- * the picker and the detail page can never disagree about what "favorite"
- * means — it is nothing more than membership in the seeded list.
- */
+/** Favorites as a membership test plus a toggle, over the ordinary playlist mutations. */
 export function useFavorites() {
   const playlists = usePlaylists();
   const add = useAddToPlaylist();
@@ -167,9 +157,7 @@ export function useFavorites() {
   return { favorites, ids, toggle };
 }
 
-/** Optimistic for the same reason: the drop must land where the row was
- * released, and a flash back to the old order while the write round-trips
- * would read as the drag failing. */
+/** Optimistic, so the row lands where it was dropped. */
 export function useMovePlaylistTrack() {
   const queryClient = useQueryClient();
   return useMutation({

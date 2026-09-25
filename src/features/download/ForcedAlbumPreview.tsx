@@ -1,8 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-/** One album, drawn as its shelf spine: a title bar and how many tracks sit
- * under it. Widths differ so a stack of three reads as three *different*
- * records rather than a repeated element. */
+/** One album as a spine: a title bar and its track count. */
 function Shelf({ width, count, tone }: { width: string; count: number; tone: "scattered" | "gathered" }) {
   const accent = tone === "gathered";
   return (
@@ -13,24 +11,13 @@ function Shelf({ width, count, tone }: { width: string; count: number; tone: "sc
   );
 }
 
-/**
- * Why the option exists, in the shape of the problem it solves.
- *
- * "A playlist becomes several incomplete albums" is a fact about *structure*,
- * and structure is the one thing a sentence explains slowly and a picture
- * explains at a glance: four thin spines with one track each, against a single
- * spine with four. Deliberately the only illustration in the composer — it
- * earns its place because this is the option whose consequence nobody guesses.
- *
- * The numbers are shapes, not a forecast: the panel has no idea yet how the
- * playlist would split, and inventing a plausible tally would be a claim.
- */
+/** Illustrates the option: several one-track albums versus one full album.
+ * The counts are illustrative, not a forecast. */
 export function ForcedAlbumPreview({ isOn }: { isOn: boolean }) {
   const { t } = useTranslation("download");
 
   return (
-    // `w-fit`, not a full-width row: stretched across the composer the two
-    // stacks drift apart and stop reading as a comparison.
+    // `w-fit` keeps the two stacks close enough to compare.
     <div className="flex w-fit items-stretch gap-5 rounded-xl bg-default/40 px-3.5 py-2.5">
       <figure className={`flex flex-col gap-1.5 transition-opacity ${isOn ? "opacity-45" : ""}`}>
         <figcaption className="text-[0.625rem] font-medium tracking-wide text-muted uppercase">

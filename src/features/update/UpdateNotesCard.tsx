@@ -14,14 +14,7 @@ const SECTION_KEYS: Record<SectionKind, string> = {
   perf: "notes.perf",
 };
 
-/**
- * The new version's changelog, cleaned up and grouped by kind. A body that
- * yields no section renders no card at all (`parseReleaseNotes` returns null
- * upstream).
- *
- * A card in the updates pane rather than a modal: the toast already navigates
- * here, and the notes belong next to the Install button they argue for.
- */
+/** The release notes, grouped. Not rendered when parsing yields nothing. */
 export function UpdateNotesCard({ version, notes }: UpdateNotesCardProps) {
   const { t } = useTranslation("update");
 

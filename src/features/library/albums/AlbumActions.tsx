@@ -10,14 +10,7 @@ import { springs } from "@/shared/motion/tokens";
 const SECONDARY = HERO_BUTTON_SECONDARY;
 const ICON_PILL = HERO_BUTTON_ICON;
 
-/**
- * Everything destructive, one level down.
- *
- * Delete used to sit in the row as a bare trash icon, permanently under the
- * cursor next to the play button. A menu costs one extra click for an action
- * nobody performs twice, and buys back the row for the two things you actually
- * came here to do.
- */
+/** Destructive and rare actions, one level down. */
 function OverflowMenu({
   onDelete,
   onAddToPlaylist,
@@ -45,14 +38,12 @@ function OverflowMenu({
             <ListMusic className="size-4" />
             {t("playlists.addTo")}
           </Dropdown.Item>
-          {/* The pull half of refiling: stand on your record, fetch the tracks
-           * you actually like from the rest of the shelf. */}
+          {/* Pull tracks from the rest of the shelf onto this record. */}
           <Dropdown.Item id="add-tracks" textValue={t("move.addTracksAction")} onAction={onAddTracks}>
             <ListPlus className="size-4" />
             {t("move.addTracksAction")}
           </Dropdown.Item>
-          {/* The whole record at once — how two albums become one, and how a
-           * hand-made collection absorbs a release it grew out of. */}
+          {/* Moves the whole record: merges two albums, or absorbs a release into a collection. */}
           <Dropdown.Item id="move-to-album" textValue={t("move.menuAction")} onAction={onMoveToAlbum}>
             <FolderInput className="size-4" />
             {t("move.menuAction")}
@@ -89,18 +80,12 @@ export function AlbumActions({
   const { t } = useTranslation("library");
 
   return (
-    /* Two groups, not one row of four: playing and managing are different
-     * subjects, and the wider gap between them is what says so. Inside each
-     * group the buttons stay tight, which is also where the shape rule becomes
-     * readable — two round objects, then two rectangular ones. */
+    /* Play and manage as two groups: round buttons, then rectangular ones. */
     <div className="flex flex-wrap items-center gap-3.5">
       <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />
 
       <div className="flex items-center gap-2">
-        {/* "Modifier", not "Inspecter": what opens is a form you write in, and
-         * a page-with-a-pen says so where a bare page only promised reading.
-         * The same pair — this icon, this word — is the app's one door to
-         * editing anything, from a track row to an artist to a playlist. */}
+        {/* "Modifier" with this icon is the app's single door to editing. */}
         <motion.button
           type="button"
           onClick={onEdit}

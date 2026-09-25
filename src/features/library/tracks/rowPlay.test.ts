@@ -4,13 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { rowPlayHandler } from "@/features/library/tracks/rowPlay";
 
-/**
- * A double-click landing on `html`, as React would deliver it — only `target`
- * is read, so there is no need to build a real event.
- *
- * A `div` and not a `tr`: the guard walks ancestors and does not care that the
- * real thing is a table cell.
- */
+/** A double-click as React would deliver it; only `target` is read. */
 function dblClickOn(html: string, selector: string): MouseEvent<HTMLElement> {
   const row = document.createElement("div");
   row.innerHTML = html;

@@ -1,16 +1,10 @@
 """Repair pass: remux fragmented DASH m4a files into classic MP4.
 
-Files downloaded before the app shipped ffmpeg kept the source container as-is:
-a fragmented MP4 (`moof`/`mdat` fragments, empty classic sample tables). Our
-own player reads fragments fine, but Music.app, iOS and CarPlay read the
-classic tables and see an empty file — 0:00 durations, broken seeking, silent
-tracks. The remux is `-c copy`: same AAC stream, new container, no re-encode.
+Files downloaded before ffmpeg was bundled are fragmented, which Music.app,
+iOS and CarPlay read as empty. The remux is `-c copy` (no re-encode).
 
-Tags are copied with mutagen rather than trusted to ffmpeg: ffmpeg's mov muxer
-drops freeform atoms (`----:com.apple.iTunes:…`, where every MusicBrainz id
-lives) and the embedded cover, and mutagen round-trips both exactly. The swap
-is `os.replace` in the same directory, so a failure at any step leaves the
-original untouched.
+Tags are copied with mutagen because ffmpeg drops freeform atoms (MusicBrainz
+ids) and the cover. The final swap is an atomic `os.replace`.
 """
 
 import os
@@ -21,24 +15,18 @@ import subprocess
 import protocol
 from library import expand_db_path
 
-# Boxes that only exist in a fragmented MP4. `moof` is the fragments
-# themselves; `sidx` is the segment index DASH puts before them. Both sit at
-# the top level, so one shallow scan settles the question.
+# Top-level boxes that only exist in a fragmented MP4.
 _FRAGMENT_BOXES = {b"moof", b"sidx"}
 
-# A classic file has ~5 top-level boxes and a fragmented one a few dozen;
-# anything past this is not a sane audio file, stop rather than loop.
+# Guards against looping on a malformed file.
 _MAX_TOP_LEVEL_BOXES = 4096
 
 _FFMPEG_TIMEOUT = 300
 
 
 def top_level_boxes(path: str) -> list[bytes]:
-    """The names of the file's top-level MP4 boxes, header reads only.
-
-    Malformed input (truncated header, zero-size box that is not last, sizes
-    pointing past EOF) ends the scan rather than raising: the caller treats
-    "unreadable" as "not fragmented" and leaves the file alone.
+    """Top-level MP4 box names, from headers only. Malformed input ends the
+    scan instead of raising (treated as "not fragmented").
     """
     names: list[bytes] = []
     size = os.path.getsize(path)
@@ -58,7 +46,7 @@ def top_level_boxes(path: str) -> list[bytes]:
                 if length < 16:
                     break
             elif length == 0:
-                # "To end of file" — legal only on the last box.
+                # Size 0 means "to end of file", legal only on the last box.
                 names.append(name)
                 break
             elif length < 8:
@@ -73,7 +61,6 @@ def is_fragmented(path: str) -> bool:
 
 
 def _copy_tags(source_path: str, target_path: str) -> None:
-    """Every MP4 tag of the source onto the target, byte-exact via mutagen."""
     from mutagen.mp4 import MP4
 
     source = MP4(source_path)
@@ -90,8 +77,7 @@ def _copy_tags(source_path: str, target_path: str) -> None:
 
 def _remux_file(ffmpeg: str, path: str) -> None:
     directory, basename = os.path.split(path)
-    # Dot-prefixed so a concurrent folder scan reads it as clutter, and in the
-    # same directory so the final `os.replace` stays one atomic rename.
+    # Same directory keeps the final `os.replace` atomic.
     tmp = os.path.join(directory, f".remux-{basename}")
     try:
         completed = subprocess.run(
@@ -129,18 +115,11 @@ def _remux_file(ffmpeg: str, path: str) -> None:
 
 
 def _library_paths(db_path: str, library_dir: str, since_id: int) -> tuple[list[tuple[int, str]], int]:
-    """The `(item id, path)` pairs newer than `since_id`, and the newest id seen.
+    """`(item id, path)` pairs newer than `since_id`, and the newest id seen.
 
-    The launch pass only re-examines items added since its last completed run:
-    the shell remembers how far it got (the watermark it passes back in as
-    `since_id`), so a library that was scanned once is never walked again.
-    Items that are not m4a/mp4, or whose file is gone, still advance the
-    newest-id cursor — there is nothing to remux in them, ever.
-
-    No database, nothing to repair — the ordinary state of a launch right
-    after a data erase, and of a first run. Same guard as every other reader
-    here; without it the read-only connect raises and the launch pass leaves
-    a traceback in the log for a library that simply has no files yet.
+    `since_id` is the watermark of the last completed pass. Non-m4a or missing
+    files still advance the cursor. No database (first run, after an erase)
+    means nothing to repair.
     """
     if not os.path.exists(db_path):
         return [], since_id
@@ -156,11 +135,8 @@ def _library_paths(db_path: str, library_dir: str, since_id: int) -> tuple[list[
 
 
 def _checked_through(since_id: int, newest_id: int, failed_ids: list[int]) -> int:
-    """How far the watermark may advance after a pass.
-
-    Everything below the first failure is settled; the failure itself and
-    whatever follows must be seen again next launch, or a file that failed
-    once would stay fragmented forever without anyone retrying it.
+    """How far the watermark may advance: up to, not past, the first failure,
+    so failed files are retried next launch.
     """
     if failed_ids:
         return max(since_id, min(failed_ids) - 1)

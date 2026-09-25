@@ -1,27 +1,10 @@
 """Re-encode the whole library into one audio format.
 
-The heavy half of the audio-format setting. Changing the setting decides what
-the *next* download will be; this is what makes the answer retroactive, and it
-is the only pass in the app that rewrites the audio itself — everything else
-moves files and edits tags.
+- The original is deleted only after a clean, non-empty conversion.
+- Tags are written from the database after the swap, not copied by ffmpeg.
+- The cover is dropped by the encoder and re-embedded afterwards.
 
-Three things it is careful about, in the order they can go wrong:
-
-- **The original is deleted last.** ffmpeg writes beside the source under a
-  working name; only a conversion that came back clean and left a non-empty file
-  gets to remove what it replaced. A pass killed mid-track costs a temporary
-  file, never a track.
-- **The tags are the database's, not the file's.** beets writes them into the
-  new container after the swap, so a format that spells a field differently (or
-  cannot hold it at all) never silently rewrites the library's own answer.
-- **The cover is re-embedded by hand.** The encoder is told to drop the attached
-  picture — carrying artwork across containers is where ffmpeg invocations go to
-  die — and the record's own `cover.jpg` is written back in afterwards, through
-  the one writer that knows every container.
-
-Skipping is the common case and it is free: a file already in the target format
-is not touched, which is what makes the pass safe to re-run after a failure and
-instant when the setting has not really changed.
+Files already in the target format are skipped, so the pass is safe to re-run.
 """
 
 import os
@@ -30,22 +13,16 @@ import subprocess
 import audio_format
 import protocol
 
-# Same reason as `enrich._NO_WINDOW`: the sidecar has no console of its own, so
-# on Windows every ffmpeg spawn would flash a black window — once per track,
-# through a pass that walks the whole library.
+# See `enrich._NO_WINDOW`.
 _NO_WINDOW = (
     {"creationflags": subprocess.CREATE_NO_WINDOW}
     if hasattr(subprocess, "CREATE_NO_WINDOW")
     else {}
 )
 
-# Generous: a long track on a slow machine, not a wedged process holding the
-# whole pass. Exceeded, the file is counted failed and the original survives.
+# On timeout the file counts as failed and the original survives.
 _FFMPEG_TIMEOUT = 15 * 60
 
-# How often the progress event goes out. Per track, not batched like the genre
-# pass: a conversion is seconds of CPU per file, and a bar that only moves every
-# tenth track reads as frozen on a small library.
 _PROGRESS_EVERY = 1
 
 
@@ -56,37 +33,23 @@ def _decode(value):
 
 
 def extension_of(path: str) -> str:
-    """Lowercase extension with no dot. Pure."""
     return os.path.splitext(path or "")[1].lstrip(".").lower()
 
 
 def needs_conversion(path: str, target: str) -> bool:
-    """Whether this file has to be re-encoded to reach `target`. Pure.
-
-    Extension-only, and deliberately so: the library's own filing writes the
-    container's extension, so the name is the truth here — and asking ffprobe
-    per file would spend a process on a question already answered for every
-    track that has nothing to do.
-    """
+    """Whether this file must be re-encoded to reach `target`. Extension-based:
+    the library's filing always writes the container's extension."""
     current = extension_of(path)
     if not current:
         return False
-    # `m4b` is the audiobook flavour of the same container, and `mp4` the same
-    # container under its other name: re-encoding either to `m4a` would burn a
-    # generation of quality to change three letters.
+    # Same container under another name.
     if target == "m4a" and current in ("m4a", "m4b", "mp4"):
         return False
     return current != target
 
 
 def _album_cover(lib, item) -> tuple[bytes, bool] | None:
-    """The record's own cover, or the picture already inside the file.
-
-    The album's `cover.jpg` first — it is what every other surface reads, so a
-    conversion is not the moment for a track to end up with a different one. A
-    singleton has no row to ask, and then its own embedded art is the only
-    answer there is.
-    """
+    """The album's cover.jpg, or for a singleton the file's embedded picture."""
     album = item.get_album() if item.album_id is not None else None
     art = _decode(album.artpath) if album is not None and album.artpath else None
     if art and os.path.exists(art):
@@ -110,12 +73,8 @@ def _album_cover(lib, item) -> tuple[bytes, bool] | None:
 
 
 def _read_audio_properties(item) -> None:
-    """Re-read what the new file *is* — format, bitrate, length, channels.
-
-    Only the properties, never the tags: `item.read()` would pull the whole tag
-    set back out of the file and let the container's own idea of a genre
-    delimiter, or of what fits in a field, overwrite the library.
-    """
+    """Re-read the new file's audio properties, but not its tags (`item.read()`
+    would let the container overwrite the library's values)."""
     import mediafile
     from beets.library import Item
 
@@ -147,8 +106,7 @@ def _run_ffmpeg(ffmpeg: str, source: str, dest: str, target: str) -> bool:
     if result.returncode != 0:
         protocol.log(f"convert: ffmpeg failed on {os.path.basename(source)}: {result.stderr.strip()}")
         return False
-    # A zero exit with nothing on disk is ffmpeg having written to a path it
-    # could not keep — treated as a failure, so the original is never removed.
+    # ffmpeg can exit 0 without writing anything.
     return os.path.exists(dest) and os.path.getsize(dest) > 0
 
 
@@ -173,8 +131,7 @@ def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     try:
         os.remove(source)
     except OSError as exc:
-        # The new file is fine but the old one will not go: keeping both would
-        # double the record silently, so the conversion is abandoned instead.
+        # Keeping both files would silently duplicate the track.
         protocol.log(f"convert: cannot replace {source} ({exc}), conversion dropped")
         try:
             os.remove(working)
@@ -185,10 +142,7 @@ def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     item.path = bytestring_path(working)
     item.store()
     try:
-        # Off the working name and onto the filing rules — same folder, same
-        # numbering, only the suffix changed. `with_album=False`: the record's
-        # cover has not moved, and one album pass per track would be N times
-        # the same no-op.
+        # Only the suffix changed; the album's cover hasn't moved.
         item.move(with_album=False)
     except Exception as exc:
         protocol.log(f"convert: move failed: {exc}")
@@ -225,8 +179,7 @@ def handle(request_id: str, params: dict) -> dict:
             f"convert: {total} of {len(items)} track(s) to re-encode to {target}"
         )
         counts = {"converted": 0, "failed": 0, "missing": 0}
-        # Sent before the first track so a bar that has nothing to do can close
-        # itself rather than sit at zero waiting for an event that never comes.
+        # Sent upfront so an empty pass can close its progress bar.
         protocol.send_event(
             request_id, "convert_progress", {"done": 0, "total": total, "format": target}
         )

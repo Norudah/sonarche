@@ -1,28 +1,19 @@
 import type { LibraryTrack } from "@/features/library/api";
 import { createTextFilter } from "@/shared/lib/search";
 
-/**
- * Suggestion pools for the metadata editors.
- *
- * The library itself is the vocabulary: every artist, album title and genre
- * already stored is something the user may want to spell *exactly* the same way
- * again — attaching an edit to an existing entry is what keeps one artist from
- * splitting into "AC/DC" and "ACDC". Derived client-side from the one library
- * query, so filtering costs no round-trip.
- */
+/** Suggestion pools derived from the loaded library, so edits reuse existing
+ * spellings. */
 
 export type SuggestKind = "artist" | "album" | "genre";
 
 export interface Suggestion {
-  /** The exact stored string — selecting writes this, byte for byte. */
+  /** Exact stored string, written as is. */
   value: string;
-  /** Context beside the value: the album's artist, the genre's family. */
+  /** The album's artist, or the genre's family. */
   detail?: string;
-  /** How many tracks carry the value, for ordering and display. */
+  /** Tracks carrying it. */
   count: number;
-  /** The album's cover (display rendition URL) — album pool only. Costs
-   * nothing to carry: the URLs already exist on the tracks, and the list draws
-   * at most eight of them, lazily, from the webview's cache. */
+  /** Album cover URL (album pool only). */
   image?: string;
 }
 
@@ -67,9 +58,7 @@ export function buildSuggestionPools(tracks: LibraryTrack[]): SuggestionPools {
   const genres = new Map<string, Tally>();
 
   for (const track of tracks) {
-    // One artist pool for both name fields: a name known only as a track artist
-    // is still the right suggestion for the album-artist field, and vice versa.
-    // A track whose two fields agree counts once.
+    // One pool for track and album artists; counted once per track.
     const names = new Set([track.artist.trim(), track.albumArtist.trim()]);
     names.delete("");
     for (const name of names) bump(artists, name);
@@ -84,15 +73,12 @@ export function buildSuggestionPools(tracks: LibraryTrack[]): SuggestionPools {
   return { artist: toPool(artists), album: toPool(albums), genre: toPool(genres) };
 }
 
-/** Shared across every field: the WeakMap cache is keyed on suggestion object
- * identity, which a refetch renews along with the pools. Detail is part of the
- * haystack so "daft disc" finds Discovery through its artist. */
+/** Detail is searched too, so "daft disc" finds Discovery. */
 export const filterSuggestions = createTextFilter<Suggestion>(
   (suggestion) => `${suggestion.value} ${suggestion.detail ?? ""}`,
 );
 
-/** Whether the typed text already is a stored entry, exactly — the boundary
- * between "attached to an existing value" and "new value, saved as typed". */
+/** Whether the text is exactly a stored entry. */
 export function hasExactSuggestion(pool: Suggestion[], value: string): boolean {
   const typed = value.trim();
   return typed !== "" && pool.some((suggestion) => suggestion.value === typed);

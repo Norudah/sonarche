@@ -8,25 +8,14 @@ import { filterTracks } from "@/features/library/tracks/filter";
 import { nextSort, sortTracks, type TrackSort, type TrackSortKey } from "@/features/library/tracks/sort";
 import { applyTrackTriage, parseTrackTriage, type TrackTriage } from "@/features/library/tracks/triage";
 
-/**
- * The axes a surface offers on its own.
- *
- * A scoped page has already answered one of them — a genre page is a family and
- * a genre — so it must not offer it again, and must not re-read it out of the
- * URL where the *page* stores it. Declaring what each surface owns is what lets
- * one explorer serve the library and four subjects without a flag per page.
- *
- * The panel's axes (decade, and the correction filters) are not listed: they are
- * refinements of any scope, so every surface carries them.
- */
+/** Axes a surface owns. A scoped page's own axis (a genre page's genre) isn't
+ * offered or re-read from the URL. Panel axes apply everywhere. */
 export type TrackAxis = "family" | "genre" | "category";
 
-/** Everything the library-wide explorer owns — the default scope. */
+/** The library-wide explorer's axes. */
 const ALL_AXES: readonly TrackAxis[] = ["family", "genre", "category"];
 
-/** Drops the axes this surface does not own, so a param the *page* uses for its
- * own scope (`?genre=` on a genre page) cannot be read a second time as a filter
- * and grow a chip that undoes the page. */
+/** Drops unowned axes so the page's own param isn't read as a filter. */
 export function restrictTriage(triage: TrackTriage, axes: readonly TrackAxis[]): TrackTriage {
   return {
     ...triage,
@@ -37,9 +26,9 @@ export function restrictTriage(triage: TrackTriage, axes: readonly TrackAxis[]):
 }
 
 export interface TrackFilterState {
-  /** Filtered, searched and sorted — what the table shows and what plays. */
+  /** Filtered, searched and sorted: what is shown and played. */
   visible: LibraryTrack[];
-  /** Size of the scope before any filter, for the "37 of 1 248" line. */
+  /** Before filters, for "37 of 1 248". */
   scopeSize: number;
   triage: TrackTriage;
   facets: TrackFacets;
@@ -47,35 +36,23 @@ export interface TrackFilterState {
   query: string;
   setQuery: (value: string) => void;
   sort: TrackSort | null;
-  /** One click on a column header — see `nextSort`. */
+  /** See `nextSort`. */
   toggleSort: (key: TrackSortKey) => void;
-  /** Writes one filter into the URL, or clears it with `null`. */
+  /** `null` clears it. */
   setParam: (name: string, value: string | null) => void;
-  /** What the current result set is a result *of* — re-keys the table so the
-   * rows cascade in and the scrollport returns to the top. */
+  /** Re-keys the table (cascade, scroll to top). */
   animationKey: string;
 }
 
-/**
- * The explorer's whole state, over a scope the caller has already reduced.
- *
- * `tracks` is a prop rather than something read from `useLibrary` here: the
- * scoped pages hand over an artist's or a genre's tracks, and a hook that went
- * looking for the library itself would filter the whole thing a second time.
- *
- * Filters live in the URL (shareable, and they survive opening an album and
- * coming back), search and sort in component state. Search is transient and
- * per-keystroke — the history is not a keylogger — and sort follows the albums
- * and artists shelves, which keep theirs local too.
- */
+/** Explorer state over a caller-reduced scope. Filters live in the URL; search
+ * and sort in component state. */
 export function useTrackFilter(tracks: LibraryTrack[], axes: readonly TrackAxis[] = ALL_AXES): TrackFilterState {
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<TrackSort | null>(null);
 
   const triage = useMemo(() => restrictTriage(parseTrackTriage(params), axes), [params, axes]);
-  // No `useMemo`: `facetsOf` caches on the array's identity, which every mounted
-  // caller shares — a memo per component would only add a second cache.
+  // `facetsOf` caches by array identity; no memo needed.
   const facets = facetsOf(tracks);
 
   const filtered = useMemo(() => applyTrackTriage(tracks, triage), [tracks, triage]);
@@ -92,10 +69,7 @@ export function useTrackFilter(tracks: LibraryTrack[], axes: readonly TrackAxis[
     setQuery,
     sort,
     toggleSort: (key) => setSort((current) => nextSort(current, key)),
-    // `replace`: a filter refines the entry we are on, it is not a new place.
-    // Pushing meant six flips buried the page you arrived from under six
-    // entries, and getting out took six presses that each appeared to do
-    // nothing — the same reasoning as the genre chips.
+    // `replace`: a filter refines the current entry.
     setParam: (name, value) => setParams(withParam(params, name, value), { replace: true }),
     animationKey: `${params.toString()}:${query}:${sort?.key ?? ""}${sort?.dir ?? ""}`,
   };

@@ -11,21 +11,17 @@ interface ImagePickStageProps {
   stagePx: number;
   isDropTarget: boolean;
   labels: { drop: string; formats: string; reframe: string; zoom: string };
-  /** Circular pick target and crop window — for images worn as a disc. */
+  /** Circular target and crop window, for disc images. */
   round?: boolean;
   onPick: () => void;
   onFrame: (frame: CropFrame) => void;
   onNatural: (size: SourceSize) => void;
-  /** The picked file failed to decode in the webview — drop it and say so. */
+  /** The file failed to decode in the webview. */
   onUnreadable: () => void;
 }
 
-/**
- * The "new image" pane both replacement modals share: an empty drop/pick
- * target, then a hidden probe while the natural size is unknown, then the
- * crop stage. What the image *becomes* (a cover, an artist disc) is the
- * caller's business; this only gets one chosen and framed.
- */
+/** The "new image" pane: empty target, then a hidden probe for the natural
+ * size, then the crop stage. */
 export function ImagePickStage({
   image,
   natural,
@@ -63,8 +59,7 @@ export function ImagePickStage({
       className={`flex items-center justify-center rounded-xl ${isDropTarget ? "ring-2 ring-accent" : ""}`}
       style={{ minHeight: stagePx }}
     >
-      {/* onLoad on a hidden probe when the stage needs natural dimensions
-          before it can lay itself out. */}
+      {/* A hidden probe reads the natural size first. */}
       {natural ? (
         <CropStage
           url={image.url}

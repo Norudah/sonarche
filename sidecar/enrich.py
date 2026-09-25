@@ -1,10 +1,9 @@
-"""Enrich an imported item with trusted metadata from its acoustic fingerprint.
+"""Enrich an imported item from its acoustic fingerprint.
 
-fpcalc computes the Chromaprint locally (no network), AcoustID resolves it to
-the exact MusicBrainz recording — this is what picks the studio version over
-live/covers that plague text search — then the recording is expanded to its
-canonical release for album, year, track number, genre and cover art. Text
-search is only a conservative fallback, applied when it is near-certain."""
+fpcalc computes the Chromaprint locally, AcoustID resolves it to an exact
+MusicBrainz recording (studio version rather than live/covers), and the
+recording's canonical release supplies album, year, track number, genre and
+cover. Text search is a conservative fallback."""
 
 import json
 import os
@@ -20,14 +19,10 @@ import suspect
 from report import build_report
 
 _ACOUSTID_LOOKUP = "https://api.acoustid.org/v2/lookup"
-# AcoustID answers with a confidence score; below this we trust nothing.
 _MIN_SCORE = 0.6
-# The text fallback has no fingerprint safety net: only apply near-perfect hits.
+# No fingerprint safety net for text search: near-perfect hits only.
 _MAX_TEXT_DISTANCE = 0.10
-# Fingerprints occasionally map to several recordings; try the best few. Five
-# rather than three so a less-submitted sibling (the French edition of a song
-# whose English version dominates AcoustID) stays in the candidate set — the
-# album batch's coverage check can only pick a release its recordings reached.
+# Five, not three, so a less-submitted sibling edition stays a candidate.
 _MAX_RECORDINGS = 5
 
 
@@ -41,10 +36,7 @@ def _decode_path(item) -> str:
     return _decode(item.path)
 
 
-# The sidecar is spawned by a GUI process, so on Windows it has no console of
-# its own — and a console child started from there gets one allocated, which
-# means a black window flashing once per track through an album enrichment.
-# The flag is Windows-only and the attribute does not exist elsewhere.
+# Prevents a console window flashing on Windows for each subprocess.
 _NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
 
 
@@ -53,9 +45,7 @@ def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
         [fpcalc, "-json", path],
         capture_output=True,
         text=True,
-        # fpcalc echoes the file path in its JSON, so its output carries
-        # whatever the track is called. Left to the locale this decodes as
-        # cp1252 on Windows and one accent ends the fingerprint.
+        # fpcalc echoes the (possibly non-ASCII) path; the Windows locale is cp1252.
         encoding="utf-8",
         errors="replace",
         timeout=60,
@@ -96,10 +86,8 @@ def _lookup_recordings(api_key: str, fingerprint: str, duration: int) -> list[st
     for result in results:
         if result.get("score", 0) < _MIN_SCORE:
             continue
-        # The score rates the fingerprint match, not each recording: one
-        # fingerprint often links to several recordings, including bogus user
-        # submissions. `sources` counts the submissions backing each link —
-        # the real recording dwarfs the mislinked ones.
+        # The score rates the fingerprint, not each linked recording; `sources`
+        # (submission count) separates the real recording from mislinks.
         by_sources = sorted(
             result.get("recordings") or [],
             key=lambda rec: rec.get("sources", 0),
@@ -127,7 +115,7 @@ def _album_for_recording(rec_id: str):
     return album_info, track_info, release
 
 
-# The three verdicts the video's title can pass on a candidate, in sort order.
+# Title verdicts, in sort order.
 _TITLE_NAMES = 0  # shares a real word with the video title
 _TITLE_NEUTRAL = 1  # no evidence either way (junk or empty titles)
 _TITLE_CONTRADICTS = 2  # both carry words, none shared
@@ -136,17 +124,11 @@ _TITLE_CONTRADICTS = 2  # both carry words, none shared
 def candidate_sort_key(
     title_hint: str | None, candidate_title: str | None, release: dict
 ) -> tuple:
-    """How much to trust one candidate recording; lower is better. Pure.
+    """Sort key for a candidate recording; lower is better.
 
-    The video's own title outranks the release type. AcoustID's crowd data
-    mislinks confusable recordings (language versions, or two songs off one
-    soundtrack whose fingerprints someone cross-submitted), and submission
-    count then puts the wrong song first — « Real Gone » landed as
-    « Sleepin' on the Foldout » with the right title sitting in candidate slot
-    two. A candidate the video names beats any candidate it contradicts; the
-    release rank (studio album over best-of, earliest date) only arbitrates
-    within the same title verdict. Junk titles cost nothing: both sides
-    reduced to noise judge every candidate neutral, which is the old order."""
+    The video title outranks the release type, since AcoustID often mislinks
+    confusable recordings (language versions, same-soundtrack songs). Release
+    rank only breaks ties within a title verdict; junk titles are neutral."""
     if suspect.titles_agree(title_hint, candidate_title):
         verdict = _TITLE_NAMES
     elif suspect.is_title_mismatch(title_hint, candidate_title):
@@ -157,17 +139,15 @@ def candidate_sort_key(
 
 
 def is_settled(key: tuple, title_hint: str | None) -> bool:
-    """Whether a candidate is unbeatable, ending the scan early: a clean studio
-    album (no unwanted secondary type, primary rank 0) that the video's title
-    vouches for — or, when the hint carries no usable words, on rank alone."""
+    """Whether a candidate can't be beaten: a clean studio album the title
+    vouches for, or on rank alone when the hint has no usable words."""
     verdict, rank = key
     confirmed = verdict == _TITLE_NAMES or not suspect.has_words(title_hint)
     return confirmed and not rank[0] and rank[1] == 0
 
 
 def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str | None:
-    """Search MusicBrainz by name using the download's own hints. In-memory only:
-    nothing is stored unless a near-perfect match is applied afterwards."""
+    """Search MusicBrainz by the download's hints. Nothing is stored here."""
     from beets import autotag
 
     if not (artist_hint or title_hint):
@@ -181,35 +161,21 @@ def _text_fallback(item, artist_hint: str | None, title_hint: str | None) -> str
     return None
 
 
-# Fields a TrackInfo carries that describe the *file*, not the work. beets fills
-# these from the audio itself at import time and they must survive tagging.
+# Fields describing the audio file rather than the work; beets reads them
+# from the file at import and they must survive tagging.
 _FILE_FIELDS = ("length",)
 
 
 def work_fields(merged) -> dict:
-    """A matched TrackInfo, stripped of anything that describes the audio file.
+    """A matched TrackInfo without file-level fields.
 
-    `length` on a TrackInfo is MusicBrainz' duration for the recording, and the
-    file we downloaded is never quite that: measured across the
-    library the two disagree by anywhere from a few tenths of a second to half a
-    minute, in both directions — different masters, a trailing outro, silence at
-    the end of a video. Copying it over `item.length` replaced a fact about our
-    file with a fact about someone else's, and everything downstream inherited
-    the lie: tracklist durations, the player's seek bar, and `_pair_plausible` in
-    enrich_album, which compares a file's length against a candidate track's and
-    whose own variable is called `file_length`.
-
-    The item's own `length` is read from the audio at import and is correct.
-    Nothing about matching a release should overwrite it.
-    """
+    MusicBrainz' `length` is the recording's duration, which never exactly
+    matches the downloaded file; the item's own length stays authoritative."""
     return {key: value for key, value in dict(merged).items() if key not in _FILE_FIELDS}
 
 
 def find_album_row(lib, release_id: str | None):
-    """The library's existing album row for a MusicBrainz release id, or None.
-    One release, one row: every path that files a matched item goes through
-    this before creating a new row, so two jobs landing on the same release
-    stop growing sibling rows (and %aunique stops suffixing their folders)."""
+    """The library's album row for a MusicBrainz release id, or None."""
     from beets.dbcore.query import MatchQuery
 
     if not release_id:
@@ -220,17 +186,11 @@ def find_album_row(lib, release_id: str | None):
 
 
 def find_named_row(lib, albumartist: str | None, album_title: str | None):
-    """The library's album row wearing exactly this albumartist + album, or
-    None. The fallback behind `find_album_row`: the app groups albums by name,
-    so two editions of one album standing up two rows is never a state the
-    user can see — only a folder split, because %aunique suffixes every row
-    sharing a name. One name, one row.
+    """The album row with exactly this albumartist + album, or None.
 
-    Collections are never returned (a gathering the user named is not a
-    landing spot for a matched release), nor blank names (every provisional
-    row is blank; they have nothing in common). When the pathology already
-    exists — several rows with the name — the fullest row wins, same rule as
-    the consolidation pass."""
+    Fallback for `find_album_row`: the UI groups albums by name, so two rows for
+    one name only split the folder (%aunique). Collections and blank names are
+    never returned; with several matches the fullest row wins."""
     import library
     from beets.dbcore.query import AndQuery, MatchQuery
 
@@ -251,13 +211,10 @@ def find_named_row(lib, albumartist: str | None, album_title: str | None):
 
 
 def drop_emptied_row(lib, row) -> None:
-    """Remove an album row its last item just left — art and husk included.
+    """Remove an album row its last item just left, with its cover and folder.
 
-    beets prunes a vacated directory only when nothing is left in it, and the
-    row's own cover.jpg usually is: `remove(delete=True, with_items=False)`
-    deletes exactly that one file, and the sweep after lets the folder go.
-    Same contract as move_tracks' emptied-source removal, shared so no caller
-    re-learns it by leaking husks."""
+    `remove(delete=True, with_items=False)` deletes the cover file so the
+    following sweep can prune the directory."""
     from beets import util
 
     art_dir = os.path.dirname(_decode(row.artpath)) if row.artpath else None
@@ -271,25 +228,18 @@ def drop_emptied_row(lib, row) -> None:
 
 
 def _album_row_for(lib, item):
-    """The album row `item` belongs on now that its tags are (re)written.
+    """The album row `item` belongs on after its tags were (re)written.
 
-    A match can change the item's release (re-enrich flipping an edition):
-    rewriting the row it happens to sit on would rename the folder under its
-    siblings' feet. Instead the item joins the library's row for its new
-    release — reusing an existing one, else a fresh one — and the row it left
-    is dropped once empty."""
+    When a match changes the release, the item joins that release's row rather
+    than renaming its current folder under its siblings; the old row is dropped
+    once empty."""
     album = item.get_album()
     release_id = item.mb_albumid or ""
     if not release_id or (album is not None and (album.mb_albumid or "") == release_id):
-        # Singleton items (album-batch tracks that fell back to per-track
-        # enrich) have no album row at all: without one, the cover fetch
-        # bails out and the file lands under Non-Album/. Create it, exactly
-        # like a regular -A import would have.
+        # Singletons need a row, or the cover fetch bails and the file lands in Non-Album/.
         return album if album is not None else lib.add_album([item])
 
-    # The exact release first; failing that, the row wearing the same name —
-    # another edition of the same album, which must share its folder rather
-    # than stand up a %aunique-suffixed sibling.
+    # Exact release first, then another edition's row with the same name.
     target = find_album_row(lib, release_id)
     if target is None:
         target = find_named_row(lib, item.albumartist, item.album)
@@ -306,12 +256,10 @@ def _album_row_for(lib, item):
 
 
 def store_and_file(lib, item, sync_album: bool = True) -> None:
-    """Persist the item, push its tags to the file, make sure it belongs to an
-    album row, and move it to the path its metadata now dictates.
+    """Store the item, write its tags, attach it to an album row and move it.
 
-    `sync_album=False` is for an item joining an album row that already carries
-    trusted metadata (a provisional track filed next to its matched siblings):
-    the row must not be rewritten from the item that borrowed it."""
+    `sync_album=False` leaves an already-trusted album row untouched (e.g. a
+    provisional track joining its matched siblings)."""
     from beets import library
 
     item.store()
@@ -320,20 +268,10 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"enrich: tag write failed: {exc}")
 
-    # Sync the album row BEFORE moving. Two reasons, both stemming from the
-    # as-is import leaving the album row's own album/albumartist/genres empty:
-    #   1. Item.destination() reads album-level fields ($albumartist/$album/…)
-    #      from the album ROW, not the item. With a blank row, $album collapses
-    #      to nothing and the file lands in <albumartist>/ with no album folder.
-    #      Every album by one artist then shares that directory — and thus a
-    #      single cover.jpg — so each enrichment overwrites the previous album's
-    #      cover. Syncing first gives each album its own <artist>/<album>/ dir.
-    #   2. beets' duplicate check keys on albumartist+album; two blank rows look
-    #      like duplicates, making it skip every later untagged import.
+    # Sync the album row before moving: destination() reads $album/$albumartist
+    # from the row, and beets' duplicate check treats blank rows as duplicates.
     album = _album_row_for(lib, item)
-    # A row of another release reused by name keeps its own words: the item
-    # joining "Thriller" from a sibling edition must not rewrite the record's
-    # year, ids or artwork source. Fresh and same-release rows sync as before.
+    # Another release's row reused by name keeps its own tags.
     foreign = bool(album.mb_albumid) and str(album.mb_albumid) != str(item.mb_albumid or "")
     if sync_album and not foreign:
         for key in library.Album.item_keys:
@@ -341,21 +279,17 @@ def store_and_file(lib, item, sync_album: bool = True) -> None:
         album.store()
 
     try:
-        # Metadata changed, so the path format (Artist/Album/nn Title) changed too.
         item.move()
     except Exception as exc:
         protocol.log(f"enrich: move failed: {exc}")
 
 
 def _file_as_singleton(lib, item) -> None:
-    """File a guess that no record claims outside the shelves: no album row,
-    so beets' `singleton` path applies — which the provisional flag routes to
-    the `Unidentified/` zone.
+    """File an unclaimed guess as a singleton, which the provisional flag routes
+    to `Unidentified/`. A blank row the item leaves behind is dropped once empty.
 
-    This path used to force an album row instead, and with a blank title the
-    row's folder had no name — %aunique could only tell the blanks apart by
-    row id, and every guessed single stood as `<channel>/[86]/`. A blank row a
-    prior run left the item on is dropped once it empties."""
+    A blank album row would give the folder no name, and %aunique would fall
+    back to row ids (`<channel>/[86]/`)."""
     old_row = item.get_album()
     if item.album_id is not None:
         item.album_id = None
@@ -373,17 +307,11 @@ def _file_as_singleton(lib, item) -> None:
 
 
 def apply_provisional(lib, item, params: dict, album=None, file: bool = True) -> bool:
-    """Nothing identified this file: fill it from the download's own hints (and
-    from `album`, when its siblings matched a release) and flag it as a guess.
-    With an album behind it, it files next to the siblings that vouch for it;
-    with nothing behind it, it files in the guessed zone rather than posing on
-    the shelves as a verified record.
+    """Fill an unidentified file from the download hints (and `album`, if its
+    siblings matched) and flag it as a guess. Returns whether anything was written.
 
-    `file=False` writes the guess without moving anything: the forced-album
-    flow re-files every item onto the forced record right after, and a real
-    move here would bounce the file through the guessed zone on the way.
-
-    Returns whether anything was written."""
+    `file=False` writes tags without moving: the forced-album flow re-files
+    everything right after."""
     fields = provisional.guess_fields(
         title=params.get("title"),
         artist=params.get("artist"),
@@ -402,20 +330,14 @@ def apply_provisional(lib, item, params: dict, album=None, file: bool = True) ->
         return True
     if album is not None:
         item.album_id = album.id
-        # Not one of the borrowed *tags*: `comp` states that the record is a
-        # compilation, and beets reads it per item to pick a path template. A
-        # guess sitting on a matched compilation with `comp` still at 0 is one
-        # track of the record disagreeing with its ten siblings about what the
-        # record is — which is how one soundtrack ended up in two folders.
+        # beets picks the path template from each item's `comp`; it must match the album.
         item.comp = album.comp
         store_and_file(lib, item, sync_album=False)
         return True
 
     current = item.get_album()
     if current is not None and (str(current.album) or "").strip():
-        # It already sits on a named record (a re-run that failed to match):
-        # keep it where it is, and keep the row's own words — a guess must not
-        # rewrite them.
+        # Already on a named record (failed re-run): stay, without rewriting the row.
         store_and_file(lib, item, sync_album=False)
     else:
         _file_as_singleton(lib, item)
@@ -423,21 +345,12 @@ def apply_provisional(lib, item, params: dict, album=None, file: bool = True) ->
 
 
 def _apply(lib, item, album_info, track_info) -> None:
-    # merge_with_album already carries the release's `genres` list along.
     merged = track_info.merge_with_album(album_info)
     item.update(work_fields(merged))
 
-    # Genre: MB community tags ride along in `genres` and canonicalize against
-    # our tree offline; when MB gave nothing, _get_genre falls back to a
-    # Last.fm fetch (its client swallows network errors and returns []).
-    # An empty result means nothing resolved: keep the raw MB genre (it may
-    # simply be off-whitelist) rather than erasing it.
-    #
-    # Hand-edited genres are NOT spared, deliberately: a re-match rewrites
-    # every tag it recognises, and the confirmation dialog upstream is what
-    # says so — sparing fields quietly would make its warning a lie. The bulk
-    # genre recompute (`genres.assign`) keeps its own hand-edit guard; that
-    # pass runs without a per-item warning.
+    # MB genres canonicalize offline; otherwise _get_genre falls back to Last.fm.
+    # An empty result keeps the raw MB genre. Hand-edited genres are overwritten
+    # on purpose: the re-match confirmation dialog warns about it.
     genres, label = metadata.lastgenre_plugin()._get_genre(item)
     if genres:
         item.genres = genres
@@ -447,11 +360,9 @@ def _apply(lib, item, album_info, track_info) -> None:
 
 
 def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
-    """The 500px front cover from one Cover Art Archive entity (`release/<id>`
-    or `release-group/<id>`) as (data, is_png), or None when that entity
-    carries no front art. CAA's own rendition first — the full upload is only
-    fetched when no rendition exists, and `set_album_art` shrinks it locally;
-    since the archive convention went, nothing keeps the original anyway."""
+    """The 500px front cover of a CAA entity (`release/<id>` or
+    `release-group/<id>`) as (data, is_png), or None. Falls back to the full
+    upload when no rendition exists; `set_album_art` shrinks it."""
     import requests
 
     import cover_set
@@ -464,7 +375,6 @@ def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
         try:
             data = net.read_bounded(resp, cover_set.MAX_CANDIDATE_BYTES)
         except RuntimeError:
-            # An outsized upload degrades to "no cover", never to a failed enrich.
             protocol.log(f"enrich: cover on {entity_path}/{variant} over the size cap, skipped")
             continue
         if data:
@@ -473,13 +383,10 @@ def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
 
 
 def download_cover(release_id: str, release_group_id: str | None = None) -> tuple[bytes, bool] | None:
-    """The display cover from the Cover Art Archive, or None — the 500px
-    rendition used as beets' artpath (cover.jpg) and embedded into file tags,
-    so the beets copy and the audio files stay light.
+    """The 500px display cover from the Cover Art Archive, or None.
 
-    Tries the specific release first, then the release-group's designated cover.
-    Many streaming/regional releases carry no per-release art while their group
-    does — without this fallback, popular albums landed with no cover at all."""
+    Falls back to the release-group cover: many regional or streaming releases
+    carry no art of their own."""
     cover = _caa_front(f"release/{release_id}")
     if cover is not None:
         return cover
@@ -494,10 +401,7 @@ def download_cover(release_id: str, release_group_id: str | None = None) -> tupl
 
 
 def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Archive") -> None:
-    """Set beets' artpath (cover.jpg) — expects the 500px thumb, so the beets
-    copy stays light. `source` records where the picture came from: a forced
-    album may fall back to a video thumbnail, and the row should not claim the
-    Cover Art Archive gave it one."""
+    """Set beets' artpath (cover.jpg). `source` records the picture's origin."""
     with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -508,22 +412,15 @@ def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Arc
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-    # The ceiling holds whatever arrived: the CAA fallback hands over the full
-    # upload when no 500px rendition exists, and an oversized artpath is the
-    # exact memory bill the rendition rule exists to prevent.
+    # The CAA fallback may hand over a full-size upload.
     if album.artpath:
         covers.ensure_display_rendition(_decode(album.artpath))
 
 
 def embed_cover(item, data: bytes, is_png: bool) -> bool:
-    """Write the cover into the audio file itself. Returns whether it landed.
+    """Embed the cover into the audio file. Returns whether it worked.
 
-    Through beets' own `mediafile` rather than a container-specific writer: the
-    library holds m4a from the download path, whatever an import brought, and —
-    since the audio format became a setting — mp3 or flac the app transcoded
-    itself. One writer that knows every container is the only version of this
-    that stays true; the m4a-only one silently did nothing on every other file.
-    """
+    Uses `mediafile` so every container (m4a, mp3, flac) is supported."""
     import mediafile
 
     path = _decode_path(item)
@@ -535,7 +432,7 @@ def embed_cover(item, data: bytes, is_png: bool) -> bool:
         media.images = [mediafile.Image(data=data, desc="", type=mediafile.ImageType.front)]
         media.save()
     except (mediafile.UnreadableFileError, OSError, ValueError) as exc:
-        # A cover is never worth failing an enrich, a move or a conversion on.
+        # A cover is never worth failing an enrich, move or conversion.
         protocol.log(f"enrich: cover embed failed for {path}: {exc}")
         return False
     return True
@@ -562,11 +459,8 @@ def handle(request_id: str, params: dict) -> dict:
     if item is None:
         raise RuntimeError(f"item not found: {params['item_id']}")
 
-    # A collection is its owner's gathering, not a release: there is nothing to
-    # be matched against, and this chain re-files a matched item onto its
-    # release's album row (`_album_row_for`) — which would rip the track out of
-    # the record someone placed it in. The UI greys the button and says why;
-    # this guard is what makes the promise hold whatever calls in.
+    # A collection is not a release: matching would move the track onto the
+    # release's album row, out of the user's collection.
     if item.album_id:
         album = lib.get_album(item.album_id)
         if album is not None and album.get(library.ALBUM_KIND_KEY) == library.COLLECTION:
@@ -585,18 +479,13 @@ def enrich_one(
     provisional_fallback: bool = True,
     known_recordings: list[str] | None = None,
 ) -> dict:
-    """Fingerprint-first enrichment of one item. Caller owns the Library and
-    must have called metadata.ensure_plugins(). `params` carries fpcalc,
-    acoustid_key and the optional title/artist hints. `fetch_cover=False`
-    lets the album batch fetch one cover per album instead of per track;
-    `provisional_fallback=False` likewise defers the unidentified-file guess to
-    the album batch, which can borrow its siblings' release.
+    """Fingerprint-first enrichment of one item.
 
-    `known_recordings` short-circuits the fingerprint+lookup with recording ids
-    the album batch already resolved for this very file: without it, every
-    track the batch handed to the per-track pass paid fpcalc and the AcoustID
-    round-trip a second time. An empty list is a real answer (fingerprinted,
-    nothing above the score bar) — only None means "not looked up yet"."""
+    The caller owns the Library and must have called `metadata.ensure_plugins()`.
+    `params` carries fpcalc, acoustid_key and optional title/artist hints.
+    `fetch_cover=False` and `provisional_fallback=False` defer those steps to
+    the album batch. `known_recordings` reuses the batch's AcoustID results;
+    `[]` means "looked up, nothing found", `None` means "not looked up"."""
     path = _decode_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
@@ -608,7 +497,6 @@ def enrich_one(
         recordings = known_recordings
         fingerprinted = True
     elif api_key:
-        # item_id lets the album batch's UI animate the matching child row.
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
         )
@@ -622,21 +510,9 @@ def enrich_one(
     else:
         protocol.log("enrich: no AcoustID key configured, text fallback only")
 
-    # One fingerprint resolves to several recordings (MB keeps a separate
-    # recording for the album version and for each best-of it lands on), ordered
-    # by AcoustID submission count. Picking the first that resolves tags whatever
-    # release happens to top that list — often a compilation. Score every
-    # candidate's canonical release and keep the best.
-    #
-    # The video's own title outranks the release type. AcoustID's crowd data
-    # mislinks confusable recordings (language versions, or two songs off one
-    # soundtrack whose fingerprints someone cross-submitted), and submission
-    # count then puts the wrong song first — « Real Gone » landed as
-    # « Sleepin' on the Foldout » with the right title sitting in candidate
-    # slot two. A candidate whose title shares a word with the video's beats
-    # any candidate that contradicts it; the release rank only arbitrates
-    # within the same title verdict. Junk titles cost nothing: both sides
-    # reduced to noise judge every candidate "neutral", which is the old order.
+    # A fingerprint links to several recordings (album version, best-ofs...),
+    # so score every candidate's canonical release instead of taking the first.
+    # See `candidate_key` for the ordering.
     title_hint = params.get("title")
     album_info = track_info = None
     best_key = None
@@ -651,8 +527,6 @@ def enrich_one(
         key = candidate_sort_key(title_hint, ti.title, release)
         if best_key is None or key < best_key:
             album_info, track_info, best_key = ai, ti, key
-        # A clean studio album the video's title vouches for (or, with no
-        # usable hint, any clean studio album): nothing later can beat it.
         if is_settled(key, title_hint):
             break
     if track_info is not None and best_key is not None and best_key[0] == _TITLE_CONTRADICTS:
@@ -676,20 +550,16 @@ def enrich_one(
         protocol.send_event(
             request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
         )
-        # Read before _apply rewrites it: whether this match lands on the
-        # release the item already wore.
+        # Read before _apply rewrites it.
         previous_release = str(item.mb_albumid or "")
         _apply(lib, item, album_info, track_info)
         if fetch_cover:
-            # A re-match confirming the same release must not stomp the cover
-            # the album already wears — the user may have replaced it by hand.
-            # A changed release is a changed record: fetch as before.
+            # Same release: keep the existing (possibly user-chosen) cover.
             album = item.get_album()
             same_release = bool(previous_release) and previous_release == str(
                 album_info.album_id or ""
             )
-            # A named row of another edition wears its own cover — possibly
-            # the user's — and a single joining it must not stomp that either.
+            # Another edition's named row keeps its own cover too.
             foreign_row = (
                 album is not None
                 and bool(album.mb_albumid)
@@ -705,16 +575,13 @@ def enrich_one(
     elif provisional_fallback:
         apply_provisional(lib, item, params)
 
-    # Re-read: _text_fallback may have mutated the in-memory item without storing.
+    # _text_fallback may have mutated the in-memory item without storing.
     fresh = lib.get_item(item.id)
     if fresh is not None and (fingerprinted or matched):
-        # Provenance goes on the fresh row, never the in-memory item: the item
-        # may carry the fallback's unstored hint mutations.
         if fingerprinted:
             provenance.mark_fingerprinted(fresh)
         if matched and source:
-            # The tags stop being guesses the moment a real match vouches for
-            # them — a provisional track re-matched later must drop its flag.
+            # A real match lifts the provisional flag.
             if provisional.clear(fresh):
                 protocol.log(f"enrich: item {item.id} no longer provisional")
             provenance.mark_match(fresh, source)

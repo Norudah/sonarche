@@ -10,54 +10,27 @@ import { DeleteTrackDialog } from "@/features/library/DeleteTrackDialog";
 import { useLibrary } from "@/features/library/hooks";
 import { MetadataDrawer } from "@/features/library/MetadataDrawer";
 
-/**
- * Stable empty map for every card that is not the one being identified.
- *
- * `enrichStages` changes several times a second while an album is being
- * matched, and a fresh `{}` per render would defeat `JobCard`'s memo for the
- * whole list exactly when the page is busiest. Only tracks sitting at
- * `imported` read these stages — a finished track reports from its own status —
- * so every other card can share one frozen object.
- */
+/** Shared empty map so `JobCard`'s memo holds for cards not being identified. */
 const NO_STAGES: Record<number, never> = {};
 
 export interface JobSection {
   key: string;
-  /** Omitted on a page that is one list and says so in its own header. */
   heading?: string;
-  /** A link or control aligned opposite the heading. */
   action?: ReactNode;
   jobs: DownloadJob[];
-  /**
-   * Rows grouped on a recessed tray, or standing free on the page background.
-   *
-   * The tray is the shelf a section's rows are filed onto: one tinted block
-   * rather than a stack of loose accordions on the page, and the ground a live
-   * card's white surface lifts off. Off only where a section's rows have no
-   * shelf of their own to sit on.
-   */
+  /** Rows on a recessed tray, or directly on the page background. */
   onTray: boolean;
-  /** Shown in place of the rows when the section has none. */
   empty?: ReactNode;
 }
 
 interface JobDeckProps {
   sections: JobSection[];
-  /** Byte progress of the one job downloading right now. */
   downloadPercent: number | null;
-  /** Per-item enrich stages of the one job identifying right now. */
   enrichStages: Record<number, EnrichStage>;
 }
 
-/**
- * The shared body of both download surfaces: job cards, plus the library
- * lookups and the dialogs they all reach for.
- *
- * One component for the Downloads feed and the History list, arranged into
- * sections by whichever page owns them. It exists because those two pages must
- * not drift into two different readings of the same row — which is what
- * happened when one was a card feed and the other a table.
- */
+/** Job cards and their dialogs, shared by the Downloads and History pages so
+ * both render rows identically. */
 export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProps) {
   const retry = useRetryJob();
   const cancel = useCancelJob();
@@ -70,15 +43,13 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
   const allJobs = useMemo(() => sections.flatMap((section) => section.jobs), [sections]);
   const newJobIds = useNewJobIds(allJobs.map((job) => job.id));
 
-  // Rebuilt only when the library itself changes: this component re-renders on
-  // every job event — several times a second during an album — and this is the
-  // one thing here whose cost scales with the library rather than the queue.
+  // Rebuilt only when the library changes; this re-renders on every job event.
   const trackById = useMemo(
     () => new Map((libraryQuery.data ?? []).map((track) => [track.id, track])),
     [libraryQuery.data],
   );
 
-  // One stable object, so a card that did not change bails out of its memo.
+  // Stable, so unchanged cards bail out of their memo.
   const library: LibraryLookup = useMemo(
     () => ({
       trackFor: (itemId) => (itemId != null ? trackById.get(itemId) : undefined),
@@ -96,8 +67,7 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
         .filter((track) => track.duplicateOf == null)
         .map((track) => track.itemId)
         .filter((itemId): itemId is number => itemId != null);
-      // The deck deletes by item, so the records those items belong to have to
-      // be resolved before the guard can recognise a download's destination.
+      // Resolve album ids so the delete guard can recognise a download's destination.
       const albumIds = [
         ...new Set(trackIds.map((id) => trackById.get(id)?.albumId).filter((id): id is number => id != null)),
       ];
@@ -138,8 +108,7 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
                   key={job.id}
                   job={job}
                   isNew={newJobIds.has(job.id)}
-                  // Only the job actually working has live figures to show; the
-                  // ones behind it would otherwise borrow them.
+                  // Only the working job has live figures.
                   downloadPercent={job.status === "downloading" ? downloadPercent : null}
                   enrichStages={job.status === "enriching" ? enrichStages : NO_STAGES}
                   {...cardProps}

@@ -21,8 +21,7 @@ import { springs } from "@/shared/motion/tokens";
 import { Swap } from "@/shared/motion/Swap";
 import { PipelineRail, type RailTone } from "@/shared/ui/PipelineRail";
 
-/** The library lookups the card needs, bundled so the feed can hand one stable
- * object down instead of three separate callbacks it would have to memoise. */
+/** Bundled into one stable object so memoised cards don't re-render. */
 export interface LibraryLookup {
   trackFor: (itemId: number | null) => LibraryTrack | undefined;
   has: (itemId: number) => boolean;
@@ -31,12 +30,12 @@ export interface LibraryLookup {
 
 export interface JobCardProps {
   job: DownloadJob;
-  /** Byte progress of the one job downloading right now; null for every other. */
+  /** Only for the job currently downloading. */
   downloadPercent: number | null;
-  /** Per-item enrich stages of the one job identifying right now. */
+  /** Only for the job currently being identified. */
   enrichStages: Record<number, EnrichStage>;
   library: LibraryLookup;
-  /** Queued while the user was watching — it announces itself on arrival. */
+  /** Queued during this session: animates in. */
   isNew: boolean;
   onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
@@ -47,8 +46,7 @@ export interface JobCardProps {
   isCancelling: boolean;
 }
 
-/** Cover art the enrich step produced, once any of the job's items carries one;
- * until then the card keeps the video thumbnail it was queued with. */
+/** The enrich cover once available, else the queued thumbnail. */
 function coverOf(job: DownloadJob, library: LibraryLookup): string | null {
   if (job.kind !== "album") return library.trackFor(job.report?.itemId ?? null)?.artUrl ?? null;
   for (const track of job.tracks) {
@@ -79,13 +77,9 @@ function JobCardImpl({
   const isAlbum = job.kind === "album";
   const outcome = jobOutcome(job);
   const href = jobDestination(job, library);
-  /** Whether what this job filed is still in the library — the one fact the
-   * history rows kept behind a click, and the reason people read "recent" as
-   * "in my library". Settled jobs only; silent until the library has loaded.
-   * An undone job states that instead: its tracks being gone is not news, it
-   * is what the user asked for. */
+  /** Whether the job's output is still in the library (settled jobs, once the
+   * library has loaded). Undone jobs say so instead. */
   const presence = job.undoneAt != null ? "undone" : library.isLoaded ? jobPresence(job, library) : null;
-  /** The single's own library item — what its row actions act on. */
   const landed = isAlbum ? undefined : library.trackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
 
   const enrichedCount =
@@ -94,30 +88,15 @@ function JobCardImpl({
       : null;
   const progress = jobProgress(job, downloadPercent, enrichedCount);
 
-  /**
-   * A job actually being worked on gets the full treatment: a lifted surface,
-   * larger artwork, and the rail. Read off the phase rather than passed in, so
-   * the Downloads feed and the History list cannot disagree about which of
-   * their rows is live — a queued job has nothing to show but its name, and a
-   * finished one has its verdict.
-   */
+  /** Derived from the phase, so the Downloads and History pages agree on which
+   * card is live. */
   const isActive = progress.phase === "download" || progress.phase === "import" || progress.phase === "enrich";
 
   const tone: RailTone = outcome ? OUTCOME_TONE[outcome.kind] : "accent";
 
-  /**
-   * The line under the title, and the payoff of the whole pipeline.
-   *
-   * While the job runs it describes the *download*: a playlist of twelve, an
-   * unknown artist. Once the record is filed it describes the *record*: artist,
-   * album, year — read back from the library rather than from the video. That
-   * rewrite is the app doing its job, stated in one line, which is why it is
-   * animated rather than swapped silently.
-   *
-   * Only on completion, never mid-run: an album's tracks reach the library one
-   * by one, and a subtitle that re-wrote itself at each import would twitch for
-   * the length of the download instead of landing once.
-   */
+  /** Subtitle: describes the download while it runs, then the filed record
+   * (read back from the library). Only rewritten on completion, so it doesn't
+   * change with every imported track. */
   const filed =
     job.status === "done"
       ? isAlbum
@@ -156,11 +135,7 @@ function JobCardImpl({
     <article
       id={job.id}
       className={
-        // Lifted and white while it works, flush with its tray once it is
-        // filed: the two registers have to differ by more than a size, or a
-        // list of finished rows and the one live card read as the same object.
-        // An unfolded row borrows the same lift — its panel is several lines
-        // tall, and on the bare tray it would read as loose text between rows.
+        // Lifted while working (or unfolded), flush with the tray once filed.
         (isActive
           ? "rounded-2xl bg-surface p-4 shadow-sm "
           : isOpen
@@ -228,14 +203,10 @@ function JobCardImpl({
           )}
         </div>
 
-        {/* The status rail: a fixed right-aligned column, so every row's answer
-            to "where does this stand" lands on the same vertical line whatever
-            actions the row happens to carry. Hidden on the card in flight — it
-            says all this under its own rail. */}
+        {/* Fixed right column so statuses align across rows. Hidden on the live card. */}
         {!isActive && (
           <div className="flex w-40 shrink-0 flex-col items-end gap-0.5">
-            {/* One slot, two readings: a finished job states its verdict, a job
-                still in line states what it is waiting on. */}
+            {/* Verdict when finished, otherwise what it's waiting on. */}
             {outcome ? (
               <JobVerdict outcome={outcome} source={outcome.kind === "matched" ? outcome.source : null} />
             ) : (
@@ -243,10 +214,7 @@ function JobCardImpl({
                 {t(`activity.phase.${progress.phase}`)}
               </span>
             )}
-            {/* The verdict says how the download went; this says whether its
-                result is still in the library. The rows are a history — they
-                stay whatever happens to the files — so the presence has to be
-                readable without unfolding anything. */}
+            {/* Whether the result is still in the library, visible without unfolding. */}
             {presence && (
               <span className="text-[0.6875rem] whitespace-nowrap text-muted">
                 {t(`activity.presence.${presence}`)}
@@ -255,16 +223,11 @@ function JobCardImpl({
           </div>
         )}
 
-        {/* Sized to its widest set per register: the stop button while the job
-            can still be stopped, play + menu once it is settled. Fixed, so the
-            menus and chevrons of a section land on one vertical line. */}
+        {/* Fixed width per state so menus and chevrons align. */}
         <div
           className={"flex shrink-0 items-center justify-end gap-1 " + (isActive || !outcome ? "w-32" : "w-[4.5rem]")}
         >
-          {/* Queued or working: the one thing the user can still change about
-              this job is whether it keeps going. Inline where every other verb
-              moved into the menu, because a stop is reached for while something
-              is happening — it cannot sit behind a click. */}
+          {/* Stop stays inline: it's needed while something is happening. */}
           {(job.status === "queued" || isActive) && (
             <button
               type="button"
@@ -315,8 +278,7 @@ function JobCardImpl({
         </div>
       </div>
 
-      {/* Height, not opacity alone: the cards under this one have to move out of
-          the way, and a panel that fades in on top of them reads as a popover. */}
+      {/* Animates height so the cards below move out of the way. */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
@@ -344,10 +306,6 @@ function JobCardImpl({
   );
 }
 
-/**
- * Memoised, and not as a precaution: the page re-renders on every `jobs:updated`
- * event, which during an album download is several times a second. Only the job
- * that changed gets a new object out of the query cache, so every other card
- * bails out here instead of re-running its progress maths and its subtitle.
- */
+/** Memoised: the page re-renders on every `jobs:updated` event, several times a
+ * second during an album; only the changed job gets a new object. */
 export const JobCard = memo(JobCardImpl);

@@ -6,18 +6,8 @@ const CHIP =
 const CHIP_ON = "bg-accent text-accent-foreground";
 const CHIP_OFF = "bg-surface text-muted hover:bg-surface-tertiary hover:text-foreground";
 
-/**
- * The context axis, chosen before music arrives rather than corrected after it.
- *
- * "None" is a chip of its own rather than un-picking the active one: leaving the
- * axis blank is a real answer — it is what the app did until categories existed
- * — and a choice you can only express by clicking the same thing twice is a
- * choice nobody finds.
- *
- * In `library/categories` and not in either caller: both ways music enters the
- * ark ask this same question, and asking it twice in two dialects would make one
- * axis look like two.
- */
+/** Category picker for downloads and imports. "None" is its own chip. Lives
+ * here so both callers share it. */
 export function CategoryChoice({
   value,
   label,
@@ -30,8 +20,7 @@ export function CategoryChoice({
   label: string;
   hint: string;
   noneLabel: string;
-  /** Locked once the answer can no longer change anything — the import is
-   * already running, and a chip that still highlights would promise otherwise. */
+  /** Locked once it can no longer change anything (import running). */
   isDisabled?: boolean;
   onChange: (next: string | null) => void;
 }) {

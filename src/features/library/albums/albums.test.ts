@@ -21,13 +21,7 @@ describe("albumKey", () => {
   });
 });
 
-/**
- * Regression: the album route used to carry one percent-encoded key. React
- * Router *decodes* path params, so the view received "Various Artists|Hotline
- * Miami OST" while every album's key was still encoded — every card bounced
- * straight back to the grid. The link and the lookup have to agree after the
- * router's decoding round-trip, which is what these assert.
- */
+/** Links and lookups must agree after React Router decodes path params. */
 describe("album route round-trip", () => {
   const decodeParams = (path: string) => {
     const [, , , artist, title] = path.split("/");
@@ -166,10 +160,6 @@ describe("groupAlbums", () => {
     ]);
     expect(album.formats).toEqual(["AAC", "FLAC"]);
   });
-
-  // What used to be scored here — a ratio of filled cells — is gone: an album
-  // is now measured by the checks the owner actually asked for. See
-  // `triage/attention.test.ts`.
 });
 
 describe("sortAlbums", () => {

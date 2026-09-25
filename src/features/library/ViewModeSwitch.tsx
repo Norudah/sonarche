@@ -6,10 +6,7 @@ import { Link, useSearchParams } from "react-router";
 import { parseViewMode, withViewMode, type ViewMode } from "@/features/library/viewMode";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
-/* The composer's segmented control, in the filter bar's size. Same vocabulary on
- * purpose: one pill sliding between two segments already means "throw this
- * switch" in this app, and a second dialect for the same gesture would only make
- * the two read as unrelated. */
+/* The composer's segmented control, at filter-bar size. */
 const SEGMENT =
   "relative flex items-center rounded-full px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
@@ -31,26 +28,13 @@ function Segment({ mode, current, children }: { mode: ViewMode; current: ViewMod
           className="absolute inset-0 rounded-full bg-surface shadow-xs"
         />
       )}
-      {/* Load-bearing wrapper: the sliding pill is absolutely positioned, so it
-       * paints over in-flow siblings. Positioning the content puts it back on
-       * top — the same reason the composer's switch wraps its own label. */}
+      {/* Positioned so the label paints above the absolute pill. */}
       <span className="relative flex items-center gap-1.5">{children}</span>
     </Link>
   );
 }
 
-/**
- * Which face of a subject to show: its index, or its tracks.
- *
- * Links rather than buttons, because the mode is in the URL — so it survives
- * opening an album and coming back, and a middle-click behaves. `replace`, like
- * every other refinement on these pages: flipping the switch is not a place you
- * went.
- *
- * The labels come from the caller because the left-hand face differs per subject:
- * an artist's is a discography, a genre's is albums and artists. "Vue d'ensemble"
- * everywhere would have been one word for three different things.
- */
+/** Overview or tracks. Links (`replace`), since the mode lives in the URL. */
 export function ViewModeSwitch({ overviewLabel, tracksLabel }: { overviewLabel: string; tracksLabel: string }) {
   const [params] = useSearchParams();
   const mode = parseViewMode(params);

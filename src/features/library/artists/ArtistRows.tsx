@@ -10,20 +10,16 @@ import { useArtistImages } from "@/features/library/hooks";
 
 interface ArtistRowsProps {
   artists: Artist[];
-  /** Same contract as `ArtistShelf`: what this result set is a result *of*. */
+  /** See `ArtistShelf`. */
   animationKey?: string;
   onPlay: (artist: Artist) => void;
   onEditImage: (artist: Artist) => void;
 }
 
-/** The artists shelf, read as a list — `AlbumRows`' twin, down to the row
- * height, so switching between the two shelves in list mode does not feel like
- * changing app. The avatar stays round: the square ↔ circle split is what tells
- * a record from a person, and it survives the change of layout. */
+/** The artists shelf as a list, matching `AlbumRows`; avatars stay round. */
 export function ArtistRows({ artists, animationKey = "", onPlay, onEditImage }: ArtistRowsProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
-  // One cached query for every row, as in the card.
   const images = useArtistImages();
 
   return (
@@ -56,7 +52,7 @@ export function ArtistRows({ artists, animationKey = "", onPlay, onEditImage }: 
                 : `${artist.span.from}–${artist.span.to}`}
           </span>
 
-          {/* Fixed slot, filled on hover — see `AlbumRows`. */}
+          {/* Fixed slot, see `AlbumRows`. */}
           <div className="relative flex w-[4.5rem] shrink-0 items-center justify-end gap-1.5 opacity-0 transition-opacity group-hover/row:opacity-100 has-[:focus-visible]:opacity-100">
             <button
               type="button"

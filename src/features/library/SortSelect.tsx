@@ -6,17 +6,11 @@ interface SortSelectProps<T extends string> {
   options: readonly T[];
   value: T;
   onChange: (value: T) => void;
-  /** The caller owns the wording: "Artist" sorts albums but "Name" sorts
-   * artists, and a shared control has no business guessing which. */
+  /** Wording belongs to the caller ("Artist" vs "Name"). */
   labelOf: (option: T) => string;
 }
 
-/**
- * Dropdown rather than Select: HeroUI's Select owns its trigger's field styling
- * (the same component-layer rules that made us hand-roll `SearchField`), while
- * Dropdown.Trigger is a bare react-aria Button we can shape into the same pill
- * as the search field. We keep the accessible listbox and drop the field chrome.
- */
+/** A Dropdown rather than HeroUI's Select, whose trigger forces field styling. */
 export function SortSelect<T extends string>({ options, value, onChange, labelOf }: SortSelectProps<T>) {
   const { t } = useTranslation("library");
 
@@ -39,10 +33,7 @@ export function SortSelect<T extends string>({ options, value, onChange, labelOf
         >
           {options.map((option) => (
             <Dropdown.Item key={option} id={option} textValue={labelOf(option)}>
-              {/* Checked off our own state rather than `Dropdown.ItemIndicator`,
-               * which renders unconditionally here — every option came out
-               * ticked. The slot keeps its width either way so the labels do
-               * not shift when the selection moves. */}
+              {/* Our own check: `Dropdown.ItemIndicator` ticked every option. Fixed width. */}
               <span className="flex w-4 shrink-0 justify-center">
                 {option === value && <Check className="size-3.5" />}
               </span>

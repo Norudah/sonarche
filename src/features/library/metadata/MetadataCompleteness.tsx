@@ -3,19 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import { COMPLETENESS_KEYS, type FieldValues } from "@/features/library/metadata/fields";
 
-/**
- * What this track is still missing, named.
- *
- * The old row was seven dots: it said "6 of 7" and left the user to hunt for
- * which one. A field you can name is a field you can go fill in — same doctrine
- * as the album panel's completion, and as the Metadata page before it.
- */
+/** Names the fields this track is missing. */
 export function MetadataCompleteness({
   values,
   onOpenAlbum,
 }: {
   values: FieldValues;
-  /** Absent for a track filed under no album. */
+  /** Absent for tracks without an album. */
   onOpenAlbum?: () => void;
 }) {
   const { t } = useTranslation("library");

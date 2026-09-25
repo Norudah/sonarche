@@ -11,21 +11,11 @@ import { THEME_PREFERENCES, type ThemePreference } from "@/features/settings/the
 import { LanguageChoice } from "@/shared/i18n/LanguageChoice";
 import { requestHomeTour } from "@/shared/lib/homeTour";
 
-/**
- * How the app presents itself: what it wears and what it speaks. Everything
- * here applies on the click rather than on a save — the whole point of either
- * control is seeing the answer.
- *
- * One panel, four rows. The theme tiles are the widest control in the app's
- * settings and they still fit beside their own name, which is the test for
- * whether something is a row: they are 3:2 drawings, not a surface of their own.
- */
+/** Theme, language and launch welcome; applied on click. */
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
   const { preference, choose } = useTheme();
-  // Local state, no context: the shell read this once at mount and nothing else
-  // on screen answers to it. The switch is showing a stored value, not driving
-  // anything live.
+  // Local state: the shell reads it once at mount.
   const [welcome, setWelcome] = useState(readLaunchWelcome);
 
   function chooseWelcome(on: boolean) {

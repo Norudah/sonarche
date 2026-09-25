@@ -56,8 +56,7 @@ export function PlaylistDetailView() {
     );
   }
 
-  // Deleted (from this very page, or another window) or a dead id: back to the
-  // shelf rather than a "not found" screen the user cannot act on.
+  // Deleted or unknown id: back to the shelf.
   if (!playlist) return <Navigate to={paths.libraryPlaylists} replace />;
 
   const isFavorites = playlist.kind === "favorites";

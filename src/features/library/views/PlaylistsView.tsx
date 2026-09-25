@@ -19,11 +19,7 @@ import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 
-/**
- * The playlists shelf. No search bar and no sort: this shelf holds what the
- * user curated by hand — dozens at the very most, not the thousands the other
- * explorers are built to narrow down.
- */
+/** The playlists shelf. No search or sort: dozens at most. */
 export function PlaylistsView() {
   const { t } = useTranslation("library");
   const playlists = usePlaylists();

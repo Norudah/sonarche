@@ -4,14 +4,13 @@ import type { AudioFormat } from "@/features/settings/audioFormats";
 
 export type ApiKeyName = "acoustid";
 
-/** The backend never returns the secret itself, only whether one is stored. */
+/** Only whether a key is stored, never the secret. */
 export interface ApiKeyStatus {
   name: ApiKeyName;
   configured: boolean;
 }
 
-/** Reveal `sonarche.log` in the OS file manager. The path is resolved on the
- * Rust side; nothing crosses the IPC boundary. */
+/** The path is resolved in Rust. */
 export async function revealLogFile(): Promise<void> {
   return invoke("reveal_log_file");
 }
@@ -24,29 +23,24 @@ export async function setApiKey(name: ApiKeyName, value: string): Promise<ApiKey
   return invoke<ApiKeyStatus>("set_api_key", { name, value });
 }
 
-/** The stored key itself, for the reveal button and nothing else.
- *
- * The only call in the app that brings a secret into the webview, and it is
- * always a press: never on mount, never to decide what a card shows. `null` is
- * both "no key" and "the keychain would not hand it over", which the caller
- * treats the same way — it has nothing to display either way. */
+/** The stored key, only on an explicit reveal press. `null` for no key or a
+ * refused keychain read. */
 export async function revealApiKey(name: ApiKeyName): Promise<string | null> {
   return invoke<string | null>("reveal_api_key", { name });
 }
 
-/** The verdict on a key: valid, or invalid with a machine-readable reason. */
 export interface KeyCheck {
   valid: boolean;
   reason: string | null;
 }
 
-/** Omit `key` to test the one already stored — the frontend never holds it. */
+/** Omit `key` to test the stored one (the front never holds it). */
 export async function checkApiKey(name: ApiKeyName, key?: string): Promise<KeyCheck> {
   if (name !== "acoustid") throw new Error(`no check for ${name}`);
   return invoke<KeyCheck>("check_acoustid_key", { key });
 }
 
-/** The outside services the app leans on, in the order the panel lists them. */
+/** In display order. */
 export const SERVICE_NAMES = ["musicbrainz", "acoustid", "coverart", "lastfm", "lrclib", "lyricsovh"] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -56,8 +50,7 @@ export type ServiceState = "up" | "down" | "unreachable";
 export interface ServiceStatus {
   name: ServiceName;
   state: ServiceState;
-  /** The HTTP status or the exception's class name — shown only on a failure,
-   * where "it did not answer" alone leaves nothing to act on. */
+  /** HTTP status or exception class, shown on failure only. */
   detail: string | null;
 }
 
@@ -72,7 +65,7 @@ export interface LibraryLocation {
   isDefault: boolean;
 }
 
-/** Why a move cannot go ahead. Mirrors `library_move::Refusal`. */
+/** Mirrors `library_move::Refusal`. */
 export type MoveRefusal = "sameLocation" | "intoItself" | "insideAppData" | "occupied" | "notWritable" | "busy";
 
 export interface MoveCheck {
@@ -80,7 +73,7 @@ export interface MoveCheck {
   refusal: MoveRefusal | null;
   fileCount: number;
   sizeBytes: number;
-  /** A rename inside one volume is instant; across volumes every byte travels. */
+  /** Same volume: instant rename; otherwise a full copy. */
   sameVolume: boolean;
 }
 
@@ -89,7 +82,7 @@ export interface MoveProgress {
   total: number;
 }
 
-/** The event the backend pushes while a cross-volume copy runs. */
+/** Pushed during a cross-volume copy. */
 export const MOVE_PROGRESS_EVENT = "library-move-progress";
 
 export async function getLibraryLocation(): Promise<LibraryLocation> {
@@ -104,52 +97,44 @@ export async function moveLibrary(parent: string): Promise<LibraryLocation> {
   return invoke<LibraryLocation>("move_library", { parent });
 }
 
-/** Destroys the music, the index, the history, the key and every preference.
- * Keeps the Python engine, which the app can rebuild and the user cannot. */
+/** Erases music, index, history, key and preferences; keeps the rebuildable engine. */
 export async function eraseAllData(): Promise<void> {
   await invoke("erase_all_data");
 }
 
-/** Throws away the Python engine and the downloaded tools. Touches no user
- * data; the first-run walkthrough puts it back. */
+/** Removes the Python engine and tools; no user data. */
 export async function reinstallEnvironment(): Promise<void> {
   await invoke("reinstall_environment");
 }
 
-/** Destroys the music and its index only: artist images, playlists (kept,
- * emptied) and the histories all survive. */
+/** Music and index only; artist images, playlists (emptied) and histories stay. */
 export async function eraseLibrary(): Promise<void> {
   await invoke("erase_library");
 }
 
-/** Every artist image at once — files and index rows. Avatars take over. */
+/** Files and rows; generated avatars take over. */
 export async function eraseArtistImages(): Promise<void> {
   await invoke("erase_artist_images");
 }
 
-/** Every playlist at once — rows, covers, M3U8 mirror. The music stays. */
+/** Rows, covers and M3U8 mirror; the music stays. */
 export async function erasePlaylists(): Promise<void> {
   await invoke("erase_playlists");
 }
 
-/** Both archives in one sweep: terminal download jobs and the import history.
- * The same command the history page's own clear button calls. */
+/** Finished downloads and the import archive (same command as the history page). */
 export async function eraseHistory(): Promise<void> {
   await invoke("clear_job_history");
 }
 
-/** The one delay the user may still tune. The AcoustID and Last.fm pauses are
- * fixed server-side — their keys are shared across installs — and the backend
- * refuses writes to them. */
+/** The only tunable delay; the AcoustID and Last.fm ones are fixed. */
 export type RateLimitKey = "download";
 
 export interface Preferences {
   lastfmFetchDelaySeconds: number;
   acoustidLookupDelaySeconds: number;
   downloadDelaySeconds: number;
-  /** The container a download lands in — see `audioFormats.ts`. Typed as the
-   * union rather than `string`: the backend validates the write and stamps
-   * anything unknown back to the default, so nothing else ever arrives. */
+  /** See `audioFormats.ts`; the backend resets unknown values to the default. */
   audioFormat: AudioFormat;
 }
 
@@ -161,18 +146,15 @@ export async function setRateLimitDelay(key: RateLimitKey, seconds: number): Pro
   return invoke<Preferences>("set_rate_limit_delay", { key, seconds });
 }
 
-/** What the *next* download will be. Instant, and it touches nothing on disk. */
+/** Affects future downloads only. */
 export async function setAudioFormat(format: AudioFormat): Promise<Preferences> {
   return invoke<Preferences>("set_audio_format", { format });
 }
 
-/** What every track on disk already is. Hours of CPU on a large library, and
- * each original is deleted as soon as its replacement lands — hence the ritual
- * around the button that calls this. */
+/** Re-encodes the whole library, deleting each original once replaced. */
 export interface ConvertReport {
   format: AudioFormat;
-  /** Files that were not already in the target format. The rest were skipped
-   * and never opened. */
+  /** Files not already in the target format. */
   total: number;
   converted: number;
   failed: number;
@@ -183,11 +165,8 @@ export async function convertLibrary(): Promise<ConvertReport> {
   return invoke<ConvertReport>("convert_library");
 }
 
-/**
- * What a setup reset puts back. Everything here is rebuildable by the app —
- * the backend physically cannot reach the beets database or the audio files
- * from this command (see `dev_reset.rs` and its test).
- */
+/** Rebuildable parts only: the backend can't reach the library from this
+ * command (see `reset.rs` and its tests). */
 export interface SetupResetTargets {
   venv?: boolean;
   tools?: boolean;
@@ -200,29 +179,22 @@ export const SETUP_RESET_TARGET_NAMES = ["venv", "tools", "apiKeys", "history", 
 
 export type SetupResetTargetName = (typeof SETUP_RESET_TARGET_NAMES)[number];
 
-/** Dev builds only — the backend refuses it in release. */
+/** Dev builds only; refused in release. */
 export async function resetSetupDev(targets: SetupResetTargets): Promise<void> {
   await invoke("reset_setup_dev", { targets });
 }
 
-/** Dev builds only — the backend refuses it in release. Destroys audio files. */
+/** Dev builds only; refused in release. Deletes audio files. */
 export async function resetLibraryDev(): Promise<void> {
   await invoke("reset_library_dev");
 }
 
-/**
- * Hands the Appearance choice to the native window frame — the traffic lights
- * and system scrollbars on macOS, the caption bar's colour on Windows.
- *
- * Fire-and-forget, and it swallows: there is no browser behind a preview and no
- * window worth taking the app down for. A frame one theme behind is a seam; an
- * unhandled rejection on boot is a bug.
- */
+/** Applies the Appearance choice to the native window frame. Fire-and-forget:
+ * a failure only leaves the frame a theme behind. */
 export function setWindowTheme(choice: "light" | "dark" | "system"): void {
   try {
     void invoke("set_window_theme", { choice }).catch(() => {});
   } catch {
-    // `invoke` throws on the spot when there is no Tauri behind the webview at
-    // all — a browser preview, a jsdom test — rather than rejecting.
+    // `invoke` throws synchronously without Tauri (browser preview, jsdom).
   }
 }

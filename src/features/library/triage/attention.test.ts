@@ -30,10 +30,7 @@ describe("albumAttention", () => {
     expect(attentionOf().has(1)).toBe(false);
   });
 
-  /** The regression that sent this back to the drawing board: the queue fuses
-   * "no genre" and "off-tree genre" into one line, so a record whose every
-   * track carried a genre the tree did not know was reported as missing every
-   * one of them. Doors, not lines. */
+  /** Per door, not per line: an off-tree genre isn't a missing one. */
   it("names the door, so an off-tree genre is never reported as a missing one", () => {
     const offTree = tracks.map((row) => (row.id === 2 ? { ...row, genre: "Gamelan", genreBucket: null } : row));
     // Track 2 has no year either, so it keeps that door — it just must not be

@@ -8,41 +8,22 @@ import { ActionLink } from "@/shared/ui/ActionLink";
 
 interface ImportRecapPanelProps {
   renditions: number;
-  /** What the folder held. Null when the run is recalled without it — the panel
-   * then says what came in and stays quiet about what was on disk. */
+  /** Null when recalled without the scan counts. */
   scan: ImportScanCounts | null;
   recap: ImportRecap | null;
-  /** Show the door to the alignment. On the import page the section itself
-   * sits right under this panel, so the door would open onto where the reader
-   * already stands — only the archive, a page away, needs one. */
+  /** Only the archive needs the link; on the import page the section is right below. */
   alignDoor?: boolean;
 }
 
 /**
- * What an import brought in — the same panel on the page that just ran one and
- * in the archive, because they are the same facts and the app must not grow two
- * readings of them.
- *
- * It exists because "Import terminé" was the whole of what the app had to say
- * about a folder of four thousand files. The copy working is the least
- * interesting thing that happened: an import is deliberately as-is, so what
- * actually arrived is whatever the files were already tagged with, and the one
- * question worth answering is whether that is worth anything.
- *
- * The count of what came in is *not* here — see `useImportHeadline`. It has a
- * different place in each of the two homes, and stating it in both put the same
- * sentence twice on the same screen.
- *
- * The figures are stated, not linked. Every number on the Metadata page is a
- * door onto exactly as many items as it names, and these are counts over one
- * import — a door here would open on the whole library's missing years and
- * disagree with the number beside it. One honest link at the bottom instead.
+ * The tag quality an import brought in, shared by the import page and the
+ * archive. The imported count lives in `useImportHeadline`. Figures aren't
+ * links: they count one import, while Metadata pages cover the whole library.
  */
 export function ImportRecapPanel({ renditions, scan, recap, alignDoor = false }: ImportRecapPanelProps) {
   const { t } = useTranslation("import");
   const caveats = [
-    // First, because it is the only line saying the import *decided*
-    // something rather than merely counted it.
+    // First: the only line about a decision the import made.
     recap != null && (recap.collections ?? 0) > 0 ? t("recap.collections", { count: recap.collections }) : null,
     renditions > 0 ? t("doneRenditions", { count: renditions }) : null,
     scan != null && scan.unplayable > 0
@@ -67,9 +48,7 @@ export function ImportRecapPanel({ renditions, scan, recap, alignDoor = false }:
   );
 }
 
-/** One line per defect, in the order the Metadata queue lists them. Zero is
- * shown rather than hidden: "no album is missing its cover" is a result, and a
- * list that drops its clean lines makes the user wonder what was checked. */
+/** One line per defect, in Metadata queue order. Zeros are shown: they are results. */
 function TagState({ recap, alignDoor }: { recap: ImportRecap; alignDoor: boolean }) {
   const { t } = useTranslation("import");
 
@@ -104,9 +83,7 @@ function TagState({ recap, alignDoor }: { recap: ImportRecap; alignDoor: boolean
         </dl>
       )}
 
-      {/* An as-is import never carries a MusicBrainz identity, so the remedy
-          is named here. It claims no count on purpose: the align card answers
-          for the whole library, not for this one run. */}
+      {/* No count: alignment covers the whole library, not this run. */}
       <p className="text-xs text-muted">{t("recap.alignHint")}</p>
       {alignDoor && (
         <ActionLink to={paths.import} trailingIcon={ArrowRight}>

@@ -34,10 +34,7 @@ function rowOf(over: Parameters<typeof track>[0], flags: Parameters<typeof Inspe
  * columns of a bare fixture read as the same em-dash placeholder. */
 const cellOf = (text: string) => screen.getByText(text).closest("td");
 
-/**
- * The two verdicts the genre column carries are opposites, and showing them the
- * same way is what made a filled cell read as an empty one.
- */
+/** Missing and off-tree genres must look different. */
 describe("the genre column", () => {
   it("fills the cell only when the genre is actually missing", () => {
     rowOf({ genre: null }, ["genreMissing"]);

@@ -12,8 +12,7 @@ import { playOrder } from "@/shared/player/queue";
 import type { PlayableTrack } from "@/shared/player/types";
 import { TrackThumb } from "@/shared/ui/TrackThumb";
 
-/** Uniform slot height in px — a 48px row plus its 4px breathing room. The
- * virtualizer trusts it, so a wrong value makes the scrollbar lie. */
+/** A 48px row plus 4px gap; the virtualizer relies on it. */
 const ROW_HEIGHT = 52;
 
 interface QueueRowProps {
@@ -33,8 +32,6 @@ function QueueRow({ track, isCurrent, isPlaying, onJump }: QueueRowProps) {
         (isCurrent ? "bg-accent/10" : "hover:bg-default/40")
       }
     >
-      {/* The cover is what makes a long queue scannable: titles alone all read
-          the same at this size. */}
       <TrackThumb artUrl={track.artUrl} size="size-9" radius="rounded-md" />
       <div className="min-w-0 flex-1">
         <p className={"truncate text-sm font-medium " + (isCurrent ? "text-accent" : "text-foreground")}>
@@ -53,12 +50,8 @@ function QueueRow({ track, isCurrent, isPlaying, onJump }: QueueRowProps) {
   );
 }
 
-/**
- * The queue in its effective play order — the shuffled order when shuffle is
- * on, because showing the pre-shuffle list would promise an order that never
- * plays. Starts at the playing track: what's gone is history, not queue. The
- * playing track sits pinned under its own label; only "up next" scrolls.
- */
+/** The queue in effective play order (shuffled when shuffle is on), starting
+ * at the playing track, which stays pinned above "up next". */
 function QueueList() {
   const { t } = useTranslation("player");
   const { queue, jumpTo } = usePlayerQueue();
@@ -68,8 +61,7 @@ function QueueList() {
   const ordered = playOrder(queue);
   const upcoming = ordered.slice(queue.position + 1);
 
-  // Always windowed, no small-list branch: this list has no entrance cascade
-  // to preserve, and a queue can be the whole library.
+  // Always virtualized: a queue can be the whole library.
   const virtualizer = useVirtualizer({
     count: upcoming.length,
     getScrollElement: () => scrollRef.current,
@@ -122,12 +114,9 @@ export function QueuePanel() {
       <Popover.Trigger aria-label={t("queue")} className={BAR_TRIGGER}>
         <ListMusic className="size-4" />
       </Popover.Trigger>
-      {/* Clipped to its own corner: the list runs to the bottom edge, and a
-       * row lighting up under the cursor would square the two corners off. */}
+      {/* Clips hovered rows to the rounded corners. */}
       <Popover.Content placement="top end" className="w-96 overflow-hidden p-0">
         <Popover.Dialog aria-label={t("queue")} className="p-0">
-          {/* The header is its own room: title and count on one baseline, a
-           * separator underneath — the list below scrolls, this line never. */}
           <div className="flex items-baseline justify-between border-b border-separator px-5 pt-4 pb-3">
             <p className="text-sm font-semibold">{t("queue")}</p>
             {remaining > 0 && (

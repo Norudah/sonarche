@@ -17,21 +17,10 @@ import { Link } from "react-router";
 
 import type { TriageLine } from "@/features/library/triage/queue";
 
-/* `bg-surface` and not just a border: a row of the queue is a card, the same
- * one `SettingCard` draws. It went without a background until now because on
- * the light theme the app ground (0.995) and a card (1.0) are the same white —
- * the omission was invisible. On the night theme it is 0.175 against 0.235, and
- * the whole page read as a hole with hairlines drawn on it. */
+/* A card background, not just a border: invisible on light, needed on dark. */
 const ROW = "flex items-center gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
 
-/**
- * One glyph per kind of defect.
- *
- * The five rows used to be typographically identical, so "10 tracklists with
- * holes" and "1 missing cover" arrived as the same object and the eye had to
- * read every line to find its way. A glyph is what makes a row recognisable
- * before it is read.
- */
+/** One glyph per kind of defect, so rows are recognisable before being read. */
 const ICONS: Record<TriageLine["key"], LucideIcon> = {
   suspect: ScanSearch,
   duplicates: Copy,
@@ -43,37 +32,16 @@ const ICONS: Record<TriageLine["key"], LucideIcon> = {
   artistImage: UserRoundX,
 };
 
-/**
- * Amber is spent on one glyph only.
- *
- * Every glyph used to wear it, which put a warning colour on "missing year" —
- * an absence in someone's own files, not an alarm — and made the page read as
- * six accusations. A suspect match is different in kind: it is the one line
- * where *we* may have written the wrong thing into a track, so it keeps the
- * warning tone and now owns it alone. The rest are neutral: still a queue,
- * still doors, no longer a scolding.
- *
- * The *counts* are amber again, though — see `COUNT` below. The glyph says what
- * kind of line this is and has no business shouting; the number is the part
- * that means "there is something here to do".
- */
+/** Only the suspect-match glyph is amber: the one line where the app may have
+ * written something wrong. Counts are amber (see `COUNT`). */
 const SUSPECT_TONE = "bg-warning-soft text-warning";
 const NEUTRAL_TONE = "bg-surface-secondary text-muted";
 
-/**
- * The number wears the app's "something is missing" colour.
- *
- * It was neutralised along with the glyphs, back when a count you could not
- * silence was a permanent grade on the user's collection. That is no longer
- * what these numbers are: a check can be switched off in the menu, and a line
- * can be accepted as it stands — so a number that survives both is one the user
- * has left standing on purpose, and amber is exactly what it means. Zero is
- * reachable, which is what earns the colour back.
- */
+/** Amber counts: every check can be disabled or accepted, so a remaining
+ * number is something left to do. */
 const COUNT = "text-lg font-semibold text-warning tabular-nums";
 
-/** "Neon Slumber, Half Light +19" — what the count is made of, in plain
- * muted text (not individually clickable in v1; the door opens the list). */
+/** A few names the count is made of. */
 function Examples({ line }: { line: TriageLine }) {
   const { t } = useTranslation("metadata");
 
@@ -99,18 +67,8 @@ function Glyph({ line }: { line: TriageLine }) {
   );
 }
 
-/**
- * "Seen, and wanted as it is."
- *
- * The answer that was missing. Every other action on this page changes the
- * library until the check passes; this one changes nothing and closes the line
- * anyway, which is what makes zero reachable on a collection of rips whose tags
- * are simply never going to be complete. Nothing is destroyed — the page keeps
- * a line at the bottom that takes it all back.
- *
- * Quiet by design, and revealed on hover: it is the second thing to do with a
- * line, after looking at what is in it.
- */
+/** "Seen, and wanted as it is": closes the line without changing the library.
+ * Revealed on hover; reversible below the queue. */
 function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending: boolean }) {
   const { t } = useTranslation("metadata");
 
@@ -119,7 +77,7 @@ function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending
       type="button"
       disabled={isPending}
       onClick={(event) => {
-        // The row is a link; answering it is not navigating into it.
+        // The row is a link; accepting isn't navigating.
         event.preventDefault();
         event.stopPropagation();
         onAccept();
@@ -132,11 +90,8 @@ function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending
   );
 }
 
-/**
- * One row of the correction queue. With a single door the whole row is the
- * link; the fused genre row instead carries one pill per door, because
- * "missing" and "off-tree" open two different filtered lists.
- */
+/** One queue row: the whole row links when it has one door; the genre row has
+ * one pill per door. */
 export function QueueLine({
   line,
   isPending,
@@ -189,9 +144,7 @@ export function QueueLine({
           <Link
             key={door.key}
             to={door.to}
-            // Amber like the single-door rows' count: the pill *is* the number
-            // here — the label interpolates it — so tinting the digits alone
-            // would leave the fused genre row the only pale line on the page.
+            // The pill carries the number, so it's amber like the counts.
             className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {t(`queue.${door.key}`, { count: door.count })}

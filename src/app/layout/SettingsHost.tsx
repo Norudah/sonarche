@@ -15,19 +15,10 @@ import { SettingsTasksProvider } from "@/features/settings/tasks";
 import { UpdateSection } from "@/features/update/UpdateSection";
 import { openSettings, useSettingsDialog, type SettingsCategoryId } from "@/shared/lib/settingsDialog";
 
-/**
- * Which pane each category shows.
- *
- * The map lives at app level, exactly where the router used to hold it: the
- * updates pane belongs to `features/update` and every other one to
- * `features/settings`, and features do not import each other. The shell is the
- * one place allowed to know about both.
- */
+/** Lives in the shell: panes come from both `features/settings` and `features/update`. */
 const PANES: Record<SettingsCategoryId, () => React.ReactElement> = {
   appearance: AppearanceSection,
   adding: AddingSection,
-  // The only pane the shell has to compose: its last card holds a preference
-  // owned by the library feature. See `MetadataChecksCard`.
   metadata: () => <MetadataSection checks={<MetadataChecksCard />} />,
   files: FilesSection,
   services: ServicesSection,
@@ -37,18 +28,7 @@ const PANES: Record<SettingsCategoryId, () => React.ReactElement> = {
   developer: DeveloperSection,
 };
 
-/**
- * Mounts the settings dialog and the one keystroke that opens it.
- *
- * `⌘,` / `Ctrl+,` is the convention on every desktop platform and the app had
- * no shortcut at all while settings was a route — a route is reached by
- * clicking, and nobody thinks to bind a key to a link. It only ever opens:
- * pressing it again on an open dialog reads as "show me the settings", which
- * is already true, and Escape is the way out.
- *
- * Inside the setup gate, like the rest of the chrome — there are no settings
- * to change while the environment is still being checked.
- */
+/** Mounts the settings dialog and its `⌘,` / `Ctrl+,` shortcut (open only). */
 export function SettingsHost() {
   const { category } = useSettingsDialog();
 
@@ -65,9 +45,7 @@ export function SettingsHost() {
   const Pane = PANES[category];
 
   return (
-    // The provider wraps both: the panes start the long operations, and the
-    // host — mounted beside the dialog, not inside it — runs them for as long
-    // as they take. See `features/settings/tasks`.
+    // Long operations started from a pane keep running after the dialog closes.
     <SettingsTasksProvider>
       <SettingsDialog>
         <Pane />

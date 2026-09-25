@@ -29,14 +29,12 @@ export function AlbumsView() {
   const [layout, setLayout] = useShelfLayout();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
-  // No `useMemo`: `groupAlbums` caches on the array's identity, which every
-  // surface shares — a memo here would only add a second cache.
+  // `groupAlbums` caches by array identity; no memo needed.
   const albums = groupAlbums(library.data ?? []);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
 
-  // Removing a filter refines the entry we are on, it is not a new place —
-  // same reasoning as the genre chips' `replace`.
+  // `replace`: removing a filter refines the current entry.
   const clearParam = (name: string) => {
     const next = new URLSearchParams(params);
     next.delete(name);
@@ -107,8 +105,7 @@ export function AlbumsView() {
         <AlbumShelf
           albums={visible}
           layout={layout}
-          // The unfiltered list: the drawer must keep hold of a record whose
-          // edit drops it out of the current filter or sort.
+          // Unfiltered, so the drawer keeps a record its edit filters out.
           pool={albums}
           animationKey={`${params.toString()}:${query}:${sort}`}
           onPlay={(album) => playOrdered(album.tracks)}

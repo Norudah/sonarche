@@ -1,34 +1,23 @@
 import type { LibraryTrack } from "@/features/library/api";
 import { COMPLETENESS_KEYS, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
 
-/**
- * Completion, told as something you can act on.
- *
- * The old panel showed a percentage of filled cells next to a count of whole
- * tracks — two different definitions of "complete" a few centimetres apart, and
- * a number nobody could check. Here there is one definition, whole tracks, and
- * the ring states it as the ratio itself. The share is left to the arc.
- *
- * The gaps are the point: naming which field is missing, and on how many tracks,
- * is what turns a figure into a door. Same doctrine as the Metadata page.
- */
+/** Completion in whole tracks, with the missing fields and where they are. */
 
 export interface FieldGap {
   field: keyof FieldValues;
-  /** Tracks left with this field empty. */
+  /** Tracks missing this field. */
   missing: number;
-  /** Those tracks, in tracklist order. */
+  /** In tracklist order. */
   trackIds: number[];
 }
 
 export interface AlbumCompletion {
-  /** Tracks whose every counted field is filled. */
+  /** Tracks with every counted field filled. */
   complete: number;
   total: number;
-  /** Fields with at least one hole, worst first. */
+  /** Worst first. */
   gaps: FieldGap[];
-  /** Fields that are whole, in panel order — stated so the user sees what they
-   * no longer have to check. */
+  /** Complete fields, in panel order. */
   filled: (keyof FieldValues)[];
   incompleteIds: number[];
 }

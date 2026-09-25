@@ -1,16 +1,9 @@
-//! The macOS media session, spoken to directly.
+//! macOS media session via `MPNowPlayingInfoCenter` (what the panel shows)
+//! and `MPRemoteCommandCenter` (media keys, Control Center, lock screen).
 //!
-//! Two Apple objects do all of it. `MPNowPlayingInfoCenter` is a dictionary the
-//! system reads to draw the Now Playing panel — title, artist, artwork, length,
-//! playhead. `MPRemoteCommandCenter` is the other direction: the F7/F8/F9 keys,
-//! the Control Center transport and the lock screen's scrubber all arrive as
-//! commands, and a command with no handler is a button the OS still draws and
-//! that does nothing.
-//!
-//! Everything here is `unsafe` because every call is a message to Objective-C,
-//! which Rust cannot check. The unsafety is uniform and shallow — the arguments
-//! are strings, numbers and blocks — so it is asserted once per function rather
-//! than per line.
+//! Every call is an Objective-C message Rust can't check. The unsafety is
+//! uniform and shallow (strings, numbers, blocks), so it is justified once
+//! per function rather than per line.
 
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -32,16 +25,11 @@ use objc2_media_player::{
 
 use crate::now_playing::{NowPlayingTrack, RemoteAction};
 
-/// Whether the transport commands have been registered. They are registered
-/// once for the app's life: the session belongs to the process, not to a track,
-/// and re-registering would stack handlers on the same button.
+/// Registered once per process; re-registering would stack handlers.
 static COMMANDS_ATTACHED: AtomicBool = AtomicBool::new(false);
 
-/// Describe the track the OS should show.
-///
-/// The artwork is set in the same pass rather than loaded in the background:
-/// `NSImage` reads the file lazily, so this costs an open and a header, and the
-/// panel never shows the previous cover next to the new title.
+/// Artwork is set synchronously: `NSImage` loads lazily, so this is cheap and
+/// the panel never pairs the old cover with the new title.
 pub fn set_track(track: &NowPlayingTrack) {
     autoreleasepool(|_| unsafe {
         let info = NSMutableDictionary::<NSString, AnyObject>::new();
@@ -66,9 +54,7 @@ pub fn set_track(track: &NowPlayingTrack) {
     });
 }
 
-/// Mirror the transport. `position` is what keeps the lock screen's scrubber
-/// honest, and it has to be merged into the existing dictionary — handing the
-/// centre a fresh one would drop the title and the artwork with it.
+/// Merged into the existing dictionary: a fresh one would drop title and artwork.
 pub fn set_playback(is_playing: bool, position: f64) {
     autoreleasepool(|_| unsafe {
         let center = MPNowPlayingInfoCenter::defaultCenter();
@@ -90,8 +76,7 @@ pub fn set_playback(is_playing: bool, position: f64) {
     });
 }
 
-/// Nothing is loaded any more. The state goes to `Stopped` rather than the
-/// panel being emptied: a finished track left sitting there reads as paused.
+/// `Stopped` rather than an empty panel, so a finished track doesn't look paused.
 pub fn clear() {
     autoreleasepool(|_| unsafe {
         MPNowPlayingInfoCenter::defaultCenter()
@@ -99,8 +84,7 @@ pub fn clear() {
     });
 }
 
-/// Register the transport commands, once. `on_action` is called from whatever
-/// thread the OS delivers the press on.
+/// Registers the transport commands once. `on_action` runs on the OS's thread.
 pub fn attach_commands(on_action: impl Fn(RemoteAction) + Send + Sync + 'static) {
     if COMMANDS_ATTACHED.swap(true, Ordering::SeqCst) {
         return;
@@ -110,8 +94,7 @@ pub fn attach_commands(on_action: impl Fn(RemoteAction) + Send + Sync + 'static)
         let center = MPRemoteCommandCenter::sharedCommandCenter();
         let on_action = std::sync::Arc::new(on_action);
 
-        // Only the commands the queue has an answer for. Enabling one we cannot
-        // honour would show the user a button that does nothing.
+        // Only commands the queue can honour; others would show dead buttons.
         for (command, action) in [
             (center.playCommand(), RemoteAction::Play),
             (center.pauseCommand(), RemoteAction::Pause),
@@ -129,9 +112,8 @@ pub fn attach_commands(on_action: impl Fn(RemoteAction) + Send + Sync + 'static)
             command.addTargetWithHandler(&handler);
         }
 
-        // The scrubber is the one command that carries a value. Every command
-        // hands its handler the base event type, and this one always delivers
-        // the subclass that has the position on it.
+        // Handlers receive the base event type; this command always delivers the
+        // subclass carrying the position.
         let position = center.changePlaybackPositionCommand();
         let handler = RcBlock::new(move |event: NonNull<MPRemoteCommandEvent>| {
             let Some(event) = event
@@ -148,9 +130,7 @@ pub fn attach_commands(on_action: impl Fn(RemoteAction) + Send + Sync + 'static)
     });
 }
 
-/// The cover as the panel wants it: an image, plus a block the system calls to
-/// resize it. The block owns the image, and the artwork owns the block, so the
-/// three live and die together.
+/// The image plus the resize block the system calls; each owns the next.
 fn artwork(path: &str) -> Option<Retained<MPMediaItemArtwork>> {
     unsafe {
         let image = NSImage::initWithContentsOfFile(NSImage::alloc(), &string(path))?;
@@ -164,8 +144,7 @@ fn artwork(path: &str) -> Option<Retained<MPMediaItemArtwork>> {
     }
 }
 
-/// A dictionary key. The keys Apple exports are `NSString`s, but the setter
-/// takes the protocol every key conforms to.
+/// Apple's keys are `NSString`s; the setter takes the `NSCopying` protocol.
 fn key(name: &NSString) -> &ProtocolObject<dyn NSCopying> {
     ProtocolObject::from_ref(name)
 }

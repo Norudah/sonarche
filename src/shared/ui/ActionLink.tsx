@@ -2,19 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-/**
- * The app's one text-level control: a link, or a button that reads as one.
- *
- * It exists because the same affordance had been written four times by hand and
- * had drifted — the history's "Vider l'historique" was muted text with a hover
- * underline, the feed's "Tout l'historique" was accent text with an arrow that
- * slid. This is the second reading, kept: the label states the action and the
- * icon answers the cursor, which is enough motion for a control that is not a
- * button.
- *
- * Two components rather than one polymorphic `as`: a router link and a button
- * take different props, and the union of both is a type nobody reads twice.
- */
+/** Text-level action, as a router link or a button. Two components because
+ * their props differ. */
 
 export type ActionTone = "accent" | "muted" | "danger";
 
@@ -31,10 +20,9 @@ const BASE =
 const DISABLED = "disabled:pointer-events-none disabled:opacity-40";
 
 interface ActionContentProps {
-  /** Sits before the label and lifts a hair under the cursor. */
+  /** Before the label; lifts on hover. */
   icon?: LucideIcon;
-  /** Sits after the label and slides along the reading direction — reserved for
-   * an arrow, where the movement means "over there". */
+  /** After the label; slides on hover. For arrows. */
   trailingIcon?: LucideIcon;
   children: ReactNode;
 }

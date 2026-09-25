@@ -1,29 +1,22 @@
-"""Tell a working AcoustID key from a mistyped one, without a fingerprint.
+"""Check an AcoustID key without fingerprinting anything.
 
-AcoustID rejects a bad key (`code 4`) before it ever looks at the rest of the
-request, so a deliberately empty lookup is enough to answer the question — no
-audio file, no fingerprint, nothing spent. Anything else coming back means the
-key itself got through and the server is only complaining about the request we
-knowingly sent incomplete.
-
-The answer is a verdict, not a raw payload: the walkthrough shows a check or a
-reason, and mapping the API's error codes is this module's job, not the UI's.
+AcoustID rejects a bad key (code 4) before validating the rest of the
+request, so an intentionally empty lookup is enough.
 """
 
 import protocol
 
 _LOOKUP = "https://api.acoustid.org/v2/lookup"
 
-# https://acoustid.org/webservice — 4 is the only code that means "the key".
+# https://acoustid.org/webservice
 _INVALID_KEY = 4
 
-# The server answers 400 with a JSON body on a rejected key, so the status code
-# is not the signal; the payload is.
+# A rejected key returns 400 with a JSON body: check the payload, not the status.
 _TIMEOUT = 15
 
 
 def classify(payload: dict) -> dict:
-    """The API's answer as a verdict. Pure — the network lives in `handle`."""
+    """The API's answer as a verdict."""
     if payload.get("status") == "ok":
         return {"valid": True, "reason": None}
     error = payload.get("error") or {}

@@ -1,10 +1,5 @@
-//! An image pasted from the clipboard, landed as a temp file.
-//!
-//! The crop/rendition pipeline downstream works on file paths (the sidecar
-//! reads a `source_path` like any picked file), so pasted bytes must touch
-//! disk once. The webview ships them raw over IPC; this side re-runs the same
-//! admission the sidecar applies to a pasted link — magic-byte sniff over any
-//! declared type, and the same size ceiling.
+//! A clipboard image written to a temp file, so the file-based crop pipeline
+//! can use it. Same magic-byte sniff and size limit as a pasted link.
 
 use std::time::Duration;
 
@@ -13,27 +8,21 @@ use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
 
-/// Same ceiling as the sidecar's link fetch (`artist_image.MAX_FETCH_BYTES`):
-/// one paste is a one-off personal image, not a bulk channel.
+/// Same as the sidecar's `artist_image.MAX_FETCH_BYTES`.
 const MAX_PASTE_BYTES: usize = 30 * 1024 * 1024;
 
-/// Temp-file families the app creates for an image on its way into a modal:
-/// a clipboard paste (written here) and a fetched link (written by the
-/// sidecar, `artist_image.fetch`). Both live exactly as long as the modal
-/// needs them — nothing deletes them on cancel, so a sweep must.
+/// Temp files for pastes (written here) and fetched links (by the sidecar).
+/// Nothing deletes them on cancel, hence the sweep.
 const SWEEP_PREFIXES: &[&str] = &["sonarche-paste-", "sonarche-fetch-"];
 
-/// Old enough that no open modal can still be holding the file. Windows never
-/// cleans %TEMP% on its own, so without this the files pile up forever there.
+/// Windows never cleans %TEMP% itself.
 const SWEEP_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 
 fn is_ours(name: &str) -> bool {
     SWEEP_PREFIXES.iter().any(|prefix| name.starts_with(prefix))
 }
 
-/// Remove image temp files a past session left behind. Called once at launch,
-/// off the main thread; best-effort on purpose — a locked file must not
-/// trouble startup.
+/// Removes stale image temp files at launch. Best-effort.
 pub fn sweep_stale() {
     let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) else {
         return;
@@ -58,8 +47,7 @@ pub fn sweep_stale() {
     }
 }
 
-/// The suffix the bytes actually are, or None when they are not an image we
-/// handle — mirrors `artist_image.sniff_suffix` in the sidecar.
+/// Mirrors `artist_image.sniff_suffix` in the sidecar.
 fn sniff_suffix(data: &[u8]) -> Option<&'static str> {
     if data.starts_with(b"\xff\xd8\xff") {
         return Some(".jpg");
@@ -73,10 +61,9 @@ fn sniff_suffix(data: &[u8]) -> Option<&'static str> {
     None
 }
 
-/// Write clipboard image bytes into a temp file the modal then adopts exactly
-/// like a local pick. `(async)` so the disk write never runs on the main
-/// thread; the raw IPC body needs the borrowed `Request`, which a real async
-/// fn cannot take.
+/// Writes clipboard image bytes to a temp file. `(async)` keeps the write off
+/// the main thread; the raw body needs a borrowed `Request`, which an
+/// `async fn` can't take.
 #[tauri::command(async)]
 pub fn save_pasted_image(request: tauri::ipc::Request<'_>) -> AppResult<Value> {
     let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
@@ -113,10 +100,7 @@ mod tests {
         assert_eq!(sniff_suffix(b"RIFF\x00\x00\x00\x00WEBPrest"), Some(".webp"));
     }
 
-    /// A hotlink-protection page or a copied text both arrive as bytes too —
-    /// nothing but the signature decides.
-    /// The sweep must never look past its own families: the OS temp dir is
-    /// shared with every other program on the machine.
+    /// The OS temp dir is shared: only our own prefixes may be swept.
     #[test]
     fn the_sweep_only_recognises_our_files() {
         assert!(is_ours("sonarche-paste-abc123.jpg"));
@@ -126,6 +110,7 @@ mod tests {
         assert!(!is_ours("paste-sonarche.jpg"));
     }
 
+    /// Only the signature decides, whatever the source claims.
     #[test]
     fn non_images_are_refused() {
         assert_eq!(sniff_suffix(b"<html><body>nope</body></html>"), None);

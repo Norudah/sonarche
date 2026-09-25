@@ -1,17 +1,7 @@
-"""What a library import actually brought in, counted once it has landed.
+"""Tag quality of what a library import brought in.
 
-The point is not the copy — the app already counts folders while beets walks
-them. It is the *state of the tags* that arrived. A library import is deliberately
-as-is (`-A`: no MusicBrainz, no AcoustID, no genre lookup), so what lands is
-exactly what the files already carried, and "import terminé" says nothing about
-whether that is worth anything.
-
-Read from SQLite through `library.py`'s own helpers rather than through beets'
-ORM, for two reasons. Speed is the lesser one. The real one is that these counts
-have to agree with what the Metadata page says about the very same tracks: it
-resolves a genre through `first_genre` and a family through `bucket_for`, and a
-recap that split the delimited `genres` column its own way would quietly report
-a different library than the one the user is about to go and look at.
+Uses `library.py`'s helpers (`first_genre`, `bucket_for`) so the counts
+agree with the Metadata page.
 """
 
 import os
@@ -21,21 +11,15 @@ import library
 from genre_tree import bucket_for
 from library import first_genre
 
-# The flexible attribute stamped on every item of one import run. Its own key
-# rather than `importer.py`'s `sonarche_import_id`, which is a per-file token the
-# download path uses to find the item it just staged: same word, different
-# lifetime, and one of them is meant to last.
+# Per import run; distinct from `importer.py`'s per-file `sonarche_import_id`.
 BATCH_FIELD = "sonarche_library_import"
 
 
 def has_gaps(numbers: set[int], declared: int) -> bool:
-    """A hole in the numbered sequence 1…expected.
+    """Whether the sequence 1…expected has a hole.
 
-    `expected` is the declared track total when any track carries one, else the
-    highest number present. An album with no numbered track at all has no
-    sequence to have holes in — that is a missing-tags problem, not a gapped
-    tracklist. Mirrors `hasTracklistGaps` in the albums view; the two must agree
-    or the same album gets two verdicts.
+    `expected` is the declared track total, else the highest number. Mirrors
+    `hasTracklistGaps` in the albums view.
     """
     if not numbers:
         return False
@@ -44,11 +28,8 @@ def has_gaps(numbers: set[int], declared: int) -> bool:
 
 
 def _album_shapes(conn) -> dict[int, tuple[set[int], int]]:
-    """Every album's numbered tracks and declared total.
-
-    Over the whole library rather than over the import: an album the import
-    merged into one that was already there has to be judged on all of its
-    tracks, not on the half that just arrived.
+    """Every album's track numbers and declared total, over the whole library
+    so merged albums are judged on all their tracks.
     """
     shapes: dict[int, tuple[set[int], int]] = {}
     for row in conn.execute(
@@ -64,12 +45,7 @@ def _album_shapes(conn) -> dict[int, tuple[set[int], int]]:
 
 
 def build(db_path: str, batch: str) -> dict | None:
-    """The recap for one import run, or None when nothing carries its mark.
-
-    None rather than a row of zeroes: an import that landed nothing and an
-    import whose mark we failed to write are different facts, and the interface
-    should be able to stay quiet about the second rather than claim the first.
-    """
+    """The recap for one import run, or None when nothing carries its mark."""
     if not os.path.exists(db_path):
         return None
 
@@ -110,9 +86,7 @@ def build(db_path: str, batch: str) -> dict | None:
             for r in conn.execute("SELECT id, artpath FROM albums")
         }
         shapes = _album_shapes(conn)
-        # A collection has no tracklist to have holes in — same rule as the
-        # albums view, so the recap and the page cannot disagree about the very
-        # same record.
+        # Collections have no tracklist, as in the albums view.
         collections = {
             album_id
             for album_id, kind in library.flex_attrs_by_album(

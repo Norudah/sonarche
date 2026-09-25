@@ -39,14 +39,12 @@ use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
-        // The walkthrough has to hand the user off to acoustid.org to get a key,
-        // and a webview cannot open a browser on its own. Scoped to that one
-        // host in `capabilities/default.json`.
+        // For sending the user to acoustid.org; scoped in `capabilities/default.json`.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        // Read-only: the paste-an-image path in the cover/artist modals.
+        // Read-only, for pasting images.
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
@@ -58,15 +56,12 @@ fn main() {
         .manage(player::PlayerState::default())
         .manage(python_env::LibraryRoot::default())
         .setup(|app| {
-            // First, so anything that fails after this point leaves a trace.
+            // First, so later failures leave a trace.
             logs::init(app.handle());
-            // Image temp files a past session left behind (pastes, fetched
-            // links) — off-thread, launch must not wait on the temp dir.
+            // Stale image temp files, swept off-thread.
             tauri::async_runtime::spawn_blocking(pasted_image::sweep_stale);
-            // Before anything resolves a path: `AppPaths` reads this state, and
-            // an unseeded one resolves to the default library — which would
-            // point a moved install back at an empty folder for the length of
-            // the first render.
+            // Before anything resolves a path, or a moved library would resolve to the
+            // default location.
             let handle = app.handle().clone();
             tauri::async_runtime::block_on(async move {
                 match preferences::load(&handle).await {
@@ -76,22 +71,13 @@ fn main() {
                     Err(err) => eprintln!("[library] could not read the stored location: {err}"),
                 }
             });
-            // DB open but worker not started: the launch migration must finish
-            // before anything — a queued download resuming, the first render —
-            // can look at the library. Setup is the one moment where nothing
-            // else runs, which is what makes the migration silent and safe.
+            // The worker starts only after the launch migration.
             let (state, worker) = jobs::init(app.handle())?;
             library_layout::run_launch_migration(app.handle(), &state);
-            // The mirror is a rendering, so launch is where it is repaired:
-            // tracks beets moved since last time, files deleted by hand, a
-            // library copied in from elsewhere.
             playlists_mirror::sync_at_launch(app.handle(), &state);
             state.start(app.handle().clone(), worker);
             app.manage(state);
-            // Pushes the playhead and end-of-track to the front; idle until
-            // something actually plays.
             player::spawn_status_loop(app.handle().clone());
-            // After the window exists, before it is shown to anyone.
             window_chrome::quieten(app.handle());
             Ok(())
         })

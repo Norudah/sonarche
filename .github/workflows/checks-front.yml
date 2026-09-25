@@ -1,20 +1,7 @@
 name: checks (front)
 
-# On the pull request into `main`, not on every push to `develop`.
-#
-# The reasoning changed on 2026-07-28, after measuring: over 30 develop pushes,
-# the Rust job alone had burned ~70 billed minutes telling a solo developer, on
-# the same OS as their laptop, what `cargo clippy` had answered thirty seconds
-# earlier. These jobs run the exact commands that run locally before every
-# commit — per push, they bought insurance against forgetting, not information.
-#
-# Once per release, on the PR that opens a release, is where a check has teeth:
-# it is the last gate before a bundle goes out to people. (The old rule here was
-# "never `pull_request`, it double-runs with push" — true only while push also
-# ran. It no longer does.)
-#
-# Revisit when the repository goes public: Actions stop being metered, and
-# per-push runs become affordable again.
+# On pull requests into `main` only: per-push runs repeated local checks at a
+# real cost on a private repo. Revisit when the repository goes public.
 on:
   pull_request:
     branches: [main]
@@ -35,9 +22,7 @@ concurrency:
 
 jobs:
   front:
-    # Not release-please's own PR. It bumps a changelog and three version files
-    # — one of which is package.json, which is in the paths above — and there is
-    # nothing in a version number for tsc to have an opinion about.
+    # Skip release-please's version-bump PR.
     if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:

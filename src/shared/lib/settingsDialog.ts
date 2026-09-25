@@ -1,36 +1,21 @@
 /**
- * Whether Settings is open, and on which category.
- *
- * Settings used to be a route that swapped the sidebar's whole nav for a
- * category menu — a mode, with the entry and the exit sharing one morphing
- * button and a ref remembering where to return. It is a modal now: a detour
- * you take while the app stays where it was, with three ways out and nothing
- * to remember.
- *
- * In `shared` rather than in the settings feature because the update toast
- * opens it (`features/update`), and features do not import each other. Same
- * arrangement as `homeTour`, for the same reason.
- *
- * Module state and not React state: the store outlives any one component, and
- * the two openers sit on opposite sides of the tree.
+ * Settings dialog state (open, category). In `shared` because the update
+ * toast opens it too. Module state, since the openers live in unrelated
+ * parts of the tree.
  */
 
 import { useSyncExternalStore } from "react";
 
-/** The panes the dialog can show. `categories.ts` in the settings feature is
- * what gives them a label, an icon and an order; this module only needs to
- * name one. */
+/** Labels, icons and order live in the settings feature's `categories.ts`. */
 export type SettingsCategoryId =
   "appearance" | "adding" | "metadata" | "files" | "services" | "updates" | "advanced" | "danger" | "developer";
 
 export interface SettingsDialogState {
   isOpen: boolean;
-  /** Kept while closed, so reopening lands where you left. */
+  /** Kept while closed, so reopening lands where the user left. */
   category: SettingsCategoryId;
-  /** The setting a search result asked for, by its i18n base key. The pane
-   * scrolls it into view and rings it once, then clears this — landing on the
-   * right pane and still having to hunt is most of the way to no search at
-   * all. */
+  /** A setting requested by search (i18n base key): the pane scrolls to it,
+   * highlights it once, then clears this. */
   highlight: string | null;
 }
 
@@ -43,9 +28,7 @@ function set(next: SettingsDialogState): void {
   for (const listener of listeners) listener();
 }
 
-/** Open Settings, optionally on a named category. Omitting it reopens
- * wherever the user was last — the app has no opinion about where they
- * belong, only about where they were. */
+/** Without a category, reopens on the last one. */
 export function openSettings(category?: SettingsCategoryId): void {
   set({ ...state, isOpen: true, category: category ?? state.category });
 }
@@ -58,7 +41,6 @@ export function selectSettingsCategory(category: SettingsCategoryId): void {
   set({ ...state, category, highlight: null });
 }
 
-/** Jump to a setting: its pane, then the setting itself. */
 export function revealSetting(category: SettingsCategoryId, key: string): void {
   set({ isOpen: true, category, highlight: key });
 }

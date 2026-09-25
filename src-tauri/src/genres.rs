@@ -1,8 +1,4 @@
-//! One-at-a-time guard for the library-wide "recompute genres" batch.
-//!
-//! Recompute canonicalizes existing genres offline and only hits Last.fm for
-//! items with no genre at all, but it still walks the whole library: a second
-//! concurrent run could only fight the first over the same rows.
+//! One-at-a-time guard for the library-wide genre recompute.
 
 use std::time::Duration;
 
@@ -15,9 +11,7 @@ use crate::preferences;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// Genre-less items each cost a throttled Last.fm round-trip (sidecar paces
-/// itself at ~1s/item to stay polite to beets' shared API key) — a large,
-/// mostly-untagged library needs real headroom here.
+/// Genre-less items each cost a paced Last.fm call (~1 s).
 const RECOMPUTE_TIMEOUT: Duration = Duration::from_secs(3600 * 3);
 
 #[derive(Default)]

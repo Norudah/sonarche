@@ -1,36 +1,19 @@
-/**
- * Where the import has got to, as one value.
- *
- * The page holds two mutations and a chosen folder, which between them can be
- * in seven states; deriving them in the markup meant a stack of booleans where
- * every new one had to be read against all the others to know what was on
- * screen. Naming the states makes the card a function of one argument, and
- * makes the impossible ones — a summary while the scan is still running, a
- * progress bar with nothing to count against — unrepresentable.
- */
+/** The import page's state as one discriminated union, derived from two
+ * mutations and the chosen folder. */
 
 import type { ImportOutcome, ScanReport } from "@/features/import/api";
 
 export type ImportPhase =
-  /** No folder chosen yet. */
   | { kind: "empty" }
   | { kind: "scanning" }
   | { kind: "scanFailed"; message: string }
-  /** Scanned, waiting on the user. */
   | { kind: "scanned"; report: ScanReport }
   | { kind: "importing"; report: ScanReport }
-  /** Done. The report comes along because the recap is about the two together —
-   * what the folder held (bytes, what could not be decoded) and what became of
-   * it. Absent only if an outcome somehow arrived without a scan preceding it,
-   * which the page cannot produce. */
+  /** The report is kept for the recap (bytes, undecodable files). */
   | { kind: "imported"; outcome: ImportOutcome; report: ScanReport | null }
-  /** Stopped by the user mid-copy. Its own kind rather than a flag on
-   * `imported`: the card wears a different face, verdict and rail for it, and
-   * a boolean would put that fork in every consumer instead of here. What
-   * landed before the stop is in the library, and the outcome counts it. */
+  /** Stopped by the user; what landed is in the library. */
   | { kind: "importCancelled"; outcome: ImportOutcome; report: ScanReport | null }
-  /** Failed mid-copy. The report is kept so the card can still say what the
-   * folder held, and so trying again does not need a second scan. */
+  /** The report is kept so a retry needs no rescan. */
   | { kind: "importFailed"; message: string; report: ScanReport };
 
 export interface PhaseInput {
@@ -48,20 +31,18 @@ export function importPhase(input: PhaseInput): ImportPhase {
 
   if (folder == null) return { kind: "empty" };
 
-  // The import's own states come first: once it has run, a stale scan result
-  // sitting beside it is not what the screen is about any more.
+  // Import states win over a stale scan result.
   if (importing && report != null) return { kind: "importing", report };
   if (outcome != null) {
     return outcome.cancelled ? { kind: "importCancelled", outcome, report } : { kind: "imported", outcome, report };
   }
   if (importError != null && report != null) return { kind: "importFailed", message: importError, report };
 
-  // A fresh scan overrides an older one's failure, and vice versa — whichever
-  // the mutation last reported is the truth about this folder.
+  // Whichever mutation reported last is current.
   if (scanning) return { kind: "scanning" };
   if (scanError != null) return { kind: "scanFailed", message: scanError };
   if (report != null) return { kind: "scanned", report };
 
-  // Chosen, and the scan has not started reporting yet.
+  // Chosen, scan not reporting yet.
   return { kind: "scanning" };
 }

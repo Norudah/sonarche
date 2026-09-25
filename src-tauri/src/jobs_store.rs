@@ -1,18 +1,9 @@
-//! Sonarche's application database (`sonarche.db`).
+//! Sonarche's own database (`sonarche.db`): download history, import
+//! archive, artist images, playlists.
 //!
-//! This is the app's OWN store, deliberately separate from the beets library —
-//! beets (its own SQLite) stays the single source of truth for the music and its
-//! metadata; this DB never mirrors it. It holds Sonarche's operational and
-//! application state: today the download history, later anything that is app/user
-//! state rather than a fact about an audio file (e.g. a download ledger for
-//! dedup, user collections, play state). The boundary rule: if it's "facts about
-//! the audio and its tags" it belongs to beets; if it's "what Sonarche/the user
-//! did" it belongs here — never duplicate library truth into this file.
-//!
-//! History tables: `jobs` (one row per download) and `job_tracks` (album playlist
-//! entries). Nested/opaque payloads (`report`) are stored as JSON text; scalar
-//! fields get real columns so history stays queryable and indexable as features
-//! grow. `PRAGMA user_version` carries the schema version for future migrations.
+//! Boundary rule: facts about audio files and their tags belong to beets;
+//! what the app or the user did belongs here. Library data is never mirrored.
+//! Opaque payloads (`report`) are JSON text; scalar fields get real columns.
 
 use std::path::Path;
 
@@ -24,8 +15,7 @@ use crate::error::{AppError, AppResult};
 use crate::jobs::{AlbumTrack, Job};
 use crate::library_import::{ImportRecord, ScanCounts};
 
-/// Schema version stamped into `PRAGMA user_version`. Informational: it records
-/// which build last touched the file. Nothing branches on it — see `open()`.
+/// Informational only: nothing branches on it (see `open()`).
 const SCHEMA_VERSION: i64 = 8;
 
 const SCHEMA: &str = "
@@ -177,36 +167,25 @@ CREATE INDEX IF NOT EXISTS idx_jobs_url     ON jobs(url);
 CREATE INDEX IF NOT EXISTS idx_tracks_item  ON job_tracks(item_id);
 ";
 
-/// Open (creating if needed) the history DB and ensure the schema is present.
-/// WAL keeps the worker's writes from blocking concurrent command reads.
+/// Opens (or creates) the DB and applies the schema. WAL keeps the worker's
+/// writes from blocking command reads.
 pub fn open(path: &Path) -> AppResult<Connection> {
     let conn = Connection::open(path)?;
-    // Before any pragma. The WAL switch below needs an exclusive lock, and
-    // there is one ordinary moment when another process holds the file: the
-    // relaunch after an erase, where the dying instance is still running its
-    // closing checkpoint. Without a timeout that open returned SQLITE_BUSY
-    // immediately, the setup hook failed, and tauri's "Failed to setup app"
-    // panic aborted the fresh instance before it drew a window.
+    // Before any pragma: switching to WAL needs an exclusive lock, which the
+    // previous instance may still hold while it exits (relaunch after an erase).
     conn.busy_timeout(std::time::Duration::from_secs(10))?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.execute_batch(SCHEMA)?;
-    // Unconditional, deliberately. This used to run only when the file was
-    // stamped below SCHEMA_VERSION, which meant a migration step added without
-    // bumping the constant never reached a single existing install: the column
-    // stayed missing and the first write failed with "table jobs has no column
-    // named …". Every step is idempotent (`add_column` checks first), so the
-    // gate bought nothing but that failure mode.
+    // Unconditional: every step is idempotent, and gating on the version would
+    // skip steps added without a version bump.
     migrate(&conn)?;
     conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(conn)
 }
 
-/// `CREATE TABLE IF NOT EXISTS` leaves an existing table exactly as it was, so
-/// columns added to SCHEMA never reach a file created by an older build. Each
-/// step is written to be idempotent rather than keyed on the version it came
-/// from: a fresh file is created at SCHEMA_VERSION but still stamped 0, so it
-/// runs through here too.
+/// `CREATE TABLE IF NOT EXISTS` never adds columns to an existing table, so
+/// each step here is idempotent rather than keyed on a version.
 fn migrate(conn: &Connection) -> AppResult<()> {
     add_column(
         conn,
@@ -227,12 +206,8 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     add_column(conn, "playlists", "kind", "TEXT NOT NULL DEFAULT 'user'")?;
     add_column(conn, "playlists", "cover", "TEXT")?;
     add_column(conn, "playlists", "marker", "TEXT")?;
-    // Runs archived before the import had options carry neither: they were all
-    // made under the one behaviour beets has by default.
     add_column(conn, "imports", "grouping", "TEXT")?;
     add_column(conn, "imports", "category", "TEXT")?;
-    // When the run was taken back out. NULL for every row that still stands,
-    // which is what an older file's rows are.
     add_column(conn, "imports", "undone_at", "INTEGER")?;
     add_column(conn, "jobs", "undone_at", "INTEGER")?;
     Ok(())
@@ -254,8 +229,7 @@ fn add_column(conn: &Connection, table: &str, column: &str, decl: &str) -> AppRe
     Ok(())
 }
 
-/// The enums all serialize to a lowercase string via serde; round-trip through
-/// serde_json so the DB text and the wire format never drift.
+/// Via serde_json, so DB text and wire format never drift.
 fn enum_to_text<T: Serialize>(value: &T) -> AppResult<String> {
     match serde_json::to_value(value)? {
         Value::String(s) => Ok(s),
@@ -397,8 +371,7 @@ fn write_track_row(conn: &Connection, job_id: &str, track: &AlbumTrack) -> AppRe
     Ok(())
 }
 
-/// Full write of a job and all its tracks, in one transaction. Used whenever a
-/// mutation may have touched job-level fields or several tracks at once.
+/// Writes a job and all its tracks in one transaction.
 pub fn upsert_job(conn: &Connection, job: &Job) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
     write_job_row(&tx, job)?;
@@ -410,9 +383,7 @@ pub fn upsert_job(conn: &Connection, job: &Job) -> AppResult<()> {
     Ok(())
 }
 
-/// Targeted write of a single track plus the parent job's `updated_at`. The hot
-/// path during an album download: one row touched per transition, not the whole
-/// playlist.
+/// Writes one track plus the job's `updated_at` (album download hot path).
 pub fn update_track(
     conn: &Connection,
     job_id: &str,
@@ -452,19 +423,13 @@ pub fn get_job(conn: &Connection, id: &str) -> AppResult<Option<Job>> {
     Ok(job)
 }
 
-/// Terminal statuses as SQL — the archive; everything else is the live queue.
-/// One list, shared by every read that carves the two apart.
 const TERMINAL_STATUSES: &str = "('done', 'failed', 'cancelled')";
 
-/// How many terminal jobs ride along with the live queue: enough for the
-/// Downloads page's "recent" strip with slack, small enough that launch never
-/// pays for months of history. The archive is `list_jobs_page`'s business.
+/// Finished jobs listed alongside the live queue.
 pub const LIVE_TERMINAL_WINDOW: u32 = 50;
 
-/// The live window, newest first, tracks attached: every job still moving —
-/// however old, a retried failure must not vanish — plus the most recent
-/// terminal ones. The one extra query per job to gather tracks is bounded by
-/// the window.
+/// Every unfinished job, however old, plus the most recent finished ones,
+/// newest first.
 pub fn list_live_jobs(conn: &Connection, recent_terminal: u32) -> AppResult<Vec<Job>> {
     let sql = format!(
         "SELECT * FROM jobs
@@ -485,15 +450,14 @@ pub fn list_live_jobs(conn: &Connection, recent_terminal: u32) -> AppResult<Vec<
     Ok(jobs)
 }
 
-/// One page of the whole archive — every job whatever its status, newest
-/// first — plus the totals the history page paginates and counts on.
+/// One page of the archive (all statuses, newest first) with its totals.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JobsPage {
     pub jobs: Vec<Job>,
-    /// Every job in the store, live included — what the page count divides.
+    /// All jobs, live included.
     pub total: u64,
-    /// Terminal jobs only — what "clear history" would sweep.
+    /// Finished jobs only: what "clear history" removes.
     pub terminal_total: u64,
 }
 
@@ -551,9 +515,7 @@ pub fn insert_import(conn: &Connection, record: &ImportRecord) -> AppResult<()> 
     Ok(())
 }
 
-/// One archived import, or None when the id names nothing. The undo needs the
-/// folder it read — the sidecar has to forget it from beets' incremental
-/// memory, and only this row remembers which folder the run was about.
+/// One archived import. The undo needs its source folder.
 pub fn get_import(conn: &Connection, id: &str) -> AppResult<Option<ImportRecord>> {
     let mut stmt = conn.prepare("SELECT * FROM imports WHERE id = ?1")?;
     let mut rows = stmt.query_map(params![id], |row| Ok(row_to_import(row)))?;
@@ -563,9 +525,7 @@ pub fn get_import(conn: &Connection, id: &str) -> AppResult<Option<ImportRecord>
     }
 }
 
-/// Mark a run as taken back out. The row stays, and the history says so.
-/// Stamp a download job as undone. The row keeps its status and its tracks —
-/// the history still says what the job did; this says it was taken back.
+/// Marks a download as undone; the row keeps its status and tracks.
 pub fn mark_job_undone(conn: &Connection, id: &str, when: u64) -> AppResult<()> {
     conn.execute(
         "UPDATE jobs SET undone_at = ?2, updated_at = ?2 WHERE id = ?1",
@@ -618,10 +578,8 @@ fn row_to_import(row: &Row) -> AppResult<ImportRecord> {
     })
 }
 
-/// The history page's one sweep: terminal (done/failed/cancelled) jobs — their
-/// tracks go with them via cascade — and the whole import archive. In-flight
-/// jobs stay. One transaction, because the page shows both archives under one
-/// button and a crash between the two deletes would leave it half-cleared.
+/// Deletes finished jobs (tracks cascade) and the import archive, in one
+/// transaction. Running jobs stay.
 pub fn clear_history(conn: &Connection) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
     tx.execute(
@@ -633,8 +591,7 @@ pub fn clear_history(conn: &Connection) -> AppResult<()> {
     Ok(())
 }
 
-/// One artist image row: which file (under app data's `artists/`) the named
-/// artist wears. `updated_at` rides along for a future "when" in the UI.
+/// The image file (under `artists/`) an artist is shown with.
 pub struct ArtistImageRow {
     pub name: String,
     pub filename: String,
@@ -658,9 +615,7 @@ pub fn list_artist_images(conn: &Connection) -> AppResult<Vec<ArtistImageRow>> {
     Ok(images)
 }
 
-/// Record the image an artist now wears. Returns the filename it replaces, if
-/// any, so the caller can remove the orphaned file — the row can't, it only
-/// knows names.
+/// Returns the replaced filename, if any, for the caller to delete.
 pub fn upsert_artist_image(
     conn: &Connection,
     name: &str,
@@ -683,7 +638,7 @@ pub fn upsert_artist_image(
     Ok(previous.filter(|old| old != filename))
 }
 
-/// Forget an artist's image. Returns the filename that just went ownerless.
+/// Returns the filename left unowned, if any.
 pub fn remove_artist_image(conn: &Connection, name: &str) -> AppResult<Option<String>> {
     let filename: Option<String> = conn
         .query_row(
@@ -696,13 +651,10 @@ pub fn remove_artist_image(conn: &Connection, name: &str) -> AppResult<Option<St
     Ok(filename)
 }
 
-/// Follow an albumartist rename: the image goes with the name, and since the
-/// file on disk is named after the artist too, the caller renames it first
-/// and passes the resulting filename here. When the new name already wears an
-/// image of its own, that one wins — the rename usually merges a misspelling
-/// into an artist that already exists, and their chosen picture should not be
-/// overwritten by the stray's. Returns the filename left ownerless (the
-/// loser's), if any, for the caller to delete.
+/// Follows an albumartist rename. The caller renames the file first and
+/// passes the new filename. If the new name already has an image, it wins
+/// (renames usually merge a misspelling into an existing artist). Returns
+/// the filename left unowned, if any.
 pub fn rename_artist_image(
     conn: &Connection,
     old: &str,
@@ -730,8 +682,7 @@ pub fn rename_artist_image(
     Ok(None)
 }
 
-/// Repoint one row at a renamed file, name untouched. The launch migration's
-/// tool, as it moves the app-data era's technical names to readable ones.
+/// Points a row at a renamed file.
 pub fn update_artist_image_filename(
     conn: &Connection,
     name: &str,
@@ -744,16 +695,14 @@ pub fn update_artist_image_filename(
     Ok(())
 }
 
-/// The erase-all sweep for artist images: every row at once. File removal is
-/// the caller's job (the directory goes wholesale).
+/// Deletes every row; the caller removes the directory.
 pub fn clear_artist_images(conn: &Connection) -> AppResult<()> {
     conn.execute("DELETE FROM artist_images", [])?;
     Ok(())
 }
 
-/// Startup recovery: whatever a previous run left mid-flight is failed, and any
-/// track caught downloading restarts from scratch. Returns whether anything was
-/// touched (only for logging). One SQL pass, no full rewrite.
+/// Startup recovery: fails jobs left running and resets tracks caught
+/// downloading. Returns whether anything changed.
 pub fn fail_interrupted(conn: &Connection, now: u64) -> AppResult<bool> {
     let jobs = conn.execute(
         "UPDATE jobs SET status = 'failed', error = 'interrupted by app restart', updated_at = ?1
@@ -767,7 +716,6 @@ pub fn fail_interrupted(conn: &Connection, now: u64) -> AppResult<bool> {
     Ok(jobs > 0)
 }
 
-/// One-time import of the legacy `jobs.json` history into the fresh DB.
 pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
     for job in jobs {
@@ -780,8 +728,7 @@ pub fn import_jobs(conn: &Connection, jobs: &[Job]) -> AppResult<()> {
     Ok(())
 }
 
-/// In-memory connection carrying the full schema — for this module's tests and
-/// any sibling whose store functions take a `&Connection` (playlists).
+/// In-memory connection with the full schema, for tests here and in siblings.
 #[cfg(test)]
 pub fn open_in_memory_for_tests() -> Connection {
     let conn = Connection::open_in_memory().expect("in-memory db");
@@ -802,8 +749,7 @@ mod tests {
         open_in_memory_for_tests()
     }
 
-    /// The v1 tables, before `download_attempts` existed — what a file written
-    /// by an older build actually looks like on disk.
+    /// Tables as written by an older build, before `download_attempts`.
     const SCHEMA_V1: &str = "
     CREATE TABLE jobs (
         id TEXT PRIMARY KEY, url TEXT NOT NULL, kind TEXT NOT NULL,
@@ -829,9 +775,7 @@ mod tests {
             .unwrap()
     }
 
-    /// The v1 fixtures replay `open()`'s real sequence: SCHEMA first (which
-    /// creates the tables a v1 file never had — playlists — and leaves the
-    /// existing ones untouched), then the migration under test.
+    /// Replays `open()`: SCHEMA first, then the migration under test.
     fn migrate_v1(conn: &Connection) {
         conn.execute_batch(SCHEMA).unwrap();
         migrate(conn).unwrap();
@@ -864,15 +808,8 @@ mod tests {
         assert!(column_names(&conn, "jobs").contains(&"category".to_string()));
     }
 
-    /// Regression: `open()` used to migrate only when the file was stamped
-    /// *below* SCHEMA_VERSION. Add a migration step without bumping the
-    /// constant and no existing install ever ran it — the column stayed missing
-    /// and the first write failed with "table jobs has no column named …".
-    ///
-    /// The stamp is deliberately the current version over an old schema, which
-    /// is exactly the state that shipped: writing `SCHEMA_VERSION - 1` here
-    /// would follow the bug instead of catching it, and the other migration
-    /// tests call `migrate()` directly and sail straight past the gate.
+    /// A file stamped with the current version but an old schema must still be
+    /// migrated.
     #[test]
     fn opening_an_old_file_migrates_it_however_it_is_stamped() {
         let path = std::env::temp_dir().join(format!("sonarche-migrate-{}.db", std::process::id()));
@@ -948,8 +885,7 @@ mod tests {
 
     #[test]
     fn migrate_is_idempotent_on_a_current_file() {
-        // A fresh file already has the column but is stamped user_version 0, so
-        // open() runs the migration over it: it must not fail on a duplicate.
+        // A fresh file has the column but is stamped 0; the migration must not fail.
         let conn = mem();
         migrate(&conn).unwrap();
         migrate(&conn).unwrap();
@@ -1100,7 +1036,6 @@ mod tests {
         let f = get_job(&conn, "f").unwrap().unwrap();
         assert_eq!(f.status, JobStatus::Done);
 
-        // A user's stop is terminal state, not an interruption to repaint.
         let f2 = get_job(&conn, "f2").unwrap().unwrap();
         assert_eq!(f2.status, JobStatus::Cancelled);
     }
@@ -1148,8 +1083,6 @@ mod tests {
         assert_eq!(ids, vec!["new".to_string(), "old".to_string()]);
     }
 
-    /// The live window keeps every moving job — a retried failure can be the
-    /// oldest row in the store — while only the newest terminal ones ride.
     #[test]
     fn live_window_keeps_old_active_jobs_and_drops_old_terminal_ones() {
         let conn = mem();
@@ -1167,7 +1100,6 @@ mod tests {
             .into_iter()
             .map(|j| j.id)
             .collect();
-        // The two newest terminal jobs, then the ancient live one — never lost.
         assert_eq!(
             ids,
             vec![
@@ -1238,8 +1170,7 @@ mod tests {
         }
     }
 
-    /// The recap and the extension map are the two fields that go through JSON
-    /// on the way in, which is where an archive silently loses its detail.
+    /// The recap and extension map go through JSON.
     #[test]
     fn an_import_survives_the_round_trip_whole() {
         let conn = mem();
@@ -1258,9 +1189,6 @@ mod tests {
         assert!(matches!(record.status, ImportStatus::Done));
     }
 
-    /// The undo keeps the row and stamps it. An archive that deleted the row
-    /// would say the import never happened, which is the one thing it knows to
-    /// be false.
     #[test]
     fn undoing_an_import_stamps_the_row_instead_of_dropping_it() {
         let conn = mem();
@@ -1274,9 +1202,6 @@ mod tests {
         assert!(get_import(&conn, "nobody").unwrap().is_none());
     }
 
-    /// What an undo removes and a destination change moves: the recorded item
-    /// ids, minus the duplicates enrich dropped — their files belong to the
-    /// tracks enrich kept, which this job never filed.
     #[test]
     fn library_item_ids_reads_the_rows_and_skips_duplicates() {
         let job = single("j", JobStatus::Done);
@@ -1295,8 +1220,7 @@ mod tests {
         assert_eq!(crate::jobs::library_item_ids(&album), vec![1]);
     }
 
-    /// The undo stamp survives the round-trip and a later full rewrite of the
-    /// row must not silently drop it — `upsert_job` writes every column.
+    /// `upsert_job` writes every column; the undo stamp must survive it.
     #[test]
     fn a_job_marked_undone_stays_undone() {
         let conn = mem();
@@ -1334,12 +1258,10 @@ mod tests {
             upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 100).unwrap(),
             None
         );
-        // Same file again: nothing to delete.
         assert_eq!(
             upsert_artist_image(&conn, "Hans Zimmer", "a.jpg", "local", 150).unwrap(),
             None
         );
-        // New file: the old one goes ownerless.
         assert_eq!(
             upsert_artist_image(&conn, "Hans Zimmer", "b.png", "local", 200).unwrap(),
             Some("a.jpg".to_string())
@@ -1380,9 +1302,6 @@ mod tests {
         assert_eq!(rows[0].filename, "Hans Zimmer.jpg");
     }
 
-    /// Renaming usually merges a misspelling into an artist that already
-    /// exists: the established artist's picture wins, the stray's file is
-    /// reported for deletion.
     #[test]
     fn a_rename_onto_an_existing_image_keeps_the_target_and_orphans_the_source() {
         let conn = mem();
@@ -1409,8 +1328,6 @@ mod tests {
         assert!(list_artist_images(&conn).unwrap().is_empty());
     }
 
-    /// The page archives both ways music arrives, and its one button says
-    /// "clear the history": the sweep takes the imports with it.
     #[test]
     fn clear_history_empties_both_archives() {
         let conn = mem();

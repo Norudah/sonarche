@@ -51,13 +51,7 @@ export function useCompleteOnboarding() {
   });
 }
 
-/**
- * Check the key, and store it only if AcoustID accepted it.
- *
- * One mutation rather than two so the screen can never end up in the state the
- * whole step exists to prevent: a key saved, a green check shown, and every
- * later download quietly falling back to guessed tags because of a typo.
- */
+/** Checks the key and stores it only if accepted, so a typo can't be saved. */
 export function useSaveAcoustidKey() {
   const queryClient = useQueryClient();
   return useMutation<KeyCheck, Error, string>({
@@ -67,16 +61,12 @@ export function useSaveAcoustidKey() {
       return check;
     },
     onSuccess: (check) => {
-      // Blanket, not by key: the stored key is read by the settings screen too,
-      // and enumerating its query keys here would mean reaching across features
-      // for them. During the walkthrough there is nothing else mounted to
-      // refetch anyway.
+      // Blanket invalidation: the key is also read by Settings.
       if (check.valid) queryClient.invalidateQueries();
     },
   });
 }
 
-/** Streams `setup:log` lines from the backend while the setup runs. */
 export function useSetupLogs(active: boolean) {
   const [lines, setLines] = useState<string[]>([]);
   useEffect(() => {

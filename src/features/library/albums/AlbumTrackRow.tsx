@@ -13,21 +13,7 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = `${PAD} py-2 text-[0.8125rem] text-muted`;
 
-/**
- * The only thing an album says about its own metadata, and it says it per row.
- *
- * A dot and nothing else. This column used to read "5/7", a score out of a
- * denominator inflated by fields that are never empty (title, artist, album all
- * come from the file), so "6/7" was really "the genre is missing" dressed as a
- * grade. And a settled row was awarded a green dot, which turns a tracklist
- * into a report card. Now a settled row shows nothing at all: absence is the
- * good news, and only what asks for you is drawn.
- *
- * Nothing summarises this at the record level any more — the hero carried a
- * gauge and it read as a verdict on music you came to listen to. What is wrong
- * with a record belongs where you went to fix it: the edit modals, which show
- * every field at once because that is their job, and the Metadata page.
- */
+/** A dot when the Metadata page still names this track; nothing when settled. */
 function AttentionDot({ flags }: { flags: DoorKey[] }) {
   const { t } = useTranslation("library");
   if (flags.length === 0) return null;
@@ -44,12 +30,12 @@ function AttentionDot({ flags }: { flags: DoorKey[] }) {
 
 interface AlbumTrackRowProps {
   track: LibraryTrack;
-  /** Position in the album, used when beets never tagged a track number. */
+  /** Used when beets has no track number. */
   position: number;
-  /** The checks still naming this track, from the album's own verdict. */
+  /** Checks still naming this track. */
   flags: DoorKey[];
   style?: CSSProperties;
-  /** Launch playback at this row, with the album as the queue. */
+  /** Plays from this row with the album as the queue. */
   onPlay: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -83,8 +69,7 @@ export function AlbumTrackRow({
       }
     >
       <td className={`${CELL} w-14`}>
-        {/* Centred under its "#" header: the button is narrower than the column,
-         * so left-aligning it left every number visibly off its own label. */}
+        {/* Centred under the "#" header. */}
         <div className="flex justify-center">
           <TrackIndexCell
             index={track.track ?? position}
@@ -105,8 +90,7 @@ export function AlbumTrackRow({
           >
             {track.title || t("unknownTitle")}
           </span>
-          {/* The bonus origin was already surfaced in the metadata drawer; on
-           * the album it explains why a track nobody expects is sitting here. */}
+          {/* Explains an unexpected track on the album. */}
           {track.bonusSource && (
             <span className="block truncate text-[0.6875rem] text-warning">
               {t("albums.bonusFrom", { source: track.bonusSource })}
@@ -115,16 +99,12 @@ export function AlbumTrackRow({
         </div>
       </td>
 
-      {/* Always shown, unlike the library-wide table's optional column: a
-       * featuring credit differs from the album artist on exactly the rows that
-       * matter, and hiding the column on a "single-artist" album is what makes
-       * those rows invisible. */}
+      {/* Always shown: featuring credits matter most on "single-artist" albums. */}
       <td className={`${CELL} w-[22%]`}>
         <span className="block truncate">{track.artist || t("unknownArtist")}</span>
       </td>
 
-      {/* Same chip grammar as the library-wide table: amber when missing —
-       * an album can legitimately mix genres, so the value is per-row data. */}
+      {/* Amber when missing; albums can mix genres. */}
       <td className={`${CELL} w-[16%]`}>
         <span
           className={
@@ -144,13 +124,8 @@ export function AlbumTrackRow({
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      {/* The extra wrapper is load-bearing, not decoration. `row-cascade`
-       * animates `td > *` from opacity 0 to 1, and the actions used to *be*
-       * that child: the keyframe overrode their `opacity-0` for the length of
-       * the entrance, so every row flashed its icons on arrival and then
-       * dropped them. The animation now lands on this div and the hidden layer
-       * sits one level deeper, where nothing touches it. `pl-6` is the
-       * breathing room — at `px-3` the icons sat against the duration. */}
+      {/* The wrapper takes `row-cascade`'s `td > *` animation, which would
+          otherwise override the actions' `opacity-0` and flash them. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
           <RowActions

@@ -15,19 +15,9 @@ import { fade, springs } from "@/shared/motion/tokens";
 import { WindowDragStrip } from "@/shared/ui/WindowDragStrip";
 
 /**
- * The first thing anyone sees — and, after an update that moves the pinned
- * versions or a reset of the environment, a screen someone already knows. The
- * steps do not change between the two; the header and the closing line do, so
- * a returning user is told what came undone rather than welcomed again.
- *
- * It owns the whole window rather than sitting in the shell — the sidebar leads
- * nowhere until the engine exists, and a half-live chrome reads as an app
- * ignoring you (see `SplashScreen` for where that lesson came from).
- *
- * The structure is a rail with numbered stations, and the numbering is earned:
- * nothing installs before an interpreter is found, and nothing is fingerprinted
- * before the engine exists. Where the music lands is stated at the end as a
- * fact, not dressed up as a fourth task.
+ * The setup walkthrough, for a first run or a repair (only the header and
+ * closing line differ). Owns the whole window: the shell is useless until the
+ * engine exists. Steps are ordered by dependency.
  */
 export interface SetupWalkthroughProps {
   mode: SetupMode;
@@ -50,8 +40,7 @@ export function SetupWalkthrough({
 }: SetupWalkthroughProps) {
   const { t } = useTranslation("onboarding");
   const { t: tCommon } = useTranslation("common");
-  // In-session only: passing over the key is a decision about this screen, not
-  // a preference worth carrying to the next launch.
+  // Session only.
   const [skipped, setSkipped] = useState<SetupStepId[]>([]);
 
   const steps = buildSetupSteps({ env, acoustidConfigured, skipped });
@@ -71,12 +60,7 @@ export function SetupWalkthrough({
     ),
   };
 
-  /**
-   * The right-hand column, per step. Driven by the step's own state rather than
-   * by the raw environment, so a step still out of reach says nothing at all —
-   * an amber "strongly recommended" against a greyed-out step three rungs down
-   * is a nag about something the user cannot act on yet.
-   */
+  /** Per-step status column; steps still out of reach say nothing. */
   const summaryFor = (step: (typeof steps)[number]): React.ReactNode => {
     if (step.state === "pending") return null;
     if (step.state === "skipped") return <StepSummary tone="muted">{t(`steps.${step.id}.skipped`)}</StepSummary>;
@@ -89,7 +73,7 @@ export function SetupWalkthrough({
         </StepSummary>
       );
     }
-    // Open, and optional: the only place the walkthrough leans on the user.
+    // The only nudge: an open optional step.
     return step.blocking ? null : <StepSummary tone="warning">{t(`steps.${step.id}.recommended`)}</StepSummary>;
   };
 
@@ -98,8 +82,7 @@ export function SetupWalkthrough({
       <div className="relative min-h-full">
         <WindowDragStrip />
 
-        {/* The same accent wash the download composer and every library hero sit
-            on, so the first screen already belongs to the app it opens. */}
+        {/* Same wash as the rest of the app. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-80 hero-wash" />
 
         <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-9 px-8 pt-20 pb-16">
@@ -115,11 +98,7 @@ export function SetupWalkthrough({
                 {t(`walkthrough.${mode}.lead`)}
               </p>
             </div>
-            {/* The first screen is also the first thing to be *read*, and until
-                now the only way to change the language was three screens past
-                it, in Settings. Beside the title rather than in a step: this is
-                not a task to complete, it is which words the rest of the page
-                is written in. */}
+            {/* Language choice on the first screen, before anything must be read. */}
             <div className="w-40 shrink-0">
               <LanguageChoice label={t("walkthrough.language")} />
             </div>
@@ -140,9 +119,7 @@ export function SetupWalkthrough({
             ))}
           </ol>
 
-          {/* Appears only once the way is clear — a button that shows up is the
-              signal that the list is done, where a disabled one from the start
-              is just furniture. */}
+          {/* Appears once everything is done. */}
           <AnimatePresence initial={false}>
             {canFinish && (
               <motion.footer

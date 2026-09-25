@@ -18,26 +18,20 @@ import { springs } from "@/shared/motion/tokens";
 
 interface PlaylistHeroProps {
   playlist: Playlist;
-  /** The name as shown — the favorites' localized label, not its stored name. */
+  /** Favorites shows its localized label. */
   displayName: string;
-  /** Members resolved against the library, playlist order. */
+  /** Members in playlist order. */
   tracks: LibraryTrack[];
   onPlay: () => void;
   onShuffle: () => void;
-  /** Opens the edit dialog — name, tile and sidebar glyph in one place. */
+  /** Opens the edit dialog. */
   onEdit: () => void;
   onDelete: () => void;
   ref?: Ref<HTMLElement>;
 }
 
-/** The album hero's twin for a list the user authored: same band, same
- * geometry, the mosaic where the sleeve goes and "Modifier" where the album
- * puts it too.
- *
- * The favorites list keeps only the playback row. It is the app's own list —
- * its name, its heart and its place in the sidebar are fixtures, and the one
- * thing that is the user's, its contents, is edited from the tracks
- * themselves. So there is nothing here for it to open. */
+/** The album hero's counterpart. Favorites only gets playback: its name, tile
+ * and sidebar place are fixed. */
 export function PlaylistHero({
   playlist,
   displayName,
@@ -69,8 +63,7 @@ export function PlaylistHero({
         />
 
         <div className="mt-5 flex items-end gap-6">
-          {/* Not a button: the tile shows what the list is, and the way to
-              change it is "Modifier", like everywhere else in the app. */}
+          {/* Not a button: editing goes through "Modifier". */}
           <div className="relative size-48 shrink-0 overflow-hidden rounded-xl glow-accent-deep">
             <PlaylistCoverMosaic
               covers={playlistCovers(tracks)}
@@ -92,10 +85,7 @@ export function PlaylistHero({
             <div className="flex flex-wrap items-center gap-3.5">
               {tracks.length > 0 && <HeroPlayButtons onPlay={onPlay} onShuffle={onShuffle} />}
 
-              {/* Nothing for the favorites list: everything below either
-                  renames it, redresses it or deletes it, and none of the three
-                  is on offer. An overflow menu holding one disabled item would
-                  only be a door that opens onto a wall. */}
+              {/* None for favorites: every action would rename, restyle or delete it. */}
               {!locked && (
                 <div className="flex items-center gap-2">
                   <motion.button

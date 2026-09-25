@@ -4,13 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import type { CoverCandidate } from "@/features/library/api";
 
-/**
- * What the Cover Art Archive holds for this album — the way back to an
- * official cover after a personal one, or to another edition's art. The lookup
- * only runs when asked: the strip rests as a button, and opening the modal
- * costs no network. Thumbnails arrive as data URLs from the sidecar; picking
- * one only *selects* it, the full-size download happens on confirm.
- */
+/** The album's Cover Art Archive uploads. Fetched only on request; picking one
+ * only selects it, the full download happens on confirm. */
 export function CandidateStrip({
   hasSearched,
   candidates,
@@ -21,7 +16,7 @@ export function CandidateStrip({
   onSelect,
   onRetry,
 }: {
-  /** Whether the user asked for the lookup — before that, the strip is a button. */
+  /** Before the user asks, the strip is a button. */
   hasSearched: boolean;
   candidates: CoverCandidate[] | undefined;
   isLoading: boolean;

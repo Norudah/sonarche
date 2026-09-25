@@ -118,17 +118,12 @@ class RescueCandidatesTest(unittest.TestCase):
 
 class FindContentDuplicatesTest(unittest.TestCase):
     def test_same_primary_marks_later_item(self):
-        # Regression: a playlist carrying the same song under two different
-        # video titles produced "02 Ready to Run.1.m4a" and a %aunique folder.
-        # The same audio shares its primary (top-confidence) recording.
+        # The same audio under two video titles shares its primary recording.
         dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"]), (3, ["rec-a", "rec-c"])])
         self.assertEqual(dups, {3: 1})
 
     def test_shared_secondary_only_is_not_a_duplicate(self):
-        # Regression (Hail to the King): two distinct album tracks whose only
-        # overlap is a low-confidence *secondary* recording must NOT be deleted.
-        # Item 2's primary is rec-b; it merely carries rec-a as a noisy second
-        # candidate. Different primaries -> different audio -> both kept.
+        # Overlap on a low-confidence secondary recording is not a duplicate.
         dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b", "rec-a"])])
         self.assertEqual(dups, {})
 
@@ -185,11 +180,8 @@ class MatchByRecordingsTest(unittest.TestCase):
         self.assertEqual(extra, [slot])
 
     def test_lone_leftover_takes_the_lone_free_slot(self):
-        # Regression (Apocalyptic Love): the "You're a Lie [HD]" video rip ran
-        # 259s against the album master's 231s and AcoustID resolved it to the
-        # single's recording, so it matched neither by id nor by duration —
-        # and landed untagged outside the album folder. With every other track
-        # placed, the one empty slot is the only thing it can be.
+        # A video rip that runs long and resolves to the single's recording matches
+        # neither by id nor duration; it takes the one empty slot.
         placed = [_Item(i, 200.0) for i in range(1, 4)]
         odd = _Item(4, 259.0)
         slots = [_Track(f"rec-{i}", 200.0) for i in range(1, 4)]
@@ -244,9 +236,8 @@ class MatchByRecordingsTest(unittest.TestCase):
 
 class SlotRescuesTest(unittest.TestCase):
     def test_title_and_duration_seat_cross_language_leftovers(self):
-        # The Spirit regression: two French files identified as their English
-        # siblings' recordings ("Here I Am", "Sound the Bugle"), while the
-        # voted French release kept exactly their two slots open.
+        # Two French files identified as their English siblings' recordings, with
+        # exactly their two slots open on the French release.
         me_voila, clairon = _Item(71, 271.6), _Item(72, 234.8)
         slot6 = _Track("rec-me-voila", 272.0, title="Me voilà")
         slot7 = _Track("rec-clairon", 235.0, title="Sonne le clairon")
@@ -326,9 +317,7 @@ class ConsolidationHarness(unittest.TestCase):
 
 
 class ConsolidateNamedSiblingsTest(ConsolidationHarness):
-    """The American Idiot regression: two *editions* never share a release id,
-    so the release-keyed merge left them side by side — one album in the app
-    (which groups by name), three %aunique-suffixed folders on disk."""
+    """Two editions never share a release id, but must end as one row and folder."""
 
     def test_two_editions_of_one_album_end_as_one_row_and_one_folder(self):
         import os

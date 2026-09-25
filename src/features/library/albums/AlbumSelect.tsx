@@ -7,16 +7,14 @@ import { AlbumCover } from "@/features/library/albums/AlbumCover";
 import { canonicalAlbumId } from "@/features/library/albums/move";
 import { useLibrary } from "@/features/library/hooks";
 
-/** What a picked album resolves to: the beets row a move can land on, plus the
- * words a summary chip can print without going back to the library. */
+/** The beets row a move can land on, plus labels for a summary chip. */
 export interface AlbumTarget {
   albumId: number;
   title: string;
   artist: string;
 }
 
-/** Same budget as the move dialog's picker: past this, typing narrows better
- * than scrolling. */
+/** Past this, typing narrows better than scrolling. */
 const MAX_ROWS = 30;
 
 const INPUT =
@@ -43,15 +41,8 @@ function Row({ album, onPick }: { album: Album; onPick: () => void }) {
   );
 }
 
-/**
- * An album of the library, picked inline — the embeddable half of what the
- * move dialog's picker does behind a modal. Search over the shelf, a capped
- * list, and once a record is chosen the list folds away behind it: the
- * component's value is the choice, not the browsing.
- *
- * Groups made only of singletons are not offered: they have no beets row for
- * anything to land on.
- */
+/** Inline album picker: search, capped list, folded once chosen. Singleton-only
+ * groups are excluded (no beets row to land on). */
 export function AlbumSelect({
   value,
   onChange,

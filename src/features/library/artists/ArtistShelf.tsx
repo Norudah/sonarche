@@ -7,28 +7,20 @@ import { ArtistRows } from "@/features/library/artists/ArtistRows";
 import { useArtistImages } from "@/features/library/hooks";
 import type { ShelfLayout } from "@/features/library/shelfLayout";
 
-/** Same cap as `AlbumGrid`: only the first rows join the entrance cascade. */
+/** See `AlbumGrid`. */
 const CASCADE_CAP = 24;
 
 interface ArtistShelfProps {
   artists: Artist[];
-  /** Same contract as `AlbumGrid`: what this result set is a result *of*.
-   * A change re-keys the grid and replays the cascade. */
+  /** See `AlbumGrid`. */
   animationKey?: string;
-  /** Portraits or rows — see `AlbumShelf`, same choice on the other shelf. */
+  /** See `AlbumShelf`. */
   layout?: ShelfLayout;
   onPlay: (artist: Artist) => void;
 }
 
-/**
- * Deliberately not virtualised, on the same reasoning as `AlbumGrid`: there can
- * never be more artists than albums, so the shelf that already holds ~900 cards
- * comfortably sets the ceiling for this one. Revisit past a few thousand.
- *
- * The image modal lives here, once, rather than once per card: the cards only
- * point at an artist, and a grid of hundreds must not mount hundreds of
- * dialogs to let each disc be dressed.
- */
+/** Not virtualised (never more artists than albums). Hosts one image modal
+ * for all cards. */
 export function ArtistShelf({ artists, animationKey = "", layout = "grid", onPlay }: ArtistShelfProps) {
   const [editing, setEditing] = useState<Artist | null>(null);
   const artistImages = useArtistImages();
@@ -43,8 +35,7 @@ export function ArtistShelf({ artists, animationKey = "", layout = "grid", onPla
             <ArtistCard
               key={artist.name}
               artist={artist}
-              // Capped like the album grid's: the cards below the fold are not
-              // worth making the user wait for.
+              // Capped, like the album grid.
               style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
               cascade={position < CASCADE_CAP}
               onPlay={() => onPlay(artist)}

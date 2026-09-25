@@ -7,12 +7,7 @@ import { Swap } from "@/shared/motion/Swap";
 import { springs } from "@/shared/motion/tokens";
 import { usePlayer, usePlayerQueue } from "@/shared/player/PlayerContext";
 
-/**
- * Reads its contexts itself rather than taking nine props through PlayerBar —
- * same reasoning as SeekBar. The queue subscription is cheap here: this cluster
- * displays the shuffle and repeat modes, so it re-renders exactly when they
- * change.
- */
+/** Reads its contexts directly rather than through PlayerBar props. */
 export function Transport() {
   const { t } = useTranslation("player");
   const { current, isPlaying, toggle, next, previous } = usePlayer();
@@ -36,9 +31,7 @@ export function Transport() {
       <Button variant="ghost" size="sm" isIconOnly isDisabled={!hasQueue} onPress={previous} aria-label={t("previous")}>
         <SkipBack className="size-4" />
       </Button>
-      {/* The press scale lives on a wrapper, not the Button: HeroUI already owns
-          the button's own pressed styling, and fighting it would mean reaching
-          into its internals. */}
+      {/* On a wrapper: HeroUI owns the Button's pressed styling. */}
       <motion.div whileTap={canPlay ? { scale: 0.88 } : undefined} transition={springs.snappy}>
         <Button
           variant="primary"
@@ -48,10 +41,7 @@ export function Transport() {
           onPress={toggle}
           aria-label={isPlaying ? t("pause") : t("play")}
         >
-          {/* `cross`, not the default `wait`: this slot is a fixed-size icon in
-              a filled circle, so waiting for the old glyph to leave showed an
-              empty accent disc. And `snappy` over `bouncy` — a transport button
-              is pressed in sequence, it cannot afford a settle. */}
+          {/* `cross`: in a fixed-size circle, `wait` shows an empty disc. */}
           <Swap
             swapKey={isPlaying ? "pause" : "play"}
             mode="cross"

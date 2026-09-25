@@ -1,19 +1,11 @@
-"""Align an imported library's albums with MusicBrainz — one search per album.
+"""Align imported albums with MusicBrainz, one text search per album.
 
-The tier between "fetch covers" and "fingerprint everything": an imported
-album usually carries usable tags, so a single text search per album folder
-identifies the release for the cost of ~1 request instead of one fingerprint
-lookup per track. Two handlers, split so MusicBrainz is only paid once:
+- `scan` searches a release for each album without a MusicBrainz id and
+  returns a plan of fields to fill. Nothing is stored.
+- `apply` writes the plan, re-checking every guard at write time.
 
-- ``scan`` walks every album row without a MusicBrainz identity, searches a
-  release from the row's own tags, and returns a *plan* — per item and per
-  album, the fields a fill pass would write. Nothing is stored.
-- ``apply`` takes that plan back and writes it, re-checking every guard at
-  write time (a field filled or hand-edited since the scan is left alone).
-
-Deliberately non-destructive, unlike the download path in enrich_album: only
-blank fields are written, nothing is ever deleted, and files are never moved —
-a stale folder name is a cosmetic debt; a mass rename is not undoable.
+Non-destructive: only blank fields are written, nothing is deleted and files
+are never moved.
 """
 
 import os
@@ -25,22 +17,17 @@ import metadata
 import protocol
 import provenance
 
-# The text search has no fingerprint safety net: near-perfect hits only (same
-# bar as enrich_album's text fallback).
+# No fingerprint safety net for text search: near-perfect hits only.
 _MAX_ALBUM_DISTANCE = 0.15
 
-# MusicBrainz pacing is handled by beets' client (~1 req/s); this pause only
-# adds breathing room between albums for the UI and the log.
+# beets paces MusicBrainz itself; this only spaces out albums.
 _DEFAULT_SEARCH_PAUSE_SECONDS = 0.0
 
-# Between Last.fm genre fetches at apply time — the shared-key politeness the
-# genre pass observes everywhere (see genres.py). The Rust host passes the
-# user's configured delay; this is only a fallback for direct invocations.
+# Between Last.fm genre fetches; the host passes the user's setting.
 _DEFAULT_FETCH_PAUSE_SECONDS = 1.0
 
-# Every field the fill pass may write on an item. A plan entry crossing the
-# IPC boundary is filtered against this list, so a forged plan cannot reach
-# `path` or any other field the pass has no business touching.
+# Plans coming over IPC are filtered against this list, so a forged plan
+# cannot write `path` or other fields.
 FILL_FIELDS = (
     "title",
     "artist",
@@ -57,7 +44,6 @@ FILL_FIELDS = (
     "mb_releasegroupid",
 )
 
-# Same idea for the album row.
 ALBUM_FILL_FIELDS = (
     "album",
     "albumartist",
@@ -69,21 +55,18 @@ ALBUM_FILL_FIELDS = (
 
 
 def blank(value) -> bool:
-    """Whether a field counts as unfilled. Pure. beets stores 0 for a missing
-    year/track and "" for a missing id — both are absences, not values."""
+    """Whether a field is unfilled (beets stores 0 or "" for absent)."""
     return value is None or value == "" or value == 0
 
 
 def acceptable(distance: float, extra_items: int) -> bool:
-    """Whether a candidate release is trusted. Pure. Every local file must map
-    onto the release (a leftover means this probably isn't the album), and the
-    distance bar is the strict one text matches get without a fingerprint."""
+    """Whether a candidate is trusted: every file maps onto the release, within
+    the strict text-match distance."""
     return extra_items == 0 and distance <= _MAX_ALBUM_DISTANCE
 
 
 def plan_fills(current: dict, candidate: dict, edited: set, fields=FILL_FIELDS) -> dict:
-    """The fields a fill pass would write: candidate values for fields blank
-    today, skipping anything a human ever touched. Pure."""
+    """Candidate values for fields that are blank and never hand-edited."""
     fills = {}
     for field in fields:
         value = candidate.get(field)
@@ -118,8 +101,8 @@ def _cover_missing(album) -> bool:
 
 
 def _album_plan(album, match) -> dict:
-    """The plan entry for one matched album. Display fields (release_*) are for
-    the front's verdict list; `fills` are what apply would write."""
+    """The plan entry for one matched album: release_* fields for display,
+    `fills` for apply."""
     info = match.info
     item_entries = []
     for item, track in match.mapping.items():
@@ -129,9 +112,7 @@ def _album_plan(album, match) -> dict:
             candidate,
             _edited_fields(item),
         )
-        # MusicBrainz' community genres ride along outside the fills: they are
-        # not written as-is but seeded through the genre pipeline at apply time,
-        # so the curated tree keeps its say (same policy as enrich).
+        # MB genres go through the genre pipeline at apply time, not written as-is.
         genres = [str(g) for g in (candidate.get("genres") or []) if g]
         if fills or genres:
             item_entries.append({"item_id": item.id, "fills": fills, "genres": genres})
@@ -164,7 +145,7 @@ def _album_plan(album, match) -> dict:
 
 
 def scan(request_id: str, params: dict) -> dict:
-    """Walk the albums without a MusicBrainz identity and build the plan."""
+    """Build the plan for albums without a MusicBrainz id."""
     from beets.library import Library
 
     metadata.ensure_plugins()
@@ -173,10 +154,7 @@ def scan(request_id: str, params: dict) -> dict:
     )
     lib = Library(params["beets_db"], directory=params["library_dir"])
 
-    # Collections are skipped, not merely likely to fail: a gathering of tracks
-    # has no release to be matched against, and searching for one either finds
-    # nothing (a scan that got slower for no one) or finds the album one of its
-    # tracks came from and offers to rewrite the whole thing into it.
+    # Collections have no release to match.
     targets = [
         album
         for album in lib.albums()
@@ -233,13 +211,11 @@ def _fetch_cover(album, items, release_id: str, release_group_id: str | None) ->
 
 
 def _apply_item(lib, entry: dict, lastgenre) -> tuple[bool, bool, bool]:
-    """Write one plan item, every guard re-checked at write time. Returns
-    (stored, genre_filled, paid_lastfm) — the last drives the caller's pacing.
+    """Write one plan item, guards re-checked. Returns (stored, genre_filled,
+    paid_lastfm); the last drives pacing.
 
-    Genre is filled through the pipeline, never from the plan as-is: the MB
-    community genres seed the item, `_get_genre` canonicalizes them against the
-    curated tree offline, and only a genre-less item with no MB genres costs a
-    Last.fm round-trip (same policy and same order as enrich)."""
+    Genre goes through the pipeline: MB genres canonicalize offline, and only a
+    genre-less item costs a Last.fm call."""
     item = lib.get_item(int(entry.get("item_id") or 0))
     if item is None:
         return False, False, False
@@ -267,8 +243,7 @@ def _apply_item(lib, entry: dict, lastgenre) -> tuple[bool, bool, bool]:
             genre_filled = True
             protocol.log(f"library_align: genre {genres} ({label})")
         elif seeded:
-            # Nothing resolved against the tree: keep the raw MB genres rather
-            # than erasing them — the off-tree triage line will say so.
+            # Nothing resolved: keep the raw MB genres for the off-tree triage.
             genre_filled = True
 
     if not fills and not genre_filled:
@@ -286,8 +261,8 @@ def _apply_item(lib, entry: dict, lastgenre) -> tuple[bool, bool, bool]:
 
 
 def apply(request_id: str, params: dict) -> dict:
-    """Write a scan plan back. Albums aligned (or removed) since the scan are
-    skipped whole; fields filled or hand-edited since are skipped one by one."""
+    """Write a scan plan back. Albums aligned or removed since the scan are
+    skipped, as are fields filled or edited since."""
     from beets.library import Library
 
     metadata.ensure_plugins()
@@ -319,7 +294,6 @@ def apply(request_id: str, params: dict) -> dict:
                 touched = True
             if genre_filled:
                 genres_filled += 1
-            # Only a real Last.fm round-trip paces the loop, as everywhere else.
             if paid_lastfm and pause > 0:
                 time.sleep(pause)
         raw = entry.get("album_fills") or {}

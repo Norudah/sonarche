@@ -19,9 +19,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-// Regression: a dev build's version is routinely behind the latest GitHub
-// release, so an unguarded check() offers an update the dev session has no
-// way to install (the launch toast fired on every `npm run tauri dev`).
+// Dev builds lag the latest release and can't install updates.
 describe("update check, gated on dev mode", () => {
   it("checkForUpdate never calls the updater plugin in dev", async () => {
     vi.stubEnv("DEV", true);

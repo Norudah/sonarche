@@ -11,17 +11,8 @@ import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 import { springs } from "@/shared/motion/tokens";
 import { Swap } from "@/shared/motion/Swap";
 
-/**
- * The long one — minutes of network, and the only place in the walkthrough with
- * work to watch.
- *
- * So it is the only place that gets the app's progress object: the same pale
- * track and upright playhead as the download feed's pipeline and the player's
- * seek bar. It sweeps rather than fills, and that is deliberate — pip resolves a
- * dependency tree of unknown size, so a percentage would be a number we made up.
- * The sentence under it names the package, which is true and answers the same
- * question.
- */
+/** Sweeps rather than fills: pip's work size is unknown. The line below names
+ * the current package. */
 function ScanRail({ label }: { label: string }) {
   return (
     <div role="progressbar" aria-label={label} className="relative h-1.5 rounded-full bg-default">
@@ -33,13 +24,10 @@ function ScanRail({ label }: { label: string }) {
 }
 
 export interface EnginePanelProps {
-  /** Only the verb changes: "install" reads as new work to someone who has
-   * already installed this engine once. */
+  /** Only the verb changes for a reinstall. */
   mode: SetupMode;
   isInstalled: boolean;
-  /** The app carries its own interpreter and its own wheels, so this step
-   * unpacks rather than downloads — which changes both what it is and how
-   * long it takes. */
+  /** Bundled interpreter and wheels: unpack instead of download. */
   isBundled: boolean;
 }
 
@@ -78,8 +66,7 @@ export function EnginePanel({ mode, isInstalled, isBundled }: EnginePanelProps) 
           </Swap>
         </div>
       ) : (
-        // Nothing to press once it is in place: this panel is re-opened to read
-        // what happened, not to be invited to do it again.
+        // Nothing to press once installed; reopening is for reading.
         !isInstalled && (
           <div className="flex items-center gap-3">
             <Button variant="primary" onPress={() => setup.mutate()}>

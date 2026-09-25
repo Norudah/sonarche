@@ -7,11 +7,7 @@ from download import UNAVAILABLE_PREFIX, is_unavailable_error, js_runtimes, scru
 
 
 class UnavailableErrorTest(unittest.TestCase):
-    """A playlist keeps listing videos the source has since pulled: full title,
-    duration and channel, indistinguishable from a healthy entry until the
-    download is attempted. This is where that verdict is made — get it wrong
-    and either a dead slot is retried forever, or a genuine network failure is
-    written off as gone."""
+    """Playlists still list pulled videos; only the download error tells."""
 
     def test_recognizes_the_message_the_cars_playlist_produced(self):
         # Captured verbatim from yt-dlp on the user's own playlist.
@@ -53,9 +49,7 @@ class UnavailableErrorTest(unittest.TestCase):
 
 
 class ScrubTest(unittest.TestCase):
-    """Errors land in the download history and on the failing row. The app
-    never names the site it fetches from, so the extractor tag comes off — but
-    what actually went wrong has to survive, or a failed row says nothing."""
+    """The site tag goes; the actual error message stays."""
 
     def test_drops_the_extractor_tag_and_the_video_id(self):
         self.assertEqual(

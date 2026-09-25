@@ -10,15 +10,14 @@ import { useMoveWithUndo } from "@/features/library/albums/useMoveWithUndo";
 import type { LibraryTrack, MoveSpec } from "@/features/library/api";
 import { useLibrary } from "@/features/library/hooks";
 
-/** Beyond this the list stops growing and asks for a narrower search: a picker
- * is search-driven, and thousands of rows would be paid for by every keystroke. */
+/** Search-driven: the list stops here and asks for a narrower search. */
 const MAX_ROWS = 50;
 
 const INPUT =
   "min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30";
 
 interface MoveToAlbumDialogProps {
-  /** What is being refiled — one row's track, or a whole record. Null = closed. */
+  /** A track or a whole record; null = closed. */
   tracks: LibraryTrack[] | null;
   onClose: () => void;
 }
@@ -47,7 +46,7 @@ function AlbumRow({ album, disabled, onPick }: { album: Album; disabled: boolean
   );
 }
 
-/** Step 2a — the picked record, what will happen, and the nature choice. */
+/** Step 2a: the target, what happens, and its kind. */
 function ConfirmStep({
   tracks,
   target,
@@ -61,8 +60,7 @@ function ConfirmStep({
 }) {
   const { t } = useTranslation("library");
   const { run, isPending } = useMoveWithUndo();
-  // Pre-answered by what the tracks themselves say: arrivals from another
-  // record make a personal gathering, same-tag arrivals are a repair.
+  // Pre-answered from the tracks: arrivals from other records suggest a collection.
   const [asCollection, setAsCollection] = useState(() => proposeCollection(tracks, target));
   const alreadyCollection = target.kind === "collection";
 
@@ -137,8 +135,7 @@ function ConfirmStep({
   );
 }
 
-/** Step 2b — name a record that does not exist yet. Always born a collection:
- * a selection gathered by hand is the definition of one. */
+/** Step 2b: a new record, always a collection. */
 function CreateStep({ tracks, onBack, onClose }: { tracks: LibraryTrack[]; onBack: () => void; onClose: () => void }) {
   const { t } = useTranslation("library");
   const { run, isPending } = useMoveWithUndo();
@@ -166,7 +163,6 @@ function CreateStep({ tracks, onBack, onClose }: { tracks: LibraryTrack[]; onBac
       }}
     >
       <div className="flex flex-col gap-2">
-        {/* Autofocused on purpose: this step exists to type a name. */}
         <input
           type="text"
           value={title}
@@ -209,7 +205,7 @@ function CreateStep({ tracks, onBack, onClose }: { tracks: LibraryTrack[]; onBac
   );
 }
 
-/** Mounted per opening so search, step and drafts start clean each time. */
+/** Mounted per opening so state starts clean. */
 function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () => void }) {
   const { t } = useTranslation("library");
   const library = useLibrary();
@@ -306,12 +302,8 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   );
 }
 
-/**
- * "Déplacer vers un album" — the push half of refiling. A picker first, like
- * the playlist one it mirrors, but with a confirm step: this gesture moves
- * files on disk, and a record's nature may change with it, so the click that
- * commits states both.
- */
+/** Moves tracks onto another record. Has a confirm step: files move on disk
+ * and the record's kind may change. */
 export function MoveToAlbumDialog({ tracks, onClose }: MoveToAlbumDialogProps) {
   return (
     <Modal

@@ -103,9 +103,7 @@ describe("jobPresence", () => {
     expect(jobPresence(album, inLibrary([]))).toBe("none");
   });
 
-  /** beets recycles deleted rowids: an old row's id can point at unrelated
-   * audio. The report's stored tags are the anchor — one of title/album has
-   * to still match for the id to count. */
+  /** beets recycles rowids; title or album must still match the report. */
   it("does not count a recycled id whose track no longer matches the report", () => {
     const single = job({
       status: "done",

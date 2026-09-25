@@ -1,19 +1,14 @@
 import { Disc3, History, ImageOff, ListX, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-/**
- * The irreversible erases, mildest first, and what each one takes.
- *
- * Shared between the pane that offers them and the host that runs them: the
- * two live on opposite sides of the settings dialog on purpose (see
- * `SettingsTaskHost`), and neither may own this table alone.
- */
+/** The irreversible erases, mildest first. Shared by the pane that offers them
+ * and `SettingsTaskHost`, which runs them. */
 export interface EraseDef {
   key: EraseKey;
   icon: LucideIcon;
-  /** The losses the dialog lists, one line each, as `danger.<key>.<item>`. */
+  /** Listed losses, as `danger.<key>.<item>`. */
   itemKeys: readonly string[];
-  /** Whether finishing takes the webview down with it. */
+  /** Whether it ends with a webview reload. */
   reloads: boolean;
 }
 
@@ -22,8 +17,7 @@ export type EraseKey =
   | "eraseArtistImages"
   | "erasePlaylists"
   | "eraseHistory"
-  /** Not in `AIMED_ERASES`: it covers every one of them, and the pane gives it
-   * a band of its own so the eye has to cross a boundary to reach it. */
+  /** Covers all the aimed erases, so it gets its own band in the pane. */
   | "erase";
 
 export const AIMED_ERASES: EraseDef[] = [
@@ -40,8 +34,6 @@ export const FULL_ERASE: EraseDef = {
   reloads: true,
 };
 
-/** Every erase by key, so a task carrying only a key can find what it takes
- * without a lookup that might miss. */
 export const ERASES: Record<EraseKey, EraseDef> = Object.fromEntries(
   [...AIMED_ERASES, FULL_ERASE].map((def) => [def.key, def]),
 ) as Record<EraseKey, EraseDef>;

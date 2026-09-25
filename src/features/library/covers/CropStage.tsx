@@ -13,22 +13,13 @@ import {
   type SourceSize,
 } from "@/features/library/covers/coverCrop";
 
-/** One notch of the zoom slider, and one arrow press on the frame. */
+/** One slider notch, and one arrow press. */
 const ZOOM_STEP = 0.02;
 
 /**
- * The crop, chosen by moving the frame itself and by sizing it.
- *
- * The whole image is shown, the square window sits over it, and everything
- * outside the window is washed out — what stays bright is exactly what the
- * cover will be. Dragging moves whichever of the two can move (see
- * `stageLayout`); the wheel and the slider below size the window.
- *
- * Sized past the largest square the picture holds, the frame leaves the
- * picture: the wash then shows through where there is nothing to crop, and the
- * ring turns amber. The stage does not refuse to go there — a control that
- * silently stops is a control that explains nothing — it just stops being
- * something the caller can confirm.
+ * Crop by moving and sizing a window over the whole image (outside is washed
+ * out; see `stageLayout`). Past the largest square the frame may leave the
+ * picture: the ring turns amber and the caller can't confirm.
  */
 export function CropStage({
   url,
@@ -43,15 +34,13 @@ export function CropStage({
   url: string;
   natural: SourceSize;
   frame: CropFrame;
-  /** Stage ceiling, CSS px — the long side fits this. */
+  /** Stage ceiling in CSS px (the long side). */
   maxPx: number;
   /** Accessible name for the frame. */
   label: string;
   /** Accessible name for the zoom slider. */
   zoomLabel: string;
-  /** Circular window instead of a square one — for images worn as a disc
-   * (artists). What is written stays the square; the circle previews the mask
-   * the interface will draw it under, corners honestly washed out. */
+  /** Circular window for disc images (artists); the saved image stays square. */
   round?: boolean;
   onFrame: (frame: CropFrame) => void;
 }) {
@@ -97,17 +86,15 @@ export function CropStage({
     }
   };
 
-  // Subscribed by hand rather than through `onWheel`: React attaches that one
-  // passively, so `preventDefault` is refused and zooming would scroll the
-  // modal behind the stage at the same time.
+  // Subscribed manually: React's `onWheel` is passive, so `preventDefault`
+  // would fail and the modal would scroll too.
   const boxRef = useRef<HTMLDivElement>(null);
   const wheelRef = useRef<(delta: number) => void>(() => {});
   wheelRef.current = (delta) => move({ zoom: clampZoom(frame.zoom + delta * 0.0015) });
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
-    // Coalesced to one update per animation frame: a trackpad reports far
-    // faster than the screen draws, and each tick re-lays-out the stage.
+    // Coalesced to one update per frame.
     let raf = 0;
     let pending = 0;
     const onWheel = (event: WheelEvent) => {
@@ -132,8 +119,7 @@ export function CropStage({
 
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: maxPx }}>
-      {/* Fixed-footprint viewport: the union box breathes with the zoom inside
-          it, so nothing outside the stage moves while the wheel turns. */}
+      {/* Fixed-footprint viewport, so the modal doesn't move while zooming. */}
       <div className="flex items-center justify-center" style={{ width: maxPx, height: maxPx }}>
         <div
           ref={boxRef}
@@ -156,8 +142,7 @@ export function CropStage({
               height: stage.imageHeight,
             }}
           />
-          {/* The window: the wash outside it comes from its own oversized shadow,
-            so there is exactly one element to move. */}
+          {/* The wash outside is the window's own oversized shadow. */}
           <div
             tabIndex={0}
             role="group"
@@ -179,8 +164,7 @@ export function CropStage({
 
       <div className="flex w-full items-center gap-2 text-muted">
         <ZoomOut className="size-3.5 shrink-0" />
-        {/* Reversed: the slider fills as the frame tightens, because what grows
-            on screen when you pull right is the subject, not the window. */}
+        {/* Reversed: the slider fills as the frame tightens. */}
         <Slider
           className="flex-1"
           aria-label={zoomLabel}

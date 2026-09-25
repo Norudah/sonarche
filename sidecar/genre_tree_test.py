@@ -82,9 +82,7 @@ class TreeConsistencyTest(unittest.TestCase):
             self.assertEqual(mapping.get(root), root, root)
 
     def test_whitelist_matches_tree_nodes(self):
-        # The whitelist drives what lastgenre may store; the tree drives the
-        # bucket. They must stay in sync: every tree node is whitelisted
-        # (fabricated family roots excepted) and nothing else is.
+        # Every tree node is whitelisted (fabricated roots excepted), nothing else is.
         fabricated = {"folk & country"}
         with open(WHITELIST_PATH, encoding="utf-8") as f:
             whitelist = {

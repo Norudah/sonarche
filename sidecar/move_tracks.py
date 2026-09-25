@@ -1,29 +1,12 @@
-"""Refile tracks onto another record — the verb behind "my own album".
+"""Refile tracks onto another album row: into an existing record, merging a
+whole record, or gathering a selection into a new one (`new_album`).
 
-Plenty of people do not keep releases: they keep four tracks of an artist they
-actually like, filed under a record they named themselves. Sonarche's write
-path cannot say that — `library.update` treats an album edit as a *rename* (set
-the value on the album row, re-sync every track), so editing three tracks out
-of twelve renames all twelve. Moving some tracks somewhere else is a different
-verb, and this is it.
+Only filing fields change (`album`, `albumartist`, `comp`, optionally the
+position); recording facts (`artist`, genre, year, `mb_trackid`) stay.
 
-One operation covers every gesture: move a track into an existing record, merge
-a whole record into another, or gather a selection into a brand-new one
-(`new_album`). What changes on the moved items is exactly what decides where a
-file is *filed* — `album`, `albumartist`, `comp` and (on request) the position
-— and nothing that states a fact about the recording: `artist`, genre, year and
-`mb_trackid` stay, which is the whole point of a personal gathering.
-
-Two things the album row writes here must never do, and why `inherit=False` is
-load-bearing on every `album.store()`: beets' default `store(inherit=True)`
-pushes dirty album fields — flexible attributes included — down onto every
-item, so blanking the created row's release identity would blank each track's
-own MusicBrainz match with it.
-
-An emptied source row is removed and its folder cleaned by hand: beets prunes a
-vacated directory only when nothing is left in it, and its own `cover.jpg`
-(plus any legacy `cover-hq.*` archive from <= 2.x) is still there, so the husk
-would outlive the record it belonged to.
+Every `album.store()` passes `inherit=False`: the default pushes dirty album
+fields onto every item, which would blank each track's own MusicBrainz ids
+when the new row's release identity is cleared.
 """
 
 import os
@@ -33,15 +16,11 @@ import library
 import protocol
 import provenance
 
-# Where a moved track came from (the source album's title), on the item. The
-# inspection surfaces read it ("vient de X"); nothing structural depends on it
-# — undo is just the same verb pointed back.
+# The source album's title, shown in the inspection views.
 MOVED_FROM_KEY = "sonarche_moved_from"
 
-# Release identity fields `lib.add_album` copies from the first item onto a
-# brand-new row. A gathered record is nobody's release: left in place they
-# would claim the row *is* the first track's album of origin, and every scan
-# keyed on `mb_albumid` (alignment, enrich) would treat it as one.
+# Release ids `lib.add_album` copies from the first item; a gathered record
+# is no release, and scans keyed on `mb_albumid` must not treat it as one.
 _RELEASE_IDENTITY_FIELDS = (
     "mb_albumid",
     "mb_releasegroupid",
@@ -52,12 +31,8 @@ _RELEASE_IDENTITY_FIELDS = (
 
 
 def renumbering(existing: list[int], count: int) -> list[int]:
-    """Track numbers for `count` incoming tracks, stacked after what is there.
-
-    Gaps in the existing numbering are not refilled: the numbers already on the
-    record are its owner's (or a release's) and re-using a hole would silently
-    interleave new tracks into an order someone chose. Pure.
-    """
+    """Track numbers for `count` incoming tracks, after the highest existing one.
+    Gaps are not refilled, so an existing order is never interleaved."""
     start = max((n for n in existing if n > 0), default=0)
     return list(range(start + 1, start + 1 + count))
 
@@ -71,9 +46,9 @@ def _decode(value):
 def handle(_request_id: str, params: dict) -> dict:
     """Move items onto a target album row, existing or created.
 
-    Params: `item_ids` (order = numbering order when `renumber` is on), exactly
-    one of `target_album_id` / `new_album` ({"album", "albumartist"}), optional
-    `kind` to declare the target's nature in the same pass, and `renumber`.
+    Params: `item_ids` (numbering order when `renumber` is on), exactly one of
+    `target_album_id` / `new_album` ({"album", "albumartist"}), optional `kind`,
+    and `renumber`.
     """
     db_path = params["beets_db"]
     if not os.path.exists(db_path):
@@ -117,23 +92,15 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             continue
         items.append(item)
 
-    # Where each track sat before anything moved. Read up front rather than off
-    # the item inside the loop: `lib.add_album` re-parents its items in its own
-    # transaction, so by the time the loop runs on a *created* target every one
-    # of them already points at the new row and the records they came from are
-    # unrecoverable — which is how an emptied source row and its folder came to
-    # outlive the move that emptied it.
+    # Read up front: `lib.add_album` re-parents items in its own transaction.
     origins = {item.id: item.album_id for item in items}
 
     if target_album_id is not None:
         album = lib.get_album(int(target_album_id))
         if album is None:
             raise RuntimeError(f"album not found: id={target_album_id}")
-        # Already filed there: nothing to do, and counting them as moved would
-        # make the recap lie.
         incoming = [item for item in items if item.album_id != album.id]
-        # `incoming`, not `items`: a selected resident is also in album.items()
-        # and would vote twice, which can flip the healed majority.
+        # Residents in the selection would otherwise vote twice.
         owner_healed = _ensure_filed_owner(album, incoming)
         created = False
     else:
@@ -145,19 +112,12 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         created = True
 
     if renumber:
-        # For an existing target the base is what it holds *now* — the incoming
-        # items have not moved yet, so `album.items()` is exactly the residents.
         existing = [] if created else [item.track or 0 for item in album.items()]
         numbers = renumbering(existing, len(incoming))
 
-    # Two passes, and the split is the point: retag + re-parent first (DB
-    # only), files second. Moving a file inside the first loop computed its
-    # destination while the emptied source rows still existed — and when a
-    # source shared the target's name (a one-by-one download matched another
-    # edition of the same album), %aunique saw two records with one name and
-    # baked a "[catalognum]" suffix into the *target's* folder. The rows died
-    # right after, but no one re-moved the files: every add split the album
-    # folder a little more.
+    # Retag and re-parent first (DB only), move files second: destinations must
+    # be computed after the emptied source rows are gone, or %aunique suffixes
+    # the target folder when a source shares its name.
     sources: dict[int, None] = {}
     for index, item in enumerate(incoming):
         changed: set[str] = set()
@@ -171,13 +131,7 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             if (getattr(item, key, "") or "") != wanted:
                 setattr(item, key, wanted)
                 changed.add(key)
-        # `comp` picks the path *template*, not just a tag: beets files a
-        # compilation track under `Compilations/<album>/` and everything else
-        # under `<albumartist>/<album>/`. A track arriving from a compilation
-        # kept its flag and landed in a second folder — one record, split in
-        # two on disk, while the app (which groups by tag) showed it whole.
-        # It states where a file belongs, so it follows the record like the
-        # two above.
+        # `comp` selects the path template, so it must follow the record.
         if bool(item.comp) != bool(album.comp):
             item.comp = album.comp
             changed.add("comp")
@@ -185,8 +139,7 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             if (item.track or 0) != numbers[index]:
                 item.track = numbers[index]
                 changed.add("track")
-            # The old record's total is a statement about a tracklist this
-            # track no longer sits on; 0 is beets' "unset".
+            # The old record's total no longer applies; 0 is beets' "unset".
             if (item.tracktotal or 0) != 0:
                 item.tracktotal = 0
                 changed.add("tracktotal")
@@ -195,31 +148,25 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         if old_album_title and old_album_title != (album.album or ""):
             item[MOVED_FROM_KEY] = old_album_title
         if changed:
-            # The destination is the user's word: a later bulk pass must spare
-            # it exactly like a typed-in edit.
+            # Treated like a manual edit, so bulk passes spare it.
             provenance.mark_edited(item, changed)
 
         item.store()
 
-    # Rows first, art after: the emptied source rows must be gone before any
-    # destination is computed (their ghost is what made %aunique suffix the
-    # target), but their cover files stay on disk until the audio has moved —
-    # a move failing mid-pass then leaves covers in place, not deleted under
-    # albums whose files never left.
+    # Drop emptied rows before computing destinations, but keep their covers on
+    # disk until the audio has moved, in case the move fails midway.
     emptied_art: list[str | None] = []
     for source_id in sources:
         art = _pop_emptied_source(lib, source_id, album.id)
         if art is not False:
             emptied_art.append(art)
     sources_removed = len(emptied_art)
-    # %aunique memoizes per Library instance; a verdict reached while the dead
-    # rows were still around must not outlive them.
+    # %aunique memoizes per Library; reset it now the dead rows are gone.
     lib._memotable = {}
 
     for item in incoming:
         old_art = item.get(library.ITEM_ART_KEY) or None
-        # `with_album=False`: the target row's own move runs (at most) once
-        # below, not once per incoming track.
+        # The album row itself is moved once below.
         item.try_sync(write=True, move=True, with_album=False)
         if old_art:
             _follow_item_art(lib, item, old_art)
@@ -227,11 +174,8 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
     for art in emptied_art:
         _sweep_source_art(lib, art)
 
-    # Residents whose paths were baked with a suffix by an earlier incident
-    # follow: the album re-files itself (album art included) under its clean
-    # name. Only when this move could have changed the album's own folder — a
-    # same-named source row died, or the blank owner was just healed — so the
-    # everyday single-track move stays O(1), not O(album size).
+    # Re-file residents only when the album folder may have changed, so a
+    # single-track move stays O(1).
     if sources_removed or owner_healed:
         resident_art = {
             item.id: item.get(library.ITEM_ART_KEY)
@@ -242,15 +186,13 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
             album.move()
         except Exception as exc:
             protocol.log(f"move_tracks: album re-file failed: {exc}")
-        # Album.move carries the album cover but not a resident's written-out
-        # singleton art; carry those by hand, exactly like the arrivals'.
+        # Album.move doesn't carry a resident's singleton art.
         for item_id, old_art in resident_art.items():
             fresh = lib.get_item(item_id)
             if fresh is not None:
                 _follow_item_art(lib, fresh, old_art)
 
-    # Last, so the cover is read and written at the paths everything above just
-    # settled on — a renamed album folder moves `artpath` and the audio with it.
+    # Last, once every path has settled.
     covered = _adopt_album_art(lib, album, incoming)
 
     _apply_kind(album, kind)
@@ -266,24 +208,10 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
 
 
 def _adopt_album_art(lib, album, incoming) -> int:
-    """Give the arrivals the record's own cover. Returns how many files took it.
+    """Embed the record's cover (its `artpath`) into the arrivals. Returns how
+    many files took it. A record without a cover leaves the arrivals' own.
 
-    Filing a track onto a record is the user saying it *is* part of that record,
-    and everything that states where a file belongs already follows — album,
-    album artist, `comp`, the position. The picture was the one thing left
-    behind: the file kept whatever its own release (or its video thumbnail) had
-    embedded, so the track sat inside the right album wearing another album's
-    cover, and the only way out was to re-set the cover by hand.
-
-    The album row's `artpath` is the record's picture — the same file every
-    other surface reads — so the arrivals take it verbatim; nothing is fetched.
-    A record with no cover of its own has nothing to hand over and the arrivals
-    keep theirs: gaining a picture is worth a rewrite, losing one is not.
-
-    A written-out singleton cover (`sonarche_item_art`) goes with the same move:
-    it exists so a track *with no album row* has a picture, and now that the
-    track has one, that file is a second answer to a question with one answer —
-    and the one the library listing prefers when the record itself is bare.
+    A singleton cover (`sonarche_item_art`) becomes redundant and is removed.
     """
     art = _decode(album.artpath) if album.artpath else None
     if not art or not os.path.exists(art):
@@ -297,11 +225,7 @@ def _adopt_album_art(lib, album, incoming) -> int:
 
     import enrich
 
-    # The badge says "this record's cover is a video thumbnail, replace it". It
-    # is carried per item, so an arrival must wear whatever the record wears or
-    # one track in the list would contradict its siblings. Read off the
-    # residents only — the arrivals are already re-parented by now, and their
-    # own origin's badge is exactly what this pass is here to overwrite.
+    # The thumbnail-cover badge is per item; arrivals copy the residents' state.
     arriving = {item.id for item in incoming}
     provisional = any(
         item.get(library.PROVISIONAL_COVER_KEY)
@@ -328,7 +252,6 @@ def _adopt_album_art(lib, album, incoming) -> int:
 
 
 def _drop_item_art(item) -> None:
-    """Remove a track's own written-out cover now that its record carries one."""
     art = item.get(library.ITEM_ART_KEY)
     if not art:
         return
@@ -342,16 +265,12 @@ def _drop_item_art(item) -> None:
 
 
 def _ensure_filed_owner(album, arriving) -> bool:
-    """A target row with no album artist hands blank filing to every arrival —
-    and the app, which groups cards by (album artist, title) with a per-track
-    artist fallback, then splits one record into one card per track artist.
-    Rows born outside the MusicBrainz flows carry the blank: an album name
-    typed track by track in the drawer, a legacy provisional row. Heal it from
-    the tracks in play — majority artist wins, ties alphabetical — before the
-    arrivals inherit it. Returns whether it healed anything.
-    The residents are pushed the value explicitly (not via `store(inherit=…)`:
-    their in-memory copies would win the next sync and undo it); their files
-    move later with the album's own re-file pass."""
+    """Fill a blank album artist from the tracks in play (majority, then
+    alphabetical) before arrivals inherit it. Returns whether it healed anything.
+
+    A blank album artist makes the UI split the record into one card per track
+    artist. Residents get the value explicitly: with `store(inherit=…)` their
+    in-memory copies would undo it on the next sync."""
     if (str(album.albumartist) or "").strip():
         return False
     residents = list(album.items())
@@ -373,12 +292,8 @@ def _ensure_filed_owner(album, arriving) -> bool:
 
 
 def _create_album(lib, incoming, new_album) -> "object":
-    """A fresh album row for a gathered record.
-
-    `add_album` builds the row out of the first item's album-level fields and
-    re-parents the items in one transaction; what it copied that states a
-    release identity is then blanked — see `_RELEASE_IDENTITY_FIELDS`.
-    """
+    """A fresh album row for a gathered record, with the release identity
+    copied by `add_album` blanked (see `_RELEASE_IDENTITY_FIELDS`)."""
     title = str(new_album.get("album") or "").strip()
     artist = str(new_album.get("albumartist") or "").strip()
     if not title or not artist:
@@ -395,12 +310,7 @@ def _create_album(lib, incoming, new_album) -> "object":
 
 
 def _follow_item_art(lib, item, old_art: str) -> None:
-    """Bring a singleton's written-out cover along with its file.
-
-    The picture was extracted beside the audio at import (`sonarche_item_art`),
-    so a moved file leaves it stranded in a folder about to be pruned — and the
-    attribute pointing at it stale. Same sibling naming as the writer.
-    """
+    """Move a singleton's written-out cover along with its audio file."""
     new_art = os.path.splitext(_decode(item.path))[0] + os.path.splitext(old_art)[1]
     if old_art == new_art or not os.path.exists(old_art):
         return
@@ -415,11 +325,10 @@ def _follow_item_art(lib, item, old_art: str) -> None:
 
 
 def _pop_emptied_source(lib, source_id: int, target_id: int):
-    """Drop a source album row its last track just left — the row only.
+    """Drop a source album row its last track just left (row only).
 
-    Returns the row's art path (or None) so `_sweep_source_art` can finish the
-    job once the audio has moved, or False when there was nothing to drop. A
-    source still holding tracks is left entirely alone — it is still a record.
+    Returns the row's art path (or None) for `_sweep_source_art`, or False when
+    there was nothing to drop.
     """
     if source_id == target_id:
         return False
@@ -435,11 +344,7 @@ def _pop_emptied_source(lib, source_id: int, target_id: int):
 
 
 def _sweep_source_art(lib, art: str | None) -> None:
-    """The second half of an emptied source's removal: its cover and its husk.
-
-    beets prunes the vacated directory only if nothing is left in it; the
-    album's own `cover.jpg` (and any legacy `cover-hq.*` archive) usually is,
-    so both go by hand before pruning."""
+    """Delete an emptied source's cover, then prune its folder."""
     if not art:
         return
     try:
@@ -451,8 +356,7 @@ def _sweep_source_art(lib, art: str | None) -> None:
 
 
 def _prune_husk(lib, directory: str | None) -> None:
-    """Remove legacy `cover-hq.*` leftovers, then let beets prune what is
-    empty."""
+    """Remove legacy `cover-hq.*` files, then let beets prune empty folders."""
     if not directory or not os.path.isdir(directory):
         return
     import covers
@@ -463,11 +367,8 @@ def _prune_husk(lib, directory: str | None) -> None:
 
 
 def _apply_kind(album, kind: str | None) -> None:
-    """Declare the target's nature in the same pass, when asked to.
-
-    Same semantics as `album_kind.py`: collection is stored, album is the
-    absence of the attribute — a row stating the default outlives its meaning.
-    """
+    """Set the target's kind when asked. As in `album_kind.py`, "album" is the
+    absence of the attribute."""
     if kind is None:
         return
     if kind == library.COLLECTION:

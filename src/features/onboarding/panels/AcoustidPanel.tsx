@@ -8,19 +8,8 @@ import { useSaveAcoustidKey } from "@/features/onboarding/hooks";
 import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 import { ActionButton } from "@/shared/ui/ActionLink";
 
-/**
- * The step that is optional and shouldn't feel it.
- *
- * The app runs without a key; it just stops identifying records and starts
- * guessing them. So the argument is made in the words the user will meet again
- * on the download feed — "Identifié" against "Tags devinés" — rather than in
- * praise of fingerprinting, and the way out says what it costs instead of
- * offering a neutral "Skip".
- *
- * The key is checked against AcoustID before it is stored: a typed-in secret
- * that is only ever exercised on the first download is a typo waiting to be
- * discovered late, with nothing on screen to correct.
- */
+/** Optional but argued for: the way out says what it costs, and the key is
+ * validated before it's stored. */
 
 const ACCOUNT_URL = "https://acoustid.org/login";
 const APPLICATION_URL = "https://acoustid.org/new-application";
@@ -98,8 +87,7 @@ export function AcoustidPanel({ isConfigured, onSkip }: { isConfigured: boolean;
         {save.isError && <p className="text-[0.8125rem] text-danger">{t("steps.acoustid.unreachable")}</p>}
       </form>
 
-      {/* Nothing left to pass over once a key is in: the way out only exists
-          while the step is still asking. */}
+      {/* Only while the step is still open. */}
       {!isConfigured && (
         <ActionButton tone="muted" onPress={onSkip} className="self-start">
           {t("steps.acoustid.skip")}

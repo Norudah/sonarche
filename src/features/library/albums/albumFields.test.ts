@@ -103,10 +103,8 @@ describe("buildAlbumUpdates", () => {
     expect(updates.every((u) => u.fields.albumartist === "Various Artists")).toBe(true);
   });
 
-  // Regression: `draft.common.genre` is only the mount-time seed — the UI fans
-  // a common-genre edit out to the rows. Diffing the seed manufactured a
-  // phantom change right after a save (the baseline had moved, the seed had
-  // not), and re-saving that phantom wiped the album's genres.
+  // `draft.common.genre` is only the mount-time seed; diffing it caused a
+  // phantom change after save that wiped the album's genres on re-save.
   it("never reads the genre off the common draft — the rows are the genre", () => {
     const { base, draft } = draftFrom({ common: { genre: "Metal" } });
     expect(buildAlbumUpdates(tracks, base, draft)).toEqual([]);
@@ -327,9 +325,7 @@ describe("draftRowCell", () => {
     expect(draftRowCell(tracks, draft, "genre")).toEqual({ value: "Post-Rock", mixed: false, distinct: 1 });
   });
 
-  /** The common field is a controlled input reading off this cell: a trimmed
-   * answer erased the space at the caret on every keystroke, and "Hip Hop"
-   * could not be typed. */
+  /** Returning trimmed text erased the space being typed ("Hip Hop"). */
   it("hands back the space being typed while every row still agrees", () => {
     const tracks = [track({ id: 1 }), track({ id: 2 })];
     const draft = toAlbumDraft(tracks, commonBaseline(tracks));

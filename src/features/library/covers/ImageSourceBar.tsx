@@ -6,13 +6,8 @@ import { useTranslation } from "react-i18next";
 import { fetchImageUrl } from "@/features/library/api";
 import { PASTE_CHORD, readClipboardContent, usePasteShortcut } from "@/features/library/covers/clipboard";
 
-/**
- * Every way a new image can arrive, in one place — the row both replacement
- * modals share. Browse opens the file dialog; the link chip unfolds into an
- * inline field; the clipboard chip (and ⌘V anywhere in the modal) reads what
- * was copied, an image or an image address alike. Dropping a file works too,
- * but on the stage above — this bar is the explicit half of the same story.
- */
+/** Every way a new image arrives: browse, a link, the clipboard (⌘V
+ * anywhere). Dropping works on the stage above. */
 export function ImageSourceBar({
   active,
   disabled = false,
@@ -20,14 +15,14 @@ export function ImageSourceBar({
   onAdopt,
   onNotice,
 }: {
-  /** The owning modal is open — gates the ⌘V shortcut. */
+  /** Gates the ⌘V shortcut. */
   active: boolean;
   disabled?: boolean;
-  /** Open the file dialog — the modal owns the picker. */
+  /** The modal owns the picker. */
   onBrowse: () => void;
-  /** A file landed (fetched link or saved paste) — adopt it like a local pick. */
+  /** A fetched link or saved paste, adopted like a local pick. */
   onAdopt: (path: string) => Promise<void>;
-  /** Something to tell the user — the modal owns the message line. */
+  /** The modal owns the message line. */
   onNotice: (message: string) => void;
 }) {
   const { t } = useTranslation("library");
@@ -43,8 +38,7 @@ export function ImageSourceBar({
     if (linkOpen) linkInputRef.current?.focus();
   }, [linkOpen]);
 
-  // Folding the modal away folds the bar's transient state with it —
-  // adjusted during render, the way React documents for prop-driven resets.
+  // Reset during render when the modal closes.
   const [wasActive, setWasActive] = useState(active);
   if (wasActive !== active) {
     setWasActive(active);

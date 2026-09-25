@@ -7,16 +7,8 @@ import { SectionHeader } from "@/features/settings/SectionHeader";
 import { ServiceHealthCard } from "@/features/settings/ServiceHealthCard";
 import { useApiKeys, usePreferences } from "@/features/settings/hooks";
 
-/**
- * Everything about the outside world the app talks to, on one screen.
- *
- * Three panes became one. "My key stopped working", "the service stopped
- * answering" and "I am being throttled" are indistinguishable symptoms from
- * where the user stands — an import comes back with no cover — and they were
- * filed under three different headings, one of which held a single read-only
- * card. Reading down the pane now answers the question in the order it gets
- * asked: is my key in? are they up? how fast are we allowed to ask?
- */
+/** Keys, service health and fixed delays on one pane: from the outside, the
+ * three problems look the same. */
 export function ServicesSection() {
   const { t } = useTranslation("settings");
   const keys = useApiKeys();

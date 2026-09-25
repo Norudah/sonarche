@@ -8,9 +8,7 @@ import type { AlbumKind } from "@/features/library/api";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
 
-/* The composer's segmented control, verbatim — one pill sliding between two
- * segments already means "throw this switch" in this app. See `KindChoice` for
- * why the pill shape and the padding live on different elements. */
+/* The composer's segmented control (see `KindChoice`). */
 const SEGMENT = "relative mt-0 rounded-full";
 const SEGMENT_CONTENT =
   "relative gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
@@ -31,23 +29,8 @@ function Segment({ kind, selected, children }: { kind: AlbumKind; selected: Albu
   );
 }
 
-/**
- * What this record is, in its owner's words.
- *
- * The one control in this panel that is not a draft. Every field around it
- * accumulates into the footer's change count and lands on Save, because every
- * field around it is a tag written into N files. This is not a tag — it is how
- * Sonarche should read the record — so it applies on the spot and has nothing
- * to save.
- *
- * The consequence lives in the label's "?" rather than under the switch: the
- * two explanations printed in the column pushed it into scrolling, and the
- * notion only needs reading once. Both kinds are stated at once — a tooltip
- * whose text changed with the selection would read as a status, not a help.
- *
- * Absent for a group with no album row behind it — a pile of singletons has no
- * record to be a kind of.
- */
+/** Album or collection. Applies immediately: it isn't a tag, so it's not part
+ * of the draft. Hidden for singleton groups. */
 export function RecordKindChoice({
   kind,
   isPending,

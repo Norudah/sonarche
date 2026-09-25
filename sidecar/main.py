@@ -1,4 +1,4 @@
-"""Music Manager sidecar: NDJSON over stdio, one request per line."""
+"""Sonarche sidecar: NDJSON over stdio, one request per line."""
 
 import json
 import sys
@@ -86,9 +86,7 @@ def _handlers():
 
 def main() -> None:
     handlers = _handlers()
-    # Before anything loads beets: the config's lastgenre section names the
-    # derived tree/whitelist, and the bundled base may have changed since
-    # they were last written (app update).
+    # Before beets loads: the config points at the derived genre tree.
     import genre_overrides
 
     genre_overrides.ensure_derived()

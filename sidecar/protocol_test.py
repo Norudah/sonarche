@@ -13,16 +13,8 @@ HOSTILE = "Ně́on 🎵 ｜ Live"
 
 
 class WireEncodingTest(unittest.TestCase):
-    """The regression that killed a playlist download on Windows.
-
-    Python picks the locale encoding for stdio; on Windows that is cp1252, and
-    `_send` writes raw characters (`ensure_ascii=False`). One emoji in a video
-    title was `'charmap' codec can't encode characters` and a failed job. It
-    never showed on macOS, where the locale encoding is already UTF-8.
-
-    Run in a subprocess under `PYTHONIOENCODING=cp1252` because that is the
-    condition itself — asserting anything in *this* process would only prove
-    the test runner's own stdout is UTF-8.
+    """Run in a subprocess under `PYTHONIOENCODING=cp1252` (the Windows default),
+    since this process's own stdout is already UTF-8.
     """
 
     def _run(self, script: str) -> subprocess.CompletedProcess:
@@ -53,10 +45,7 @@ class WireEncodingTest(unittest.TestCase):
         self.assertIn(HOSTILE, proc.stderr)
 
     def test_a_lone_surrogate_costs_a_character_not_the_job(self):
-        """UTF-8 encodes almost everything, but not a lone surrogate — and
-        Windows produces those whenever a filename is not valid UTF-16, which
-        `surrogateescape` carries straight into a track title. One bad character
-        must not be a failed download."""
+        """Lone surrogates from invalid Windows filenames must not fail the job."""
         proc = self._run(
             "import protocol\n"
             "protocol.send_event('req-1', 'e', {'title': 'bad \\udce9 name'})\n"
@@ -100,9 +89,7 @@ class WireShapeTest(unittest.TestCase):
         self.assertEqual(written.count("\n"), 1)
 
     def test_characters_go_out_raw_not_escaped(self):
-        """`ensure_ascii=False` is deliberate: escaping would turn every accent
-        into six bytes across a listing of thousands of tracks. It is also what
-        makes the stream's encoding load-bearing — hence the tests above."""
+        """`ensure_ascii=False` keeps accents at their UTF-8 size."""
         protocol.send_result("req-1", {"title": HOSTILE})
 
         self.assertIn(HOSTILE, self.buffer.getvalue())

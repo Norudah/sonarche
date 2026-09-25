@@ -11,16 +11,6 @@ import { useActiveDownloadProgress, useEnrichProgress, useJobs } from "@/feature
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 import { PipelineRail } from "@/shared/ui/PipelineRail";
 
-/**
- * The running download, kept in sight from any other page.
- *
- * The downloads and history pages already draw the job card; everywhere else
- * the work would be invisible until it was over. One persistent toast carries
- * the same rail and the same phase line as the card, so leaving the page never
- * means losing the thread — and it leaves with you when you come back to a
- * page that shows the real thing.
- */
-
 const isRunning = (job: DownloadJob) =>
   job.status === "queued" || job.status === "downloading" || job.status === "importing" || job.status === "enriching";
 
@@ -29,18 +19,16 @@ function jobTitle(job: DownloadJob, fallback: string): string {
   return job.artist ? `${job.artist} — ${title}` : title;
 }
 
-/** Lives inside the toast and keeps itself current: the toast is added once,
- * and this subscribes to the same queries and events the job card does. The
- * "view" affordance is part of the content — HeroUI's own action slot sits in
- * a row beside it, where a full-width rail leaves it no room. */
+/** Subscribes to the job queries itself, since the toast is added only once.
+ * The "view" action lives in the content: HeroUI's action slot has no room
+ * beside a full-width rail. */
 function LiveDownloadToast({ onView, viewLabel }: { onView: () => void; viewLabel: string }) {
   const { t } = useTranslation("download");
   const labelOf = useProgressLabel();
   const jobs = useJobs();
 
   const running = (jobs.data ?? []).filter(isRunning);
-  // The worker is sequential: at most one job is past `queued` at a time. The
-  // list is newest-first, so the fallback (nothing started yet) is the oldest.
+  // The worker is sequential; the list is newest-first, so the fallback is the oldest.
   const job = running.find((candidate) => candidate.status !== "queued") ?? running[running.length - 1] ?? null;
   const downloadPercent = useActiveDownloadProgress(job?.status === "downloading");
   const enrichStages = useEnrichProgress(job?.status === "enriching");
@@ -56,10 +44,8 @@ function LiveDownloadToast({ onView, viewLabel }: { onView: () => void; viewLabe
   const line = waiting > 0 ? `${labelOf(progress)} · ${t("toast.more", { count: waiting })}` : labelOf(progress);
 
   return (
-    // Hard width rather than flex: HeroUI lays the toast out as a row around
-    // this slot, and a flexible child measured against a long title overflows
-    // the box. 240px leaves room for the spinner and the close button in the
-    // 340px region, whatever the title says.
+    // Fixed width: HeroUI lays the toast out as a row, and a flexible child
+    // overflows on long titles.
     <div className="flex w-60 flex-col gap-1.5 overflow-hidden">
       <p className="truncate text-[0.8125rem] font-medium text-foreground">{jobTitle(job, t("unknownArtist"))}</p>
       <PipelineRail
@@ -90,13 +76,11 @@ export function useDownloadJobToast() {
   const navigate = useNavigate();
   const jobs = useJobs();
 
-  // The two pages that already show the live card — the toast would be an echo.
+  // These pages already show the live card.
   const onJobsPage = matchPath(paths.download, pathname) != null || matchPath(paths.history, pathname) != null;
   const show = (jobs.data ?? []).some(isRunning) && !onJobsPage;
 
-  // Read through refs inside the effects: the toast must live exactly as long
-  // as `show`, not be torn down and re-added because a navigation between two
-  // other pages gave `navigate` a new identity.
+  // Refs keep the toast alive across navigations that change `navigate`'s identity.
   const navigateRef = useRef(navigate);
   const tRef = useRef(t);
   useEffect(() => {
@@ -113,8 +97,7 @@ export function useDownloadJobToast() {
     return () => toast.close(id);
   }, [show]);
 
-  // The outcome, when it lands out of sight. On the jobs pages the card's own
-  // verdict speaks; elsewhere a silent end reads as a download that vanished.
+  // Announce the outcome when it lands off the jobs pages.
   const seen = useRef(new Map<string, JobStatus>());
   useEffect(() => {
     const before = seen.current;

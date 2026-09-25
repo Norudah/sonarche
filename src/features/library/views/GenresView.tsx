@@ -18,26 +18,17 @@ import { useLibrary } from "@/features/library/hooks";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/** The bar-height button both bar variants wear — the barPill idiom without
- * the pill, matching the app's rectangular management buttons. */
+/** Bar-height rectangular button. */
 const BAR_BUTTON =
   "flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-separator bg-surface/70 px-3.5 " +
   "text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-surface " +
   "focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /**
- * An index of family cards, not a distribution: the page's job is getting to
- * an album or artist through a genre, and the numbers moved out with the
- * Metadata dashboard. One list, one depth — the search field reaches the
- * specific genres because `filterFamilies` matches a card on the genres it
- * contains, which is what replaced the families/genres toggle.
- *
- * The page has a second posture, arrange mode: chips stop being doors and
- * become draggable objects, every family — including the empty ones, as ghost
- * cards — becomes a landing zone, and a drop is the same placement verb the
- * genre hero's "File under…" menu performs. The mode is a posture of this
- * page, not a route: it holds no state worth a URL, and leaving is Esc,
- * "Done", or navigating anywhere.
+ * The genres index as family cards; search also matches the genres inside
+ * a card. Arrange mode turns chips into draggables and every family (empty
+ * ones as ghosts) into a drop target, using the same placement as "File
+ * under…". Left with Esc, "Done" or by navigating.
  */
 export function GenresView() {
   const { t } = useTranslation("library");
@@ -52,24 +43,15 @@ export function GenresView() {
     classify.run(genre, family, overrides.data?.get(genre.toLowerCase()) ?? null),
   );
 
-  // The grouping is the whole pass over the library and does not depend on the
-  // query, so a keystroke may not rerun it.
+  // Independent of the query.
   const families = useMemo(() => {
     const tracks = library.data ?? [];
     return groupFamilies(tracks, groupAlbums(tracks));
   }, [library.data]);
 
-  // The unclassified pile gets no card: that would dress a gap up as a shelf.
-  // It gets no banner under the grid either — an amber bar shouting across the
-  // page turned browsing into a chore, and the Metadata queue is where fixing
-  // belongs. It survives as one figure in the header's count line.
-  //
-  // No sort control: size order — groupFamilies' own, sentinels sunk — *is*
-  // the page (the shelf shows what the library is mostly made of), and the
-  // A→Z variant only ever existed to dress the bar like the other shelves'.
-  //
-  // Arrange mode ignores the query on purpose: a drop target hidden by a
-  // stale search is a gesture that dies mid-air.
+  // No card for the unclassified pile (a count in the header instead) and no
+  // sort control: size order is the page. Arrange mode ignores the query so no
+  // drop target is hidden.
   const visibleFamilies = useMemo(
     () => filterFamilies(families, arranging ? "" : query).filter((family) => family.key !== FAMILY_NONE),
     [families, query, arranging],
@@ -77,8 +59,7 @@ export function GenresView() {
 
   const unclassified = families.find((family) => family.key === FAMILY_NONE)?.trackCount ?? 0;
 
-  // Esc leaves the mode — sync with a real keyboard, hence an effect. Bound
-  // only while arranging, so the page costs nothing the rest of the time.
+  // Esc leaves arrange mode; bound only while arranging.
   useEffect(() => {
     if (!arranging) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -93,9 +74,8 @@ export function GenresView() {
       <GenresHeader familyCount={families.length} genreCount={countGenres(families)} unclassifiedCount={unclassified} />
 
       {arranging ? (
-        /* The ExplorerBar's slot, worn by the mode: search and sort step back
-         * (a filter that hides a drop target kills the gesture), the bar says
-         * what the hand can do now, and one button leads back out. */
+        /* Arrange mode replaces search with a hint and a way out (a hidden drop
+         * target would kill the gesture). */
         <div
           className={
             "sticky top-0 z-10 -mx-8 -my-1 flex flex-wrap items-center gap-3 bg-background px-8 py-3 " +
@@ -166,10 +146,8 @@ export function GenresView() {
         />
       )}
 
-      {/* The chip in flight. Fixed at the origin and driven by transform —
-       * state only carries the position across re-renders, the pointermove
-       * writes land straight on the element (see useChipDrag). Above the
-       * sticky bars, and transparent to the hit test by construction. */}
+      {/* The chip in flight, moved by transform (see useChipDrag); above the
+          sticky bars and transparent to the hit test. */}
       {drag && (
         <div
           ref={ghostRef}
@@ -177,9 +155,7 @@ export function GenresView() {
           className="pointer-events-none fixed top-0 left-0 z-50"
           style={{ transform: `translate(${drag.x}px, ${drag.y}px)` }}
         >
-          {/* Centred on the pointer, not floating above it: the hand should
-           * read as *holding* the chip, the way a lifted iOS icon stays under
-           * the finger. The slight tilt is what says "in transit". */}
+          {/* Centred on the pointer, slightly tilted. */}
           <span
             className="inline-block -translate-x-1/2 -translate-y-1/2 rotate-3 scale-105 rounded-full px-2.5 py-1 text-[0.75rem] text-foreground shadow-lg"
             style={{

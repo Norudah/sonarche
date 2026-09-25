@@ -1,8 +1,5 @@
-//! Throttle for the manual "re-enrich" action so a track can't be spammed.
-//!
-//! Two guards: an in-flight set rejects a second run while one is still going,
-//! and a per-item cooldown rejects rapid re-fires just after one finishes.
-//! Re-enrich hits MusicBrainz/AcoustID, so both matter.
+//! Guards the manual re-enrich action (which hits MusicBrainz/AcoustID):
+//! one run per item at a time, plus a cooldown after each.
 
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
@@ -14,7 +11,6 @@ use tokio::sync::Mutex;
 use crate::error::{AppError, AppResult};
 use crate::jobs;
 
-/// Minimum gap between two completed re-enrich runs of the same item.
 const COOLDOWN: Duration = Duration::from_secs(10);
 
 #[derive(Default)]
@@ -45,8 +41,8 @@ impl ReenrichState {
 
         let result = jobs::enrich_item(app, item_id, None, None).await;
 
-        // Cleanup awaits the lock (unlike a Drop guard) so it can't leave the
-        // item stuck in_flight under contention; the cooldown starts on finish.
+        // Await the lock (not a Drop guard) so an item can't stay stuck; the
+        // cooldown starts on finish.
         let mut inner = self.inner.lock().await;
         inner.in_flight.remove(&item_id);
         inner.last_run.insert(item_id, Instant::now());

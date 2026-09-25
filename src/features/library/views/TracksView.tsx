@@ -20,7 +20,7 @@ export function TracksView() {
 
   const tracks = useMemo(() => library.data ?? [], [library.data]);
   const playtime = useMemo(() => totalPlaytime(tracks), [tracks]);
-  // No `axes` argument: the library-wide explorer owns every one of them.
+  // The library-wide explorer owns every axis.
   const explorer = useTrackFilter(tracks);
 
   return (

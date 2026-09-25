@@ -6,22 +6,14 @@ import { useTranslation } from "react-i18next";
 import { storeRematchConfirm } from "@/shared/lib/rematchConfirm";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
-/**
- * The confirmation that stands between the re-match button and the rewrite.
- *
- * Re-match is the one button in the editors that changes tags the user did not
- * type — asking first is the default. The dialog carries its own way to stop
- * asking ("don't ask again"), which is the same preference the settings page
- * edits; the switch only commits with the confirmation, so backing out of the
- * dialog never silences future ones.
- */
+/** Confirms a re-match (it rewrites tags). "Don't ask again" is the Settings
+ * preference and only applies when confirming. */
 export function RematchConfirmDialog({
   scope,
   isOpen,
   onClose,
   onConfirm,
 }: {
-  /** Which sentence the body says — one track, or every track of the album. */
   scope: "track" | "album";
   isOpen: boolean;
   onClose: () => void;
@@ -30,8 +22,7 @@ export function RematchConfirmDialog({
   const { t } = useTranslation("library");
   const [skipNext, setSkipNext] = useState(false);
 
-  // A fresh opening starts with the switch off: "don't ask again" is a choice
-  // about this confirmation, not a sticky draft across dialogs.
+  // Each opening starts with the switch off.
   const [wasOpen, setWasOpen] = useState(isOpen);
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);

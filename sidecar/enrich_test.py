@@ -8,9 +8,7 @@ from enrich import work_fields
 
 class WorkFieldsTest(unittest.TestCase):
     def test_drops_the_release_duration(self):
-        # The regression this exists for: MusicBrainz' duration for the
-        # recording replaced the downloaded file's own, and every duration in
-        # the app inherited it.
+        # MusicBrainz' recording duration must not replace the file's own.
         merged = {"title": "Vantablack", "artist": "Perturbator", "length": 304.4}
         self.assertEqual(work_fields(merged), {"title": "Vantablack", "artist": "Perturbator"})
 
@@ -40,9 +38,8 @@ if __name__ == "__main__":
 
 
 class CandidateSortKeyTest(unittest.TestCase):
-    """The Real Gone regression: one fingerprint, two linked recordings, and
-    the wrong one first by AcoustID submission count. The video title is the
-    signal that survives, so it must outrank the release type."""
+    """One fingerprint, two recordings, the wrong one first by submission count:
+    the video title must outrank the release type."""
 
     STUDIO = {"status": "Official", "release_group": {"primary_type": "Album"}, "date": "2005"}
     SOUNDTRACK = {
@@ -99,9 +96,7 @@ class CandidateSortKeyTest(unittest.TestCase):
 
 
 class CollectionGuardTest(unittest.TestCase):
-    """A track filed in a collection must be refused by the per-track chain:
-    a match would re-file it onto its release's album row (`_album_row_for`),
-    ripping it out of the record its owner placed it in."""
+    """A match would move the track out of the collection it was placed in."""
 
     def test_refuses_a_track_sitting_on_a_collection(self):
         import os

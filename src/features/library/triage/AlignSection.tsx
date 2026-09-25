@@ -23,8 +23,7 @@ interface AlignProgress {
   album: string;
 }
 
-/** Follow the pass while it runs; subscribed only while `active`, same
- * pattern (and same reason) as the import page's progress hook. */
+/** Subscribed only while `active`. */
 function useAlignProgress(active: boolean): AlignProgress | null {
   const [progress, setProgress] = useState<AlignProgress | null>(null);
   const [lastActive, setLastActive] = useState(active);
@@ -72,25 +71,15 @@ function ProgressBar({ progress }: { progress: AlignProgress | null }) {
 }
 
 /**
- * The align pass (docs: one MusicBrainz search per album, fills blank fields
- * only). One card whose content changes phase — idle → scanning → verdict →
- * applying → done — the geometry stays put, only the words move; the import
- * card taught us what remounting rows does.
- *
- * Accent, not amber: where triage rows name defects, this one is a remedy.
- *
- * Self-sufficient — it reads the library itself rather than taking albums as
- * a prop, because it no longer has one home: it sits on the Import page (the
- * app layer composes it there), where the albums it counts are the ones the
- * import just landed. The query behind `useLibrary` is cached, so a second
- * subscriber costs nothing.
+ * The align pass (one MusicBrainz search per album, blank fields only) as one
+ * card changing phase: idle, scanning, verdict, applying, done. Reads the
+ * library itself: the app layer places it on the Import page.
  */
 export function AlignSection() {
   const { t } = useTranslation("metadata");
   const queryClient = useQueryClient();
   const library = useLibrary();
-  // Memoised like every other consumer of the grouping: this section rerenders
-  // on each progress tick, and the library underneath is thousands of tracks.
+  // Re-renders on each progress tick.
   const albums = useMemo(() => groupAlbums(library.data ?? []), [library.data]);
   const [plan, setPlan] = useState<AlignPlan | null>(null);
   const [result, setResult] = useState<AlignResult | null>(null);
@@ -115,8 +104,7 @@ export function AlignSection() {
   const progress = useAlignProgress(running);
   const unidentified = unidentifiedAlbumCount(albums);
 
-  // Nothing to align and nothing in flight: the win state here is silence,
-  // like the import history's — a second empty-state would just be furniture.
+  // Nothing to align: render nothing.
   if (unidentified === 0 && plan === null && result === null && !running) return null;
 
   const summary = plan ? summarizePlan(plan) : null;
@@ -125,7 +113,6 @@ export function AlignSection() {
     <section className="flex flex-col gap-2">
       <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("align.heading")}</h2>
       <div className="rounded-xl border border-separator/60 bg-surface px-4 py-3">
-        {/* Idle — the count and the offer. */}
         {!running && plan === null && result === null && (
           <div className="flex items-center gap-4">
             <Glyph />
@@ -139,7 +126,6 @@ export function AlignSection() {
           </div>
         )}
 
-        {/* Running — one line of progress, scan and apply alike. */}
         {running && (
           <div className="flex items-center gap-4">
             <Glyph />
@@ -156,7 +142,6 @@ export function AlignSection() {
           </div>
         )}
 
-        {/* Verdict — what the fill would write, and the two ways out. */}
         {!running && plan !== null && summary !== null && (
           <div className="flex items-start gap-4">
             <Glyph />
@@ -204,7 +189,6 @@ export function AlignSection() {
           </div>
         )}
 
-        {/* Done — the receipt, in the queue's win-state green. */}
         {!running && plan === null && result !== null && (
           <div className="flex items-center gap-4">
             <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success-soft">

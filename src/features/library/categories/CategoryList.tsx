@@ -8,9 +8,7 @@ interface CategoryListProps {
   labelOf: (name: string) => string;
 }
 
-/** Not virtualised for the same reason FamilyList is not: the taxonomy is a
- * handful of curated values plus whatever free tags exist — the one other
- * shelf whose length does not depend on the library's size. */
+/** Not virtualised: the list is short whatever the library size. */
 export function CategoryList({ categories, labelOf }: CategoryListProps) {
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

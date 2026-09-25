@@ -64,12 +64,7 @@ describe("marksFor", () => {
     expect(marksFor(1.5).map((mark) => mark.value)).toEqual([0, 1, 1.5]);
   });
 
-  /**
-   * The marks are positioned from stop indexes, not from seconds. On the
-   * fifteen-second scale that puts "1 s" almost a fifth of the way along a rail
-   * it would otherwise sit at 7% of — which is exactly the lie an evenly-spaced
-   * label row told about a non-linear track.
-   */
+  /** Marks sit at their stop index, not their value (the track is non-linear). */
   it("positions a mark by its stop, not by its value", () => {
     const marks = marksFor(15);
     expect(marks[0].position).toBe(0);

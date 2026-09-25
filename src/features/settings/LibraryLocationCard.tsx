@@ -7,23 +7,15 @@ import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard"
 import { useSettingsTasks } from "@/features/settings/tasks";
 import { useCheckLibraryMove, useLibraryLocation } from "@/features/settings/hooks";
 
-/**
- * Where the music lives, and the way to move it.
- *
- * The picker asks for a *parent* and the app appends its own folder name —
- * see `library_move.rs` for why. The card says so, because "choose a folder"
- * and "choose where the Sonarche folder goes" are different instructions and
- * only one of them matches what happens.
- */
+/** The library location. The picker selects a parent and the app appends its
+ * own folder (see `library_move.rs`). */
 export function LibraryLocationCard() {
   const { t } = useTranslation("settings");
   const location = useLibraryLocation();
   const preflight = useCheckLibraryMove();
   const { start } = useSettingsTasks();
 
-  // The picker and the preflight belong here — both happen while settings is
-  // open, and both are cheap. The move itself ends in a relaunch, so it is
-  // handed to `SettingsTaskHost` along with what the preflight found.
+  // Picker and preflight here; the move (ending in a relaunch) goes to `SettingsTaskHost`.
   const pick = async () => {
     const chosen = await open({ directory: true, multiple: false });
     if (typeof chosen !== "string") return;

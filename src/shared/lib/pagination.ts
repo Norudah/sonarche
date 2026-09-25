@@ -1,11 +1,5 @@
-/**
- * Where a requested page actually lands over a list of `itemCount` items.
- *
- * Clamped rather than trusted: a history cleared from under page 4 resolves to
- * the last page that still exists, and an empty list still has one page so the
- * view never divides by zero. `start` is the offset of the page's first item —
- * what a slice or a SQL OFFSET consumes.
- */
+/** Clamps a requested page to `itemCount` (an empty list still has one page).
+ * `start` is the offset of the page's first item. */
 export function pageWindow(
   requested: number,
   itemCount: number,

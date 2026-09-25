@@ -2,54 +2,23 @@ import { useEffect, useState } from "react";
 
 import type { GateState } from "@/features/onboarding/steps";
 
-/**
- * What the splash is saying, and for how long.
- *
- * The gate answers *who* owns the window. This answers a smaller question it
- * used to skip: what happens in the moment the answer arrives. The splash spent
- * the whole wait introducing the app and then vanished mid-sentence, which is a
- * strange way to end the one screen every session opens on.
- *
- * So the wait ends on a beat rather than on a cut — the ark is already drawn,
- * the words under it change, and *then* the window is handed over.
- */
+/** What the splash says: the wait ends on a short beat before handing over. */
 export type SplashPhase = "checking" | "welcome" | "aboard";
 
-/**
- * How long each closing beat holds, in milliseconds.
- *
- * `welcome` plays at every launch, so it is short on purpose: long enough to
- * read four words, not long enough to become the thing standing between someone
- * and their music. `aboard` happens once in the life of an install, at the end
- * of a setup that took a minute — it can afford to be said properly.
- */
+/** Milliseconds. `welcome` plays every launch, so it's short; `aboard` once
+ * after setup. */
 const BEATS: Record<Exclude<SplashPhase, "checking">, number> = {
   welcome: 1200,
   aboard: 2400,
 };
 
-/**
- * The phase a move from one gate state to the next puts the splash in, or
- * `null` when the splash should get out of the way.
- *
- * Pure and exported for its own test: this is a four-case table, and every case
- * is a different screen the user sees exactly once per launch — the kind of
- * thing that is tedious to check by hand and trivial to check here.
- */
+/** The splash phase for a gate transition, or `null` to get out of the way. */
 export function phaseFor(from: GateState, to: GateState, welcome: boolean): SplashPhase | null {
-  // The curtain belongs to the launch and shows once. A gate that falls back to
-  // "checking" later is a refetch, a remount or a re-check — the walkthrough
-  // already reports those in place, with its own spinner, and throwing a
-  // full-window cover over a screen somebody is reading is a far worse answer
-  // than a moment of stale content.
+  // The curtain only shows at launch; later re-checks are shown in place.
   if (to === "checking") return from === "checking" ? "checking" : null;
-  // The walkthrough introduces itself at length and in its own words. A welcome
-  // in front of it would be the app saying hello twice before saying anything.
+  // The walkthrough introduces itself.
   if (to === "onboarding") return null;
-  // Switched off in Appearance. Both beats go together: someone who does not
-  // want to be greeted at launch has not asked to be greeted after the setup
-  // either. The cross-fade out of the splash is untouched — that one fixed a
-  // hard cut, and a hard cut is not a preference.
+  // Disabled in Appearance: both beats go.
   if (!welcome) return null;
   return from === "onboarding" ? "aboard" : "welcome";
 }
@@ -57,17 +26,13 @@ export function phaseFor(from: GateState, to: GateState, welcome: boolean): Spla
 interface Tracked {
   gate: GateState;
   phase: SplashPhase | null;
-  /**
-   * Whether the gate has ever answered. Sticky, for the same reason the curtain
-   * only rises once: a mid-session fall back to `checking` would otherwise
-   * unmount the screen the user is on and leave nothing in its place.
-   */
+  /** Sticky, so a later fall back to `checking` doesn't unmount the screen. */
   revealed: boolean;
 }
 
 export function useSplashPhase(
   gate: GateState,
-  /** The Appearance setting, read once at mount by whoever owns the shell. */
+  /** The Appearance setting, read once at mount. */
   welcome: boolean,
 ): { phase: SplashPhase | null; revealed: boolean } {
   const [tracked, setTracked] = useState<Tracked>(() => ({
@@ -76,10 +41,7 @@ export function useSplashPhase(
     revealed: gate !== "checking",
   }));
 
-  // Set during render, like `HistoryDepthProvider`: React restarts the
-  // component before committing, so what is read below is already the adjusted
-  // value — no extra frame, and no effect that would let the old phase paint
-  // once before the new one replaces it.
+  // Adjusted during render (like `HistoryDepthProvider`), so the old phase never paints.
   if (tracked.gate !== gate) {
     setTracked({
       gate,
@@ -90,9 +52,7 @@ export function useSplashPhase(
 
   const phase = tracked.phase;
 
-  // A beat ends on its own; that is what makes it a beat and not a state. The
-  // gate is not consulted again — it has already given its answer, and this is
-  // only the app taking a second to acknowledge it.
+  // A beat ends on its own timer.
   useEffect(() => {
     if (phase === null || phase === "checking") return;
     const timer = window.setTimeout(() => setTracked((prev) => ({ ...prev, phase: null })), BEATS[phase]);

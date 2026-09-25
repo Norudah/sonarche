@@ -1,20 +1,11 @@
 """One album, because the user said so.
 
-A playlist of film, series or game music is a record in the user's head and
-twelve unrelated releases in MusicBrainz. Enriched normally it lands as twelve
-album rows in twelve folders — every track correctly identified, and the album
-the user actually wanted nowhere on the shelf.
+A soundtrack playlist maps to many unrelated MusicBrainz releases. A forced
+album keeps per-track identification (title, artist, genre, year) and only
+overrides filing: album, album artist and track number.
 
-A forced album keeps the per-track identification (title, artist, genre and
-year still come from MusicBrainz — the artist column is the whole point of
-paying for that pass) and overrides only what says *where the track is filed*:
-album, album artist, and the position in the record.
-
-The track number is renumbered from the playlist order here, where
-`provisional.py` refuses to guess it. The two are not in conflict: there, a
-position is a guess about a real release whose real numbering exists and
-matters; here the user has declared the playlist to *be* the record, so its
-order is the numbering — there is no other truth to contradict.
+Unlike `provisional.py`, track numbers come from the playlist order: the user
+declared the playlist to be the record.
 """
 
 import re
@@ -23,19 +14,14 @@ import unicodedata
 import enrich
 import protocol
 
-# The album the cover came from is a video thumbnail, not real cover art:
-# right shape, wrong picture, and the user is told to replace it. Carried on
-# the items (not the album row) because that is the axis the library listing
-# already reads flexible attributes on.
+# The cover is a video thumbnail placeholder. On items, since the listing
+# reads flexible attributes per item.
 COVER_FLAG = "sonarche_provisional_cover"
 
-# What a record of many artists is called when it has no single one. beets'
-# own convention, and what the album panel offers to keep.
 DEFAULT_ARTIST = "Various Artists"
 
-# Words a soundtrack release-group adds around the media's own name. Stripped
-# before comparing, so "Inception" matches "Inception: Music From the Motion
-# Picture" without loosening the match into a substring free-for-all.
+# Stripped before comparing, so "Inception" matches "Inception: Music From
+# the Motion Picture".
 _SOUNDTRACK_NOISE = (
     "original motion picture soundtrack",
     "music from the motion picture",
@@ -50,15 +36,12 @@ _SOUNDTRACK_NOISE = (
     "ost",
 )
 
-# Below this, a title is too generic for a text search to mean anything.
 _MIN_TITLE_CHARS = 3
 
 
 def requested(params: dict) -> dict | None:
-    """The forced album this request asks for, normalized, or None.
-
-    A blank title is "not forced" rather than an error: the toggle can be on
-    with the field still empty, and a download must not fail over that."""
+    """The requested forced album, normalized, or None (a blank title means
+    not forced)."""
     spec = params.get("forced_album") or {}
     title = str(spec.get("title") or "").strip()
     if not title:
@@ -72,15 +55,13 @@ def requested(params: dict) -> dict | None:
 
 
 def is_media_category(category: str | None) -> bool:
-    """Whether the category names a medium whose soundtrack MusicBrainz might
-    carry. Defined by exclusion on purpose: the taxonomy lives in the frontend,
-    and restating its values here would leave two lists to keep in step. Only
-    plain music (and no category at all) has no medium to look up."""
+    """Whether the category is a medium that may have a soundtrack release.
+    Defined by exclusion so the frontend's taxonomy isn't duplicated here."""
     return bool(category) and category.strip() != "Music"
 
 
 def normalize_title(text: str | None) -> str:
-    """Casefolded, unaccented, punctuation-free form used for comparison only."""
+    """Casefolded, unaccented, punctuation-free form, for comparison only."""
     if not text:
         return ""
     decomposed = unicodedata.normalize("NFKD", str(text))
@@ -89,21 +70,15 @@ def normalize_title(text: str | None) -> str:
 
 
 def strip_soundtrack_noise(text: str | None) -> str:
-    """A release-group title reduced to the media's own name."""
     normalized = normalize_title(text)
     for noise in _SOUNDTRACK_NOISE:
         normalized = normalized.replace(noise, " ")
-    # The separator left behind by "Inception: Music From…" once the tail goes.
     return re.sub(r"\s+", " ", normalized).strip()
 
 
 def title_matches(candidate: str | None, wanted: str | None) -> bool:
-    """Whether a release-group title names the media the user typed.
-
-    Prefix-either-way rather than equality: the user types "Inception", the
-    release-group is "Inception (Original Motion Picture Soundtrack)", and both
-    reduce to the same head. A bare substring test would hand "Her" every
-    release whose title contains it, so the match has to start at the front."""
+    """Whether a release-group title names the typed media: a prefix match
+    either way on the noise-stripped titles (a substring would be too loose)."""
     left, right = strip_soundtrack_noise(candidate), strip_soundtrack_noise(wanted)
     if len(right) < _MIN_TITLE_CHARS or not left:
         return False
@@ -111,12 +86,10 @@ def title_matches(candidate: str | None, wanted: str | None) -> bool:
 
 
 def numbering(item_ids: list[int]) -> dict[int, int]:
-    """Playlist order to track numbers, 1..N. Pure."""
     return {item_id: index for index, item_id in enumerate(item_ids, start=1)}
 
 
 def _release_group_id(title: str) -> str | None:
-    """A soundtrack release-group whose title names this media, or None."""
     import metadata
 
     plugin = metadata.mb_plugin()
@@ -141,9 +114,8 @@ def _release_group_id(title: str) -> str | None:
 
 
 def media_cover(title: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """The media's own artwork — the film poster, the game's key art — off the
-    Cover Art Archive, via the soundtrack release the user never asked us to
-    match. The tags stay per-track; only the picture is borrowed."""
+    """The media's artwork (poster, key art) from its soundtrack release on the
+    Cover Art Archive. Only the picture is borrowed."""
     group_id = _release_group_id(title)
     if not group_id:
         return None
@@ -151,8 +123,7 @@ def media_cover(title: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | N
 
 
 def thumbnail_cover(url: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
-    """The video's thumbnail, as a stand-in cover. Same picture twice: there is
-    no high-quality edition of a thumbnail to archive."""
+    """The video thumbnail, as a placeholder cover."""
     if not url:
         return None
     import requests
@@ -170,13 +141,9 @@ def thumbnail_cover(url: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] |
 
 
 def apply(lib, items, spec: dict):
-    """File every item under the one album the user named, and return its row.
+    """File every item under the user-named album and return its row.
 
-    The items arrive already enriched and already filed — each under the row of
-    the release it happened to match. Moving them means rewriting the filing
-    tags, standing up one row, and *dropping the rows they left*: beets suffixes
-    a folder with %aunique for every sibling row sharing its name, so a leftover
-    empty row is the difference between "Inception" and "Inception [2]"."""
+    The rows the items leave are dropped, or %aunique would suffix the folder."""
     numbers = numbering([item.id for item in items])
     left_behind = {item.album_id for item in items if item.album_id is not None}
 
@@ -185,15 +152,8 @@ def apply(lib, items, spec: dict):
         item.albumartist = spec["artist"]
         item.track = numbers[item.id]
         item.tracktotal = len(items)
-        # `comp` is deliberately left alone. It reads as the right flag for a
-        # many-artist record, but beets' default paths route a compilation to
-        # Compilations/$album — which throws away the album artist the user just
-        # typed, and files this one record differently from every other album in
-        # the library. The filing rule here stays $albumartist/$album.
-        #
-        # The release it came from is no longer where it lives. `mb_trackid`
-        # stays — the recording identity is still true, and it is what a later
-        # re-match reads.
+        # `comp` is left alone: beets would route a compilation to Compilations/,
+        # ignoring the typed album artist. `mb_trackid` stays; the recording is true.
         item.mb_albumid = ""
         item.mb_releasegroupid = ""
         item.store()
@@ -212,8 +172,7 @@ def apply(lib, items, spec: dict):
         protocol.log(f"forced_album: dropping emptied album row {row_id}")
         enrich.drop_emptied_row(lib, row)
 
-    # %aunique memoizes per Library instance; a verdict reached while the
-    # dropped rows were alive must not name the forced folder "Title [2]".
+    # %aunique memoizes per Library; reset it now the dropped rows are gone.
     lib._memotable = {}
     album.try_sync(write=True, move=True)
     protocol.log(
@@ -224,12 +183,8 @@ def apply(lib, items, spec: dict):
 
 
 def ensure_cover(lib, album, items, spec: dict) -> bool:
-    """Give the forced album a cover. Returns True when it is the provisional
-    one, so the caller can say so.
-
-    The media's own artwork first — for a film or a game that is the picture
-    the user pictured. The thumbnail only when that fails, flagged, because a
-    video frame on an album shelf is a placeholder, not a cover."""
+    """Give the forced album a cover: the media's artwork, else the thumbnail.
+    Returns True when the thumbnail placeholder was used."""
     cover, provisional = None, False
     if is_media_category(spec["category"]):
         cover = media_cover(spec["title"])
@@ -240,8 +195,7 @@ def ensure_cover(lib, album, items, spec: dict) -> bool:
         protocol.log("forced_album: no cover found, album left bare")
         return False
 
-    # Written onto the album row and shown in the metadata panel, so it names
-    # the *kind* of picture rather than the site it came from.
+    # Shown in the metadata panel: names the kind of picture, not the site.
     source = "Video thumbnail" if provisional else "Cover Art Archive"
     try:
         enrich.set_album_art(album, *cover, source=source)

@@ -7,7 +7,7 @@ export interface PythonInfo {
 
 export interface EnvStatus {
   python: PythonInfo | null;
-  /** The app ships its own interpreter, so finding one is not the user's job. */
+  /** The app ships its own interpreter. */
   pythonBundled: boolean;
   venvOk: boolean;
   depsOk: boolean;
@@ -22,12 +22,7 @@ export function setupEnv(): Promise<EnvStatus> {
   return invoke<EnvStatus>("setup_env");
 }
 
-/**
- * The walkthrough's own state, kept apart from the settings feature's
- * `get_preferences` on purpose: these two booleans are the only thing the
- * first-run flow needs, and asking for them here means onboarding never has to
- * reach across into settings for its own progress.
- */
+/** Walkthrough state, separate from settings' `get_preferences`. */
 export interface OnboardingState {
   completed: boolean;
   acoustidConfigured: boolean;
@@ -41,7 +36,7 @@ export function setOnboardingCompleted(completed: boolean): Promise<OnboardingSt
   return invoke<OnboardingState>("set_onboarding_completed", { completed });
 }
 
-/** Why a key was turned down. `null` when it was accepted. */
+/** `null` when accepted. */
 export type KeyRejection = "invalidKey" | "empty";
 
 export interface KeyCheck {
@@ -49,13 +44,12 @@ export interface KeyCheck {
   reason: KeyRejection | null;
 }
 
-/** Asks AcoustID whether it knows this key, before anything is stored. */
+/** Checks the key with AcoustID before anything is stored. */
 export function checkAcoustidKey(key: string): Promise<KeyCheck> {
   return invoke<KeyCheck>("check_acoustid_key", { key });
 }
 
-/** Same command the settings screen uses — the walkthrough is just an earlier
- * door onto it. An empty value clears the stored key. */
+/** Same command as Settings; an empty value clears the key. */
 export function storeAcoustidKey(key: string): Promise<unknown> {
   return invoke("set_api_key", { name: "acoustid", value: key });
 }

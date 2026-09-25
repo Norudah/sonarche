@@ -13,14 +13,12 @@ import {
 import { PlaylistGlyph } from "@/features/library/playlists/PlaylistGlyph";
 
 interface PlaylistMarkerPickerProps {
-  /** The stored marker string being edited, or null for "the default glyph". */
+  /** Stored marker, or null for the default glyph. */
   value: string | null;
   onPick: (value: string) => void;
-  /** The playlist's image, when it has one — the thumbnail cell needs a picture
-   * to offer. */
+  /** For the thumbnail option. */
   coverUrl: string | null;
-  /** Opens the image step: an inert cell with an explanation is worse than a
-   * way out. */
+  /** Opens the image step instead of showing an inert cell. */
   onAddImage: () => void;
 }
 
@@ -63,16 +61,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/**
- * The grid of faces a playlist can wear in the navigation — an icon, its own
- * artwork, or a flat colour.
- *
- * Controlled: it holds nothing and writes nothing. It used to be a modal of
- * its own that wrote straight through, which made the sidebar row the live
- * confirmation; now that the same modal also carries the name, a single
- * "Enregistrer" governs both, and the preview above the grid does the
- * confirming instead.
- */
+/** The sidebar glyph grid (icon, artwork, colour). Controlled: saved with the form. */
 export function PlaylistMarkerPicker({ value, onPick, coverUrl, onAddImage }: PlaylistMarkerPickerProps) {
   const { t } = useTranslation("library");
 

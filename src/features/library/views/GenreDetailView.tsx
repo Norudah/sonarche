@@ -35,14 +35,11 @@ import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/** The page is already a family and, when refined, a genre — so it offers
- * neither. The category is the one axis that still cuts across what is left.
- * Module-level so the array identity is stable across renders. */
+/** Family and genre are the page's own, so only the category is offered.
+ * Module-level for a stable identity. */
 const AXES: readonly TrackAxis[] = ["category"];
 
-/** Inspects a family, or a genre inside it — the `genre` query param is what
- * decides, so the selection survives navigating away and back without the page
- * remounting each time it changes. */
+/** A family, or a genre within it via `?genre=` (no remount on chip flips). */
 export function GenreDetailView() {
   const { t } = useTranslation("library");
   const { family: key = "" } = useParams();
@@ -65,8 +62,7 @@ export function GenreDetailView() {
     };
   }, [library.data, key, genreName]);
 
-  // The genre narrows the albums; the artists follow from whatever is left, so
-  // inspecting "Grunge" also drops the artists who have none.
+  // Artists follow from the filtered albums.
   const albums = useMemo(
     () => (family ? sortAlbums(albumsWithGenre(family, genreName ?? null), "artist") : []),
     [family, genreName],
@@ -106,29 +102,21 @@ export function GenreDetailView() {
     );
   }
 
-  // Classifying the genre moved it to another shelf and the refetch just
-  // landed: this route stopped matching, but the genre is still there. Find
-  // where it files now and send the route after it — the AlbumDetailView
-  // rename move. Before the family guard, because the move can also have
-  // emptied the family this route names (its only genre left). `replace` so
-  // Back does not walk into the dead placement.
+  // Reclassified: follow the genre to its new family (`replace`), before the
+  // family guard since the move may have emptied this one.
   if (genreName != null && !genre) {
     const movedTo = families.find((candidate) => candidate.subs.some((sub) => sub.name === genreName));
     if (movedTo) return <Navigate to={genrePath(movedTo.key, genreName)} replace />;
     return <Navigate to={paths.libraryGenres} replace />;
   }
-  // Same reasoning as the album and artist pages: a recompute can empty a
-  // family out from under an open page. `replace` so Back does not walk
-  // straight into the dead route again.
+  // The family is gone: back to the index.
   if (!family) return <Navigate to={paths.libraryGenres} replace />;
 
   const subject = genre ?? family;
-  // What the hero starts is what the page is showing: the whole subject in the
-  // overview, the filtered list in the tracks mode.
+  // Plays what the page shows.
   const queue = () => (isTracks ? explorer.visible : subjectTracks);
 
-  // Genre depth only — a family is a shelf, not a thing to refile — and never
-  // for a genre that *is* a family root, which the sidecar refuses to move.
+  // Genre depth only, and never for a family root.
   const override = genre != null ? (overrides.data?.get(genre.name.toLowerCase()) ?? null) : null;
   const classifyMenu =
     genre != null && !isFamilyRootGenre(genre.name) ? (
@@ -156,9 +144,7 @@ export function GenreDetailView() {
         classify={classifyMenu}
       />
 
-      {/* The chips belong above a shelf. In the tracks mode the same choice
-       * rides the bar as a pill instead — two rows of controls for one param is
-       * how a page starts costing more height than it shows. */}
+      {/* Chips above shelves; a pill in the bar in tracks mode. */}
       {!isTracks && <SubGenreChips subs={family.subs} selected={genre?.name ?? null} />}
 
       {isTracks ? (
@@ -170,17 +156,11 @@ export function GenreDetailView() {
           <TrackResults state={explorer} />
         </>
       ) : albums.length === 0 ? (
-        /* A family can hold tracks and no album at all — every one of them is a
-         * minority on a record filed elsewhere. Saying so is honest, and the
-         * tracks are one switch away rather than pasted in below. */
+        /* Every track may be a minority on albums filed elsewhere; tracks are one switch away. */
         <NoResults icon={Disc} message={t("genres.noAlbums")} />
       ) : (
         <>
-          {/* Keyed on the family, not on the genre. Re-keying on the genre threw
-           * away every card and rebuilt the shelf on what is only a filter
-           * change, which is what made the page jump. Album and artist keys are
-           * stable, so flipping a chip now removes and adds the cards that
-           * actually differ and leaves the rest where they are. */}
+          {/* Keyed on the family, not the genre, so a chip flip only moves differing cards. */}
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{t("genres.albums")}</h2>
             <AlbumShelf

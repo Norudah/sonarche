@@ -9,18 +9,11 @@ interface TracksHeaderProps {
   onShuffleAll: () => void;
 }
 
-/**
- * Identity and intent: what this page is, how big it is, how to start it.
- *
- * The search moved down into the filter bar with the rest of the controls. It was
- * the only one up here, which made the title row half a toolbar — and left
- * nowhere for the filters to go without turning it into a whole one.
- */
+/** Title, size and play buttons; search lives in the filter bar. */
 export function TracksHeader({ count, playtime, onPlayAll, onShuffleAll }: TracksHeaderProps) {
   const { t } = useTranslation("library");
 
-  // Minutes are padded only next to an hour count ("21 h 08"); alone they read
-  // as a plain number ("41 min").
+  // Minutes padded only next to hours ("21 h 08", "41 min").
   const playtimeLabel =
     playtime.hours > 0
       ? t("totalPlaytime", {
@@ -37,9 +30,7 @@ export function TracksHeader({ count, playtime, onPlayAll, onShuffleAll }: Track
           {t("trackCount", { count })} · {playtimeLabel}
         </p>
       </div>
-      {/* The same twin pills as the detail heroes — this page used to keep a
-       * bare accent disc, the one leftover from before sets were playable.
-       * Here the pair launches the visible list, filters included. */}
+      {/* Plays the visible list, filters included. */}
       <HeroPlayButtons onPlay={onPlayAll} onShuffle={onShuffleAll} />
     </div>
   );

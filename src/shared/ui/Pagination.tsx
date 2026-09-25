@@ -4,14 +4,7 @@ import { useTranslation } from "react-i18next";
 const STEP =
   "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-30";
 
-/**
- * Prev/next with the page count between them — no numbered pages.
- *
- * An archive is read backwards from the newest row, so "which page am I on"
- * is the only question a reader has here; jumping to page 7 of an undated list
- * answers nothing. Renders nothing at all on a single page rather than showing
- * two dead arrows.
- */
+/** Prev/next with a page count; renders nothing for a single page. */
 export function Pagination({
   page,
   pageCount,

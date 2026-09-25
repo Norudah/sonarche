@@ -1,14 +1,8 @@
-"""Genre -> browse-family resolution via the canonical genre tree.
+"""Genre -> browse family, via the genre tree.
 
-genres-tree.yaml is the base: the stored genre is the most specific node, the
-browse bucket is the family root above it. Only the 13 family roots are browse
-families; genres under the other roots (avant-garde, comedy, easy listening,
-kids music, soundtrack) resolve to None and the front shows them under Other.
-
-The user's own placements (genre_overrides) sit on top and win: a genre the
-user filed somewhere buckets there, whatever the base tree says. lastgenre
-does not read this module — it canonicalizes against the *derived* tree files
-genre_overrides regenerates, so both readings stay aligned.
+The stored genre is the most specific node; its family is the root above it.
+Roots outside `_FAMILIES` resolve to None ("Other"). User placements
+(`genre_overrides`) win over the base tree.
 """
 
 import os
@@ -17,10 +11,7 @@ from functools import lru_cache
 TREE_PATH = os.path.join(os.path.dirname(__file__), "genres-tree.yaml")
 WHITELIST_PATH = os.path.join(os.path.dirname(__file__), "genres-whitelist.txt")
 
-# Family root node -> display label. Roots outside this map are not families.
-# The set follows the 2026-08 audit (Discogs/AllMusic/RYM cross-check): R&B
-# stopped hiding under Blues, Folk and Country merged, and World exists so the
-# african/asian sections stop rotting in Other.
+# Family root node -> display label.
 _FAMILIES = {
     "metal": "Metal",
     "rock": "Rock",
@@ -37,9 +28,8 @@ _FAMILIES = {
     "world": "World",
 }
 
-# Family roots that existed before the audit, still alive in a user's
-# genre-overrides.json. Resolved on read, never rewritten: the file is the
-# user's, and mapping beats migrating.
+# Pre-2026-08 family roots that may remain in a user's overrides file;
+# mapped on read, never rewritten.
 LEGACY_ROOTS = {
     "soul & funk": "r&b",
     "folk": "folk & country",
@@ -93,16 +83,12 @@ def family_labels() -> list[str]:
 
 
 def base_root_for(genre_lower: str) -> str | None:
-    """Family root per the base tree alone, overrides ignored — what an
-    override is compared against to know whether it still says anything."""
+    """Family root from the base tree alone, ignoring overrides."""
     root = _genre_to_root().get(genre_lower)
     return root if root in _FAMILIES else None
 
 
 def invalidate_cache() -> None:
-    # The base tree never changes at runtime; only the overrides layer does,
-    # and it keeps its own cache. Kept as one entry point so a caller after
-    # an override write does not need to know which module cached what.
     import genre_overrides
 
     genre_overrides._cache = None
@@ -110,9 +96,7 @@ def invalidate_cache() -> None:
 
 
 def bucket_for(genre: str | None) -> str | None:
-    """Broad browse family for a specific genre, or None if outside the families.
-
-    The user's placement wins over the base tree."""
+    """Browse family for a genre, or None. User placements win."""
     if not genre:
         return None
     import genre_overrides

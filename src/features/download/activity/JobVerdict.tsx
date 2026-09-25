@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { type JobOutcome, OUTCOME_TONE } from "@/features/download/activity/outcome";
 import { Verdict } from "@/shared/ui/Verdict";
 
-/** The i18n key and its interpolation, per verdict. */
 function phrase(outcome: JobOutcome): { key: string; values?: Record<string, number> } {
   switch (outcome.kind) {
     case "matched":
@@ -23,19 +22,13 @@ function phrase(outcome: JobOutcome): { key: string; values?: Record<string, num
   }
 }
 
-/**
- * A finished job in one word.
- *
- * The dot, its tones and the quiet treatment of success are the app's shared
- * `Verdict` — the import closes the same way. What belongs here is only which
- * word a given outcome earns.
- */
+/** A finished job in one word, using the shared `Verdict`. */
 export function JobVerdict({ outcome, source }: { outcome: JobOutcome; source?: string | null }) {
   const { t } = useTranslation("download");
   const { key, values } = phrase(outcome);
 
   return (
-    // Which database answered is detail, not headline: it belongs on hover.
+    // Which database answered is detail: on hover.
     <Verdict tone={OUTCOME_TONE[outcome.kind]} title={source ?? undefined}>
       {t(key, values)}
     </Verdict>

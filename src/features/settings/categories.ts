@@ -15,7 +15,7 @@ import type { SettingsCategoryId } from "@/shared/lib/settingsDialog";
 
 export interface SettingsCategory {
   id: SettingsCategoryId;
-  /** Key into the `settings` namespace, e.g. `services.category`. */
+  /** Key in the `settings` namespace. */
   labelKey: string;
   icon: LucideIcon;
 }
@@ -26,27 +26,9 @@ export interface SettingsGroup {
 }
 
 /**
- * The menu, in three titled groups.
- *
- * A flat list is what made the old menu unfindable: seven entries of equal
- * rank that were not of equal kind — preferences next to a disk location next
- * to an outside account next to the app's own version. Nothing said which axis
- * a setting had been filed on, so finding one meant guessing the axis first.
- *
- * Each group answers a different question, and every category belongs to
- * exactly one of them: what the app does when you use it, what it holds on
- * your disk, and what the app itself is. The labels are the ordinary ones —
- * Préférences / Bibliothèque / Application — because a menu is a place to find
- * your way, not a place to be addressed. Two consequences worth naming, because both moved
- * a setting out of the folder someone might remember:
- *
- * - the audio format now sits with the files it describes, not with the
- *   download page that happens to apply it — it is the one setting that
- *   rewrites bytes, and its button converts the whole library;
- * - the API keys and the request pacing became one pane. From the outside "my
- *   key stopped working", "the service is down" and "I got rate-limited" are
- *   one symptom, and a category holding a single slider was never a door worth
- *   opening.
+ * The menu in three groups: how the app behaves (Preferences), what it holds
+ * on disk (Library), and the app itself (Application). The audio format sits
+ * with the files it rewrites; API keys and request pacing share one pane.
  */
 export const settingsGroups: SettingsGroup[] = [
   {
@@ -54,8 +36,7 @@ export const settingsGroups: SettingsGroup[] = [
     categories: [
       { id: "appearance", labelKey: "appearance.category", icon: Palette },
       { id: "adding", labelKey: "adding.category", icon: Download },
-      // Same icon as the Metadata destination in the main nav: the category
-      // tunes that page, and the two entries should read as the same thing.
+      // Same icon as the Metadata page in the main nav.
       { id: "metadata", labelKey: "metadata.category", icon: FileText },
     ],
   },
@@ -71,12 +52,9 @@ export const settingsGroups: SettingsGroup[] = [
     categories: [
       { id: "updates", labelKey: "updates.category", icon: RefreshCw },
       { id: "advanced", labelKey: "advanced.category", icon: Wrench },
-      // Last, always, and named for what it holds. Five irreversible actions
-      // deserve a label that announces them rather than a scroll that reveals
-      // them at the foot of an ordinary page.
+      // Always last.
       { id: "danger", labelKey: "danger.category", icon: ShieldAlert },
-      // Compiled out of release builds; every command behind it refuses to run
-      // there anyway.
+      // Compiled out of release builds.
       ...(import.meta.env.DEV
         ? [{ id: "developer", labelKey: "developer.category", icon: FlaskConical } satisfies SettingsCategory]
         : []),
@@ -84,5 +62,5 @@ export const settingsGroups: SettingsGroup[] = [
   },
 ];
 
-/** Flattened, in menu order — what the search index and the pane resolver walk. */
+/** In menu order, for the search index and the pane resolver. */
 export const settingsCategories: SettingsCategory[] = settingsGroups.flatMap((group) => group.categories);

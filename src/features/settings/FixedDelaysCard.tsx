@@ -4,16 +4,8 @@ import type { Preferences } from "@/features/settings/api";
 import { FIXED_API_DELAYS, formatDelay } from "@/features/settings/rateLimits";
 import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 
-/**
- * The pauses the app imposes rather than offers. AcoustID and Last.fm are
- * reached through keys every install shares, so their pace is not a personal
- * preference — one rushed user gets the key throttled for everyone. The card
- * states the enforced delay instead of handing over a dial.
- *
- * Filed with the services it protects, not with the download pause it used to
- * share a page with: that one is a choice about your own bandwidth, these are
- * a rule about someone else's.
- */
+/** The enforced AcoustID and Last.fm delays: shared keys, so one user's pace
+ * affects everyone. Shown, not adjustable. */
 export function FixedDelaysCard({ preferences }: { preferences: Preferences }) {
   const { t, i18n } = useTranslation("settings");
   const locale = i18n.resolvedLanguage ?? "fr";

@@ -1,9 +1,7 @@
 export type DetectedUrlKind = "single" | "album" | "mixed" | null;
 
-/** Instant, offline classification of a pasted URL: does it point to a single
- * video, a playlist (album), or a video opened from inside a playlist (mixed —
- * the UI must ask)? Auto-generated radio/mix lists (RD…, UL…) are not real
- * playlists and are ignored. */
+/** Offline URL classification: single video, playlist, or a video opened from
+ * a playlist (mixed: the UI asks). Radio/mix lists (RD…, UL…) are ignored. */
 export function detectUrlKind(raw: string): DetectedUrlKind {
   let url: URL;
   try {

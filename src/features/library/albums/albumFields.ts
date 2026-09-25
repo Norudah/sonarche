@@ -1,25 +1,17 @@
 import type { LibraryTrack, TrackFieldPatch, TrackUpdate } from "@/features/library/api";
 import { effectiveEdit } from "@/features/library/metadata/fields";
 
-/**
- * Album inspection edits two shapes at once: tags the whole record shares
- * (edited once, written to every track) and per-track title/artist. This module
- * is the pure core — no React — so the fan-out that turns "set the album's
- * genre" into one write per track is unit-testable on its own.
- */
+/** Pure core of album editing: record-wide tags (written to every track) and
+ * per-track cells. */
 
-/** Album-common tags, in panel order. Keys are beets' wire names, so a common
- * value drops straight into a `TrackFieldPatch`. Track total is deliberately
- * absent: it is bookkeeping the user does not care about, and the tracklist
- * order below is the real answer to "how many, in what order". */
+/** Record-wide tags in panel order, keyed by beets wire names. No track total:
+ * the tracklist order answers it. */
 export interface AlbumCommonValues {
   album: string;
   albumartist: string;
   year: string;
   genre: string;
-  /** The category axis (grouping tag) — album-level in practice (a record is a
-   * game OST or it is not), so it rides the common fan-out. Optional by
-   * nature: absent from every completeness count. */
+  /** The category (grouping tag), album-level in practice. Not counted in completeness. */
   grouping: string;
 }
 
@@ -27,9 +19,7 @@ export type AlbumCommonField = keyof AlbumCommonValues;
 
 export const ALBUM_COMMON_FIELDS: readonly AlbumCommonField[] = ["album", "albumartist", "year", "genre", "grouping"];
 
-/** One common field's baseline: the value the tracks agree on, and whether they
- * actually disagree. A mixed field carries an empty value — the panel shows a
- * "multiple values" placeholder rather than pretending one track speaks for all. */
+/** The value the tracks agree on, or `mixed` with an empty value. */
 export interface CommonCell {
   value: string;
   mixed: boolean;
@@ -37,8 +27,7 @@ export interface CommonCell {
 
 export type AlbumCommonBaseline = Record<AlbumCommonField, CommonCell>;
 
-/** The string a track contributes to a given common field. Ints and the
- * nullable genre are normalized to the same string form the inputs edit. */
+/** A track's value as the input's string form. */
 function fieldOf(track: LibraryTrack, field: AlbumCommonField): string {
   switch (field) {
     case "album":
@@ -68,12 +57,8 @@ export function commonBaseline(tracks: LibraryTrack[]): AlbumCommonBaseline {
   return baseline;
 }
 
-/** The per-track editable cells shown in the tracklist. Track number rides here
- * (not a common field) because it is what actually orders the record. Genre and
- * year are in *both* places on purpose: edited here when the record genuinely
- * mixes values, read back into the common field by `draftRowCell` — the Spirit
- * case showed an album's tracks legitimately disagreeing, and a collection
- * gathers releases from different years by nature. */
+/** Per-track editable cells. Genre and year appear here and as common fields,
+ * since an album's tracks can legitimately differ (see `draftRowCell`). */
 export interface TrackRowValues {
   track: string;
   title: string;
@@ -82,8 +67,7 @@ export interface TrackRowValues {
   genre: string;
 }
 
-/** The common tags that actually live on the rows: their common field is a
- * *reading* of the column, and writing to it fans out to every row. */
+/** Common fields that are a reading of the rows; editing them fans out. */
 export type RowCarriedField = "genre" | "year";
 export const ROW_CARRIED_FIELDS: readonly RowCarriedField[] = ["genre", "year"];
 
@@ -99,7 +83,7 @@ export function trackRowValues(track: LibraryTrack): TrackRowValues {
 
 export interface AlbumDraft {
   common: AlbumCommonValues;
-  /** Keyed by track id — the tracklist edits title/artist per row. */
+  /** Keyed by track id. */
   rows: Record<number, TrackRowValues>;
 }
 
@@ -111,19 +95,11 @@ export function toAlbumDraft(tracks: LibraryTrack[], baseline: AlbumCommonBaseli
   return { common, rows };
 }
 
-/** Which common fields the edit actually moves, and to what.
- *
- * A uniform field counts as changed when its value differs from the baseline
- * (clearing included). A *mixed* field counts only once the user gives it a
- * value: an untouched "multiple values" field must never blanket-wipe the album,
- * so an empty mixed field is left alone.
- *
- * Row-carried fields (genre, year) never diff here. Their common field is a
- * *reading* of the rows (`draftRowCell`), and editing it fans out to the rows,
- * so the row diffs already carry every change; the common seed is mount-time
- * only, which nothing updates. Diffing that seed against a baseline that moves
- * with every save manufactured a phantom pending change right after a
- * successful save — and re-saving the phantom wiped the album's genres. */
+/**
+ * Common fields the edit changes. A mixed field only counts once given a
+ * value, so it never wipes the album. Row-carried fields are diffed on the
+ * rows instead: diffing their stale seed caused phantom changes after a save.
+ */
 export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft): Partial<AlbumCommonValues> {
   const patch: Partial<AlbumCommonValues> = {};
   for (const field of ALBUM_COMMON_FIELDS) {
@@ -135,12 +111,8 @@ export function changedCommon(baseline: AlbumCommonBaseline, draft: AlbumDraft):
   return patch;
 }
 
-/**
- * Assemble the whole album's edits into one batch. Common-field changes fan out
- * to every track; title/artist ride their own row. Only tracks with a real
- * change ship — and the batch is one call, never one per track (the sidecar
- * itself skips any field that lands unchanged).
- */
+/** One batch for the whole album: common changes fan out, rows carry their
+ * own, and only tracks with a real change are included. */
 export function buildAlbumUpdates(
   tracks: LibraryTrack[],
   baseline: AlbumCommonBaseline,
@@ -165,25 +137,9 @@ export function buildAlbumUpdates(
 }
 
 /**
- * A row-carried tag as the record currently reads it — derived from the rows,
- * never stored twice.
- *
- * Genre and year live in both views, and holding them as their own common
- * value let the two disagree: fan a row's genre out to the record and the
- * common field would still show the old word until something wrote it too. Here
- * the common field is a *reading* of the rows (their shared value, or how many
- * they hold), and writing to it fans out. Nothing left to contradict.
- *
- * Each row contributes what a save would actually store — an edit the sidecar
- * would skip (whitespace, a non-numeric year) reads as the stored value — so
- * the cell can never claim a change the save would not write.
- *
- * That settled reading decides *whether* the rows agree, never what the field
- * shows while it is being typed in: it is trimmed, and the common field is a
- * controlled input reading straight off it. Handing back the trimmed text ate
- * the space at the caret on every keystroke — "Hip Hop" could not be typed.
- * So when every row carries the same draft text, that raw text is what comes
- * back, spaces and all.
+ * A row-carried tag as the rows currently read (shared value or mixed),
+ * using what a save would actually store. While every row holds the same
+ * draft text, that raw text is returned so typing keeps its spaces.
  */
 export function draftRowCell(
   tracks: LibraryTrack[],
@@ -205,10 +161,8 @@ export function draftRowCell(
   return { value: "", mixed: true, distinct: values.size };
 }
 
-/** The common fields the draft has moved, mapped to the value each left —
- * feeds the revert chips. Row-carried fields are judged on their derived cell
- * (the rows' shared reading), the rest on the same effective-edit rule as the
- * save, so a chip can never point at an edit the save would not write. */
+/** Moved common fields and their previous values, for the revert chips. Same
+ * effective-edit rule as the save. */
 export function commonOrigins(
   tracks: LibraryTrack[],
   baseline: AlbumCommonBaseline,
@@ -217,7 +171,7 @@ export function commonOrigins(
   const origins: Partial<AlbumCommonValues> = {};
   for (const field of ROW_CARRIED_FIELDS) {
     const cell = draftRowCell(tracks, draft, field);
-    // Moved when the rows no longer read as they did — including into "mixed".
+    // Including a move into "mixed".
     if (!baseline[field].mixed && (cell.mixed || cell.value !== baseline[field].value)) {
       origins[field] = baseline[field].value;
     }
@@ -231,36 +185,24 @@ export function commonOrigins(
   return origins;
 }
 
-/** How many distinct values a mixed field actually holds — "4 different values"
- * is a fact about the tags, where the track count would only restate the size of
- * the record. */
+/** Distinct values of a mixed field. */
 export function distinctCommonCount(tracks: LibraryTrack[], field: AlbumCommonField): number {
   return new Set(tracks.map((track) => fieldOf(track, field).trim())).size;
 }
 
-/** The per-row cells that moved, each mapped to the value it moved away from.
- * Feeds the "modified" marks and their one-click revert: the panel is always
- * editable now, so what has to read at a glance is not "can I type here" but
- * "what have I changed". */
+/** Moved row cells and their previous values, for the "modified" marks. */
 export function rowOrigins(track: LibraryTrack, row: TrackRowValues | undefined): Partial<TrackRowValues> {
   if (!row) return {};
   const live = trackRowValues(track);
   const origins: Partial<TrackRowValues> = {};
   for (const key of Object.keys(live) as (keyof TrackRowValues)[]) {
-    // Same effective-edit rule as the save, so a "modified" mark can never
-    // point at an edit the save would not write.
+    // Same rule as the save.
     if (effectiveEdit(key, row[key], live[key]) != null) origins[key] = live[key];
   }
   return origins;
 }
 
-/** What the footer counts.
- *
- * `fields` is how many *tags* the edit touches, counted once each however many
- * rows carry them: setting the genre on a 29-track record is one change, not 29,
- * and the same genre reached from the common field and from a row is still one.
- * `tracks` is how many files the save would rewrite. Two different numbers, both
- * worth stating — "3 changes on 2 tracks" is the sentence the footer makes. */
+/** `fields`: distinct tags touched (once each). `tracks`: files rewritten. */
 export interface ChangeSummary {
   fields: number;
   tracks: number;
@@ -269,8 +211,7 @@ export interface ChangeSummary {
 export function changeSummary(tracks: LibraryTrack[], baseline: AlbumCommonBaseline, draft: AlbumDraft): ChangeSummary {
   const touched = new Set<string>(Object.keys(changedCommon(baseline, draft)));
   for (const track of tracks) {
-    // `albumartist` is the common field's wire name; a row's `artist` is its own
-    // tag, so the two never collapse into each other.
+    // A row's `artist` and the common `albumartist` stay distinct.
     for (const key of Object.keys(rowOrigins(track, draft.rows[track.id]))) touched.add(key);
   }
   return { fields: touched.size, tracks: buildAlbumUpdates(tracks, baseline, draft).length };

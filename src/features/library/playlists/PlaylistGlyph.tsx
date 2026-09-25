@@ -5,20 +5,12 @@ import { resolveMarker, type PlaylistMarker } from "@/features/library/playlists
 
 interface PlaylistGlyphProps {
   marker: PlaylistMarker;
-  /** Sizing and spacing from the call site; the glyph only fills the box. */
+  /** The glyph fills the box sized by the caller. */
   className?: string;
 }
 
-/**
- * The 16px face a playlist wears in the navigation.
- *
- * The three modes are deliberately not normalised into one shape: a stroked
- * icon has to keep the optical weight of the nav icons above it, while a
- * thumbnail and a colour chip are solid objects and read as a tile. So the
- * icon inherits `currentColor` and the active pill tints it like any other nav
- * glyph, and the other two keep their own colour and take a hairline instead —
- * a small square of artwork on a pale sidebar needs an edge or it floats.
- */
+/** A playlist's 16px sidebar glyph. Icons inherit `currentColor` like other nav
+ * icons; thumbnails and colour chips keep their colour and get a hairline. */
 export function PlaylistGlyph({ marker, className }: PlaylistGlyphProps) {
   if (marker.mode === "icon") {
     return <marker.icon className={cn("shrink-0", marker.filled && "fill-current", className)} />;
@@ -42,9 +34,7 @@ export function PlaylistGlyph({ marker, className }: PlaylistGlyphProps) {
   );
 }
 
-/** The same glyph straight from a playlist — what every call site outside the
- * picker wants, since only the picker draws markers the playlist does not wear
- * yet. */
+/** The glyph a playlist currently wears. */
 export function PlaylistMarkerGlyph({ playlist, className }: { playlist: Playlist; className?: string }) {
   return <PlaylistGlyph marker={resolveMarker(playlist)} className={className} />;
 }

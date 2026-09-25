@@ -1,32 +1,10 @@
-"""Taking an import back out of the library.
+"""Undo a library import.
 
-An import is a copy: the folder it read is untouched, so undoing one destroys
-nothing that exists only here. That is what makes this offerable at all —
-"remove what this run brought in" is a retraction, not a loss.
-
-What makes it *exact* is the mark. Every item the run took on carries
-`sonarche_library_import = <run id>` in beets' `item_attributes`, a row of its
-own. Renaming an album, fixing an artist, rewriting genres, letting the
-alignment pass over it — none of that touches the mark, and beets follows the
-file when a rename moves it. So the set of tracks this removes is the set the
-run created, months and edits later.
-
-The removal itself is `undo_removal`, shared with the download undo: beets'
-own API does the deleting, so the album row, the cover and the emptied
-folders go along with the tracks.
-
-Two things this deliberately does *not* do:
-
-- Touch an album the run only added to. Its other tracks were here first, so
-  the row stays and loses exactly the tracks that arrived.
-- Delete anything outside the library directory. Nothing an import created can
-  be there, so a path that is says something went wrong earlier — and the
-  answer to that is to forget the row, never to delete a stranger's file.
-
-Beets' incremental memory is cleared for the folder at the end. Without it the
-next import of the same folder would walk it, skip every directory it
-remembers taking, and report "0 dossier · Importé" — which is the exact
-failure a user undoing an import is most likely to hit next.
+Imports copy, so undoing destroys nothing unique. Items are found by the
+run's `sonarche_library_import` mark, which survives edits and renames.
+Albums the run only added to keep their older tracks, and files outside the
+library are never deleted. beets' incremental state is cleared for the
+folder so re-importing it works.
 """
 
 import os
@@ -44,7 +22,6 @@ def _batch(params: dict) -> str:
 
 
 def preview(_request_id: str, params: dict) -> dict:
-    """What undoing this run would remove, without removing anything."""
     from beets.library import Library
 
     batch = _batch(params)
@@ -56,7 +33,7 @@ def preview(_request_id: str, params: dict) -> dict:
 
 
 def handle(_request_id: str, params: dict) -> dict:
-    """Remove everything one import brought in, and forget it was ever taken."""
+    """Remove everything one import brought in, and forget the folder."""
     from beets.library import Library
 
     batch = _batch(params)
@@ -76,22 +53,16 @@ def handle(_request_id: str, params: dict) -> dict:
 
 
 def forget_folder(state_file: str | None, folder: str | None) -> int:
-    """Drop a folder from beets' incremental memory. Returns entries removed.
+    """Drop a folder from beets' incremental import state. Returns entries removed.
 
-    Surgical rather than deleting the state file: that memory covers every
-    folder ever imported, and dropping all of it would make the *next* import
-    of some other folder re-walk and re-copy what it already holds. Entries are
-    tuples of directory paths, in bytes; anything at or under the folder goes.
+    Only this folder's entries: the state covers every folder ever imported.
     """
     if not state_file or not folder or not os.path.exists(state_file):
         return 0
 
     from beets.importer.state import ImportState
 
-    # Both spellings: beets stored the path as the app handed it over, and a
-    # source folder reached through a symlink (`/tmp/…` on macOS) has a real
-    # path that shares no prefix with it. Comparing against one of the two
-    # would silently forget nothing.
+    # Both spellings: a symlinked source (`/tmp` on macOS) has an unrelated real path.
     roots = {os.fsencode(os.path.normpath(folder)), os.fsencode(os.path.realpath(folder))}
     state = ImportState(path=os.fsencode(state_file))
     before = len(state.taghistory) + len(state.tagprogress)
@@ -107,7 +78,6 @@ def forget_folder(state_file: str | None, folder: str | None) -> int:
 
 
 def _under_any(path: bytes, roots: set[bytes]) -> bool:
-    """Path containment on beets' own byte paths, without decoding them: a
-    library can hold filenames that are not valid text in any encoding."""
+    """Path containment on raw byte paths (filenames may not be valid text)."""
     separator = os.fsencode(os.sep)
     return any(path == root or path.startswith(root + separator) for root in roots)

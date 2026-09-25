@@ -3,12 +3,8 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useLibrary } from "@/features/library/hooks";
 import { buildSuggestionPools, type SuggestionPools, type SuggestKind, type Suggestion } from "./suggestions";
 
-/**
- * One computation of the suggestion pools per editing surface, not one per
- * field: the track drawer and the album modal each mount a provider, and their
- * dozens of inputs read from it. No provider means no suggestions — the inputs
- * degrade to plain text fields.
- */
+/** Suggestion pools computed once per editing surface. Without a provider,
+ * inputs are plain text fields. */
 
 const SuggestionsContext = createContext<SuggestionPools | null>(null);
 

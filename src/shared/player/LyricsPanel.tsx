@@ -16,47 +16,25 @@ import { TrackThumb } from "@/shared/ui/TrackThumb";
 
 const lyricsKey = (id: number) => ["lyrics", id] as const;
 
-/** The body's ceiling. No floor: a panel padded out to a fixed height so its
- * states would not resize each other left a lake of empty surface under a
- * two-line answer, and the states only ever change when the reader asks. */
 const BODY = "max-h-[19rem] overflow-y-auto";
 
-/** How long the panel stops following the playhead after the reader has
- * scrolled by hand. Long enough to read back a verse, short enough that the
- * panel catches up on its own rather than needing to be told to. */
+/** Pause in following the playhead after the reader scrolls by hand. */
 const FOLLOW_PAUSE_MS = 6000;
 
-/**
- * The timed lines, following the playhead.
- *
- * Its own component because it is the only thing in the panel that redraws with
- * the playhead — `usePlayerProgress` fires a few times a second, and the header
- * and footer around it have no business re-rendering with it.
- *
- * A line is marked exactly the way the queue marks the playing track — accent
- * text on an accent wash — because it is the same statement: this is the one
- * you are on. That also means the panel still says where you are when the
- * following is paused or the timings are askew, which is the case the scroll
- * alone cannot be trusted for.
- */
+/** Timed lines following the playhead. Split out because it re-renders with
+ * `usePlayerProgress`; the current line is marked like the queue's playing row. */
 function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean }) {
   const { t } = useTranslation("player");
   const { currentTime } = usePlayerProgress();
   const { seek } = usePlayer();
   const listRef = useRef<HTMLUListElement>(null);
   const activeRef = useRef<HTMLLIElement>(null);
-  /** When the panel may resume following. Set by the reader's own scrolling. */
   const followFrom = useRef(0);
 
   const active = activeLineIndex(lines, currentTime);
 
-  // Syncing with an external system — the scroll offset of a real node, which
-  // no re-render moves on its own. `scrollTo` on the list rather than
-  // `scrollIntoView` on the line: the latter walks up the ancestors and would
-  // scroll the page behind the popover along with it.
-  // `follow` is in the dependencies, not just in the guard: switching it back
-  // on has to bring the panel to the current line at once, or the reader is
-  // left staring at wherever they had scrolled to and has to hunt for it.
+  // `scrollTo` on the list: `scrollIntoView` would also scroll the page behind
+  // the popover. `follow` is a dependency so re-enabling it jumps to the line.
   useEffect(() => {
     const list = listRef.current;
     const line = activeRef.current;
@@ -68,8 +46,7 @@ function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean })
     });
   }, [active, follow]);
 
-  // Wheel and touch, not `scroll`: the scroll event fires for our own smooth
-  // animation too, and could not tell the reader's intent from the panel's.
+  // Wheel and touch rather than `scroll`, which our own smooth scroll fires too.
   const yieldToReader = () => {
     followFrom.current = Date.now() + FOLLOW_PAUSE_MS;
   };
@@ -83,9 +60,7 @@ function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean })
     >
       {lines.map((line, index) => (
         <li key={index} ref={index === active ? activeRef : undefined}>
-          {/* A line is a place in the track, so it is a control: pressing one
-           * takes playback there — the only way to re-hear a verse without
-           * hunting for it on the seek bar. */}
+          {/* Pressing a line seeks there. */}
           <button
             type="button"
             onClick={() => seek(line.time)}
@@ -103,8 +78,6 @@ function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean })
   );
 }
 
-/** The panel's own offer, in the shape the rest of the app makes one: a tinted
- * tile, a line that says where things stand, a hint, and the way out. */
 function LyricsOffer({
   title,
   hint,
@@ -112,8 +85,7 @@ function LyricsOffer({
 }: {
   title: string;
   hint?: string;
-  /** Absent when there is nothing left to try — an instrumental is an answer,
-   * and a button that would return it again is not an offer. */
+  /** Absent when there is nothing left to try (e.g. instrumental). */
   action?: { label: string; isPending: boolean; onPress: () => void };
 }) {
   return (
@@ -136,19 +108,11 @@ function LyricsOffer({
   );
 }
 
-/** Segment of the follow switch, in the app's segmented-control size, taken
- * down to footer scale. */
 const SEGMENT =
   "relative flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
-/**
- * Follow the music, or scroll it yourself.
- *
- * A sliding pill between two named segments rather than one icon that flips:
- * this app already says "throw this switch" that way (see `ViewModeSwitch`),
- * and an icon alone cannot say which of the two modes it is announcing — the
- * current one, or the one it would take you to.
- */
+/** Follow the playhead or scroll manually: two named segments, as in
+ * `ViewModeSwitch`, so the current mode is unambiguous. */
 function FollowSwitch({ on, toggle }: { on: boolean; toggle: () => void }) {
   const { t } = useTranslation("player");
 
@@ -169,8 +133,7 @@ function FollowSwitch({ on, toggle }: { on: boolean; toggle: () => void }) {
               className="absolute inset-0 rounded-full bg-surface shadow-xs"
             />
           )}
-          {/* The pill is absolutely positioned and would paint over an in-flow
-           * label; positioning the content puts it back on top. */}
+          {/* Positioned so the label paints above the absolute pill. */}
           <span className="relative flex items-center gap-1">
             {mode ? <Magnet className="size-3 shrink-0" /> : <Hand className="size-3 shrink-0" />}
             {t(mode ? "lyrics.followAuto" : "lyrics.followManual")}
@@ -181,14 +144,8 @@ function FollowSwitch({ on, toggle }: { on: boolean; toggle: () => void }) {
   );
 }
 
-/**
- * Where the words came from, how they scroll, and the way to ask again.
- *
- * The provenance is not a credit line: it is what tells the reader why nothing
- * is scrolling. lyrics.ovh has no timings to give, so a page that came from it
- * is a page to re-fetch once LRCLIB is answering again — which is exactly what
- * the button on the far end does.
- */
+/** Source, follow switch and retry. The source explains why a plain page
+ * doesn't scroll, and when retrying may help. */
 function LyricsFooter({
   lyrics,
   isPending,
@@ -198,13 +155,11 @@ function LyricsFooter({
   lyrics: Lyrics;
   isPending: boolean;
   onAgain: () => void;
-  /** Absent when there is no timing to follow — a plain page has no scroll of
-   * its own to hand back, so offering the switch would only puzzle. */
+  /** Absent for plain lyrics, which have no timing to follow. */
   follow?: { on: boolean; toggle: () => void };
 }) {
   const { t } = useTranslation("player");
-  // The services' own names, cased the way they write them — the wire value is
-  // an identifier, not a label.
+  // The services' own spelling; the wire value is an identifier.
   const source =
     lyrics.source === "lrclib" ? "LRCLIB" : lyrics.source === "lyrics.ovh" ? "lyrics.ovh" : t("lyrics.fromStored");
 
@@ -213,9 +168,6 @@ function LyricsFooter({
       <p className="truncate text-[0.6875rem] text-muted">
         {source} · {t(lyrics.lines.length > 0 ? "lyrics.timed" : "lyrics.untimed")}
       </p>
-      {/* The switch picks a mode, the button fires an action: two different
-       * kinds of control, so they are spaced apart rather than filed as a pair
-       * of neighbouring icons. */}
       <div className="flex shrink-0 items-center gap-3">
         {follow && <FollowSwitch on={follow.on} toggle={follow.toggle} />}
         <ActionHelp text={t("lyrics.againHelp")}>
@@ -236,18 +188,14 @@ function LyricsFooter({
   );
 }
 
-/**
- * What the panel shows for one track, and the only thing that talks to the
- * sidecar. Mounted with the popover, so the stored lookup runs on open and not
- * before — and the network stays untouched until a button is pressed.
- */
+/** The panel's content for one track. Mounted with the popover, so stored
+ * lyrics load on open and the network waits for a button. */
 function LyricsBody({ track, follow }: { track: PlayableTrack; follow: { on: boolean; toggle: () => void } }) {
   const { t } = useTranslation("player");
   const queryClient = useQueryClient();
   const id = Number(track.id);
 
-  // No retry: this read only touches the library, so a failure means the
-  // sidecar is down — three more attempts would just delay saying so.
+  // No retry: a local read failing means the sidecar is down.
   const stored = useQuery({
     queryKey: lyricsKey(id),
     queryFn: () => fetchLyrics(id, false),
@@ -287,10 +235,8 @@ function LyricsBody({ track, follow }: { track: PlayableTrack; follow: { on: boo
       </>
     );
 
-  // Nothing to show, and which silence it is decides what to say. Four of them,
-  // and they are four because they call for four different next moves: never
-  // looked, the databases have no words for this recording, they did not answer
-  // at all, or our own side broke.
+  // Four distinct empty states, each with its own next step: never searched,
+  // no lyrics found, services unreachable, or our own error.
   const searched = search.isSuccess || search.isError;
   const state = lyrics?.instrumental
     ? "instrumental"
@@ -319,19 +265,11 @@ function LyricsBody({ track, follow }: { track: PlayableTrack; follow: { on: boo
   );
 }
 
-/**
- * Lyrics for the playing track, on demand.
- *
- * Deliberately one track at a time and never on its own initiative: the panel
- * reads what the library already holds when it opens, and only its buttons go
- * looking. A song someone wants the words to is a one-off, not something to
- * sweep a library for.
- */
+/** Lyrics for the playing track, one track at a time and only on demand. */
 export function LyricsPanel() {
   const { t } = useTranslation("player");
   const { current } = usePlayer();
-  // Held here rather than inside the body, which remounts on every track: a
-  // reader who has taken the wheel means it for the session, not for one song.
+  // Held here so the reader's choice survives track changes.
   const [follow, setFollow] = useState(true);
 
   return (
@@ -339,15 +277,9 @@ export function LyricsPanel() {
       <Popover.Trigger aria-label={t("lyrics.title")} className={BAR_TRIGGER}>
         <MicVocal className="size-4" />
       </Popover.Trigger>
-      {/* `overflow-hidden` on the element that owns the corner: the header
-       * below carries a wash of its own, and a filled block inside a rounded
-       * box squares its two top corners off unless the box clips. */}
+      {/* Clips the header's wash to the rounded corners. */}
       <Popover.Content placement="top end" className="w-96 overflow-hidden p-0">
         <Popover.Dialog aria-label={t("lyrics.title")} className="p-0">
-          {/* The drawers' object header, at popover scale: the record on the
-           * left, an accent eyebrow naming the panel, then the track. Same wash
-           * and same hairline, so this reads as one of the app's panels about a
-           * track rather than a tooltip that happens to hold text. */}
           <div className="flex items-center gap-3.5 border-b border-separator/60 panel-wash px-5 pt-4 pb-3.5">
             <TrackThumb artUrl={current?.artUrl} size="size-11" radius="rounded-lg" loading="eager" />
             <div className="min-w-0 flex-1">

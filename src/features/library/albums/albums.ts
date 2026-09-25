@@ -2,40 +2,31 @@ import type { AcceptedCheck, AlbumKind, LibraryTrack } from "@/features/library/
 import { createTextFilter } from "@/shared/lib/search";
 
 export interface Album {
-  /** Stable, URL-safe identity for the album route. See `albumKey`. */
+  /** Route-safe identity; see `albumKey`. */
   key: string;
   title: string;
-  /** Album artist, falling back to the track artist when beets left it empty. */
+  /** Album artist, falling back to the track artist. */
   artist: string;
   year: number | null;
-  /** Distinct genres present on the album, most frequent first. */
+  /** Distinct genres, most frequent first. */
   genres: string[];
-  /** Ordered by track number, unnumbered tracks last. */
+  /** By track number, unnumbered last. */
   tracks: LibraryTrack[];
-  /** Summed playtime in seconds; unknown lengths count as zero. */
+  /** Total seconds; unknown lengths count as zero. */
   length: number;
   artUrl: string | null;
-  /** Distinct container formats — "AAC", "FLAC"… */
+  /** Distinct container formats ("AAC", "FLAC"…). */
   formats: string[];
-  /** What this record is. A card is a (artist, title) group and can cover
-   * several beets albums, so it only reads as a collection when every one of
-   * them says so — a half-declared group stays an album, which is the reading
-   * that asks the fewest questions of the user. */
+  /** A card can span several beets albums; it's a collection only if all agree. */
   kind: AlbumKind;
-  /** The beets album rows behind the card, ascending. What a kind change has
-   * to be applied to; empty for a group made only of singletons. */
+  /** Beets album rows behind the card, ascending; empty for singletons. */
   albumIds: number[];
-  /** Album-level checks the owner has answered. Same all-must-agree rule as
-   * `kind`, and for the same reason. */
+  /** Album-level accepted checks, all rows agreeing (as for `kind`). */
   accepted: AcceptedCheck[];
 }
 
-/**
- * Grouping identity, and the React key for a card. Purely in-memory: the album
- * route carries the artist and the title as two separate segments instead, so
- * that no single string ever has to be split back apart. `␟` (␟, the unit
- * separator glyph) cannot occur in a tag, which keeps the join unambiguous.
- */
+/** In-memory grouping key and React key; the route uses two segments instead.
+ * `␟` can't occur in a tag. */
 export function albumKey(artist: string, title: string): string {
   return `${artist}␟${title}`;
 }
@@ -44,8 +35,7 @@ function albumArtistOf(track: LibraryTrack): string {
   return track.albumArtist.trim() || track.artist.trim();
 }
 
-/** Track number ascending; unnumbered tracks sink to the bottom in title order
- * rather than scattering through the list. */
+/** Unnumbered tracks sink to the bottom, by title. */
 function byTrackNumber(a: LibraryTrack, b: LibraryTrack): number {
   if (a.track == null && b.track == null) return a.title.localeCompare(b.title);
   if (a.track == null) return 1;
@@ -64,14 +54,12 @@ function distinctGenres(tracks: LibraryTrack[]): string[] {
     .map(([genre]) => genre);
 }
 
-/** The rows behind a card, and what they agree on. */
 function recordOf(tracks: LibraryTrack[]): { kind: AlbumKind; albumIds: number[]; accepted: AcceptedCheck[] } {
   const albumIds = Array.from(new Set(tracks.map((track) => track.albumId).filter((id) => id != null))).sort(
     (a, b) => a - b,
   );
   const collection = albumIds.length > 0 && tracks.every((track) => track.albumKind === "collection");
-  // Intersection, not union: a card standing for two beets albums is only
-  // done with a check once both of them are.
+  // Intersection: a check is only done once every row has it.
   const accepted =
     albumIds.length === 0
       ? []
@@ -110,25 +98,9 @@ function computeAlbums(tracks: LibraryTrack[]): Album[] {
 }
 
 /**
- * Cached on the array's identity, exactly like `facetsOf` and for the same
- * reason — but the pressure here is navigation rather than mount count.
- *
- * Albums are derived on the front: `list_library` returns flat items, and beets
- * has no album row we mirror. Identity is (album artist, album title) — not the
- * title alone, so two different "Greatest Hits" stay two albums.
- *
- * Six surfaces need that grouping (the albums shelf, artists, genres,
- * categories and the two detail views), each behind its own route, so a
- * per-component `useMemo` threw the work away on every navigation and paid for
- * it again on arrival — a full pass over the library to walk back into a page
- * that was already computed a second ago. Keying on the array React Query
- * handed out gives the first caller's work to all the others, and a refetch
- * produces a new array, so the entry invalidates itself and the old one is
- * collectable.
- *
- * Sharing the objects is deliberate and safe: nothing mutates an `Album`
- * (`sortAlbums` copies, the triage filters), and stable identities let the
- * memoisation downstream actually hold.
+ * Albums grouped by (album artist, title) on the front, cached by the listing
+ * array's identity: several routes need the grouping, and a refetch produces
+ * a new array. Albums are never mutated, so sharing them keeps memos stable.
  */
 const cache = new WeakMap<LibraryTrack[], Album[]>();
 
@@ -148,39 +120,28 @@ export function sortAlbums(albums: Album[], sort: AlbumSort): Album[] {
   const sorted = [...albums];
   switch (sort) {
     case "artist":
-      // Within an artist, chronological: a discography reads by era, not A→Z.
+      // Chronological within an artist.
       return sorted.sort((a, b) => a.artist.localeCompare(b.artist) || (a.year ?? 0) - (b.year ?? 0));
     case "title":
       return sorted.sort((a, b) => a.title.localeCompare(b.title));
     case "year":
-      // Undated albums land at the end rather than pretending to be from year 0.
+      // Undated albums last.
       return sorted.sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
   }
 }
 
-/** Same contract as `filterTracks`: every whitespace-separated term must match
- * somewhere, so "daft disc" finds Discovery. */
+/** Every term must match somewhere, as in `filterTracks`. */
 export const filterAlbums = createTextFilter<Album>((album) =>
   [album.title, album.artist, album.year ?? "", ...album.genres].join(" "),
 );
 
-/** Looked up by the pair the route carries, not by a joined key: the router
- * hands back already-decoded segments, and re-joining them just to split them
- * again is where an album titled "50% Off" or an artist called "AC|DC" breaks. */
+/** By the route's two decoded segments, never a re-split joined key. */
 export function findAlbum(albums: Album[], artist: string, title: string): Album | null {
   return albums.find((album) => album.artist === artist && album.title === title) ?? null;
 }
 
-/**
- * The same record after its name moved — found by the one thing a rename cannot
- * touch, the ids of its tracks.
- *
- * Album identity is (album artist, title), so editing either makes the old
- * identity vanish and a new one appear. Anything holding the old one — the
- * detail route, the shelf's open panel — would otherwise conclude the record was
- * deleted. Matching on track ids sidesteps the whole question of whether the URL
- * or the refetch lands first.
- */
+/** The same record after a rename, found by its track ids (renaming changes
+ * the (artist, title) identity). */
 export function findAlbumLike(albums: Album[], previous: Album): Album | null {
   const ids = new Set(previous.tracks.map((track) => track.id));
   return albums.find((album) => album.tracks.some((track) => ids.has(track.id))) ?? null;

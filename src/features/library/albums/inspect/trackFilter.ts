@@ -1,12 +1,7 @@
 import type { LibraryTrack } from "@/features/library/api";
 
-/**
- * A narrowing of the tracklist, raised by the completion card.
- *
- * It carries its own label because the thing that sets it is also the thing that
- * knows how to name it — the filter bar just states what it was handed, and the
- * id is only there so pressing the same chip twice clears it.
- */
+/** A tracklist narrowing set by the completion card, carrying its own label;
+ * `id` lets the same chip toggle it off. */
 export interface TrackFilter {
   id: string;
   label: string;

@@ -1,22 +1,11 @@
-"""User control over the genre tree: which family a genre files under.
+"""User placements in the genre tree: which family a genre files under.
 
-The bundled genres-tree.yaml stays the canonical base — it ships with the app
-and updates with it. The user's decisions live apart, as a small JSON map
-(genre -> family root) in SONARCHE_GENRES_DIR, so an app update never clobbers
-them and an erased library never takes them along: a placement is an opinion
-about a genre name, not about any particular track.
+The bundled genres-tree.yaml stays the base. User overrides (genre -> family
+root) live in a JSON file in SONARCHE_GENRES_DIR, so app updates and library
+resets leave them intact. Overrides that restate the base are dropped.
 
-One entry covers both gestures. Reclassing a known genre overrides the tree's
-placement; adopting a genre the tree does not know gives it a family at all
-(it browsed under Other before). Overrides that merely restate the base tree
-are dropped on write — the base already says it, and a stored copy would go
-stale the day the bundled tree moves.
-
-The read path (bucket_for) consults the overrides directly. lastgenre cannot:
-it canonicalizes against a tree *file* named in the beets config. So every
-change regenerates a derived tree + whitelist here (base + overrides), the
-config points at those, and the in-process plugin is told to reload — without
-that, an adopted genre would be scrubbed by the next enrich.
+lastgenre only reads a tree file, so every change regenerates a derived tree
+and whitelist (base + overrides) and reloads the plugin.
 """
 
 import json
@@ -31,12 +20,8 @@ DERIVED_TREE_NAME = "genres-tree.yaml"
 DERIVED_WHITELIST_NAME = "genres-whitelist.txt"
 
 _cache: dict[str, str] | None = None
-# (mtime_ns, size) of the file the cache reflects, None for "no file". The
-# stamp — not process memory — is what expires the cache: the sidecar runs as
-# TWO processes (a work channel and a read channel, see Rust `SidecarState`),
-# the write lands on one and the listing is served by the other, so an
-# in-memory invalidation would leave the read process bucketing against the
-# old placements until the app restarts.
+# (mtime_ns, size) of the cached file. The sidecar runs as two processes, so
+# the cache expires on the file's stamp, not on in-memory invalidation.
 _cache_stamp: tuple[int, int] | None = None
 
 
@@ -58,10 +43,7 @@ def _stamp_of(path: str) -> tuple[int, int] | None:
 
 
 def load() -> dict[str, str]:
-    """genre (lowercase) -> family root (lowercase). Empty when unset.
-
-    Re-reads the file whenever its stamp moved — one `stat` per call, which the
-    per-track read path can afford."""
+    """genre -> family root, lowercased. Re-reads the file when its stamp moved."""
     global _cache, _cache_stamp
     path = _overrides_path()
     if not path:
@@ -78,15 +60,13 @@ def load() -> dict[str, str]:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         families = data.get("families") or {}
-        # Legacy family roots (pre-audit placements) resolve to their heirs on
-        # read; the file itself is left as the user wrote it.
+        # Legacy family roots resolve to their current names; the file is untouched.
         _cache = {
             str(k).lower(): genre_tree.LEGACY_ROOTS.get(str(v).lower(), str(v).lower())
             for k, v in families.items()
         }
     except (OSError, ValueError) as exc:
-        # A broken file must not take the whole read path down with it; the
-        # library still browses, just without the user's placements.
+        # A broken file only loses the user's placements.
         protocol.log(f"genre_overrides: unreadable {path}: {exc}")
         _cache = {}
     _cache_stamp = stamp
@@ -98,9 +78,7 @@ def family_root_for(genre_lower: str) -> str | None:
 
 
 def _atomic_write(path: str, content: str) -> None:
-    # Unchanged content is left alone: `ensure_derived` runs at every sidecar
-    # startup, twice per launch (two processes), and rewriting identical bytes
-    # each time is pure disk churn on a path that almost never changes.
+    # Runs at every sidecar startup: skip identical writes.
     try:
         with open(path, encoding="utf-8") as existing:
             if existing.read() == content:
@@ -134,19 +112,14 @@ def _save(overrides: dict[str, str]) -> None:
 
 
 def set_family(genre: str, family_label: str | None) -> dict:
-    """Place a genre under a family, or None to return it to the base tree.
-
-    Returns the resolution after the change, so the caller can display where
-    the genre now files without re-asking.
-    """
+    """Place a genre under a family, or None to restore the base placement.
+    Returns the resulting resolution."""
     import genre_tree
 
     key = genre.strip().lower()
     if not key:
         raise RuntimeError("empty genre")
     if genre_tree.label_of_root(key):
-        # Re-parenting a family under another family would fold two browse
-        # shelves into one; the front never offers it, this backstops it.
         raise RuntimeError(f"{genre!r} is a family, not a genre")
 
     overrides = dict(load())
@@ -157,8 +130,6 @@ def set_family(genre: str, family_label: str | None) -> dict:
         if root is None:
             raise RuntimeError(f"unknown family: {family_label}")
         if genre_tree.base_root_for(key) == root:
-            # Moving a genre back where the base tree already puts it: no
-            # override to keep, just drop any previous one.
             overrides.pop(key, None)
         else:
             overrides[key] = root
@@ -184,8 +155,8 @@ def list_overrides() -> list[dict]:
 
 
 def _strip_node(children: list, name: str) -> list | None:
-    """Remove the node called `name` anywhere under `children`; return its own
-    children (possibly empty) when found, None when absent."""
+    """Remove the node `name` anywhere under `children`. Returns its children
+    when found, None when absent."""
     for i, node in enumerate(children):
         if isinstance(node, dict):
             for node_name, sub in node.items():
@@ -204,9 +175,7 @@ def _strip_node(children: list, name: str) -> list | None:
 def _derived_tree(base_tree: list, overrides: dict[str, str]) -> list:
     tree = json.loads(json.dumps(base_tree))  # deep copy, plain types only
     for genre, root in overrides.items():
-        # The base tree holds duplicates (e.g. "funk metal" twice under
-        # heavy metal); strip them all or the leftover copy would keep
-        # canonicalizing against the old placement.
+        # The base tree holds duplicates; remove every copy.
         subtree: list | None = None
         while (found := _strip_node(tree, genre)) is not None:
             if found:
@@ -225,8 +194,8 @@ def _derived_tree(base_tree: list, overrides: dict[str, str]) -> list:
 
 
 def _dump_yaml_tree(tree: list) -> str:
-    """Plain block-YAML, matching the bundled file's shape (safe_load reads it
-    back identically; no yaml.dump to keep node order and avoid quoting noise)."""
+    """Block YAML in the bundled file's shape, preserving node order (unlike
+    yaml.dump)."""
     lines: list[str] = []
 
     def needs_quotes(name: str) -> bool:
@@ -253,8 +222,7 @@ def _dump_yaml_tree(tree: list) -> str:
 
 
 def regenerate() -> None:
-    """Write the derived tree + whitelist (base + overrides) into the genres
-    dir — the files the beets config's lastgenre section points at."""
+    """Write the derived tree + whitelist the beets config points at."""
     import yaml  # ships with beets
 
     import genre_tree
@@ -289,9 +257,7 @@ def regenerate() -> None:
 
 
 def ensure_derived() -> None:
-    """Startup guarantee: the files the beets config names exist and reflect
-    the current overrides (the app may have been updated since they were last
-    written, with a newer bundled tree underneath)."""
+    """Ensure the derived files exist and match the current bundled tree."""
     if not genres_dir():
         return
     try:
@@ -301,8 +267,7 @@ def ensure_derived() -> None:
 
 
 def _refresh_lastgenre() -> None:
-    """Reload the in-process plugin's tree + whitelist if it is already up;
-    a plugin loaded later reads the fresh files on its own."""
+    """Reload the in-process lastgenre plugin if it is already loaded."""
     try:
         from beets import plugins as beets_plugins
 

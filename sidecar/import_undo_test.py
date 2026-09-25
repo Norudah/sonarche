@@ -13,9 +13,7 @@ BATCH = "run-1"
 
 
 class UndoTest(unittest.TestCase):
-    """Against a real beets library: the whole point of the module is what
-    beets' own removal does around it — the album row, the cover, the pruning —
-    and a hand-built SQLite file would prove none of it."""
+    """Against a real beets library, since beets' own removal is what matters."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()

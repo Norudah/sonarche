@@ -1,18 +1,10 @@
-"""Guards the two assumptions `sidecar/requirements.txt` rests on.
+"""Guards the assumptions `sidecar/requirements.txt` rests on.
 
-The lock is installed with `--no-deps`, and it deliberately omits `numba`,
-`llvmlite` and `scipy` — beets declares them and imports none of them. Both
-halves of that are silent when they break: a beets release adding a real
-dependency would leave the app importing a package nobody installed, and a
-beets release that starts *using* numba would fail on Intel macOS only, where
-no wheel exists, on a machine no one here builds on.
+The lock is installed with `--no-deps` and omits `numba`, `llvmlite` and
+`scipy` (declared by beets, never imported). This script:
 
-So, on every push:
-
-1. Re-resolve `requirements.in` and diff it against the lock. Anything new,
-   gone, or at a different version is reported.
-2. Read the installed beets and its plugins, and fail on an import of one of
-   the three dropped packages.
+1. Re-resolves `requirements.in` and reports any drift from the lock.
+2. Fails if beets or its plugins import one of the dropped packages.
 
 Run after installing the lock:
 
@@ -29,8 +21,7 @@ import sys
 
 from packaging.requirements import Requirement
 
-# Declared by beets, imported by nothing. `llvmlite` is here as numba's own
-# dependency: it is what has no Intel macOS wheel past 0.45.
+# `llvmlite` (numba's dependency) has no Intel macOS wheel past 0.45.
 EXCLUDED = {"numba", "llvmlite", "scipy"}
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -44,14 +35,12 @@ IMPORT_RE = re.compile(
 
 
 def normalize(name: str) -> str:
-    """PEP 503 name folding, so `typing_extensions` and `Typing-Extensions`
-    compare equal."""
+    """PEP 503 name normalization."""
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def read_lock(path: pathlib.Path) -> dict[str, str]:
-    """The lock as {name: version}, markers evaluated for this platform — the
-    colorama line is Windows-only and must not read as missing elsewhere."""
+    """The lock as {name: version}, with markers evaluated for this platform."""
     pins: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()

@@ -8,17 +8,13 @@ import { fade } from "@/shared/motion/tokens";
 
 interface TrackResultsProps {
   state: TrackFilterState;
-  /** Shown when the scope holds nothing at all — an empty library, an artist
-   * whose tracks were just deleted. Each surface words that differently, so it
-   * comes in as a slot rather than being guessed here. */
+  /** Shown when the scope is empty; worded per surface. */
   empty?: ReactNode;
-  /** Album artist of the page's subject, when there is one. Rows filed under
-   * anyone else are then marked as guest spots. */
+  /** The page subject's album artist; other rows are marked as guest spots. */
   guestOwner?: string;
 }
 
-/** The table and the two things that can stand in for it. Shared by the explorer
- * and every scoped page so a filtered-to-nothing list reads the same everywhere. */
+/** The table, or its empty or no-results replacement. */
 export function TrackResults({ state, empty, guestOwner }: TrackResultsProps) {
   const { t } = useTranslation("library");
   const { visible, scopeSize, query, sort, toggleSort, animationKey } = state;
@@ -27,8 +23,7 @@ export function TrackResults({ state, empty, guestOwner }: TrackResultsProps) {
 
   if (visible.length === 0) {
     return (
-      // Fades in rather than replacing the table in one frame — the search is
-      // live, so this state appears mid-keystroke.
+      // Fades in: search is live.
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

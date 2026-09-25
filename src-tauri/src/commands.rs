@@ -33,14 +33,10 @@ use crate::window_chrome;
 
 const QUERY_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Bound on the category a download may carry. Generous next to the taxonomy's
-/// longest entry ("Video Games"); it exists so a pasted essay never reaches the
-/// tag writer.
+/// Bounds the free-text category, which is written to every file's tags.
 const MAX_CATEGORY_CHARS: usize = 100;
 
-/// Bound on a forced album's title and artist. Same reasoning as the category —
-/// both land in a tag on every file the job writes — with the headroom real
-/// soundtrack names need ("… Original Motion Picture Soundtrack").
+/// Bounds a forced album's title and artist; soundtrack titles run long.
 const MAX_ALBUM_CHARS: usize = 300;
 
 #[tauri::command]
@@ -53,9 +49,8 @@ pub async fn setup_env(app: AppHandle) -> AppResult<EnvStatus> {
     python_env::setup_env(&app).await
 }
 
-/// Reveal `sonarche.log` in the Finder / Explorer. The opener runs from Rust
-/// on a path the app resolved itself, so nothing crosses the IPC boundary and
-/// no opener capability is exposed to the webview.
+/// Reveals `sonarche.log` in the file manager, from a Rust-resolved path so no
+/// opener capability is exposed to the webview.
 #[tauri::command]
 pub async fn reveal_log_file(app: AppHandle) -> AppResult<()> {
     let path = crate::logs::path(&app).ok_or_else(|| AppError::Setup("no log path".into()))?;
@@ -82,9 +77,7 @@ pub async fn enqueue_download(
             "only http(s) URLs are allowed".into(),
         ));
     }
-    // Free text on purpose, like the metadata editor's own category field: the
-    // taxonomy the UI offers is a starter set, not a fence. Only the bounds are
-    // enforced, since this string ends up in a tag on every file the job writes.
+    // Free text: the UI's taxonomy is a starter set. Only bounds are enforced.
     let category = match category
         .map(|c| c.trim().to_string())
         .filter(|c| !c.is_empty())
@@ -94,8 +87,7 @@ pub async fn enqueue_download(
         }
         other => other,
     };
-    // A forced album with no title is the toggle left on over an empty field —
-    // "no forced album", not a rejected download.
+    // No title means no forced album, not an error.
     let forced_album = match forced_album {
         Some(forced) => {
             let title = forced.title.trim().to_string();
@@ -133,7 +125,6 @@ pub async fn enqueue_download(
             kind.unwrap_or(JobKind::Single),
             category,
             forced_album,
-            // Absent on old callers means the default the option ships with.
             single_album.unwrap_or(true),
         )
         .await
@@ -144,9 +135,7 @@ pub async fn list_jobs(state: State<'_, JobsState>) -> AppResult<Vec<Job>> {
     Ok(state.list().await)
 }
 
-/// One page of the whole download archive, newest first. The limit is clamped
-/// rather than trusted — it is a UI constant, not something to validate a
-/// conversation over.
+/// One page of the download archive, newest first. The limit is clamped.
 #[tauri::command]
 pub async fn list_jobs_page(
     state: State<'_, JobsState>,
@@ -156,10 +145,7 @@ pub async fn list_jobs_page(
     state.page(offset, limit.clamp(1, 100)).await
 }
 
-/// The albums a download still in flight is bound for — the library's delete
-/// guard reads this. Deliberately a command of its own rather than something
-/// the frontend derives from `list_jobs`: the library must not have to know the
-/// shape of a job to refuse to delete its destination.
+/// Albums an in-flight download targets, for the library's delete guard.
 #[tauri::command]
 pub async fn download_target_albums(state: State<'_, JobsState>) -> AppResult<Vec<i64>> {
     Ok(state.target_albums().await)
@@ -185,10 +171,7 @@ pub async fn clear_job_history(state: State<'_, JobsState>) -> AppResult<Vec<Job
     Ok(state.clear_history().await)
 }
 
-/// Look at a folder the user is considering importing.
-///
-/// Read-only, and off the runtime: a music library is a deep tree and
-/// `read_dir` is blocking.
+/// Scans a folder the user may import. Read-only, off the async runtime.
 #[tauri::command]
 pub async fn scan_import_folder(
     app: AppHandle,
@@ -204,8 +187,6 @@ pub async fn scan_import_folder(
         .await
         .map_err(|err| AppError::Sidecar(format!("scan task panicked: {err}")))??;
 
-    // Read after the walk rather than in it: the archive is ours, the walk is
-    // the disk's, and only one of the two belongs on a blocking thread.
     report.previously_imported =
         crate::library_import::overlapping_import(&jobs.list_imports().await, &root).map(
             |record| library_scan::PreviousImport {
@@ -218,14 +199,14 @@ pub async fn scan_import_folder(
             },
         );
 
-    // Kept so the import that follows can be archived with the counts this
-    // process measured, rather than with counts handed back by the page.
+    // Remembered so the import is archived with counts measured here, not
+    // values sent back by the webview.
     state.remember_scan(&root, &report).await;
     Ok(report)
 }
 
-/// Copy a folder's music into the library. Takes as long as it takes; progress
-/// reaches the page through the sidecar's own `library_import_progress` events.
+/// Copies a folder's music into the library; progress arrives as sidecar
+/// `library_import_progress` events.
 #[tauri::command]
 pub async fn start_library_import(
     app: AppHandle,
@@ -237,9 +218,7 @@ pub async fn start_library_import(
     category: Option<String>,
 ) -> AppResult<ImportOutcome> {
     let grouping = grouping.unwrap_or_else(|| "folder".into());
-    // Same bound and same freedom as the download path: the taxonomy the UI
-    // offers is a starter set, not a fence, but this string lands in a tag on
-    // every file the run takes on.
+    // Same rules as the download category.
     let category = match category
         .map(|c| c.trim().to_string())
         .filter(|c| !c.is_empty())
@@ -261,23 +240,19 @@ pub async fn start_library_import(
         .await
 }
 
-/// Every finished library import, newest first. The archive of the other way
-/// music enters the ark.
+/// Every finished library import, newest first.
 #[tauri::command]
 pub async fn list_imports(jobs: State<'_, JobsState>) -> AppResult<Vec<ImportRecord>> {
     Ok(jobs.list_imports().await)
 }
 
-/// Stop the import in flight. The import itself resolves as cancelled through
-/// its own call — this only plants the signal.
+/// Signals the running import to stop; the import call resolves as cancelled.
 #[tauri::command]
 pub async fn cancel_library_import(state: State<'_, LibraryImportState>) -> AppResult<()> {
     state.cancel().await
 }
 
-/// What undoing this run would take away. Counted from the library as it
-/// stands, so the confirmation states a fact rather than repeating what the
-/// run reported months ago.
+/// What undoing this import would remove, counted from the current library.
 #[tauri::command]
 pub async fn preview_import_undo(
     app: AppHandle,
@@ -288,8 +263,8 @@ pub async fn preview_import_undo(
     import_undo::preview(&app, &sidecar, &jobs, &id).await
 }
 
-/// Take one import back out: its tracks, their files, the albums that empty,
-/// their covers, the playlist entries, and beets' memory of the folder.
+/// Removes one import's tracks, emptied albums, covers, playlist entries and
+/// beets' memory of the folder.
 #[tauri::command]
 pub async fn undo_import(
     app: AppHandle,
@@ -301,8 +276,7 @@ pub async fn undo_import(
     import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 
-/// What undoing this download would take away. Counted from the library as it
-/// stands: tracks deleted by hand since simply do not count.
+/// What undoing this download would remove, counted from the current library.
 #[tauri::command]
 pub async fn preview_download_undo(
     app: AppHandle,
@@ -313,8 +287,8 @@ pub async fn preview_download_undo(
     download_undo::preview(&app, &sidecar, &jobs, &id).await
 }
 
-/// Take one download back out: its tracks, their files, the albums that
-/// empty, their covers, the playlist entries. The history row stays, stamped.
+/// Removes one download's tracks and what empties with them. The history row
+/// stays, marked as undone.
 #[tauri::command]
 pub async fn undo_download(
     app: AppHandle,
@@ -326,8 +300,7 @@ pub async fn undo_download(
     download_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 
-/// Re-file what a finished download put in the library onto another record —
-/// the composer's destination option, offered after the fact.
+/// Re-files a finished download's tracks onto another album.
 #[tauri::command]
 pub async fn change_job_destination(
     app: AppHandle,
@@ -348,20 +321,14 @@ pub async fn set_api_key(app: AppHandle, name: String, value: String) -> AppResu
     settings::set(&app, name, value).await
 }
 
-/// Hand the stored key back so it can be read on screen.
-///
-/// The one command in the app that returns a secret, and it exists because the
-/// alternative was worse: a field showing eight bullets and no way to check
-/// what is behind them means the only way to verify a key is to paste a new one
-/// over it. The gesture is explicit, it is the owner asking for their own key,
-/// and the keychain gets to ask them about it in its own dialog.
+/// Returns the stored key so the user can check it. The only command that
+/// returns a secret; the keychain prompts the user itself.
 #[tauri::command]
 pub async fn reveal_api_key(name: String) -> AppResult<Option<String>> {
     settings::read(&name).await
 }
 
-/// Extensions the engine can decode, so the library can mark what it cannot.
-/// A constant for the life of the build — the caller caches it forever.
+/// Extensions the engine can decode. Constant for the build.
 #[tauri::command]
 pub fn playable_extensions() -> Vec<String> {
     crate::audio_formats::playable_extensions()
@@ -373,8 +340,7 @@ pub async fn list_library(
     state: State<'_, SidecarState>,
 ) -> AppResult<Box<RawValue>> {
     let paths = AppPaths::resolve(&app)?;
-    // The read channel: the listing is what the UI blocks on, and it must not
-    // wait out an album download running on the work channel.
+    // The read channel, so listing never waits behind a download.
     state
         .read(
             &app,
@@ -395,34 +361,26 @@ pub async fn reenrich_track(
     id: i64,
 ) -> AppResult<Value> {
     let result = state.run(&app, id).await?;
-    // Re-enriching rewrites the tags, and beets files by tags: the track may
-    // have just moved out from under every M3U line naming it.
+    // Re-enriching can rename the file.
     crate::playlists_mirror::sync_after_library_change(&app).await;
     Ok(result)
 }
 
-/// Repair pass over the library: remux fragmented DASH m4a files (downloads
-/// made before ffmpeg shipped) into classic MP4s. Fired by the shell once per
-/// launch; a library with nothing to repair answers in seconds.
+/// Remuxes fragmented DASH m4a files into classic MP4. Run once per launch.
 #[tauri::command]
 pub async fn remux_library(app: AppHandle, state: State<'_, RemuxState>) -> AppResult<Value> {
     state.run(&app).await
 }
 
-/// Play a library file now, replacing whatever was queued. Returns the decoded
-/// duration in seconds — the engine's own reading of the file, which is what
-/// the seek bar should trust.
-///
-/// Like every command here it runs through `off_runtime`: each one waits on the
-/// audio thread, and the runtime's threads are not the ones to wait on it.
+/// Plays a library file now, replacing the queue. Returns the decoded
+/// duration in seconds.
 #[tauri::command]
 pub async fn player_load(app: AppHandle, path: String) -> AppResult<Option<f64>> {
     player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
     player::off_runtime(app, move |player| player.load(&path)).await
 }
 
-/// Queue a file behind the playing one, for a seamless hand-over. The front
-/// calls this once it knows what comes next.
+/// Queues a file behind the playing one for a gapless transition.
 #[tauri::command]
 pub async fn player_enqueue(app: AppHandle, path: String) -> AppResult<()> {
     player::ensure_in_library(&path, &AppPaths::resolve(&app)?.music_dir())?;
@@ -447,7 +405,7 @@ pub async fn player_seek(app: AppHandle, seconds: f64) -> AppResult<()> {
     player::off_runtime(app, move |player| player.seek(seconds)).await
 }
 
-/// `level` is the slider position, 0…1; the engine applies the audio taper.
+/// `level` is the 0…1 slider position.
 #[tauri::command]
 pub async fn player_set_volume(app: AppHandle, level: f64) -> AppResult<()> {
     if !level.is_finite() {
@@ -461,16 +419,14 @@ pub async fn player_stop(app: AppHandle) -> AppResult<()> {
     player::off_runtime(app, |player| player.stop()).await
 }
 
-/// Tell the OS what is playing — media keys, Control Center, the lock screen.
-/// The front owns this because a track is more than the file path the engine
-/// was handed.
+/// Updates the OS media session (media keys, Control Center, lock screen).
 #[tauri::command]
 pub async fn now_playing_set(app: AppHandle, track: NowPlayingTrack) -> AppResult<()> {
     now_playing::set_track(&app, &track);
     Ok(())
 }
 
-/// The current playhead, for a front that just mounted and missed the events.
+/// The current playback status, for a freshly mounted front.
 #[tauri::command]
 pub async fn player_status(state: State<'_, PlayerState>) -> AppResult<PlaybackStatus> {
     Ok(state.status())
@@ -501,20 +457,14 @@ pub async fn set_rate_limit_delay(
     preferences::set_rate_limit_delay(&app, &key, seconds).await
 }
 
-/// The container downloads land in, from now on. Only the next download —
-/// converting what is already on disk is [`convert_library`], and the two are
-/// separate on purpose: one is instant and reversible, the other rewrites every
-/// file in the library.
+/// Sets the format of future downloads only; see [`convert_library`].
 #[tauri::command]
 pub async fn set_audio_format(app: AppHandle, format: String) -> AppResult<Preferences> {
     preferences::set_audio_format(&app, &format).await
 }
 
-/// Re-encode the library into the format the setting names.
-///
-/// Hours of CPU on a large library, and the front holds the user still while it
-/// runs — which is the honest shape for a pass that deletes each original the
-/// moment its replacement is on disk.
+/// Re-encodes the library into the configured format. Long-running; each
+/// original is deleted once its replacement is written.
 #[tauri::command]
 pub async fn convert_library(
     app: AppHandle,
@@ -531,10 +481,8 @@ pub async fn recompute_genres(
     state.run(&app).await
 }
 
-/// One track's lyrics. With `allow_network` false it answers from the library
-/// alone — what the panel does on open — so the network is only ever reached by
-/// the user pressing "Chercher les paroles". `force` is the panel's "look
-/// again": it skips what is stored rather than erasing it.
+/// One track's lyrics. Without `allow_network` only stored lyrics are read.
+/// `force` skips stored lyrics without erasing them.
 #[tauri::command]
 pub async fn fetch_lyrics(
     app: AppHandle,
@@ -545,8 +493,7 @@ pub async fn fetch_lyrics(
     lyrics::fetch(&app, id, allow_network, force).await
 }
 
-/// Walk the albums without a MusicBrainz identity and return the fill plan.
-/// Writes nothing; the plan comes back through `library_align_apply`.
+/// Builds the MusicBrainz fill plan for albums without an id. Writes nothing.
 #[tauri::command]
 pub async fn library_align_scan(
     app: AppHandle,
@@ -555,8 +502,7 @@ pub async fn library_align_scan(
     state.scan(&app).await
 }
 
-/// Apply a plan produced by the scan. The sidecar re-checks every field
-/// against its whitelist and its blank/hand-edited guards at write time.
+/// Applies a scan plan; the sidecar re-checks every guard at write time.
 #[tauri::command]
 pub async fn library_align_apply(
     app: AppHandle,
@@ -568,15 +514,8 @@ pub async fn library_align_apply(
     Ok(result)
 }
 
-/// Check an AcoustID key, so a typo is caught while the user still has the key
-/// on screen rather than on the first failed download. Through the sidecar
-/// because that is where the HTTP client already lives — and by then the engine
-/// step is done, so the venv is guaranteed to be there.
-///
-/// `key` omitted means "the one already stored": the settings screen has a
-/// Test button next to a key it is not allowed to read back, so the keychain
-/// lookup has to happen on this side. The secret still never crosses the IPC
-/// boundary outward.
+/// Validates an AcoustID key. `key: None` tests the stored key, looked up on
+/// this side so it never crosses IPC.
 #[tauri::command]
 pub async fn check_acoustid_key(
     app: AppHandle,
@@ -597,9 +536,7 @@ pub async fn check_acoustid_key(
         .await
 }
 
-/// Ask every outside service whether it is answering. Through the sidecar for
-/// the same reason as the key check: that is where the HTTP client lives, and
-/// the probes run in parallel there so six timeouts cannot add up.
+/// Checks whether each external service is answering.
 #[tauri::command]
 pub async fn check_services(
     app: AppHandle,
@@ -635,8 +572,7 @@ pub async fn get_library_location(app: AppHandle) -> AppResult<library_move::Lib
     library_move::location(&app)
 }
 
-/// What a move to `parent` would involve, and whether it can go ahead at all.
-/// The confirmation dialog is built from this; the move itself re-checks.
+/// Preflight for a library move; the move itself re-checks.
 #[tauri::command]
 pub async fn check_library_move(
     app: AppHandle,
@@ -646,8 +582,8 @@ pub async fn check_library_move(
     library_move::check(&app, &jobs, PathBuf::from(parent)).await
 }
 
-/// Move the music to `parent`/Sonarche. Stops playback and takes the sidecar
-/// down first; refuses outright while a download or an import is running.
+/// Moves the music to `parent`/Sonarche. Stops playback and the sidecar
+/// first; refused while a download or import runs.
 #[tauri::command]
 pub async fn move_library(
     app: AppHandle,
@@ -658,8 +594,7 @@ pub async fn move_library(
     library_move::perform(&app, &jobs, &sidecar, PathBuf::from(parent)).await
 }
 
-/// The danger zone's destructive half: everything the user put in. Refuses
-/// while a download or an import is running.
+/// Erases all user data. Refused while a download or import runs.
 #[tauri::command]
 pub async fn erase_all_data(
     app: AppHandle,
@@ -669,9 +604,8 @@ pub async fn erase_all_data(
     reset::erase_data(&app, &jobs, &sidecar).await
 }
 
-/// The danger zone's aimed shot: the music and its index, sparing the artist
-/// images, the playlists' names and the histories. Refuses while a download
-/// or an import is running.
+/// Erases the music and its index, keeping artist images, playlist names and
+/// histories. Refused while a download or import runs.
 #[tauri::command]
 pub async fn erase_library(
     app: AppHandle,
@@ -681,21 +615,19 @@ pub async fn erase_library(
     reset::erase_library(&app, &jobs, &sidecar).await
 }
 
-/// Every artist image at once — files and index rows. The generated avatars
-/// take over again.
+/// Removes every artist image (files and rows).
 #[tauri::command]
 pub async fn erase_artist_images(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
     reset::erase_artist_images(&app, &jobs).await
 }
 
-/// Every playlist at once — rows, covers, M3U8 mirror. The music stays.
+/// Removes every playlist (rows, covers, M3U8 mirror). The music stays.
 #[tauri::command]
 pub async fn erase_playlists(app: AppHandle, jobs: State<'_, JobsState>) -> AppResult<()> {
     reset::erase_playlists(&app, &jobs).await
 }
 
-/// The danger zone's harmless half: the Python environment and the tools, both
-/// of which the walkthrough puts back.
+/// Removes the Python environment and tools; the walkthrough rebuilds them.
 #[tauri::command]
 pub async fn reinstall_environment(
     app: AppHandle,
@@ -704,7 +636,7 @@ pub async fn reinstall_environment(
     reset::reinstall_environment(&app, &sidecar).await
 }
 
-/// Dev-only: put back what the app can rebuild by itself. Never the library.
+/// Dev-only: resets what the app can rebuild. Never the library.
 #[tauri::command]
 pub async fn reset_setup_dev(
     app: AppHandle,
@@ -715,15 +647,13 @@ pub async fn reset_setup_dev(
     reset::reset_setup(&app, &state, &sidecar, targets).await
 }
 
-/// Dev-only: wipe the whole music library (audio files + beets DB) so bug-fix
-/// scenarios restart from a clean slate. Refused outright in release builds.
+/// Dev-only: wipes the music library. Refused in release builds.
 #[tauri::command]
 pub async fn reset_library_dev(app: AppHandle) -> AppResult<()> {
     reset::reset_library(&app).await
 }
 
-/// The only tags an edit may touch. Keys are beets' own item attribute names,
-/// so the whitelist doubles as the wire contract with the sidecar.
+/// Editable tags, by beets attribute name (also the sidecar wire contract).
 const EDITABLE_FIELDS: &[&str] = &[
     "title",
     "artist",
@@ -733,7 +663,6 @@ const EDITABLE_FIELDS: &[&str] = &[
     "track",
     "tracktotal",
     "genre",
-    // The category axis (context: Video Games, Film, …), beets' grouping tag.
     "grouping",
 ];
 
@@ -743,9 +672,8 @@ pub struct TrackUpdate {
     fields: HashMap<String, Value>,
 }
 
-/// Edit metadata on a batch of tracks in one sidecar round-trip. The whole
-/// batch is validated before any write is attempted, so a single stray field
-/// name rejects the request rather than half-applying it.
+/// Edits a batch of tracks in one sidecar round-trip. The whole batch is
+/// validated first, so one bad field rejects it without partial writes.
 #[tauri::command]
 pub async fn update_tracks(
     app: AppHandle,
@@ -785,33 +713,25 @@ pub async fn update_tracks(
             QUERY_TIMEOUT,
         )
         .await?;
-    // The write is the one moment old and new albumartist are both known: any
-    // rename it reported takes the artist's image (our asset, keyed by name)
-    // along. Best-effort — the edit itself already succeeded.
+    // Carry the artist image across albumartist renames. Best-effort.
     crate::artist_images::follow_renames(&app, &jobs, &result).await;
-    // An edit that changed artist or album moved the file, and every M3U line
-    // naming it is now a dead path.
+    // Artist or album edits move files.
     crate::playlists_mirror::sync(&app, &jobs).await;
     Ok(result)
 }
 
-/// The two things a record can be. Validated here rather than trusted from the
-/// webview: this crosses the IPC boundary, and the sidecar would otherwise be
-/// asked to write whatever string arrived.
 const ALBUM_KINDS: &[&str] = &["album", "collection"];
 
-/// A brand-new record to gather the moved tracks into.
 #[derive(Deserialize)]
 pub struct NewAlbum {
     album: String,
     albumartist: String,
 }
 
-/// One move request, whole: what goes where, as what, numbered how.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MoveSpec {
-    /// Order matters: it is the numbering order when `renumber` is on.
+    /// Numbering order when `renumber` is on.
     item_ids: Vec<i64>,
     target_album_id: Option<i64>,
     new_album: Option<NewAlbum>,
@@ -820,10 +740,9 @@ pub struct MoveSpec {
     renumber: bool,
 }
 
-/// Refile tracks onto another record — existing (`target_album_id`) or created
-/// on the spot (`new_album`). `kind` optionally declares the target's nature in
-/// the same pass; `renumber` stacks the arrivals after the target's own track
-/// numbers.
+/// Moves tracks onto an existing album (`target_album_id`) or a new one
+/// (`new_album`). `kind` optionally sets the target's kind; `renumber` numbers
+/// the arrivals after the target's tracks.
 #[tauri::command]
 pub async fn move_tracks(
     app: AppHandle,
@@ -877,15 +796,12 @@ pub async fn move_tracks(
             QUERY_TIMEOUT,
         )
         .await?;
-    // Every moved file is now a dead path in any M3U line naming it.
     crate::playlists_mirror::sync(&app, &jobs).await;
     Ok(result)
 }
 
-/// Say whether these albums are releases or someone's own gatherings.
-///
-/// Takes a list of beets album ids because the front groups by (artist, title):
-/// one card can stand for two album rows, and both have to move together.
+/// Sets albums as releases or collections. Takes several ids because one UI
+/// card can span several album rows.
 #[tauri::command]
 pub async fn set_album_kind(
     app: AppHandle,
@@ -918,9 +834,7 @@ pub async fn set_album_kind(
         .await
 }
 
-/// The 13 browse families, by the display labels the sidecar's genre tree
-/// produces — the same strings the front uses as family keys. The sidecar
-/// validates them again; both sides say it so neither has to trust the other.
+/// The browse families' display labels, also validated by the sidecar.
 const FAMILY_LABELS: &[&str] = &[
     "Metal",
     "Rock",
@@ -937,9 +851,8 @@ const FAMILY_LABELS: &[&str] = &[
     "World",
 ];
 
-/// File a genre under a family of the user's choosing, or return it to the
-/// base tree (family = None). The placement is an opinion about the genre
-/// *name* — no track is touched; the read path rebuckets on its own.
+/// Files a genre under a family, or restores the base tree (`None`). No
+/// track is modified.
 #[tauri::command]
 pub async fn set_genre_family(
     app: AppHandle,
@@ -965,7 +878,7 @@ pub async fn set_genre_family(
         .await
 }
 
-/// Every placement the user has made, for the front to mark overridden genres.
+/// Every user genre placement.
 #[tauri::command]
 pub async fn list_genre_overrides(
     app: AppHandle,
@@ -976,14 +889,12 @@ pub async fn list_genre_overrides(
         .await
 }
 
-/// Checks a person may legitimately mean to leave as they are, per scope. The
-/// sidecar validates the same pair; both sides say it so neither has to trust
-/// the other. `suspect` and `tracklist` are deliberately absent — see
-/// `accepted.py` for why.
+/// Checks that may be accepted, per scope (see `accepted.py`). The sidecar
+/// validates them too.
 const TRACK_CHECKS: &[&str] = &["year", "track", "genre", "duplicates"];
 const ALBUM_CHECKS: &[&str] = &["artwork"];
 
-/// Answer a check: "I have seen it, it is what I want" — or take that back.
+/// Accepts a check as intended, or reverts that.
 #[tauri::command]
 pub async fn set_check_accepted(
     app: AppHandle,
@@ -1045,8 +956,7 @@ pub async fn delete_track(
             QUERY_TIMEOUT,
         )
         .await?;
-    // No foreign key can span the two database files, so playlist memberships
-    // are pruned here — best-effort, the delete itself already succeeded.
+    // Playlists live in another database; prune them here. Best-effort.
     if let Err(err) = jobs.remove_item_from_playlists(id).await {
         eprintln!("[playlists] prune of item {id} failed: {err}");
     }
@@ -1054,13 +964,11 @@ pub async fn delete_track(
     Ok(result)
 }
 
-/// Image formats a replacement cover may arrive in: what Pillow decodes, the
-/// webview previews, and the pipeline can archive. Deliberately short — HEIC
-/// and the like can join once each reader is proven, not before.
+/// Accepted source formats for a replacement cover.
 const COVER_SOURCE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
 
-/// A user-picked image path, canonicalised and checked before anything trusts
-/// it: it must exist, be a file, and wear a whitelisted extension.
+/// Canonicalizes a user-picked image path and checks it is an existing file
+/// with an allowed extension.
 pub(crate) async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
     let canonical = tokio::fs::canonicalize(path)
         .await
@@ -1082,9 +990,8 @@ pub(crate) async fn checked_cover_source(path: &str) -> AppResult<PathBuf> {
     Ok(canonical)
 }
 
-/// Let the webview preview a cover candidate that lives outside the library:
-/// the asset scope only covers the library and app data, so a picked file is
-/// admitted one path at a time. Returns its size for the modal's weight line.
+/// Grants the asset scope to one picked file outside the library, so the
+/// webview can preview it. Returns its size.
 #[tauri::command]
 pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Value> {
     use tauri::Manager;
@@ -1097,17 +1004,10 @@ pub async fn allow_cover_preview(app: AppHandle, path: String) -> AppResult<Valu
     Ok(json!({ "path": canonical.to_string_lossy(), "bytes": bytes }))
 }
 
-/// The cover an album already wears, as a file the crop stage can reopen —
-/// what "reframe this one" needs, where every other road into the modal brings
-/// its own file.
+/// The album's current cover as a crop source, for reframing it.
 ///
-/// The display cover *is* the source since the `cover-hq.*` archive went:
-/// recutting a 500px rendition is honest about what the library keeps, and
-/// the modal's size line tells the user what they are cutting from.
-///
-/// `art_path` is beets' own artpath, which the library listing already handed
-/// the front. It is checked back to the library all the same — an IPC argument
-/// is never a fact — and only then admitted to the asset scope.
+/// `art_path` comes from the library listing but is still checked against
+/// the library before being admitted to the asset scope.
 #[tauri::command]
 pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<Value> {
     use tauri::Manager;
@@ -1128,8 +1028,7 @@ pub async fn album_recrop_source(app: AppHandle, art_path: String) -> AppResult<
     Ok(json!({ "path": source.to_string_lossy(), "bytes": bytes }))
 }
 
-/// The square the sidecar should cut from the source image, in source pixels
-/// after EXIF orientation — the same frame the preview showed the user.
+/// Crop square in source pixels, after EXIF orientation.
 #[derive(Deserialize)]
 pub struct CoverCrop {
     pub(crate) left: u32,
@@ -1137,10 +1036,9 @@ pub struct CoverCrop {
     pub(crate) size: u32,
 }
 
-/// Replace an album's cover: archive the image as cover-hq.*, write the 500px
-/// rendition as beets' artpath, embed it into the album's m4a files, and drop
-/// the provisional-cover flag. The image is either a local file (with an
-/// optional crop) or a Cover Art Archive upload picked from the candidates.
+/// Replaces an album's cover with a local file (optionally cropped) or a Cover
+/// Art Archive candidate: writes the 500px artpath, embeds it, and clears the
+/// provisional-cover flag.
 #[tauri::command]
 pub async fn set_album_cover(
     app: AppHandle,
@@ -1164,8 +1062,7 @@ pub async fn set_album_cover(
         }
     }
     if let Some(url) = &candidate_url {
-        // Only what our own candidates listing handed out: the sidecar will
-        // fetch this URL, so nothing else may choose where it connects.
+        // Only CAA URLs: the sidecar will fetch this.
         if !url.starts_with("https://coverartarchive.org/") {
             return Err(AppError::InvalidInput(
                 "candidate URL outside the Cover Art Archive".into(),
@@ -1189,14 +1086,13 @@ pub async fn set_album_cover(
                 "image_url": candidate_url,
                 "crop": crop.map(|c| json!({ "left": c.left, "top": c.top, "size": c.size })),
             }),
-            // Downloading a full-size CAA upload can outlast a query.
+            // Full-size CAA uploads can be slow.
             Duration::from_secs(120),
         )
         .await
 }
 
-/// What the Cover Art Archive holds for this album — thumbnails inlined as
-/// data URLs (the webview's CSP allows no remote images).
+/// The album's Cover Art Archive images, thumbnails inlined as data URLs.
 #[tauri::command]
 pub async fn list_cover_candidates(
     app: AppHandle,
@@ -1216,14 +1112,13 @@ pub async fn list_cover_candidates(
                 "library_dir": paths.music_dir().to_string_lossy(),
                 "album_id": album_id,
             }),
-            // The index plus up to eight thumbnail fetches.
+            // The index plus up to eight thumbnails.
             Duration::from_secs(90),
         )
         .await
 }
 
-/// The Appearance setting, pushed to the native frame. Thin on purpose: the
-/// window is the state, so there is nothing to keep here.
+/// Applies the appearance setting to the native window.
 #[tauri::command]
 pub fn set_window_theme(window: tauri::WebviewWindow, choice: window_chrome::ThemeChoice) {
     window_chrome::follow(&window, choice);

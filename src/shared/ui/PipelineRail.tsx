@@ -2,15 +2,8 @@ import { motion } from "motion/react";
 
 import { springs } from "@/shared/motion/tokens";
 
-/**
- * A multi-stage job as one bar in weighted segments.
- *
- * Shared rather than owned by the download feed: the two ways music enters the
- * ark are a download and a folder import, both are a fixed chain of stages, and
- * the app must not have two readings of "how far along is this". What the caller
- * brings is the shape of its own pipeline — how many stages, how long each one
- * really takes, where it currently is.
- */
+/** A multi-stage job as one bar of weighted segments, shared by downloads
+ * and imports. */
 
 export type RailTone = "accent" | "success" | "warning" | "danger";
 
@@ -21,17 +14,8 @@ const FILL: Record<RailTone, string> = {
   danger: "bg-danger",
 };
 
-/**
- * The leading edge of the fill, drawn as the player's own seek handle — a
- * narrow upright bar overhanging the track.
- *
- * Deliberately the same object as the one in the transport at the bottom of
- * the window: this app's subject is audio, and its one recurring "you are here"
- * mark should look the same whether it is running through a song or through a
- * download. On a stage with nothing to count (a lone file's import reports no
- * intermediate progress) it sweeps the segment instead of sitting still, which
- * is the whole activity signal for that stage.
- */
+/** The fill's leading edge, drawn like the player's seek handle. Sweeps the
+ * segment when the stage reports no progress. */
 function Playhead({ tone }: { tone: RailTone }) {
   return (
     <span
@@ -41,21 +25,15 @@ function Playhead({ tone }: { tone: RailTone }) {
 }
 
 interface PipelineRailProps {
-  /** Fill of each segment, 0…1, in stage order. Its length is the stage count. */
+  /** 0…1 per segment; the length is the stage count. */
   fills: readonly number[];
-  /**
-   * Relative segment widths. Stages never take the same time — fetching a
-   * playlist is minutes of network, filing it is seconds — and equal thirds
-   * would park the bar at 33 % for most of the run and then jump.
-   */
+  /** Relative widths, since stages take very different times. */
   weights: readonly number[];
-  /** The segment working right now, or null. It may sit at fill 0 and still be
-   * working, which is what the sweeping playhead is for. */
+  /** May be active at fill 0 (the sweeping handle shows it). */
   activeIndex: number | null;
-  /** The segment the job died on, so the rail can stop there in red. */
   failedIndex: number | null;
   tone: RailTone;
-  /** Read out to assistive tech in place of the bar — the phase line's text. */
+  /** Accessible label in place of the bar. */
   label: string;
 }
 
@@ -80,8 +58,7 @@ export function PipelineRail({ fills, weights, activeIndex, failedIndex, tone, l
             style={{ flexGrow: weights[index] }}
             className={
               "relative basis-0 overflow-visible rounded-full " +
-              // The stage that broke keeps a tinted trough, so the bar shows
-              // *where* it stopped instead of merely stopping.
+              // The failed stage keeps a tinted trough to show where it stopped.
               (isFailed ? "bg-danger/25" : "bg-default")
             }
           >
@@ -91,15 +68,10 @@ export function PipelineRail({ fills, weights, activeIndex, failedIndex, tone, l
               transition={springs.soft}
               className={`absolute inset-y-0 left-0 rounded-full ${FILL[segmentTone]}`}
             >
-              {/* Rides the fill's leading edge. Not on a finished segment: a
-                  mark at the very end of a full bar reads as a boundary rather
-                  than as a position. */}
               {isActive && fill > 0 && <Playhead tone={segmentTone} />}
             </motion.span>
 
-            {/* A stage with nothing to count gets the handle on the segment
-                itself, sweeping it — the fill is zero-width, so a handle riding
-                it would have nowhere to sit. */}
+            {/* Zero-width fill: the handle sweeps the segment instead. */}
             {isActive && fill === 0 && (
               <span className="animate-rail-scan absolute inset-0">
                 <Playhead tone={segmentTone} />

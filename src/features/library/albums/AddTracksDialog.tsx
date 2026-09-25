@@ -11,12 +11,11 @@ import { useLibrary } from "@/features/library/hooks";
 import { filterTracks } from "@/features/library/tracks/filter";
 import { formatDuration } from "@/shared/lib/format";
 
-/** Search-driven, like the album picker: the list stops growing past this and
- * says so, instead of paying thousands of rows per keystroke. */
+/** Search-driven: the list stops here and says so. */
 const MAX_ROWS = 60;
 
 interface AddTracksDialogProps {
-  /** The record gathering tracks, or null when closed. */
+  /** Null when closed. */
   album: Album | null;
   onClose: () => void;
 }
@@ -51,14 +50,13 @@ function CandidateRow({ track, checked, onToggle }: { track: LibraryTrack; check
   );
 }
 
-/** Mounted per opening so search and selection start clean each time. */
+/** Mounted per opening so search and selection start clean. */
 function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
   const { t } = useTranslation("library");
   const library = useLibrary();
   const { run, isPending } = useMoveWithUndo();
   const [query, setQuery] = useState("");
-  // A Map, not a Set: insertion order is the selection order, and the
-  // selection order is the numbering order on a collection.
+  // A Map: insertion order is the selection order, which numbers the tracks.
   const [picked, setPicked] = useState<Map<number, LibraryTrack>>(new Map());
   const [asCollection, setAsCollection] = useState<boolean | null>(null);
 
@@ -73,7 +71,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
 
   const selection = [...picked.values()];
   const alreadyCollection = album.kind === "collection";
-  // The proposal follows the selection until the user answers it themselves.
+  // The proposal follows the selection until the user answers it.
   const proposed = selection.length > 0 && proposeCollection(selection, album);
   const collection = asCollection ?? proposed;
 
@@ -184,8 +182,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
           >
             <FolderInput className="size-3.5" />
-            {/* No count while there is nothing to count — "move 0 tracks" is
-             * a sentence only a computer would say. */}
+            {/* No count when nothing is selected. */}
             {selection.length > 0 ? t("move.confirm", { count: selection.length }) : t("move.confirmEmpty")}
           </button>
         </div>
@@ -194,12 +191,8 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
   );
 }
 
-/**
- * "Ajouter des morceaux" — the pull half of refiling, and the gesture the
- * feature exists for: standing on your own record and going to fetch the
- * tracks you actually like. Checkboxes rather than one-click rows because the
- * point is a batch, and the selection order becomes the record's order.
- */
+/** Pulls tracks onto this record. Checkboxes for a batch; selection order
+ * becomes the record's order. */
 export function AddTracksDialog({ album, onClose }: AddTracksDialogProps) {
   return (
     <Modal

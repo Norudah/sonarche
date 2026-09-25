@@ -17,26 +17,21 @@ const isTerminal = (job: DownloadJob) => job.status === "done" || job.status ===
 
 export function DownloadPage() {
   const { t } = useTranslation("download");
-  // Bumped on success so the composer clears its own input state.
+  // Bumped on success so the composer resets.
   const [queuedCount, setQueuedCount] = useState(0);
   const jobs = useJobs();
   const enqueue = useEnqueueDownload();
 
   const all = useMemo(() => jobs.data ?? [], [jobs.data]);
 
-  // The worker is strictly sequential, so these two subscriptions describe the
-  // one job in flight — the deck hands them to that card and to no other.
+  // The worker is sequential: these describe the one job in flight.
   const downloadPercent = useActiveDownloadProgress(all.some((job) => job.status === "downloading"));
   const enrichStages = useEnrichProgress(all.some((job) => job.status === "enriching"));
 
-  /**
-   * Two registers, taken from the worker's own shape: at any moment one job is
-   * actually happening and a history sits behind it. A flat list gave both the
-   * same weight and buried the live one among rows that will never change.
-   */
+  /** Two sections: the job in progress and the recent history. */
   const sections: JobSection[] = useMemo(() => {
     const finished = all.filter(isTerminal);
-    // Oldest first: the queue is a line, and the one being served is at its head.
+    // Oldest first: the one being served is at the head of the line.
     const inFlight = all.filter((job) => !isTerminal(job)).reverse();
     const recent = finished.slice(0, RECENT_JOBS);
 
@@ -49,8 +44,7 @@ export function DownloadPage() {
         heading: t("activity.recent"),
         jobs: recent,
         onTray: true,
-        // Only once there is more than what fits here — an empty page behind
-        // the link would be a dead end.
+        // Only when there is more history than shown here.
         action:
           finished.length > RECENT_JOBS ? (
             <ActionLink to={paths.history} trailingIcon={ArrowRight}>

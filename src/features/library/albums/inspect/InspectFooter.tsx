@@ -10,19 +10,12 @@ import { springs } from "@/shared/motion/tokens";
 
 export type SaveFeedback = { kind: "saved"; tracks: number } | { kind: "failed" } | null;
 
-/** How the last re-match ended: the loop's own counts, or a thrown call. */
+/** The last re-match's counts, or its error. */
 export type RematchOutcome =
   { kind: "failed" } | { kind: "finished"; matched: number; done: number; total: number; cancelled: boolean } | null;
 
-/**
- * The panel's action bar, and the one place that says what is pending.
- *
- * Re-match sits on the left, where it has always been — but it is now shut while
- * changes are waiting, and says why. It rewrites tags from MusicBrainz; running
- * it over a pending draft used to silently undo the match on save. While it
- * runs, the progress bar carries a Stop: the loop is sequential, so stopping is
- * honest — the track in flight finishes, the rest are not started.
- */
+/** Action bar. Re-match is disabled while changes are pending (saving would
+ * undo it) and can be stopped after the track in flight. */
 export function InspectFooter({
   summary,
   feedback,
@@ -40,8 +33,7 @@ export function InspectFooter({
   summary: ChangeSummary;
   feedback: SaveFeedback;
   isSaving: boolean;
-  /** A collection has no release to be matched against: re-match is off, and
-   * the footer says why instead of leaving a grey button to be wondered at. */
+  /** No release to match against: re-match is off, with the reason shown. */
   isCollection: boolean;
   rematchProgress: { done: number; matched: number; total: number } | null;
   rematchOutcome: RematchOutcome;
@@ -56,8 +48,7 @@ export function InspectFooter({
   const isDirty = summary.fields > 0;
   const isRematching = rematchProgress != null;
 
-  // A save's own feedback owns the line; the re-match verdict takes it back
-  // once there is nothing pending — same precedence as the track footer.
+  // Save feedback wins; the re-match verdict returns once nothing is pending.
   const line = feedback ?? rematchOutcome;
   const lineWash =
     line == null
@@ -159,7 +150,6 @@ export function InspectFooter({
               </div>
               <p className="mt-1 text-[0.6875rem] text-muted">{t("albumMetadata.rematch.progress", rematchProgress)}</p>
             </div>
-            {/* Stopping waits for the track in flight — the label says so. */}
             <button
               type="button"
               disabled={isCancellingRematch}
@@ -184,10 +174,7 @@ export function InspectFooter({
           />
         )}
 
-        {/* Actions only, pinned right. The pending count used to sit here and
-            swap between "no changes" and a two-part sentence, shoving the
-            buttons sideways on the first keystroke; it lives in the title bar
-            now, where its width belongs to nothing else. */}
+        {/* The pending count lives in the title bar, so buttons don't shift. */}
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <AnimatePresence>
             {isDirty && (

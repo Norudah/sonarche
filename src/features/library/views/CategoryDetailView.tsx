@@ -25,12 +25,10 @@ import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/** The category is the page and the genre chips own `?genre=`, so what is left
- * to offer is the family — "in Video Games, only the electronic tracks". */
+/** The category and genre are the page's own, so only the family is offered. */
 const AXES: readonly TrackAxis[] = ["family"];
 
-/** Inspects a category, or one genre inside it — the genre page's twin, with
- * the `genre` query param deciding the depth so chip flips never remount. */
+/** A category, or a genre within it via `?genre=` (no remount on chip flips). */
 export function CategoryDetailView() {
   const { t } = useTranslation("library");
   const { category: name = "" } = useParams();
@@ -87,16 +85,12 @@ export function CategoryDetailView() {
     );
   }
 
-  // Retagging can empty a category out from under an open page; `replace` so
-  // Back does not walk straight into the dead route again. A vanished genre
-  // falls back to its category, which is still a valid answer.
+  // Retagging can empty a category; a vanished genre falls back to the category.
   if (!category) return <Navigate to={paths.libraryCategories} replace />;
   const genre = genreName != null ? category.genres.find((entry) => entry.name === genreName) : null;
   if (genreName != null && !genre) return <Navigate to={paths.libraryCategories} replace />;
 
-  // What the pills launch is what the page is showing, genre chip included —
-  // the same contract as the tracks page, whose pair starts the filtered list.
-  // The hero's counts deliberately do not follow: they state the category.
+  // Plays what the page shows; the hero's counts still describe the category.
   const queue = () => (isTracks ? explorer.visible : subjectTracks);
 
   return (
@@ -112,8 +106,7 @@ export function CategoryDetailView() {
         actions={<ViewModeSwitch overviewLabel={t("categories.overviewMode")} tracksLabel={t("views.tracks")} />}
       />
 
-      {/* Same split as the genre page: chips above the shelves, one pill in the
-       * bar when the page is a list. */}
+      {/* Chips above shelves; a pill in the bar in tracks mode. */}
       {!isTracks && <CategoryGenreChips genres={category.genres} selected={genre?.name ?? null} />}
 
       {isTracks ? (

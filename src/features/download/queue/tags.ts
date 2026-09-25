@@ -1,22 +1,17 @@
 import type { DownloadJob, JobKind, MetadataReport } from "@/features/download/api";
 
-/** A track reports the exact fields it carries; an album is too many numbers to
- * read at a glance, so it reports the mean completion instead. */
+/** Tracks report their fields; albums the mean completion. */
 export type TagSummary = { provisional: boolean } & (
   { kind: "ratio"; filled: number; total: number } | { kind: "percent"; value: number }
 );
 
-/** Metadata fields we manage per track — the same ones the inspector shows. An
- * album track also carries its place in the set; a single does not. */
+/** Managed fields, as in the inspector; album tracks add their position. */
 function wantedFields(kind: JobKind, report: MetadataReport): boolean[] {
   const common = [report.fields.title, report.fields.artist, report.fields.year, report.fields.genre, report.cover];
   return kind === "album" ? [...common, report.fields.album, report.fields.track] : common;
 }
 
-/** How many managed tags a track actually carries. Guessed tags count — they
- * really are on the file — and the `provisional` flag is what warns they came
- * from the video rather than from a match. Neither matched nor guessed means
- * the file is genuinely blank. */
+/** Managed tags present on the file; guessed tags count, flagged `provisional`. */
 export function trackTags(kind: JobKind, report: MetadataReport | null): TagSummary | null {
   if (!report) return null;
   const wanted = wantedFields(kind, report);
@@ -28,8 +23,7 @@ export function trackTags(kind: JobKind, report: MetadataReport | null): TagSumm
   };
 }
 
-/** Mean completion over the album's tracks. Dropped duplicates have no report
- * by design and must not drag the average down. */
+/** Mean over tracks; dropped duplicates are excluded. */
 function albumTags(job: DownloadJob): TagSummary | null {
   const summaries = job.tracks
     .filter((track) => track.duplicateOf == null)
@@ -38,7 +32,7 @@ function albumTags(job: DownloadJob): TagSummary | null {
   if (summaries.length === 0) return null;
   const ratios = summaries.map((s) => (s.kind === "ratio" ? s.filled / s.total : 0));
   const mean = ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
-  // One guessed track is enough to make the whole album's figure unreliable.
+  // One guessed track makes the album figure unreliable.
   return {
     kind: "percent",
     value: Math.round(mean * 100),
@@ -51,8 +45,7 @@ export function jobTags(job: DownloadJob): TagSummary | null {
 }
 
 export function tagTone(summary: TagSummary): "success" | "warning" | "danger" {
-  // A full set of guessed tags is not a green light: the count is complete, the
-  // content isn't verified.
+  // Complete but unverified.
   if (summary.provisional) return "warning";
   const ratio = summary.kind === "percent" ? summary.value / 100 : summary.filled / summary.total;
   if (ratio === 1) return "success";

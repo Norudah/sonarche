@@ -7,14 +7,11 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 interface ClearHistoryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Terminal (done/failed) downloads the sweep will take. */
+  /** Finished downloads to be cleared. */
   downloads: number;
-  /** Archived imports the sweep will take — named explicitly in the body,
-   * because clearing them destroys the only record of how a library's tags
-   * arrived and a generic total would hide that. */
+  /** Named explicitly: clearing them loses the record of how tags arrived. */
   imports: number;
-  /** The shell's chance to drop the imports cache; the mutation itself only
-   * knows about jobs (features do not import each other). */
+  /** Lets the shell drop the imports cache. */
   onCleared?: () => void;
 }
 

@@ -19,8 +19,7 @@ import {
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
-/** The quiet panel button all three verbs share — the import undo's, made a
- * family. `danger` warms the hover for the one that deletes music. */
+/** Shared panel button; `danger` for the one that deletes music. */
 function PanelAction({
   icon: Icon,
   label,
@@ -49,8 +48,7 @@ function PanelAction({
   );
 }
 
-/** The starting point of a destination dialog: what the job was queued with,
- * read back into the control's own state. Pure, tested. */
+/** A job's queued filing as the destination control's state. */
 export function destinationOf(forced: ForcedAlbum | null): Destination {
   if (!forced) return AUTO_DESTINATION;
   if (forced.albumId != null) {
@@ -59,7 +57,6 @@ export function destinationOf(forced: ForcedAlbum | null): Destination {
   return { mode: "new", title: forced.title, artist: forced.artist };
 }
 
-/** A small form dialog: title, a hint, the destination control, one commit. */
 function DestinationDialog({
   isOpen,
   onClose,
@@ -86,8 +83,7 @@ function DestinationDialog({
   const { t } = useTranslation("download");
   const [destination, setDestination] = useState<Destination>(initial);
   const forced = toForcedAlbum(destination);
-  // `auto` is a real answer for a re-download and never one for a move; the
-  // caller says which by including it in `modes` or not.
+  // `auto` is valid for a re-download, never for a move.
   const committable = destination.mode === "auto" ? modes.includes("auto") : forced != null;
 
   return (
@@ -120,9 +116,7 @@ function DestinationDialog({
   );
 }
 
-/** What is about to go, then what is not coming back. The order and the shape
- * are the import undo's; the last line is the opposite — a download's staged
- * file was consumed, so nothing returns without downloading again. */
+/** What will be removed, then a warning: the downloaded file is gone for good. */
 function UndoBody({
   preview,
   isLoading,
@@ -157,16 +151,8 @@ function UndoBody({
   );
 }
 
-/**
- * What can still be done to a settled job, inside the unfolded panel and
- * nowhere else — the import undo's rule, for the same reason: one of these
- * deletes music, and none is what the history is for.
- *
- * Three verbs, from mildest to hardest: re-download (a fresh queue entry with
- * the same address and a destination to reconsider), change the destination
- * (regroup what landed without touching the network — the cure for the
- * playlist split into albums it should not have), and the undo.
- */
+/** Actions on a settled job, in its unfolded panel: re-download, change the
+ * destination (no network), and undo. */
 export function JobActions({ job, canUndo }: { job: DownloadJob; canUndo: boolean }) {
   const { t } = useTranslation("download");
   const [open, setOpen] = useState<"undo" | "move" | "redownload" | null>(null);
@@ -247,8 +233,7 @@ export function JobActions({ job, canUndo }: { job: DownloadJob; canUndo: boolea
         <UndoBody preview={preview.data} isLoading={preview.isPending} failed={preview.isError} />
       </ConfirmDialog>
 
-      {/* Keyed remount on open, so each opening re-reads the job's current
-          filing instead of resuming an abandoned edit. */}
+      {/* Keyed so each opening starts from the job's current filing. */}
       {open === "move" && (
         <DestinationDialog
           isOpen

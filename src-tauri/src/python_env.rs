@@ -11,41 +11,27 @@ use crate::proc::{command, SYSTEM_TAR};
 
 const MIN_PYTHON: (u64, u64) = (3, 10);
 
-/// Chromaprint's fingerprinter, as the build lays it down. Pinned and checksummed
-/// in `scripts/prepare-runtime.mjs`, which is the only place that fetches it.
+/// Chromaprint's fingerprinter, fetched and checksummed at build time by
+/// `scripts/prepare-runtime.mjs`.
 const FPCALC_BIN: &str = if cfg!(windows) {
     "fpcalc.exe"
 } else {
     "fpcalc"
 };
 
-/// Static ffmpeg, same provenance story as fpcalc. Used for exactly one thing:
-/// remuxing a fragmented DASH m4a into a classic MP4 (`-c copy`) so
-/// players that read the classic sample tables — Music.app, iOS, CarPlay —
-/// see real durations instead of 0:00.
+/// Static ffmpeg (same provenance), used to remux fragmented DASH m4a into
+/// classic MP4 so Music.app, iOS and CarPlay read real durations.
 const FFMPEG_BIN: &str = if cfg!(windows) {
     "ffmpeg.exe"
 } else {
     "ffmpeg"
 };
 
-/// The JavaScript runtime yt-dlp runs YouTube's player code in. Same provenance
-/// story as the two above.
-///
-/// YouTube scrambles the signature and the `n` parameter of every stream URL
-/// and ships the descrambler as obfuscated JavaScript; yt-dlp's own Python
-/// interpreter no longer keeps up with it. Without a real engine, only the one
-/// client that needs no JavaScript answers — and that client dying is what
-/// took every download down in August.
+/// JavaScript runtime yt-dlp needs to descramble YouTube stream URLs.
 const DENO_BIN: &str = if cfg!(windows) { "deno.exe" } else { "deno" };
 
-/// Fixed candidate locations, most specific first. Never rely on PATH.
-///
-/// The fallback for a build made without `npm run prepare:runtime`, and for
-/// macOS installs that predate bundling. Empty on Windows: there is no
-/// conventional location to guess at (a system Python lands under a versioned
-/// `%LOCALAPPDATA%` path, or in the Store's own sandbox), and no Windows build
-/// ever shipped without the interpreter — so a guess could only ever be wrong.
+/// Fallback interpreter locations for builds without a bundled runtime.
+/// Never PATH. Empty on Windows, which always ships the interpreter.
 #[cfg(target_os = "macos")]
 const PYTHON_CANDIDATES: &[&str] = &[
     "/opt/homebrew/bin/python3.14",
@@ -71,11 +57,8 @@ pub struct PythonInfo {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvStatus {
-    /// The interpreter in use, once there is one.
     pub python: Option<PythonInfo>,
-    /// Whether the app ships its own. When it does, finding an interpreter is
-    /// not something the user can fail at, so the walkthrough drops that step
-    /// entirely rather than showing a rung nobody has to climb.
+    /// When bundled, the walkthrough skips the "find Python" step.
     pub python_bundled: bool,
     pub venv_ok: bool,
     pub deps_ok: bool,
@@ -86,66 +69,43 @@ pub struct AppPaths {
     pub venv_dir: PathBuf,
     pub staging_dir: PathBuf,
     pub beets_config: PathBuf,
-    /// The variant used only by the library import — cover embedding off, and
-    /// no remote art sources. See `write_beets_config` for why the two cannot
-    /// be one file.
+    /// Library-import variant of the config; see `write_beets_config`.
     pub beets_import_config: PathBuf,
-    /// Where beets remembers the directories it has already taken on.
-    ///
-    /// Named explicitly rather than left to beets' own default, which resolves
-    /// beside the config file: this file has to be *deletable by us*, because it
-    /// only makes sense next to the library it describes. Wiping the library and
-    /// leaving this behind makes beets skip every folder it has ever seen — the
-    /// user re-imports and lands "0 dossier · Importé" on an empty app.
+    /// beets' incremental-import state, placed explicitly so a library erase can
+    /// delete it (a stale one makes beets skip every folder it has seen).
     pub beets_import_state: PathBuf,
     pub beets_db: PathBuf,
-    /// The folder the user picks — the zones live under it, and the derived
-    /// paths below are methods so no copy can drift from it. Beets only ever
-    /// sees `music_dir()`; the root is what settings shows and what a move
-    /// moves.
+    /// The user-chosen library folder. Beets only sees `music_dir()`.
     pub library_root: PathBuf,
     pub sidecar_main: PathBuf,
     pub requirements: PathBuf,
-    /// The bundled base tree/whitelist, read-only app resources. The beets
-    /// config never names them directly anymore — it points at the derived
-    /// copies in [`Self::genres_dir`], which fold in the user's placements.
+    /// Bundled base genre tree/whitelist (read-only). The beets config points at
+    /// the derived copies in [`Self::genres_dir`].
     pub genres_tree: PathBuf,
     pub genres_whitelist: PathBuf,
-    /// The user's genre placements and the derived tree/whitelist the sidecar
-    /// regenerates from them (see sidecar `genre_overrides.py`). App data,
-    /// deliberately outside the beets zone: a placement is an opinion about a
-    /// genre name, so erasing the library must not take it along.
+    /// User genre placements and the derived tree/whitelist, kept outside the
+    /// library so an erase doesn't remove them.
     pub genres_dir: PathBuf,
     pub tools_dir: PathBuf,
-    /// The interpreter the app ships, still packed. Unpacked at setup rather
-    /// than laid out as loose resources: the tree is full of symlinks and
-    /// executable bits, and `tar` is the thing that reliably restores both.
+    /// The bundled interpreter as an archive; `tar` restores its symlinks and
+    /// executable bits.
     pub python_archive: PathBuf,
-    /// Where that archive lands. See `runtime_python` for what sits inside.
     pub runtime_dir: PathBuf,
-    /// Wheels shipped alongside, so the install needs no network.
+    /// Bundled wheels, so the install needs no network.
     pub wheels_dir: PathBuf,
-    /// The fpcalc the build shipped, before [`ensure_fpcalc`] copies it into
-    /// `tools_dir`. Read-only: on macOS it lives inside a signed `.app`.
+    /// Read-only (inside the signed `.app` on macOS); copied by [`ensure_fpcalc`].
     pub bundled_fpcalc: PathBuf,
-    /// The ffmpeg the build shipped, same lifecycle as `bundled_fpcalc`.
     pub bundled_ffmpeg: PathBuf,
-    /// The deno the build shipped. Unlike the two above it is never copied out:
-    /// 81 MB is worth reading from the read-only resource rather than keeping
-    /// twice. See [`deno`].
+    /// Run in place, never copied (81 MB). See [`deno`].
     pub bundled_deno: PathBuf,
-    /// Deno's own cache. Named so it lands in app data instead of the user's
-    /// cache folder, which puts it inside what a reinstall can clear.
+    /// Kept in app data rather than the user's cache folder.
     pub deno_cache_dir: PathBuf,
 }
 
-/// Where the library lives, when the user has moved it off the default.
+/// The library location when moved off the default.
 ///
-/// Managed state and not a read of `preferences.json`, because
-/// [`AppPaths::resolve`] is synchronous and runs on nearly every command: a
-/// file read in there would be blocking IO on the tokio runtime, dozens of
-/// times per screen. Seeded once at startup from the preferences file and
-/// rewritten only by a move, which is the only thing that changes it.
+/// Held in managed state because [`AppPaths::resolve`] runs on nearly every
+/// command and must not read a file on the async runtime.
 #[derive(Default)]
 pub struct LibraryRoot(std::sync::RwLock<Option<PathBuf>>);
 
@@ -161,9 +121,7 @@ impl LibraryRoot {
     }
 }
 
-/// The folder the app picks when nobody has said otherwise: a `Sonarche` inside
-/// the platform's music folder, falling back to app data on a system that has
-/// no such folder.
+/// `Sonarche` in the platform's music folder, else in app data.
 pub fn default_library_dir(app: &AppHandle) -> PathBuf {
     app.path()
         .audio_dir()
@@ -187,7 +145,6 @@ impl AppPaths {
                 .resolve(name, tauri::path::BaseDirectory::Resource)
                 .unwrap_or_else(|_| data.join(name))
         };
-        // The user's choice wins; the default is only what nobody overrode.
         let library_root = app
             .try_state::<LibraryRoot>()
             .and_then(|root| root.get())
@@ -216,8 +173,8 @@ impl AppPaths {
         })
     }
 
-    /// Derived genre tree (bundled base + user placements) — what the beets
-    /// config's `lastgenre.canonical` names. Written by the sidecar.
+    /// Bundled base + user placements; named by the beets config, written by the
+    /// sidecar.
     pub fn derived_genres_tree(&self) -> PathBuf {
         self.genres_dir.join("genres-tree.yaml")
     }
@@ -226,7 +183,7 @@ impl AppPaths {
         self.genres_dir.join("genres-whitelist.txt")
     }
 
-    /// The beets zone — `directory:`, the only folder the sidecar organizes.
+    /// beets' `directory:`, the only folder the sidecar organizes.
     pub fn music_dir(&self) -> PathBuf {
         self.library_root.join(crate::library_layout::MUSIC_DIR)
     }
@@ -235,28 +192,22 @@ impl AppPaths {
         self.library_root.join(crate::library_layout::ARTWORK_DIR)
     }
 
-    /// Artist images, under readable names (an artist has no folder of their
-    /// own in the beets zone). Indexed by the `artist_images` table.
+    /// Indexed by the `artist_images` table.
     pub fn artist_images_dir(&self) -> PathBuf {
         self.artwork_dir()
             .join(crate::library_layout::ARTWORK_ARTISTS)
     }
 
-    /// Playlist tiles, same story: a playlist exists only in sonarche.db, so
-    /// its image lives here, named after it.
     pub fn playlist_covers_dir(&self) -> PathBuf {
         self.artwork_dir()
             .join(crate::library_layout::ARTWORK_PLAYLISTS)
     }
 
-    /// The M3U8 mirror of the playlists. Written from sonarche.db, never read
-    /// back — see `playlists_mirror`.
+    /// Write-only M3U8 mirror; see `playlists_mirror`.
     pub fn playlists_dir(&self) -> PathBuf {
         self.library_root.join(crate::library_layout::PLAYLISTS_DIR)
     }
 
-    /// `venv/bin/python3` on Unix, `venv\Scripts\python.exe` on Windows — the
-    /// layout is `venv`'s own, not ours, and there is no common spelling.
     pub fn venv_python(&self) -> PathBuf {
         if cfg!(windows) {
             self.venv_dir.join("Scripts").join("python.exe")
@@ -265,12 +216,8 @@ impl AppPaths {
         }
     }
 
-    /// The shipped interpreter once unpacked. Not necessarily present: it only
-    /// exists after setup has run, and not at all in a build made without
-    /// `npm run prepare:runtime`.
-    ///
-    /// The Windows distribution keeps the executable at the root of the tree
-    /// rather than under `bin/`.
+    /// The unpacked bundled interpreter; absent before setup or in builds
+    /// without a bundled runtime. Windows keeps it at the tree root.
     pub fn runtime_python(&self) -> PathBuf {
         let root = self.runtime_dir.join("python");
         if cfg!(windows) {
@@ -289,16 +236,11 @@ impl AppPaths {
     }
 }
 
-/// Copy the shipped fpcalc into the app-owned tools dir on first use.
-/// Self-healing, like the venv: a failure only degrades enrichment, never the
-/// app, and a reset that clears `tools_dir` gets it back on the next call.
+/// Copies the bundled fpcalc into the tools dir on first use. A failure only
+/// degrades enrichment.
 ///
-/// It used to be downloaded here instead, checksummed against a pin a few lines
-/// up. Both moved to build time — an unsigned binary that pulls an executable
-/// off the network and then runs it is indistinguishable from a dropper, and
-/// Defender quarantined the Windows installer on exactly that reading. The
-/// checksum is no worse off for it: verified on a machine we control, where a
-/// mismatch stops a release rather than an app already in someone's hands.
+/// Fetched at build time rather than at runtime: an unsigned app downloading
+/// and running an executable looks like a dropper to antivirus software.
 pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
     ensure_tool(
         "fpcalc",
@@ -309,7 +251,6 @@ pub async fn ensure_fpcalc(paths: &AppPaths) -> AppResult<()> {
     .await
 }
 
-/// Same contract as [`ensure_fpcalc`], for the bundled ffmpeg.
 pub async fn ensure_ffmpeg(paths: &AppPaths) -> AppResult<()> {
     ensure_tool(
         "ffmpeg",
@@ -320,16 +261,8 @@ pub async fn ensure_ffmpeg(paths: &AppPaths) -> AppResult<()> {
     .await
 }
 
-/// The bundled deno, when this build has one.
-///
-/// No `ensure_` twin: the binary is run straight from the resource directory,
-/// because copying 81 MB into app data to gain what fpcalc and ffmpeg only gain
-/// by history — they used to be downloaded at first use — would double it on
-/// disk for nothing.
-///
-/// `None` is not an error either. It means a build made without
-/// `npm run prepare:runtime`; a download still works without a JS runtime, just
-/// on the one client that needs none. Every release ships the binary.
+/// The bundled deno, if this build has one. `None` means downloads fall back
+/// to the single client that needs no JavaScript.
 pub async fn deno(paths: &AppPaths) -> Option<PathBuf> {
     tokio::fs::try_exists(&paths.bundled_deno)
         .await
@@ -351,9 +284,7 @@ async fn ensure_tool(name: &str, source: &Path, dest: &Path, tools_dir: &Path) -
     tokio::fs::create_dir_all(tools_dir).await?;
     tokio::fs::copy(source, dest).await?;
 
-    // `copy` carries the mode across, but only if the bundler kept it on the
-    // resource in the first place — and a bundler copying files one by one is
-    // not guaranteed to. Cheaper to set it than to depend on that chain.
+    // The bundler isn't guaranteed to preserve the executable bit.
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -386,12 +317,8 @@ async fn probe(path: &str) -> Option<PythonInfo> {
     })
 }
 
-/// The interpreter to build the venv from.
-///
-/// The shipped one wins whenever it is unpacked: it is the version the wheels
-/// were resolved against, and it cannot be upgraded out from under us by a
-/// `brew upgrade`. The PATH-free search is the fallback, for a build made
-/// without `npm run prepare:runtime` and for installs that predate bundling.
+/// The interpreter to build the venv from: the bundled one when unpacked
+/// (the wheels were resolved against it), else a PATH-free search.
 pub async fn discover_python(paths: &AppPaths) -> Option<PythonInfo> {
     let runtime = paths.runtime_python();
     if let Some(info) = probe(&runtime.to_string_lossy()).await {
@@ -405,7 +332,7 @@ pub async fn discover_python(paths: &AppPaths) -> Option<PythonInfo> {
     None
 }
 
-/// Unpack the shipped interpreter, once. A no-op when the app carries none.
+/// Unpacks the bundled interpreter once. No-op when none is bundled.
 async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
     if tokio::fs::try_exists(paths.runtime_python())
         .await
@@ -421,8 +348,7 @@ async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
     }
 
     emit_log(app, "Unpacking the bundled Python...");
-    // Wiped first: a half-extracted tree from an interrupted run would pass the
-    // existence check above on some paths and fail on others.
+    // A half-extracted tree from an interrupted run would be inconsistent.
     let _ = tokio::fs::remove_dir_all(&paths.runtime_dir).await;
     tokio::fs::create_dir_all(&paths.runtime_dir).await?;
 
@@ -444,14 +370,9 @@ async fn ensure_runtime(app: &AppHandle, paths: &AppPaths) -> AppResult<()> {
     Ok(())
 }
 
-// A venv's `bin/python3` is an absolute symlink to the interpreter it was built
-// from, so a bundled interpreter raises an obvious question: what happens when
-// the user drags the app from Downloads to Applications? Nothing — and that is
-// precisely why the archive is unpacked into the app data directory instead of
-// being read in place from inside the .app. That path does not travel with the
-// bundle, so the symlink cannot go stale and no repair machinery is warranted.
-// Deleting the runtime is the only way to break it, and re-running the setup
-// puts it back at the same path, which heals the symlink on its own.
+// The venv's python is an absolute symlink to the runtime, which is why the
+// runtime is unpacked into app data rather than read from inside the bundle:
+// moving the app can't break the link.
 
 pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     let paths = AppPaths::resolve(app)?;
@@ -465,9 +386,7 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     let venv_python = paths.venv_python();
     let venv_ok = tokio::fs::try_exists(&venv_python).await.unwrap_or(false);
 
-    // Keep the beets config's `directory:` in sync with library_dir on every check, not just
-    // first setup — otherwise an existing install can keep importing into a stale path after
-    // library_dir changes (e.g. a rename), while the asset protocol scope only allows the new one.
+    // Rewrite the config on every check so `directory:` follows library moves.
     if venv_ok {
         adopt_library_dir(app).await?;
     }
@@ -485,27 +404,12 @@ pub async fn env_status(app: &AppHandle) -> AppResult<EnvStatus> {
     })
 }
 
-/// The venv probe: imports work, and every installed version matches the lock.
+/// Checks the venv: imports work and installed versions match the lock.
 ///
-/// `import yt_dlp, beets, mutagen` in a fresh interpreter proves the venv
-/// runs; checking each pin of `requirements.txt` against what is actually
-/// installed proves it is *current*. The second half is what makes an app
-/// update reach the venv at all: bumping a pin (the extractor arms race
-/// makes that routine) ships a new requirements file, the old packages still
-/// import fine, and without the version diff the launch gate would wave the
-/// stale venv through forever.
-///
-/// The probe costs seconds of cold I/O on an old machine, paid behind a
-/// splash that shows nothing until it answers — so it hides behind a stamp
-/// and only re-runs when an input changed: the venv's interpreter (recreated
-/// by `venv --clear` on every setup), the resolved requirements (a new file
-/// with every app update), or the app version itself. A matching stamp
-/// answers instantly.
-///
-/// What the stamp cannot see is a hand-gutted `site-packages` under an
-/// untouched interpreter. That failure no longer blocks the launch gate — it
-/// surfaces when the sidecar first speaks, and rebuilding the environment
-/// (which rewrites the stamp's inputs) remains the fix either way.
+/// The version check is what makes a pin bump in an app update rebuild the
+/// venv. The probe takes seconds on slow machines, so its result is cached
+/// behind a stamp of its inputs (venv interpreter, requirements, app version).
+/// A hand-damaged `site-packages` surfaces when the sidecar starts instead.
 async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> bool {
     let stamp_path = paths.venv_dir.join("deps-ok");
     let stamp = deps_stamp(app, paths, venv_python).await;
@@ -516,10 +420,8 @@ async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -
         }
     }
 
-    // `python -c code args…` leaves the code out of argv: sys.argv[1] is the
-    // requirements path. `packaging` is itself in the lock, so a venv too old
-    // or too broken to have it fails the probe and gets rebuilt — the right
-    // outcome by another road.
+    // sys.argv[1] is the requirements path. `packaging` is in the lock, so a venv
+    // without it fails the probe and is rebuilt.
     const PROBE: &str = "\
 import importlib.metadata, sys
 import yt_dlp, beets, mutagen
@@ -555,8 +457,7 @@ for line in open(sys.argv[1], encoding='utf-8'):
     ok
 }
 
-/// What the smoke test's answer depends on, as one line. `None` when a file
-/// it needs cannot be stat'ed — no stamp, the test just runs.
+/// The probe's inputs as one line; `None` if any can't be stat'ed.
 async fn deps_stamp(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -> Option<String> {
     fn token(meta: &std::fs::Metadata) -> Option<String> {
         let mtime = meta
@@ -581,7 +482,7 @@ fn emit_log(app: &AppHandle, line: &str) {
     let _ = app.emit("setup:log", line);
 }
 
-/// Run a command streaming stdout+stderr lines to the webview as `setup:log` events.
+/// Runs a command, streaming its output lines as `setup:log` events.
 async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResult<()> {
     let mut child = cmd
         .stdin(Stdio::null())
@@ -614,55 +515,33 @@ async fn run_streamed(app: &AppHandle, mut cmd: Command, step: &str) -> AppResul
     Ok(())
 }
 
-/// Which of the two ways music enters the library a config is for.
-///
-/// A flavour rather than a pair of booleans: the two lines that differ both
-/// follow from *this* question, and a caller passing `(true, false)` would have
-/// to remember which flag meant what.
+/// Which way into the library a beets config is for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Flavour {
     /// A staged download: one untagged file alone in an empty folder.
     App,
-    /// Someone's own collection, covers already sitting beside the tracks.
+    /// The user's own collection, covers already beside the tracks.
     Import,
 }
 
-/// Single config site for beets: the CLI importer reads it via `--config` and
-/// the sidecar's in-process beets via BEETSDIR. Regenerated on every launch.
+/// Writes the beets config, read by the CLI importer (`--config`) and by the
+/// sidecar (BEETSDIR). Regenerated on every launch.
 ///
-/// Written twice, differing in two lines, and both differences are about art.
-///
-/// `embedart: auto` bakes the album's cover into every track. That costs
-/// nothing on a download — the staged file is alone in an empty folder when the
-/// import stage runs, so there is no art to bake — and is ruinous on a library
-/// import, where the cover is already beside the tracks. Measured on a real
-/// import: 314 MB of duplicated images across 1.17 GB, one full-size copy per
-/// track, 88 MB for a single 18-track album. The interface reads the folder's
-/// file and never the tag, so the embedding only ever served other players.
-///
-/// `fetchart.sources` is pinned to the filesystem for an import, because an
-/// import is meant to touch no network at all. `-A` takes MusicBrainz and
-/// AcoustID out of the picture, but fetchart runs on its own hook and its
-/// default sources include iTunes and Amazon — so a folder whose files already
-/// carry an album and artist (a Sonarche library being re-imported, say) had
-/// beets quietly searching store artwork mid-copy, and adopting whatever came
-/// back as the album's cover. The local file is the only source an import
-/// should trust; it is also the only one that can be right about a collection
-/// nobody has identified yet.
-///
-/// Two files rather than a flag on one, because beets takes a single
-/// `--config` and offers no way to override a key from the command line.
+/// Two files, since beets takes a single `--config` with no key overrides.
+/// The import flavour differs in:
+/// - `embedart: no`: covers already sit beside the tracks; embedding them
+///   duplicated ~300 MB on a 1.2 GB library.
+/// - `fetchart.sources: filesystem`: an import must not reach the network.
+/// - Filing templates with fallbacks, the incremental guard and the repair
+///   plugin.
 async fn write_beets_config(paths: &AppPaths) -> AppResult<()> {
     ensure_derived_genre_files(paths).await?;
     write_config_file(paths, &paths.beets_config, Flavour::App).await?;
     write_config_file(paths, &paths.beets_import_config, Flavour::Import).await
 }
 
-/// The config above names the derived genre files; make sure something is
-/// there before beets ever reads it. A plain copy of the bundled base is
-/// enough — the sidecar regenerates the real derived pair (base + the user's
-/// placements) at every startup, this only covers the window before its first
-/// run and the fresh-install case.
+/// Seeds the derived genre files from the bundled base until the sidecar
+/// regenerates them.
 async fn ensure_derived_genre_files(paths: &AppPaths) -> AppResult<()> {
     tokio::fs::create_dir_all(&paths.genres_dir).await?;
     for (bundled, derived) in [
@@ -681,24 +560,16 @@ async fn write_config_file(paths: &AppPaths, target: &Path, flavour: Flavour) ->
     Ok(())
 }
 
-/// Make the current library directory the one everything else believes in.
+/// Points beets' `directory:` and the webview asset scope at the current
+/// library folder. `tauri.conf.json` only covers the default location.
 ///
-/// Two things have to be told, and both are easy to forget separately: beets,
-/// through `directory:` in its two configs, and the webview's asset scope,
-/// without which every cover in the app 404s behind a path the security layer
-/// has never heard of. `tauri.conf.json` can only name the default folder, so
-/// a moved library has to be granted at runtime.
-///
-/// Called after a move, and on every environment check — so a library that was
-/// moved while the app was closed, or one whose config was written by an older
-/// build, is repaired on the next launch rather than staying half-pointed.
+/// Called after a move and on every environment check, so a library moved
+/// while the app was closed is repaired at launch.
 pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
     let paths = AppPaths::resolve(app)?;
     {
         let root = paths.library_root.clone();
-        // Sync fs by design (it also runs from the setup hook); off the
-        // runtime here. Zones only — the marker is the migration's claim to
-        // make, not a repair pass's.
+        // Sync fs, also used from the setup hook.
         tauri::async_runtime::spawn_blocking(move || crate::library_layout::ensure_zones(&root))
             .await
             .map_err(|err| AppError::Setup(format!("layout task panicked: {err}")))??;
@@ -707,110 +578,51 @@ pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
         tokio::fs::create_dir_all(parent).await?;
     }
     write_beets_config(&paths).await?;
-    // The root, recursively — `Music/` for tracks and covers, `Artwork/` for
-    // artist and playlist images; both are served through the asset protocol.
     if let Err(err) = app
         .asset_protocol_scope()
         .allow_directory(&paths.library_root, true)
     {
-        // Not fatal: the default folder is already in the manifest's scope, so
-        // this only ever matters for a moved library — and a library the user
-        // can browse without covers beats an app that refuses to start.
+        // Not fatal: only a moved library is affected, and it still browses.
         eprintln!("[library] could not widen the asset scope: {err}");
     }
     Ok(())
 }
 
-/// A path as a YAML scalar.
+/// A path as a single-quoted YAML scalar.
 ///
-/// Single-quoted, and that is the whole point. Inside double quotes YAML treats
-/// `\` as an escape introducer, so `C:\Users\…` opens with `\U` — the start of
-/// an eight-digit unicode escape — and beets refused to load its own config
-/// before it ever saw a track. Every import on Windows failed on this, from the
-/// first build.
-///
-/// A single-quoted scalar has exactly one escape, a doubled `'`, which is why
-/// this is a function and not a pair of quote characters at the call site: a
-/// Windows user named O'Brien has an apostrophe in every path they own.
+/// Double quotes treat `\` as an escape (`C:\Users` starts a `\U` escape).
+/// Single quotes' only escape is a doubled `'`, for paths like `O'Brien`.
 fn yaml_scalar(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', "''"))
 }
 
-/// Where an imported track is filed.
+/// Import filing templates, rendered by beets in `import_paths_test.py`.
 ///
-/// Import flavour only, for the same reason the repair plugin is: a staged
-/// download has been enriched and has real tags, while someone's own folder may
-/// have none at all — and beets' stock template turns an empty artist and album
-/// into two empty path components, filing the whole library under `Music//`.
-/// Checked against beets' own renderer in `paths_test.py`, which is the side
-/// that can actually run it.
-///
-/// `%if{$track,…}` also drops the number prefix when there is none: beets reads
-/// an unset track as falsy, so an untagged rip lands on `Title.mp3` instead of
-/// the `00 Title.mp3` a bare `$track $title` produced.
-///
-/// Everything an import brings is the user's own music, so all of it files
-/// under the `Library/` zone — see `APP_PATHS` for what the zones are (the
-/// singleton template is shared: an import never carries the provisional
-/// flag, so it lands in `Library/Singles/` by the same rule). `%ifdef`, not
-/// `%if`: a missing flexible attribute renders as the literal `$symbol`,
-/// which `%if` reads as true — definedness is the actual boundary, and the
-/// flag is deleted outright when a real match lands.
+/// Fallbacks keep untagged files out of `Music//`, and `%if{$track,…}`
+/// drops the `00` prefix. `%ifdef` rather than `%if`: a missing flexible
+/// attribute renders as the literal `$symbol`, which `%if` treats as true.
 const IMPORT_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
   singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
   comp: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}/%if{$track,$track ,}$title'
 "#;
 
-/// Where an enriched download is filed — the App flavour's answer to the same
-/// question, also rendered for real in `import_paths_test.py`.
+/// Download filing templates, also rendered in `import_paths_test.py`.
 ///
-/// `Music/` splits into two zones a glance can tell apart:
-/// - `Library/` — the verified shelves: beets' stock templates plus the blank
-///   guards the import flavour carries, `%aunique{}` still keeping two
-///   genuinely coexisting same-named records apart.
-/// - `Unidentified/` — the guessed zone. What defines "guessed" is the
-///   `sonarche_provisional` flag itself, not the absence of an album row: a
-///   library import in "tracks" mode also produces rowless singletons, and
-///   those are the user's own verified music (`Library/Singles/`). Guessed
-///   items used to stand up blank album rows whose folders %aunique could
-///   only tell apart by row id (`LIVinglife/[86]/…`).
+/// - `Library/`: verified music, `%aunique{}` separating same-named records.
+/// - `Unidentified/`: items carrying the `sonarche_provisional` flag.
 ///
-/// `comp` restates `default` word for word, and that repetition is the point.
-/// beets' stock compilation template routes such a record to
-/// `Compilations/$album`: it throws the album artist away, files that one record
-/// differently from every other album in the library, and puts it outside the
-/// `Library/` zone entirely — while the app, which shelves everything by album
-/// artist, keeps showing it under "Various Artists". `forced_album.py` already
-/// refused the rule for the records the user assembles by hand; leaving it on
-/// for the ones MusicBrainz calls compilations meant one library with two
-/// filing rules, and a soundtrack whose album artist is a real composer torn
-/// away from the rest of their work. Worse, `comp` is carried per *item*, so a
-/// single track disagreeing with its row (an unidentified track filed onto a
-/// matched compilation) split one record across two folders — which is exactly
-/// how ten tracks of one soundtrack landed in `Compilations/` and the eleventh
-/// in `Various Artists/`.
-///
-/// Spelled out rather than deleted: beets merges this config over its own
-/// defaults key by key, so a missing `comp` is not "no compilation rule", it is
-/// beets' `Compilations/$album%aunique{}/$track $title` — the very thing being
-/// removed, minus the zone.
-///
-/// The one-time re-file of an existing library onto these templates is the
-/// relayout pass in `remux.rs`.
+/// `comp` restates `default` so compilations file under their album artist.
+/// It can't be omitted: beets merges defaults key by key, and its own `comp`
+/// template is `Compilations/$album`.
 const APP_PATHS: &str = r#"paths:
   default: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
   singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/%if{$artist,$artist,Unknown Artist}/$title'
   comp: 'Library/%if{$albumartist,$albumartist,Unknown Artist}/%if{$album,$album,Unknown Album}%aunique{}/%if{$track,$track ,}$title'
 "#;
 
-/// beets remembers the source directories it has taken on and skips them on a
-/// later run. This is the guard behind a stopped import being safe to relaunch:
-/// without it a retry re-copies everything that landed before the stop, and
-/// `duplicate_action: keep` keeps both copies.
-///
-/// Import flavour only — every staged download folder is new by construction,
-/// and remembering them would grow a list forever.
+/// Lets a stopped import be relaunched without duplicating files. Import
+/// flavour only: staged download folders are always new.
 const INCREMENTAL: &str = r#"  incremental: yes
 "#;
 
@@ -864,19 +676,12 @@ ui:
         tree = yaml_scalar(&paths.derived_genres_tree()),
         whitelist = yaml_scalar(&paths.derived_genres_whitelist()),
         embed_art = if flavour == Flavour::App { "yes" } else { "no" },
-        // Import flavour only. beets remembers the source directories it has
-        // taken on and skips them on a later run, which is what makes a
-        // re-import — and above all a *retry after a stop* — add nothing twice.
-        // Nothing for the download path: every staged folder is new by
-        // construction, and remembering them would grow a list forever.
         incremental = if flavour == Flavour::Import {
             INCREMENTAL
         } else {
             ""
         },
-        // Spelled out so the erase can find it. beets would otherwise put it
-        // beside the config under a name of its own choosing, where nothing
-        // that deletes the library would ever think to look.
+        // Explicit path, so an erase can find it.
         statefile = if flavour == Flavour::Import {
             format!("statefile: {}\n", yaml_scalar(&paths.beets_import_state))
         } else {
@@ -892,20 +697,13 @@ ui:
         } else {
             ""
         },
-        // `sonarche_import` (sidecar/beetsplug/) fills title/artist/track from
-        // the filename when the tag is empty and unpacks YYYYMMDD years —
-        // repairs for someone's own rips. The download path must not load it:
-        // a staged file's name is the video's own title, and enrich owns those
-        // fields there.
+        // Filename-based tag repairs, for the user's own rips only.
         repair_plugin = if flavour == Flavour::Import {
             " sonarche_import"
         } else {
             ""
         },
-        // The entries of `pluginpath` join the `beetsplug` namespace package's
-        // own search path, so the directory named here must hold the plugin
-        // *files* — pointing at the sidecar root would have beets look for
-        // `sidecar/sonarche_import.py`, which is not where it lives.
+        // Entries join the `beetsplug` namespace, so this must be the plugin folder.
         pluginpath = if flavour == Flavour::Import {
             format!(
                 "pluginpath: [{}]\n",
@@ -947,9 +745,7 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg(&paths.venv_dir);
     run_streamed(app, venv_cmd, "venv creation").await?;
 
-    // Shipped wheels when we have them: numpy alone is most of the download,
-    // and the install used to be measured in minutes. `--no-index` also makes
-    // this the one step that no longer needs the network.
+    // Bundled wheels when present: offline and much faster.
     let vendored = tokio::fs::try_exists(&paths.wheels_dir)
         .await
         .unwrap_or(false);
@@ -967,14 +763,10 @@ pub async fn setup_env(app: &AppHandle) -> AppResult<EnvStatus> {
         .arg("pip")
         .arg("install")
         .arg("--disable-pip-version-check")
-        // requirements.txt is the whole resolved tree, not a wish list — see
-        // its header. Resolving instead of obeying it would pull back the two
-        // packages we drop on purpose, and on Intel macOS one of them has no
-        // wheel left to pull.
+        // requirements.txt is the fully resolved tree; resolving again would pull
+        // back packages we exclude on purpose.
         .arg("--no-deps")
-        // A missing wheel must fail here, loudly. Without this pip falls back
-        // to the source archive and starts a compile the user watches for
-        // twenty minutes before it dies on a missing toolchain.
+        // Fail on a missing wheel instead of falling back to a source build.
         .arg("--only-binary=:all:");
     if vendored {
         pip_cmd
@@ -1020,11 +812,6 @@ mod tests {
         }
     }
 
-    /// The bug that made every import on Windows fail, from the first build to
-    /// the fourth: `directory: "C:\Users\…"`. YAML reads `\` as an escape
-    /// introducer inside double quotes, so the path opened with `\U` — the
-    /// start of an eight-digit unicode escape — and beets refused to load its
-    /// own config. Column 12 of line 1, every single time.
     #[test]
     fn a_windows_path_is_not_read_as_a_yaml_escape() {
         let mut paths = paths();
@@ -1033,15 +820,10 @@ mod tests {
 
         let config = beets_config_yaml(&paths, Flavour::App);
 
-        // The expected path is derived, not spelled out: `music_dir()` joins
-        // with the host separator, so the tail is `\Music` on Windows and
-        // `/Music` in this test run.
+        // `music_dir()` uses the host separator.
         let expected = format!("directory: '{}'", paths.music_dir().display());
         assert!(config.contains(&expected), "{config}");
-        // The rule, stated once for the whole file rather than per key: a
-        // backslash is a directive between double quotes and a plain character
-        // between single ones, so no line may ever hold both. `clutter` keeps
-        // its double quotes — there is no path in it.
+        // A backslash inside double quotes is an escape: no line may mix the two.
         for line in config.lines() {
             assert!(
                 !(line.contains('\\') && line.contains('"')),
@@ -1050,8 +832,6 @@ mod tests {
         }
     }
 
-    /// Single quotes have exactly one escape, and a doubled `'` is it. Not a
-    /// hypothetical: `C:\Users\O'Brien\Music` is an ordinary Windows path.
     #[test]
     fn an_apostrophe_in_a_path_is_doubled_not_left_to_close_the_scalar() {
         let mut paths = paths();
@@ -1067,10 +847,6 @@ mod tests {
         assert!(config.contains(&expected), "{config}");
     }
 
-    /// The reason the second file exists at all. A library import bakes the
-    /// album's own cover into every track when this is `yes` — measured at
-    /// 314 MB of duplicated images in a 1.17 GB library, 88 MB of it in a
-    /// single 18-track album.
     #[test]
     fn the_import_config_turns_cover_embedding_off() {
         assert!(
@@ -1083,10 +859,6 @@ mod tests {
         );
     }
 
-    /// An import must reach no network. `-A` takes MusicBrainz and AcoustID out
-    /// of it, but fetchart runs on its own hook, and its default sources
-    /// include iTunes and Amazon — enough for beets to search store artwork
-    /// mid-copy on files that already carry an album and artist.
     #[test]
     fn only_the_import_config_pins_art_to_the_filesystem() {
         assert!(
@@ -1100,11 +872,7 @@ mod tests {
         );
     }
 
-    /// The import flavour differs on art, the repair plugin, and the three
-    /// things it needs that the download path must not have: a filing template
-    /// with fallbacks, and the incremental guard. Everything else has to stay
-    /// identical — same library, same genre tree, same clutter rules — so this
-    /// strips the known differences and demands the rest match exactly.
+    /// The flavours may differ only in their known lines.
     #[test]
     fn the_two_configs_differ_on_nothing_but_the_known_import_settings() {
         let app = beets_config_yaml(&paths(), Flavour::App);
@@ -1127,10 +895,6 @@ mod tests {
         assert_eq!(strip(&app), strip(&import));
     }
 
-    /// The two guards a re-import depends on, named so a future edit to the
-    /// config cannot drop them silently. `incremental` is what makes relaunching
-    /// a stopped import safe; the paths are what keep an untagged rip out of
-    /// `Music//`.
     #[test]
     fn only_the_import_config_guards_against_re_importing_and_nameless_folders() {
         let import = beets_config_yaml(&paths(), Flavour::Import);
@@ -1138,29 +902,19 @@ mod tests {
 
         assert!(import.contains("incremental: yes"));
         assert!(import.contains("Unknown Artist"));
-        // The guard's memory must be somewhere the erase can reach. beets'
-        // default puts it beside the config under a name of its own, where
-        // nothing that wipes the library would think to look — and a library
-        // wiped while that file survives makes the next import of a once-seen
-        // folder do nothing at all.
+        // Must be where the erase can reach it.
         assert!(import.contains("statefile: '/data/beets/import-state.pickle'"));
         assert!(!app.contains("incremental"));
         assert!(!app.contains("statefile"));
     }
 
-    /// The app flavour's own filing rules: %aunique still keeps genuinely
-    /// coexisting same-named records apart, verified music lives under the
-    /// `Library/` zone, and a guessed single (the only kind of item with no
-    /// album row) files under `Unidentified/` instead of standing up a blank
-    /// record. Rendered for real in `import_paths_test.py`.
     #[test]
     fn the_app_config_keeps_aunique_and_files_guesses_in_the_zone() {
         let app = beets_config_yaml(&paths(), Flavour::App);
         assert!(app.contains(APP_PATHS), "{app}");
         assert!(app.contains("%aunique{}"), "{app}");
         assert!(app.contains("default: 'Library/"), "{app}");
-        // The zone boundary is the provisional flag, not "has no album row":
-        // an imported single is rowless too, and it is the user's own music.
+        // The zone boundary is the provisional flag: imported singles are rowless too.
         assert!(
             app.contains("singleton: '%ifdef{sonarche_provisional,Unidentified,Library/Singles}/"),
             "{app}"
@@ -1173,11 +927,6 @@ mod tests {
         );
     }
 
-    /// One filing rule for every record. beets' stock `comp` template routes a
-    /// compilation to `Compilations/$album` — a second shelf the app never
-    /// shows, outside the zones, and one a single item's own `comp` flag can
-    /// split a record across. Overridden, not omitted: beets merges this config
-    /// over its defaults key by key. See the note on `APP_PATHS`.
     #[test]
     fn neither_config_files_compilations_on_a_shelf_of_their_own() {
         for flavour in [Flavour::App, Flavour::Import] {
@@ -1195,9 +944,6 @@ mod tests {
         }
     }
 
-    /// The filename/year repairs are for someone's own rips. On the download
-    /// path the filename *is* the video's own title and enrich owns those fields,
-    /// so only the import flavour may load the plugin.
     #[test]
     fn only_the_import_config_loads_the_repair_plugin() {
         let import = beets_config_yaml(&paths(), Flavour::Import);
@@ -1212,8 +958,6 @@ mod tests {
         assert!(!app.contains("pluginpath"), "{app}");
     }
 
-    /// Both point at the same library and the same database — the import is a
-    /// different way in, not a different shelf.
     #[test]
     fn both_configs_target_the_one_library() {
         for flavour in [Flavour::App, Flavour::Import] {

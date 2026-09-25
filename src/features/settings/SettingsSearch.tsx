@@ -3,14 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { SettingsEntry } from "@/features/settings/settingsIndex";
 
-/**
- * The field at the head of the menu.
- *
- * Not a filter over the category names — those were never the hard part. It
- * searches the settings themselves, reasons included, which is what answers
- * the question people actually arrive with: not "which pane is this under" but
- * "where do I stop getting 403 errors".
- */
+/** Searches the settings themselves, reasons included, not just pane names. */
 export function SettingsSearchField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const { t } = useTranslation("settings");
 
@@ -29,9 +22,7 @@ export function SettingsSearchField({ value, onChange }: { value: string; onChan
   );
 }
 
-/** What the menu shows instead of its groups while a query is live: the
- * setting first, its pane underneath in the same small-caps register the group
- * headings use — the answer, then where it lives. */
+/** Results replace the groups while searching: setting, then its pane. */
 export function SettingsSearchResults({
   results,
   onPick,

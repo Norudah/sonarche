@@ -1,16 +1,7 @@
-//! Native audio playback.
+//! Native audio playback on rodio.
 //!
-//! The webview's `<audio>` element read every track through Tauri's asset
-//! protocol, which reports roughly twice a track's real duration — measured at
-//! 436.95s for a file the header, `afinfo` and a plain HTTP fetch all agree is
-//! 218.45s. The front compensated by cutting playback off at the library's own
-//! length. Decoding here reads the file off disk, so the distortion has no way
-//! in, and the engine can hold more than one track at a time — which is what
-//! gapless needs and an `<audio>` element cannot do.
-//!
-//! The front stays in charge of *what* plays: this module owns one queue of
-//! files and reports what it is doing. It knows nothing about tracks, albums or
-//! shuffle.
+//! The front decides what plays; this module owns a two-slot file queue
+//! (playing + preloaded, for gapless) and pushes playback status.
 
 use std::fs::File;
 use std::io::BufReader;
@@ -26,95 +17,59 @@ use crate::audio_formats;
 use crate::error::{AppError, AppResult};
 use crate::now_playing;
 
-/// The output device and the queue feeding it.
-///
-/// `_device` is held only to keep it alive: dropping it silences everything
-/// downstream, however healthy the player looks.
 struct Engine {
+    /// Held only to keep the output alive: dropping it silences everything.
     _device: MixerDeviceSink,
     player: Player,
 }
 
-/// The file the engine was handed, and what we know about it.
-///
-/// Kept because rodio only reports that it has run out of audio, never why. A
-/// track that played out and one whose decoder gave up mid-seek look identical
-/// from the outside, and answering the second by advancing the queue is the
-/// "clicking the seek bar jumps to another song" bug.
+/// rodio reports that its queue ran dry, never why. Remembering the loaded
+/// file is what separates a track that finished from a decoder that gave up.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Loaded {
     path: String,
-    /// Decoded length, when the file declares one.
     duration: Option<f64>,
 }
 
-/// The two files the engine holds: the one playing, and the one lined up behind
-/// it. Mirrors rodio's own queue, which reports how many sources are left but
-/// never which.
 #[derive(Debug, Default, Clone)]
 struct Files {
-    /// Empty when the front stopped playback on purpose, which is how a stop is
-    /// told apart from a track running out.
+    /// `None` after an explicit stop, so a stop never reads as a track ending.
     current: Option<Loaded>,
     next: Option<Loaded>,
 }
 
-/// Opened on first play rather than at startup: an app the user only ever
-/// downloads with should not seize the audio device, and on a machine with no
-/// output at all, failing here would be failing to launch.
+/// The audio device is opened lazily on first play, so a machine without
+/// audio output can still launch the app.
 #[derive(Default)]
 pub struct PlayerState {
     engine: Mutex<Option<Engine>>,
     files: Mutex<Files>,
 }
 
-/// What the engine is doing, as the front needs to draw it.
-///
-/// `Default` is the silent state, which is also the honest answer before the
-/// audio device has ever been opened.
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaybackStatus {
-    /// Playhead in seconds.
     pub position: f64,
-    /// Decoded length of the playing file, or null when nothing is loaded.
     pub duration: Option<f64>,
     pub is_playing: bool,
-    /// Whether anything is loaded at all. Paused and finished both report
-    /// `is_playing: false`, and only this tells them apart — which is how the
-    /// status loop knows a track ended rather than was paused.
+    /// Distinguishes "paused" from "finished"; both have `is_playing: false`.
     pub loaded: bool,
-    /// Files still queued behind the playing one — 0 means it is the last.
+    /// Files queued behind the playing one.
     pub queued: usize,
 }
 
-/// Amplitude for a 0…1 slider position.
-///
-/// Loudness is perceived logarithmically while `set_volume` takes a linear
-/// amplitude, so passing the slider through unchanged makes the top half of its
-/// travel do almost nothing and the bottom half do everything. Squaring is the
-/// usual audio taper: half travel lands at a quarter amplitude, about -12 dB,
-/// which reads as "half as loud".
+/// Maps a 0…1 slider to amplitude with a square taper, since perceived
+/// loudness is logarithmic.
 pub fn amplitude_for(level: f32) -> f32 {
     let clamped = level.clamp(0.0, 1.0);
     clamped * clamped
 }
 
-/// The engine plays what the library holds, and nothing else.
+/// Guards `player_load` against arbitrary paths coming over IPC.
 ///
-/// Every real caller hands over a `path` that came out of the library listing
-/// in the first place, so this never fires in normal use — which is exactly why
-/// it is worth writing down. `player_load` is a command with a free-text path
-/// on it, and the app's own rule is that every input crossing the IPC boundary
-/// is checked. Without this, one injected string in the webview turns the audio
-/// engine into a way to find out whether an arbitrary file exists, and whether
-/// it decodes.
-///
-/// `..` is rejected outright rather than resolved: `starts_with` compares
-/// components, so `<library>/../../etc/passwd` passes the prefix test on its
-/// face, and canonicalising to find out would mean touching the filesystem on
-/// the strength of the very path being questioned.
+/// `..` is rejected rather than resolved: `starts_with` compares components,
+/// so `<library>/../../etc/passwd` would pass the prefix check.
 pub fn ensure_in_library(path: &str, library: &Path) -> AppResult<()> {
     let path = Path::new(path);
     if path
@@ -133,16 +88,8 @@ pub fn ensure_in_library(path: &str, library: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Open a file for playback.
-///
-/// `Decoder::try_from` rather than `Decoder::new`, and the difference is the
-/// whole of backwards seeking: `new` hands symphonia a stream of unknown length,
-/// and a demuxer that does not know where the file ends can only ever go
-/// forwards — every backwards seek came back `ForwardOnly` and silently did
-/// nothing. `try_from` reads the length from the file's own metadata.
-/// The extension is checked before the file is opened so an imported track we
-/// cannot decode says so in its own terms — symphonia's answer to an Opus
-/// stream is "unsupported feature", which tells the user nothing.
+/// `Decoder::try_from` (not `new`) gives symphonia the file length, without
+/// which every backwards seek fails with `ForwardOnly`.
 fn decode(path: &str) -> AppResult<Decoder<BufReader<File>>> {
     if !Path::new(path).is_file() {
         return Err(AppError::InvalidInput(format!("no such file: {path}")));
@@ -156,13 +103,9 @@ fn decode(path: &str) -> AppResult<Decoder<BufReader<File>>> {
 }
 
 impl PlayerState {
-    /// Runs `f` against a live engine, opening the device if this is the first
-    /// sound the app makes.
     fn with_engine<T>(&self, f: impl FnOnce(&Engine) -> T) -> AppResult<T> {
-        // A panic anywhere under this lock used to leave the player refusing
-        // every call for the rest of the session. Nothing here holds an
-        // invariant a panic could break — it is a device handle and a queue —
-        // so the honest answer to poisoning is to carry on.
+        // The guarded state holds no invariant a panic could break, so a
+        // poisoned lock is recovered instead of disabling the player.
         let mut guard = self.engine.lock().unwrap_or_else(|err| err.into_inner());
 
         if guard.is_none() {
@@ -181,8 +124,7 @@ impl PlayerState {
         Ok(f(engine))
     }
 
-    /// Reads the engine only if it exists. Status polling must not be what
-    /// opens the audio device.
+    /// Like `with_engine`, but never opens the device.
     fn peek<T: Default>(&self, f: impl FnOnce(&Engine) -> T) -> T {
         let guard = self.engine.lock().unwrap_or_else(|err| err.into_inner());
         guard.as_ref().map(f).unwrap_or_default()
@@ -192,37 +134,29 @@ impl PlayerState {
         f(&mut self.files.lock().unwrap_or_else(|err| err.into_inner()))
     }
 
-    /// The file the engine is on, if the front has not emptied it.
     fn remembered(&self) -> Option<Loaded> {
         self.with_files(|files| files.current.clone())
     }
 
-    /// The queued file has become the playing one — the engine crossed over on
-    /// its own. Returns it so the front can be told what it is now hearing.
+    /// Promotes the preloaded file after a gapless hand-over.
     pub fn advance(&self) -> Option<Loaded> {
         self.with_files(|files| {
-            // Nothing was lined up, so the queue shrank for another reason: a
-            // load dropping a preloaded track along with everything else. The
-            // playing file stands, and forgetting it here would leave the next
-            // real end unreportable.
             let next = files.next.take()?;
             files.current = Some(next.clone());
             Some(next)
         })
     }
 
-    /// Play `path` now, dropping whatever was queued. The volume in force
-    /// survives — it belongs to the session, not to the track.
+    /// Plays `path` now, dropping the queue. Volume is kept.
     pub fn load(&self, path: &str) -> AppResult<Option<f64>> {
         let source = decode(path)?;
         let duration = source.total_duration().map(|d| d.as_secs_f64());
         self.with_engine(move |engine| {
             engine.player.clear();
             engine.player.append(source);
-            // `clear` leaves the player paused; nothing plays without this.
+            // `clear` leaves the player paused.
             engine.player.play();
         })?;
-        // `load` drops the queue, so whatever was lined up behind is gone too.
         self.with_files(|files| {
             *files = Files {
                 current: Some(Loaded {
@@ -235,9 +169,7 @@ impl PlayerState {
         Ok(duration)
     }
 
-    /// Queue `path` behind what is playing. This is the gapless path: the
-    /// engine crosses into the next file itself, with no gap to open a decoder,
-    /// which is exactly what reassigning `<audio>.src` could never avoid.
+    /// Queues `path` behind the playing file for a gapless transition.
     pub fn enqueue(&self, path: &str) -> AppResult<()> {
         let source = decode(path)?;
         let duration = source.total_duration().map(|d| d.as_secs_f64());
@@ -251,8 +183,7 @@ impl PlayerState {
         Ok(())
     }
 
-    /// Toggle play/pause. Returns whether it is playing afterwards; false when
-    /// nothing is loaded, since a toggle cannot start what was never given.
+    /// Returns whether it is playing afterwards.
     pub fn toggle(&self) -> AppResult<bool> {
         self.with_engine(|engine| {
             if engine.player.empty() {
@@ -271,17 +202,12 @@ impl PlayerState {
         self.with_engine(|engine| engine.player.pause())
     }
 
-    /// Move the playhead. Blocks for a few milliseconds while the audio thread
-    /// picks the order up — which is why every caller comes through
-    /// `off_runtime`, and why the front sends one of these per gesture rather
-    /// than one per pointer move.
+    /// Blocks until the audio thread picks the seek up; call via `off_runtime`.
     pub fn seek(&self, seconds: f64) -> AppResult<()> {
         let target = Duration::from_secs_f64(seconds.max(0.0));
         self.with_engine(|engine| {
-            // Seeking an empty player is not a no-op: rodio keeps the order in
-            // its controls, and the *next* track picks it up and starts part of
-            // the way in. The front does seek an empty engine — `previous` at
-            // the top of a track, a finished queue — so this guard earns itself.
+            // rodio would keep a seek on an empty player and apply it to the
+            // next track, which would then start part-way in.
             if engine.player.empty() {
                 return Ok(());
             }
@@ -292,11 +218,7 @@ impl PlayerState {
         })?
     }
 
-    /// Reopen the file the engine was on and carry on from `position`.
-    ///
-    /// A seek can leave the demuxer unable to hand over the next packet, and
-    /// the source then simply ends. Reopening is the difference between a
-    /// hiccup and the player either falling silent or skipping a track.
+    /// Reopens the current file at `position` after a seek broke the demuxer.
     pub fn recover(&self, position: f64) -> AppResult<()> {
         let Some(file) = self.remembered() else {
             return Ok(());
@@ -307,26 +229,22 @@ impl PlayerState {
             engine.player.append(source);
             engine.player.play();
         })?;
-        // Clearing took the lined-up track with it; the front preloads again.
+        // `clear` dropped the preloaded file; the front will preload again.
         self.with_files(|files| files.next = None);
         self.seek(position)
     }
 
-    /// `level` is the slider position, 0…1 — see `amplitude_for`.
     pub fn set_volume(&self, level: f32) -> AppResult<()> {
         self.with_engine(|engine| engine.player.set_volume(amplitude_for(level)))
     }
 
-    /// Stop and empty the queue, keeping the device open for the next play.
-    /// Forgetting the file is what tells the status loop this silence was
-    /// asked for rather than the track running out.
+    /// Clears the queue but keeps the device open.
     pub fn stop(&self) -> AppResult<()> {
         self.with_files(|files| *files = Files::default());
         self.with_engine(|engine| engine.player.clear())
     }
 
-    /// What a silence means, once the engine has gone quiet at `last_position`.
-    /// `None` when nothing is remembered — the front emptied the engine itself.
+    /// `None` when the front emptied the engine itself.
     pub fn silence_after(&self, last_position: f64) -> Option<Silence> {
         let file = self.remembered()?;
         Some(if stopped_short(last_position, file.duration) {
@@ -351,12 +269,8 @@ impl PlayerState {
     }
 }
 
-/// Run a blocking engine call off the async runtime.
-///
-/// Every call on `PlayerState` waits on the audio thread — `clear` until the
-/// queue has flushed, `try_seek` until the order is picked up — and a Tauri
-/// command runs on the runtime's own threads. Running them inline is how a
-/// flurry of seeks used to take the rest of the app down with it.
+/// Every `PlayerState` call waits on the audio thread, so it must not run on
+/// the async runtime's threads.
 pub async fn off_runtime<T: Send + 'static>(
     app: AppHandle,
     f: impl FnOnce(&PlayerState) -> AppResult<T> + Send + 'static,
@@ -366,16 +280,9 @@ pub async fn off_runtime<T: Send + 'static>(
         .map_err(|err| AppError::Playback(format!("playback thread failed: {err}")))?
 }
 
-/// How often the playhead is pushed to the front. Four times a second is what
-/// `timeupdate` gave the old `<audio>` path, and a seek bar needs no more.
 const STATUS_INTERVAL: Duration = Duration::from_millis(250);
 
-/// Whether this status is worth an IPC message.
-///
-/// A paused or idle player produces an identical status forever, and waking the
-/// front four times a second to redraw an unchanged seek bar is exactly the
-/// churn the player's context split exists to avoid. Emitting only on change
-/// means a paused app is completely silent on the wire.
+/// Emits only on change, so a paused player sends nothing over IPC.
 pub fn worth_emitting(previous: Option<&PlaybackStatus>, next: &PlaybackStatus) -> bool {
     match previous {
         None => next.loaded,
@@ -383,58 +290,35 @@ pub fn worth_emitting(previous: Option<&PlaybackStatus>, next: &PlaybackStatus) 
     }
 }
 
-/// Whether the engine has just crossed from the playing file into the one
-/// queued behind it — the gapless hand-over, which it performs on its own.
-///
-/// The front owns the queue and draws the track, so it has to be told; nothing
-/// else about the status says it happened, because playback never stops.
+/// Detects the engine moving into the preloaded file on its own.
 pub fn handed_over(previous: Option<&PlaybackStatus>, next: &PlaybackStatus) -> bool {
     next.loaded && previous.is_some_and(|last| last.queued > next.queued)
 }
 
-/// Why the engine fell silent. Rodio only reports that it has run out of
-/// audio, never why, and the two cases call for opposite answers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Silence {
-    /// The track played out. The front's queue decides what follows.
+    /// The track played out; the front advances its queue.
     Ended,
-    /// It stopped well short of its own length — a seek left the demuxer unable
-    /// to hand over the next packet and the source ended there. Reported as an
-    /// end, the front would answer by skipping to the next track.
+    /// The decoder gave up mid-track (typically after a seek); reopen it.
     Broke,
 }
 
-/// Whether the engine just ran out of audio. A pause keeps `loaded` true, so
-/// this really is "it had something to play and no longer does".
 pub fn went_quiet(previous: Option<&PlaybackStatus>, next: &PlaybackStatus) -> bool {
     previous.is_some_and(|last| last.loaded) && !next.loaded
 }
 
-/// How far short of its own length a track may stop and still count as having
-/// played out. The loop samples four times a second and the device holds a
-/// little audio beyond the playhead, so the last position seen before a natural
-/// end is always slightly early.
+/// Slack for the last sampled position of a natural end, which always lands a
+/// little early (250 ms sampling + device buffer).
 const END_GRACE: f64 = 1.5;
 
-/// Whether a track that has gone quiet stopped well short of its length.
-///
-/// This is the whole difference between "the track is over, advance the queue"
-/// and "the decoder gave up, put it back". Files that declare no duration get
-/// the benefit of the doubt: unprovable is not the same as broken, and treating
-/// them as broken would loop them forever.
+/// Files without a declared duration count as ended, never as broken, so they
+/// cannot loop forever.
 pub fn stopped_short(last_position: f64, duration: Option<f64>) -> bool {
     duration.is_some_and(|total| last_position + END_GRACE < total)
 }
 
-/// Push the playhead to the front for the app's lifetime.
-///
-/// A poll rather than a callback because rodio reports state rather than
-/// announcing it, and because the same tick has to serve both purposes: moving
-/// the seek bar, and noticing that a track ran out so the front can queue the
-/// next one.
-/// This one tick serves both audiences — the front's seek bar and the OS's
-/// Now Playing panel. They need the same two facts at the same moment, and a
-/// second loop for the OS would only be this one, offset by a few milliseconds.
+/// Polls the engine for the app's lifetime (rodio has no callbacks) and feeds
+/// both the front and the OS Now Playing panel.
 pub fn spawn_status_loop(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut previous: Option<PlaybackStatus> = None;
@@ -445,8 +329,6 @@ pub fn spawn_status_loop(app: AppHandle) {
             if went_quiet(previous.as_ref(), &status) {
                 let last_position = previous.as_ref().map_or(0.0, |last| last.position);
                 match app.state::<PlayerState>().silence_after(last_position) {
-                    // The decoder gave up rather than reaching the end. Told to
-                    // the front, this would read as "next track, please".
                     Some(Silence::Broke) => {
                         let handle = app.clone();
                         let _ = tauri::async_runtime::spawn_blocking(move || {
@@ -456,19 +338,13 @@ pub fn spawn_status_loop(app: AppHandle) {
                     }
                     Some(Silence::Ended) => {
                         let _ = app.emit("player:ended", ());
-                        // Clear the OS panel rather than leaving a finished
-                        // track sitting there looking merely paused.
                         now_playing::clear();
                     }
-                    // The front emptied the engine itself: a stop is its own
-                    // doing and needs no answer.
                     None => {}
                 }
             } else if handed_over(previous.as_ref(), &status) {
-                // The engine crossed into the queued file by itself. The front
-                // is told what it is now hearing rather than which slot moved:
-                // its queue may have changed since it lined this one up, and
-                // the path is what settles it.
+                // Send the path, not a queue index: the front's queue may have
+                // changed since it preloaded this file.
                 if let Some(file) = app.state::<PlayerState>().advance() {
                     let _ = app.emit("player:advanced", &file);
                 }

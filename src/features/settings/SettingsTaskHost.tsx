@@ -21,18 +21,9 @@ import {
 import { MoveLibraryDialog } from "@/features/settings/MoveLibraryDialog";
 import { useSettingsTasks } from "@/features/settings/tasks";
 
-/**
- * Runs what settings started, outside settings.
- *
- * Mounted beside the dialog rather than inside it, so a conversion that takes
- * hours, a move that ends in a relaunch and an erase that cannot be undone all
- * survive every way there is to dismiss the pane that offered them. The
- * mutations live here for the same reason: unmounting their dialog used to
- * unmount them, leaving Rust working with nothing on screen to say so.
- *
- * Nothing is rendered until a task is asked for, so none of these hooks
- * subscribes to anything on an ordinary launch.
- */
+/** Runs long operations started from Settings (conversion, move, erase),
+ * mounted beside the dialog so closing it doesn't cancel them. Renders nothing
+ * until a task is requested. */
 export function SettingsTaskHost() {
   const { task, end } = useSettingsTasks();
 
@@ -72,10 +63,7 @@ function MoveTask({ parent, check, onCancel }: { parent: string; check: MoveChec
   const confirm = async () => {
     try {
       await move.mutateAsync(parent);
-      // A relaunch and not a cache invalidation: playback was stopped, the
-      // sidecar was taken down, and every track path the app is holding points
-      // at the old folder. Restarting is the only way to be sure none of it
-      // survives — and the dialog said it would.
+      // Playback, the sidecar and every held path point at the old folder.
       await relaunch();
     } catch (error) {
       onCancel();
@@ -104,16 +92,10 @@ function EraseTask({ eraseKey, onDone }: { eraseKey: EraseKey; onDone: () => voi
   const run = async () => {
     try {
       await mutation.mutateAsync();
-      // Factory settings include the front's own: theme, language choice, the
-      // remembered download category all live in localStorage. Only the full
-      // erase claims them — the aimed ones touch nothing the user chose.
+      // Only the full erase clears the front's localStorage (theme, language…).
       if (eraseKey === "erase") window.localStorage.clear();
-      // The reload is a full front reboot — splash, environment check, sidecar
-      // respawned on demand — and the process underneath keeps the setup.
-      // `relaunch()` was worse in both worlds: in dev it killed the process the
-      // tauri CLI was watching, which took vite down with it and relaunched the
-      // app onto a dead dev server; in prod it paid a whole process restart for
-      // nothing the reload does not already redo.
+      // A webview reload reboots the front and keeps the setup. `relaunch()` would
+      // also kill the dev server in dev.
       if (def.reloads) {
         window.location.reload();
         return;

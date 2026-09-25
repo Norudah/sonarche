@@ -1,37 +1,17 @@
-/**
- * The two buttons that ride a card's artwork: play, and the one that dresses it.
- *
- * Shared because the album shelf and the artist shelf sit in the same grid, one
- * scroll apart, and had drifted to different sizes — a 40 px play disc on a
- * cover and a 44 px one on a monogram, with icons a step apart to match. Two
- * shelves of the same furniture must agree on that furniture's size, or hovering
- * across them feels like the page resizing under the pointer.
- *
- * Shape and tone only. How each card *reveals* the pair is its own business —
- * the album card lifts the row, the artist card scales each button on its disc —
- * and that difference is deliberate, so no transition is baked in here.
- */
+/** The play and edit buttons on card artwork, shared by the album and artist
+ * shelves so they match. Shape and tone only; each card animates its own. */
 
-/** Secondary, on smoked glass over the artwork: the pencil on an album, the
- * image pill on an artist. */
+/** On smoked glass over the artwork. */
 export const CARD_ACTION_SECONDARY =
   "flex size-9 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white/90 shadow-md " +
   "backdrop-blur-sm outline-none hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-accent/40";
 
-/** The play disc — accent, haloed, and the larger of the two so the eye lands
- * on it first. */
+/** Larger, so the eye lands on it. */
 export const CARD_ACTION_PLAY =
   "flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground " +
   "glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
-/**
- * The same pair on a *row*, where there is no artwork to ride.
- *
- * Smoked glass exists to stay readable over a cover; over the page background
- * it is a black lozenge for no reason. So the row keeps the shapes and the
- * accent and drops the glass — and steps down a size, because a 40 px disc on a
- * 52 px row is a button wearing the row rather than sitting in it.
- */
+/** The same pair on a row: no glass, one size smaller. */
 const ROW_ACTION =
   "flex size-8 cursor-pointer items-center justify-center rounded-full outline-none " +
   "focus-visible:ring-2 focus-visible:ring-accent/40 ";

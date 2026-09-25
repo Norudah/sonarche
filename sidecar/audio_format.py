@@ -1,85 +1,42 @@
-"""What the audio files are made of — the one setting that rewrites bytes.
+"""Audio format setting: the only preference that rewrites audio bytes.
 
-Everything else the app decides about a track is a tag or a path. This is the
-container and the codec, and it is the only preference that can make the file
-itself unreadable somewhere. Hence the shape of the list below: two answers,
-each one a real reason someone would pick it, and nothing that exists only to
-lengthen a dropdown.
+- `m4a`: the downloaded stream as-is (default, no re-encode).
+- `mp3`: for devices that only play mp3.
 
-- `m4a` — the stream the download already receives. Kept as-is, no re-encode,
-  and therefore the default: the app's own rule is that a lossy file is never
-  decoded and re-compressed behind the user's back.
-- `mp3` — the format that plays *everywhere*. A car stereo from 2009, a cheap
-  DAP, a bootloader-locked head unit. Worse per byte than AAC and the app says
-  so, but "worse" is not the axis when the alternative is silence.
-
-`flac` was a third entry and is gone. Everything this app writes comes from a
-lossy stream, so a flac target is lossless *of something that already lost*:
-bigger files, never better sound, and an option whose label has to be argued
-out of in the interface is not an option worth offering. flac files already on
-disk are still read, played and imported — the app simply does not make them.
-
-Everything here is pure and unit-tested: the encoder arguments are the part
-that is expensive to get wrong and free to check.
+Existing flac files are still read and played; the app no longer produces them.
 """
 
-# Extension = wire value = what the setting stores. One string, so nothing has
-# to map between "the format", "the container" and "the file suffix".
+# Extension = wire value = stored setting.
 FORMATS = ("m4a", "mp3")
 
 DEFAULT = "m4a"
 
-# Below the source's own bitrate there is nothing left to keep; above it there
-# is nothing left to gain. LAME's V0 (~245 kbps VBR) sits above every stream a
-# download receives, which is the point: the transcode's loss should come from
-# the format change alone, not from a ceiling we chose.
+# LAME V0 (~245 kbps VBR), above any downloaded stream's bitrate.
 _MP3_QUALITY = "0"
 
 
 def normalize(value: str | None) -> str:
-    """The stored setting, or the default for anything unreadable.
-
-    A preference file written by another build, a hand-edited value, a null:
-    all of them mean "nobody chose", and the answer to that is the format the
-    app would have used anyway. Never raises — a bad value must not be able to
-    stop a download."""
+    """The stored setting, or the default for anything unreadable. Never raises."""
     candidate = (value or "").strip().lower().lstrip(".")
     return candidate if candidate in FORMATS else DEFAULT
 
 
 def is_native(fmt: str | None) -> bool:
-    """Whether this format is the one the download already produces.
-
-    The distinction that keeps the app's promise: native means yt-dlp writes
-    the stream it received and nothing decodes it. Anything else is a real
-    re-encode, which the caller has to be able to say out loud."""
+    """Whether this format needs no re-encode."""
     return normalize(fmt) == DEFAULT
 
 
 def encoder_args(fmt: str) -> list[str]:
-    """ffmpeg's output arguments for one format, cover stream excluded.
-
-    `-vn` drops the attached picture rather than trying to carry it across
-    containers — every container spells cover art differently, and the caller
-    re-embeds it afterwards through one writer that knows all of them.
-    """
+    """ffmpeg output arguments. `-vn` drops the cover; it is re-embedded later."""
     target = normalize(fmt)
     if target == "mp3":
         return ["-vn", "-c:a", "libmp3lame", "-q:a", _MP3_QUALITY]
-    # AAC in MP4: the shape a download already lands in, for a library being
-    # converted *back* from mp3, or from the flac an older build could produce.
-    # `-b:a 256k` sits comfortably above the streams the download receives.
+    # For converting back from mp3 or legacy flac.
     return ["-vn", "-c:a", "aac", "-b:a", "256k"]
 
 
 def ffmpeg_command(ffmpeg: str, source: str, dest: str, fmt: str) -> list[str]:
-    """The full conversion command line. Pure, so the test reads like the
-    command someone would type.
-
-    `-loglevel error` because the sidecar's stderr is its log: a conversion
-    pass over a whole library would otherwise write a screenful per track and
-    bury everything else in it.
-    """
+    """The full conversion command line."""
     return [
         ffmpeg,
         "-hide_banner",
@@ -95,10 +52,8 @@ def ffmpeg_command(ffmpeg: str, source: str, dest: str, fmt: str) -> list[str]:
 
 
 def postprocessors(fmt: str) -> list[dict]:
-    """yt-dlp's postprocessor chain for a download that must not stay native.
-
-    Empty for the native format, and that emptiness is the invariant: with no
-    postprocessor yt-dlp writes the stream it downloaded, byte for byte.
+    """yt-dlp postprocessors; empty for the native format, so yt-dlp writes the
+    stream byte for byte.
     """
     target = normalize(fmt)
     if is_native(target):
@@ -114,12 +69,8 @@ def postprocessors(fmt: str) -> list[dict]:
 
 
 def source_selector(fmt: str) -> str:
-    """yt-dlp's format selector for a target format.
-
-    Native keeps asking for the m4a stream by name — that is the whole promise:
-    the file the app stores is the file it was served. A transcode asks for the
-    best audio of any kind instead, because the encoder is about to decode it
-    anyway and the widest, highest-rate source is the one that survives it best.
+    """yt-dlp format selector: the m4a stream when native, otherwise the best
+    audio of any kind since it will be re-encoded anyway.
     """
     if is_native(fmt):
         return "bestaudio[ext=m4a]/bestaudio"

@@ -33,9 +33,8 @@ describe("importPhase", () => {
   });
 
   it("scans as soon as a folder is chosen, before the mutation reports", () => {
-    // The window between `setFolder` and the mutation flipping to pending is
-    // one render, and a card that shows "no music here" in it would flicker a
-    // wrong answer.
+    // The render between choosing a folder and the scan starting must not show
+    // "no music here".
     expect(importPhase(input())).toEqual({ kind: "scanning" });
     expect(importPhase(input({ scanning: true }))).toEqual({ kind: "scanning" });
   });
@@ -55,9 +54,7 @@ describe("importPhase", () => {
     expect(importPhase(input({ report, importing: true }))).toEqual({ kind: "importing", report });
   });
 
-  /** The scan result is still in the cache when the import finishes; the
-   * finished import is what the screen is about — but it carries the report
-   * along, because the recap is about the two together. */
+  /** The finished import wins over the cached scan, but keeps its report. */
   it("prefers the outcome over the scan it came from, and keeps that scan", () => {
     const outcome = { folders: 2, renditions: 1, recap: null, cancelled: false };
 

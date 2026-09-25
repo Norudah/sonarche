@@ -1,14 +1,5 @@
-//! Look at a folder before importing it.
-//!
-//! Pointing the app at fifteen years of someone's music is not a step to take
-//! blind — from the outside a folder is a name, and the difference between 40
-//! tracks and 12 000 is the difference between a click and an afternoon. This
-//! walks the tree and answers three questions the confirmation screen has to
-//! ask: how much is in there, how much of it can we play, and how much disc it
-//! will cost once copied.
-//!
-//! Reading only. Nothing here creates, moves or deletes a file — the import
-//! itself is beets' job, and it copies.
+//! Pre-import scan of a folder: how many tracks, how many playable, and how
+//! much disk the copy will take. Read-only.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,94 +10,57 @@ use serde::Serialize;
 use crate::audio_formats;
 use crate::error::{AppError, AppResult};
 
-/// A ceiling on the walk, not on the import.
-///
-/// A folder chosen by mistake can be a home directory or a mounted volume, and
-/// a walk that never ends is indistinguishable from a hang. Reaching it is
-/// reported rather than swallowed, so the screen can say the count is a floor.
+/// Walk limit, so picking a home directory or a volume doesn't look like a
+/// hang. Reaching it is reported (`truncated`).
 const MAX_ENTRIES: u64 = 200_000;
 
-/// How many unplayable files are named back. Enough to recognise what they are,
-/// short of pasting a wall of paths into a summary.
 const NAMED_UNPLAYABLE: usize = 5;
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanReport {
-    /// Files the engine can decode.
     pub playable: u64,
-    /// Audio files it cannot — Opus, WMA, anything symphonia has no decoder
-    /// for. Counted, not hidden: they are still imported, still tagged, and
-    /// still part of their album.
+    /// Audio the engine can't decode (Opus, WMA…). Still imported.
     pub unplayable: u64,
-    /// Unplayable counts by extension, lowercase and undotted. Ordered, so the
-    /// summary reads the same twice.
+    /// Lowercase, no dot. Ordered for stable output.
     pub unplayable_by_extension: BTreeMap<String, u64>,
-    /// A few unplayable files by name, for a screen that has to show rather
-    /// than assert.
     pub unplayable_examples: Vec<String>,
-    /// Folders holding at least one audio file.
-    ///
-    /// beets imports a tree folder by folder and names each one as it goes, so
-    /// this is the denominator of the progress bar — the only count the import
-    /// can be measured against without asking beets how far it has to go.
+    /// Folders with at least one audio file: the import progress denominator,
+    /// since beets reports per folder.
     pub album_folders: u64,
-    /// Audio files in the fullest single folder.
-    ///
-    /// The one structural hint available without reading a tag, and the page
-    /// uses it to suggest a grouping: a directory holding forty tracks is
-    /// unlikely to be one release, and beets would make it one anyway. A hint,
-    /// not a verdict — box sets exist, and the choice stays the user's.
+    /// Audio files in the fullest folder, used to suggest a grouping (a folder of
+    /// forty tracks is unlikely to be one album).
     pub largest_folder: u64,
-    /// Total bytes of every audio file found — what the copy will cost.
     pub bytes: u64,
-    /// The walk hit `MAX_ENTRIES` and stopped. Every count above is a floor.
+    /// Hit `MAX_ENTRIES`: every count is a floor.
     pub truncated: bool,
-    /// When this folder (or one overlapping it) was last imported, if ever.
-    ///
-    /// Not a refusal — re-importing is legitimate, and beets skips the
-    /// directories it has already taken on. It is here so the screen can say so
-    /// out loud, because a second import that silently adds almost nothing is
-    /// otherwise indistinguishable from one that failed.
+    /// The last import overlapping this folder, if any. Re-importing is allowed
+    /// (beets skips seen folders), but the UI should say so.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previously_imported: Option<PreviousImport>,
 }
 
-/// An earlier run over the same ground, as the archive remembers it.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviousImport {
     pub folder: String,
     pub finished_at: u64,
-    /// A stopped run, which is the case worth naming: part of the folder is
-    /// already in the library and finishing the job is the obvious next move.
     pub cancelled: bool,
 }
 
-/// Hidden, in the sense beets uses: a leading dot.
-///
-/// Counted as audio, once. beets ignores these outright (`ignore_hidden`), so
-/// every `._Track.m4a` a copy to a FAT volume left behind was one track the
-/// summary promised and the import never delivered — the whole of the gap
-/// between "4 287 pistes" on one screen and "4 270" on the next.
+/// Leading dot, which beets ignores (`ignore_hidden`), e.g. `._Track.m4a`.
 fn is_hidden(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with('.'))
 }
 
-/// Everything that is not audio: covers, logs, `.DS_Store`, the PDF booklet.
-///
-/// Judged by the same extension list the decoder uses, which means a file with
-/// no extension is not audio here. That is the right answer for a scan: beets
-/// will read the file's actual contents at import time, and a summary that
-/// promised a track we cannot name is worse than one that missed it.
+/// By the decoder's extension list; files without an extension don't count.
 fn is_audio(path: &Path) -> bool {
     audio_formats::is_playable(&path.to_string_lossy()) || is_known_unplayable(path)
 }
 
-/// Audio formats we recognise by name but cannot decode. Not "everything that
-/// is not playable": a `.jpg` is not a track we are declining to play.
+/// Audio formats recognised but not decodable.
 const UNPLAYABLE_AUDIO: &[&str] = &[
     "opus", "wma", "ape", "wv", "mpc", "ra", "rm", "amr", "shn", "tta", "ofr", "dsf", "dff",
 ];
@@ -120,15 +74,8 @@ fn extension_of(path: &Path) -> Option<String> {
         .map(|ext| ext.to_string_lossy().to_lowercase())
 }
 
-/// Refuse a folder that overlaps the library, in either direction.
-///
-/// Both mistakes are easy to make from a file picker and neither is visible in
-/// the result: importing the library into itself has beets copy every file
-/// beside itself and re-import the copies, and importing a folder that
-/// *contains* the library walks it too, re-importing everything already in.
-///
-/// Checked here rather than at each call site so the scan and the import that
-/// follows it cannot disagree about what is allowed.
+/// Refuses a folder overlapping the library in either direction: importing
+/// the library into itself, or a parent that contains it.
 pub fn ensure_outside_library(root: &Path, library: &Path) -> AppResult<()> {
     if root.starts_with(library) {
         return Err(AppError::InvalidInput(
@@ -143,12 +90,8 @@ pub fn ensure_outside_library(root: &Path, library: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Walk `root` and report what an import would find.
-///
-/// Blocking on purpose: it is a directory walk, and the caller runs it on a
-/// blocking thread. Directory symlinks are not followed — a link pointing at an
-/// ancestor is a loop, and one pointing outside the folder is not something the
-/// user asked to import.
+/// Walks `root` (blocking) and reports what an import would find. Directory
+/// symlinks are not followed.
 pub fn scan(root: &Path) -> AppResult<ScanReport> {
     if !root.is_dir() {
         return Err(AppError::InvalidInput(format!(
@@ -171,11 +114,9 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
     let mut seen: u64 = 0;
     let mut pending = vec![root.to_path_buf()];
 
-    // Iterative rather than recursive: a deep tree is ordinary in a music
-    // library (artist/album/disc), and the depth is the user's, not ours.
+    // Iterative: music trees can be deep.
     while let Some(dir) = pending.pop() {
-        // A folder we cannot read is not fatal — a permission-denied subtree in
-        // someone's library should cost that subtree, not the whole scan.
+        // An unreadable subtree costs only that subtree.
         let Ok(entries) = fs::read_dir(&dir) else {
             continue;
         };
@@ -188,16 +129,14 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
                 return Ok(report);
             }
 
-            // `file_type` does not follow symlinks, which is what keeps a link
-            // to an ancestor from being walked forever.
+            // `file_type` doesn't follow symlinks, so ancestor links can't loop.
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
             let path = entry.path();
 
             if file_type.is_dir() {
-                // A hidden directory is beets' blind spot too, and `.git` or
-                // `.Trashes` inside a music folder is not somebody's album.
+                // beets skips hidden directories too (`.git`, `.Trashes`).
                 if !is_hidden(&path) {
                     pending.push(path);
                 }
@@ -212,8 +151,7 @@ pub fn scan(root: &Path) -> AppResult<ScanReport> {
             record(&mut report, &path);
         }
 
-        // Counted per folder, not per file: an album spread over `Disc 1` and
-        // `Disc 2` is two folders to beets, and both are named as it goes.
+        // Per folder: beets treats `Disc 1` and `Disc 2` as two folders.
         if in_this_folder > 0 {
             report.album_folders += 1;
             report.largest_folder = report.largest_folder.max(in_this_folder);
@@ -246,7 +184,6 @@ mod tests {
 
     use super::*;
 
-    /// A throwaway tree under the OS temp dir, removed when the test ends.
     struct Tree(PathBuf);
 
     impl Tree {
@@ -292,8 +229,7 @@ mod tests {
         assert!(!report.truncated);
     }
 
-    /// The progress denominator. Only folders with audio in them count — the
-    /// artist folders above them hold nothing beets will announce.
+    /// Only folders containing audio count, not their parents.
     #[test]
     fn counts_the_folders_beets_will_walk_not_the_ones_in_between() {
         let tree = Tree::new("folders");
@@ -306,13 +242,9 @@ mod tests {
 
         let report = scan(&tree.0).expect("scan");
 
-        // Discovery, Homework, Disc 1, Disc 2 — not `Daft Punk`, not
-        // `Radiohead`, and not `In Rainbows`, which holds only the cover.
         assert_eq!(report.album_folders, 4);
     }
 
-    /// The hint the import page reads to suggest a grouping: the fullest
-    /// single folder, not the total and not an average.
     #[test]
     fn reports_the_fullest_single_folder() {
         let tree = Tree::new("fullest");
@@ -345,10 +277,7 @@ mod tests {
         assert_eq!(report.unplayable_examples.len(), 3);
     }
 
-    /// A music folder is full of things that are not music. Counting the cover
-    /// art as a track would make every summary wrong by an album's worth.
-    /// The scan and beets have to agree on what is in the folder, or the
-    /// summary promises tracks the import will never mention again.
+    /// Covers and booklets are not tracks; hidden files are skipped like beets does.
     #[test]
     fn skips_what_beets_skips() {
         let tree = Tree::new("hidden");
@@ -375,7 +304,6 @@ mod tests {
 
         assert_eq!(report.playable, 1);
         assert_eq!(report.unplayable, 0);
-        // Only the track's bytes: the copy will not carry the booklet.
         assert_eq!(report.bytes, 5);
     }
 
@@ -393,10 +321,8 @@ mod tests {
     fn refuses_a_folder_that_overlaps_the_library_either_way() {
         let library = Path::new("/Users/me/Music/Sonarche");
 
-        // The library itself, and anything under it.
         assert!(ensure_outside_library(library, library).is_err());
         assert!(ensure_outside_library(&library.join("Daft Punk"), library).is_err());
-        // A parent of it walks the library too.
         assert!(ensure_outside_library(Path::new("/Users/me/Music"), library).is_err());
         assert!(ensure_outside_library(Path::new("/Users/me"), library).is_err());
     }
@@ -405,9 +331,7 @@ mod tests {
     fn allows_a_folder_that_merely_shares_a_prefix() {
         let library = Path::new("/Users/me/Music/Sonarche");
 
-        // `Sonarche-old` starts with the same *string* as the library but is a
-        // different folder — a check on characters rather than path components
-        // would refuse it.
+        // Same string prefix, different folder: compare path components.
         assert!(ensure_outside_library(Path::new("/Users/me/Music/Sonarche-old"), library).is_ok());
         assert!(ensure_outside_library(Path::new("/Volumes/Backup"), library).is_ok());
     }

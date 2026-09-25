@@ -67,9 +67,7 @@ class BoxScanTest(unittest.TestCase):
 
 
 class LibraryPathsTest(unittest.TestCase):
-    """The launch repair pass runs before anything guarantees a library
-    exists — right after a data erase, and on a first run. No database means
-    no files to repair, not a failure."""
+    """No database (first run, after an erase) means nothing to repair."""
 
     def test_a_missing_database_yields_no_targets(self):
         with tempfile.TemporaryDirectory() as tmp:

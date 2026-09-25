@@ -7,8 +7,6 @@ import { MOVE_PROGRESS_EVENT, type MoveCheck, type MoveProgress } from "@/featur
 import { formatBytes } from "@/features/settings/libraryLocation";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
-/** One fact about the move, on its own line. Four short rows read faster than
- * a paragraph that hides the number someone is actually looking for. */
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1.5">
@@ -18,20 +16,14 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-/**
- * The confirmation for a move, and the progress bar once it starts.
- *
- * One dialog for both halves on purpose: the moment the user says yes, the
- * thing they are watching should stay where their eyes already are. Swapping to
- * a toast or a separate overlay would move the answer away from the question.
- */
+/** Confirmation and progress in one dialog, so the answer stays where the question was. */
 export function MoveLibraryDialog({
   check,
   isMoving,
   onClose,
   onConfirm,
 }: {
-  /** `null` closes it — the dialog exists only once a folder has been picked. */
+  /** `null` closes it. */
   check: MoveCheck | null;
   isMoving: boolean;
   onClose: () => void;
@@ -41,15 +33,11 @@ export function MoveLibraryDialog({
   const locale = i18n.resolvedLanguage ?? "fr";
   const [progress, setProgress] = useState<MoveProgress | null>(null);
 
-  // The backend is an external system and this is the subscription to it. Only
-  // live while a move is running, so a settings screen sitting open is not
-  // holding a listener for an event that cannot fire.
+  // Subscribed only while a move runs.
   useEffect(() => {
     if (!isMoving) return;
     const unlisten = listen<MoveProgress>(MOVE_PROGRESS_EVENT, (event) => setProgress(event.payload));
-    // Clearing belongs in the cleanup, not at the top of the body: the counter
-    // is only meaningful while a move runs, and a second move must not open on
-    // the first one's last number.
+    // Reset in cleanup so the next move starts at zero.
     return () => {
       void unlisten.then((off) => off());
       setProgress(null);
@@ -103,8 +91,7 @@ export function MoveLibraryDialog({
                 />
               </div>
               <p className="text-[0.75rem] tabular-nums text-muted">
-                {/* A same-volume move is a rename: it is over before the bar
-                    can draw, so there is nothing to count. */}
+                {/* A same-volume move is a rename: nothing to count. */}
                 {progress
                   ? t("files.move.progress", { copied: progress.copied, total: progress.total })
                   : t("files.move.starting")}

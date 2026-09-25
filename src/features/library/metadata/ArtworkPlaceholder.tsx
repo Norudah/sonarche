@@ -1,7 +1,6 @@
 import { Music } from "lucide-react";
 
-/** App-standard artwork stand-in: always square, accent-tinted, never a broken
- * image. Used wherever a track has no embedded cover. */
+/** Square, accent-tinted stand-in for missing artwork. */
 export function ArtworkPlaceholder({ className }: { className?: string }) {
   return (
     <div

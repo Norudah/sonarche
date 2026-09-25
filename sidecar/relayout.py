@@ -1,24 +1,12 @@
 """Re-file the whole library under the current path templates.
 
-One-shot, driven by the Rust host behind a marker (see `remux.rs`): when the
-filing templates change between versions — the `Library/` + `Unidentified/`
-zones — every file on disk still sits where the old templates put it, and
-most of them would never be touched again. beets recomputes a destination
-only when something moves, so the pass is exactly that: one `move()` per
-album (album art rides along) and per rowless singleton, with a written-out
-singleton cover (`sonarche_item_art`) carried by hand exactly as a real move
-would. A rename on the same volume is cheap even at thousands of tracks, and
-a file already in place is a no-op.
+One-shot, run by the host behind a marker when templates change. beets only
+recomputes destinations on move, so this moves every album and rowless
+singleton (carrying singleton covers by hand); in-place files are no-ops.
 
-Legacy blank-titled rows — the old filing of guessed singles, whose folders
-%aunique could only name by row id ("[86]") — dissolve instead of being
-re-filed as "Library/Unknown Artist/Unknown Album": their items become
-singletons again, and the provisional flag routes each one to the zone it
-belongs to.
-
-One failed move skips one record rather than sinking the pass; the marker is
-the host's to write, and only on a completed run — an interrupted pass runs
-again next launch and the no-ops cost nothing.
+Legacy blank-titled rows are dissolved: their items become singletons and
+the provisional flag routes them. A failed move skips one record; the host
+writes the marker only after a complete run.
 """
 
 import os
@@ -34,9 +22,7 @@ def _follow_art(lib, item, old_art: str | None) -> None:
 
 
 def handle(request_id: str, params: dict) -> dict:
-    # Same guard as every other launch-pass reader: a missing database means
-    # first run or a just-erased library, and opening it here would create an
-    # empty file every "does the user have a library" check then believes in.
+    # Opening a missing DB would create an empty one.
     if not os.path.exists(params["beets_db"]):
         return {"albums": 0, "singles": 0, "dissolved": 0}
 

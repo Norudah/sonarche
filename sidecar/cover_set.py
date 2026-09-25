@@ -1,17 +1,8 @@
-"""Replace an album's cover with an image the user picked on disk.
+"""Replace an album's cover with a user-picked image (local file or CAA).
 
-The one write path where the picture does not come from a service: the user
-already has the album's real artwork and wants the library to carry it. The
-chosen image (cropped square) becomes a 500 px rendition written as beets'
-`artpath` and embedded into the album's m4a files, exactly as a downloaded
-cover would have been. The user's own file is read, never moved — the library
-keeps display-sized covers only.
-
-Covers are square in every frame the interface draws, so a non-square source
-is cropped rather than letterboxed. The crop rectangle comes from the front
-(the user places it); absent, the center square is taken. Coordinates apply to
-the image *after* EXIF orientation, which is also how a browser displays it —
-what the user framed is what gets cut.
+The image is cropped square, scaled to a 500 px rendition, written as beets'
+`artpath` and embedded into the album's files. The user's file is only read.
+Crop coordinates apply after EXIF orientation, as the browser displays it.
 """
 
 from __future__ import annotations
@@ -22,9 +13,7 @@ import os
 import tempfile
 from typing import TYPE_CHECKING
 
-# Deferred like beets and requests are everywhere else: this module is imported
-# at sidecar startup by the handler table, and PIL is the one heavyweight the
-# table was dragging in before any request needed it.
+# PIL is imported lazily to keep sidecar startup light.
 if TYPE_CHECKING:
     from PIL import Image
 
@@ -32,9 +21,7 @@ import covers
 import net
 import protocol
 
-# The source is a user file, not a download we can retry: refuse anything
-# that would balloon memory when decoded. 12k x 12k is far beyond any real
-# cover and still decodes in well under a second.
+# Refuses sources that would balloon memory when decoded.
 MAX_SOURCE_PX = 12_000
 
 ART_SOURCE = "Local file"
@@ -44,21 +31,18 @@ _PROVISIONAL_COVER_KEY = "sonarche_provisional_cover"
 
 CAA_ROOT = "https://coverartarchive.org"
 
-# The index lists every scan people uploaded; past a handful the strip stops
-# informing and starts costing (each thumbnail ships as a data URL, since the
-# webview's CSP allows no remote images).
+# Thumbnails ship as data URLs (the CSP allows no remote images).
 MAX_CANDIDATES = 8
 
-# Bound what one click may pull — a CAA upload can be a full-resolution scan.
+# CAA uploads can be full-resolution scans.
 MAX_CANDIDATE_BYTES = 60 * 1024 * 1024
 
 
 def square_crop_box(width: int, height: int, crop: dict | None) -> tuple[int, int, int]:
-    """The (left, top, size) square actually cut from a width x height image.
+    """The (left, top, size) square cut from a width x height image.
 
-    A requested crop is clamped into the frame rather than rejected: the front
-    computes it from a scaled preview, and a rounding drift of one pixel must
-    not fail the whole replacement. No crop means the centered square.
+    A requested crop is clamped into the frame, since it comes from a scaled
+    preview and may drift by a pixel. No crop means the centered square.
     """
     max_size = min(width, height)
     if crop is None:
@@ -82,16 +66,14 @@ def _encode(image: Image.Image, is_png: bool) -> bytes:
     else:
         if image.mode not in ("RGB", "L"):
             image = image.convert("RGB")
-        # High quality on purpose: this is the one copy the library keeps, and
-        # it is also what gets embedded into every file of the album.
+        # The library keeps only this copy, and embeds it everywhere.
         image.save(buffer, format="JPEG", quality=92)
     return buffer.getvalue()
 
 
 def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bool, int]:
-    """(thumb_bytes, is_png, side) from the user's file — the square the crop
-    chose, scaled to the display ceiling. `side` is the square's size in source
-    pixels, which is what the confirmation line quotes back to the user."""
+    """(thumb_bytes, is_png, side): the cropped square scaled to the display
+    size. `side` is the square's size in source pixels."""
     from PIL import Image, ImageOps
 
     with Image.open(source_path) as opened:
@@ -113,9 +95,7 @@ def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bool, int
 
 
 def _clear_stale_art(album, old_art: str | None, decode) -> None:
-    """Remove files the replacement obsoletes: any legacy cover-hq.* archive a
-    <= 2.x install left beside the album, and the old artpath when a format
-    change gave the new one a different name."""
+    """Remove legacy cover-hq.* files and an old artpath left by a format change."""
     new_art = decode(album.artpath) if album.artpath else None
     if not new_art:
         return
@@ -128,7 +108,6 @@ def _clear_stale_art(album, old_art: str | None, decode) -> None:
 
 
 def _caa_index(entity_path: str) -> list[dict] | None:
-    """The Cover Art Archive index for one entity, or None when it has none."""
     import requests
 
     resp = requests.get(f"{CAA_ROOT}/{entity_path}", timeout=30, headers={"Accept": "application/json"})
@@ -142,8 +121,7 @@ def _caa_index(entity_path: str) -> list[dict] | None:
 
 
 def _thumb_data_url(url: str) -> str | None:
-    """A candidate's small thumbnail, inlined: the webview's CSP allows no
-    remote images, so the strip can only show what travels over the wire."""
+    """A candidate's thumbnail as a data URL (the CSP allows no remote images)."""
     import requests
 
     try:
@@ -158,9 +136,8 @@ def _thumb_data_url(url: str) -> str | None:
 
 
 def candidates(_request_id: str, params: dict) -> dict:
-    """What the Cover Art Archive holds for this album — the way back to an
-    official cover after a personal one, or to a different edition's art.
-    Front images first; the specific release, then its group."""
+    """The album's Cover Art Archive images: fronts first, the release, then
+    its release-group."""
     from beets.library import Library
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
@@ -182,17 +159,16 @@ def candidates(_request_id: str, params: dict) -> dict:
 
 
 def _https(url: str | None) -> str | None:
-    """The CAA index hands out http:// URLs; both IPC validators and the
-    download are pinned to https://coverartarchive.org, so the scheme is
-    upgraded here, where the wire shape is made."""
+    """Upgrade CAA's http:// URLs: the IPC validators only accept
+    https://coverartarchive.org."""
     if url and url.startswith("http://"):
         return "https://" + url[len("http://") :]
     return url
 
 
 def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
-    """CAA index entries -> the wire shape, fronts first, capped, and dropping
-    anything the strip could not draw (no URLs, or a thumbnail that failed)."""
+    """CAA index entries -> wire shape: fronts first, capped, undrawable ones
+    dropped."""
     ordered = sorted(images, key=lambda image: not image.get("front"))[:MAX_CANDIDATES]
     out = []
     for image in ordered:
@@ -217,8 +193,7 @@ def shape_candidates(images: list[dict], fetch_thumb) -> list[dict]:
 
 
 def _download_candidate(url: str) -> bytes:
-    """The chosen upload, full size — cropped and scaled down before anything
-    keeps it."""
+    """The chosen upload at full size."""
     import requests
 
     if not url.startswith(f"{CAA_ROOT}/"):
@@ -253,8 +228,7 @@ def handle(_request_id: str, params: dict) -> dict:
         return raw.decode("utf-8", "surrogateescape") if isinstance(raw, bytes) else raw
 
     if image_url:
-        # Through a temp file so the CAA path and the local path share every
-        # rule downstream — center square, format preservation, size ceiling.
+        # Through a temp file so both sources share the local-file path.
         data = _download_candidate(image_url)
         suffix = ".png" if data[:4] == b"\x89PNG" else ".jpg"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -276,12 +250,9 @@ def handle(_request_id: str, params: dict) -> dict:
 
     embedded = 0
     for item in album.items():
-        # Counted on the writer's own verdict: a file it could not open is not
-        # a file that carries the new cover, and the recap must not say it is.
         if enrich.embed_cover(item, thumb_bytes, is_png):
             embedded += 1
-        # A user-chosen cover is real art: the "video thumbnail standing in"
-        # flag has nothing left to warn about.
+        # A user-chosen cover is real art: lift the placeholder flag.
         if item.get(_PROVISIONAL_COVER_KEY):
             del item[_PROVISIONAL_COVER_KEY]
             item.store()

@@ -1,21 +1,10 @@
 import { normalize } from "@/shared/lib/text";
 
 /**
- * A free-text filter over a fixed set of fields, with its own haystack cache.
- *
- * Every surface searches the same way — each whitespace-separated term must
- * match somewhere, so "daft disc" finds Discovery — and each one used to build
- * its haystack inside the predicate. That is one `normalize()` per item per
- * keystroke, and `normalize` is not cheap: a lowercase, an NFD expansion and a
- * Unicode regex, three allocations, for a string that never changes. Measured
- * over 10 000 tracks: 25 ms a keystroke, against 0.9 ms once the haystacks are
- * kept.
- *
- * Keyed on item identity, which is what makes the cache correct rather than
- * merely fast: an edit invalidates the library query, so the refetch mints new
- * objects and the stale entries are unreachable and collectable. Nothing has to
- * remember to clear anything — but it does mean callers must not mutate an
- * indexed item in place, which nothing in the app does.
+ * A free-text filter over fixed fields: every whitespace-separated term must
+ * match somewhere. Normalized haystacks are cached per item (25 ms → 0.9 ms
+ * per keystroke on 10 000 tracks). Keyed on object identity, so items must
+ * not be mutated in place; refetches create new objects.
  */
 export function createTextFilter<T extends object>(
   haystackOf: (item: T) => string,
@@ -33,8 +22,7 @@ export function createTextFilter<T extends object>(
 
   return (items, query) => {
     const terms = normalize(query).split(/\s+/).filter(Boolean);
-    // The input array by reference: an empty search must not allocate a copy of
-    // the whole library on every render.
+    // Same reference: no copy of the whole library per render.
     if (terms.length === 0) return items;
 
     return items.filter((item) => {

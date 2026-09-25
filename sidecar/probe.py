@@ -1,21 +1,12 @@
-"""Resolve a URL to its playlist shape in one flat extraction (nothing downloaded).
-
-Used before enqueueing an album job: the caller needs the entry list (per-track
-watch URLs) to drive downloads one by one with its own pacing."""
+"""Resolve a URL to its playlist entries in one flat extraction (no download)."""
 
 def summarize(info: dict, max_entries: int) -> dict:
-    """Reduce a yt-dlp flat info dict to the wire shape. Pure — unit-tested.
+    """Reduce a yt-dlp flat info dict to the wire shape.
 
-    Dead entries are *not* filtered here, and cannot be: a video the source
-    has since blocked or claimed is listed with a full title, duration, channel
-    and view count — byte for byte like a healthy one — and `availability` is
-    null for every entry in flat mode. The listing simply does not carry the
-    answer. It surfaces at download time, where `download.py` names it and the
-    track lands `unavailable` rather than `failed`."""
+    Unavailable entries can't be filtered here: flat mode lists them like any
+    other. They surface at download time as `unavailable`."""
     if info.get("_type") == "playlist":
-        # Dedupe by video id: playlists can list the same video twice, but both
-        # would stage to one file (title [id].m4a) — the first import moves it
-        # away and the second fails with "file not found".
+        # Duplicate entries would stage to the same file.
         entries, seen = [], set()
         for e in info.get("entries") or []:
             if not e or (e.get("id") and e["id"] in seen):
@@ -55,7 +46,6 @@ def handle(_request_id: str, params: dict) -> dict:
     opts = {
         "quiet": True,
         "no_warnings": True,
-        # One request for the whole listing; entries stay unrealized stubs.
         "extract_flat": "in_playlist",
         "skip_download": True,
     }

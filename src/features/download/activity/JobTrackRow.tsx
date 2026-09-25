@@ -8,35 +8,20 @@ import { RowActions } from "@/features/download/queue/RowActions";
 import type { LibraryTrack } from "@/features/library/api";
 import { formatDuration } from "@/shared/lib/format";
 
-/**
- * Shared by the header and the rows so the columns line up without a table.
- *
- * Every track column is a fixed width, `auto` nowhere: a grid sizes each row
- * independently, so an `auto` column would be as wide as that row's own content
- * and the header would sit over nothing in particular. The actions column keeps
- * the width `RowActions` reserves for its largest set, which is also why the
- * rows here do not pass `dense`.
- */
+/** Shared by header and rows so columns align. Fixed widths only: `auto` would
+ * size each row independently. The last column fits `RowActions`'s largest set. */
 export const TRACK_GRID = "grid grid-cols-[1.75rem_1fr_4.5rem_7rem_3rem_4.5rem] items-center gap-3";
 
 interface JobTrackRowProps {
   track: AlbumTrackJob;
-  /** The library item this entry produced, once it exists. */
   libraryTrack: LibraryTrack | undefined;
-  /** This track's enrich event has landed, for the job currently identifying. */
+  /** This track's enrich event has landed. */
   isEnriched: boolean;
   onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
-/**
- * One playlist entry inside an unfolded album card.
- *
- * Same three outcomes the history table shows per track, in the bare-glyph
- * treatment it uses for child rows — but laid out on a grid rather than in a
- * table, because a card cannot host a `<table>` without inheriting its column
- * widths from the rest of the feed.
- */
+/** One playlist entry in an unfolded album card. */
 export function JobTrackRow({ track, libraryTrack, isEnriched, onEdit, onDelete }: JobTrackRowProps) {
   const { t } = useTranslation("download");
   const states = trackPipeline(track, isEnriched);
@@ -53,9 +38,7 @@ export function JobTrackRow({ track, libraryTrack, isEnriched, onEdit, onDelete 
         <p className={`truncate text-[0.8125rem] ${isGone ? "text-muted line-through" : ""}`}>
           {track.title ?? track.url}
         </p>
-        {/* A gone video gets one plain sentence, not yt-dlp's stack of prose:
-            nothing here is actionable inside the app, so the row says what
-            happened and stops. */}
+        {/* One plain sentence instead of yt-dlp's error text. */}
         {isGone ? (
           <p className="truncate text-[0.6875rem] text-muted">{t("queue.trackUnavailable")}</p>
         ) : (

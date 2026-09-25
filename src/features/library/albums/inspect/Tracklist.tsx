@@ -16,14 +16,8 @@ const CAPTION = "text-[0.625rem] font-semibold tracking-wider text-muted upperca
 const BULK_PILL =
   "flex size-7 cursor-pointer items-center justify-center rounded-full border border-separator bg-surface text-muted outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
 
-/**
- * The record's tracks, editable in place.
- *
- * The album artist is stated above the Artist column rather than explained
- * somewhere else: the difference between the name the record is filed under and
- * the name on a given track is the app's most confusing pair, and it reads for
- * free when the two sit one above the other.
- */
+/** Editable tracks. The album artist is shown above the Artist column to make
+ * the difference with track artists obvious. */
 export function Tracklist({
   tracks,
   allTracks,
@@ -44,20 +38,19 @@ export function Tracklist({
   onRenumber,
   onCopyArtist,
 }: {
-  /** Rows to display — already narrowed when a filter is on. */
+  /** Already narrowed when a filter is on. */
   tracks: LibraryTrack[];
-  /** Every track of the record, for offers that reach outside the filter. */
+  /** Every track, for offers reaching outside the filter. */
   allTracks: LibraryTrack[];
   rows: Record<number, TrackRowValues>;
   originsOf: (track: LibraryTrack) => Partial<TrackRowValues>;
   completeIds: ReadonlySet<number>;
   albumArtist: string;
   offers: Offer[];
-  /** The one whose card is on screen, if any. */
   activeOffer: Offer | null;
   filter: TrackFilter | null;
   totalCount: number;
-  /** False when every track already carries the album artist, or there is none. */
+  /** False when every track already has the album artist, or there is none. */
   canCopyArtist: boolean;
   onChange: (id: number, field: keyof TrackRowValues, value: string) => void;
   onOpenOffer: (offer: Offer) => void;
@@ -69,8 +62,7 @@ export function Tracklist({
 }) {
   const { t } = useTranslation("library");
 
-  // Which row each pending offer is anchored to, so a row knows whether to show
-  // its gutter dot and which offer that dot opens.
+  // Row -> anchored offer, for the gutter dots.
   const offerByTrack = new Map<number, Offer>();
   for (const offer of offers) {
     if (offer.trackId != null && !offerByTrack.has(offer.trackId)) offerByTrack.set(offer.trackId, offer);
@@ -88,8 +80,7 @@ export function Tracklist({
           </p>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          {/* A row's dot only helps if that row is on screen. This counter is
-              the way back to an offer left behind further down, or filtered out. */}
+          {/* Reaches offers on rows scrolled or filtered away. */}
           {offers.length > 0 && (
             <button
               type="button"
@@ -101,10 +92,7 @@ export function Tracklist({
             </button>
           )}
 
-          {/* Icon-only, and each one says what it does on hover. Spelled out,
-              the two labels wrapped onto a second line and sat out of line with
-              the heading; and "Copy the album artist" told nobody what pressing
-              it would actually write. */}
+          {/* Icon-only, explained on hover. */}
           <ActionHelp text={t("albumMetadata.bulk.renumberHelp", { count: totalCount })}>
             <button
               type="button"
@@ -115,9 +103,7 @@ export function Tracklist({
               <ListOrdered className="size-3.5" />
             </button>
           </ActionHelp>
-          {/* Never writes on its own: it opens the same checklist a rename does,
-              with only the empty rows ticked. Copying the album artist over a
-              real featuring is the one thing this action must not do. */}
+          {/* Opens the checklist with only empty rows ticked; never overwrites a featuring. */}
           <ActionHelp text={t("albumMetadata.bulk.copyArtistHelp")}>
             <button
               type="button"
@@ -212,8 +198,7 @@ export function Tracklist({
         })}
       </div>
 
-      {/* The album-artist fill belongs to no row, so it sits over the list
-          instead of being anchored to one. */}
+      {/* Belongs to no row, so it floats over the list. */}
       <AnimatePresence>
         {activeOffer && activeOffer.trackId == null && (
           <motion.div

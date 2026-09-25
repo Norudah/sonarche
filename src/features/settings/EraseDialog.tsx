@@ -4,19 +4,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * The last thing between someone and a pile of their data. One dialog for
- * every danger-zone erase: what changes between them is only the words —
- * title, intro, the list of losses, the reassurance — never the ritual.
- *
- * Not a `ConfirmDialog`: this one is deliberately not a binary question. A
- * two-button dialog is a reflex — the muscle memory that dismisses a hundred
- * harmless ones lands on the same pixel here — and the only reliable way to
- * break that reflex is to ask for something a reflex cannot produce. Typing
- * the word forces a reading of the sentence above it.
- *
- * The phrase is the app's own name and it is not translated. A confirmation
- * token that changes with the interface language is a token that can be
- * mistyped by someone who switched language yesterday.
+ * Confirmation for every danger-zone erase, by typing the app's name rather
+ * than clicking (a click is a reflex). The phrase isn't translated, so it
+ * doesn't change with the language.
  */
 const PHRASE = "SONARCHE";
 
@@ -37,10 +27,9 @@ export function EraseDialog({
   onConfirm: () => void;
   title: string;
   intro: string;
-  /** Named one by one rather than as "your data": the point of the list is
-   * that someone reads it and finds the item they did not expect to lose. */
+  /** Listed one by one so the unexpected loss is noticed. */
   items: string[];
-  /** What survives — the reassurance under the list, when there is one. */
+  /** What survives. */
   note?: string;
   confirmLabel: string;
 }) {

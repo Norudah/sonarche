@@ -1,32 +1,15 @@
 /**
- * Fetches the runtime the app ships with, into `src-tauri/resources/`.
+ * Fetches the runtime the app ships into `src-tauri/resources/` (gitignored,
+ * reproducible from the pins). Runs via `npm run prepare:runtime` and the
+ * `beforeBuildCommand`.
  *
- * Run before any build (`npm run prepare:runtime`, and automatically from
- * tauri.conf.json's beforeBuildCommand). The fetched files are gitignored: they
- * are large, they are reproducible from the pins below, and a binary in git is a
- * binary forever.
+ * - `python.tar.gz` stays an archive, so `tar` restores its symlinks and modes.
+ * - `wheels/` (optional) makes the first run offline and fast.
+ * - `tools/` (fpcalc, ffmpeg, deno) is fetched here rather than at runtime:
+ *   an unsigned app downloading executables looks like a dropper.
  *
- * Three resources, deliberately shaped differently:
- *
- * - `python.tar.gz` stays an archive. The interpreter tree is full of symlinks
- *   (`bin/python3` → `python3.13`) and executable bits, and a bundler copying
- *   files one by one is not guaranteed to keep either. Handing the app a
- *   tarball and letting `tar` restore it at setup keeps the modes intact, and
- *   ships 24 MB instead of the 66 MB it becomes.
- * - `wheels/` is a plain directory. Wheels are inert files with nothing to
- *   preserve, and pip wants a directory to point `--find-links` at.
- * - `tools/` (fpcalc, ffmpeg, deno) is unpacked here rather than fetched at first
- *   use. The app used to download fpcalc itself, which is the one behaviour an
- *   unsigned binary cannot afford: a program nobody signed pulling an
- *   executable off the network and running it is what a dropper looks like,
- *   and Defender quarantined the installer on that basis alone.
- *
- * The wheels are optional: without them the app installs from PyPI as before.
- * They are what makes the first run offline-capable and quick.
- *
- * Resolved on the target's own runner, never cross-built: `--platform` does not
- * move the environment markers, and beets asks for colorama on Windows only.
- * A set prefetched from macOS for Windows would be one wheel short.
+ * Always resolved on the target's own runner: environment markers differ per
+ * platform (colorama is Windows-only).
  */
 
 import { spawnSync } from "node:child_process";
@@ -36,40 +19,20 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * The interpreter, pinned. Bumping either field re-fetches everything.
- *
- * 3.13 rather than the newest: beets and its native dependencies publish
- * wheels for it, and a version with no wheel for one of them turns a silent
- * download into an on-device compile.
- */
+/** Bumping either field re-fetches everything. 3.13 because every native
+ * dependency publishes wheels for it. */
 const PYTHON = { release: "20260718", version: "3.13.14" };
 
-/**
- * Host → python-build-standalone triple. Linux lands here when its port does.
- *
- * `win32-arm64` is now buildable — dropping llvmlite left nothing in the tree
- * without an ARM wheel — but no runner is wired for it: Windows on ARM runs the
- * x64 build under emulation, and a fourth bundle is a fourth set of release
- * minutes for an audience of nearly nobody. Add the line when that changes.
- */
+/** Host → python-build-standalone triple. No win32-arm64 runner: Windows on
+ * ARM runs the x64 build. */
 const TRIPLES = {
   "darwin-arm64": "aarch64-apple-darwin",
   "darwin-x64": "x86_64-apple-darwin",
   "win32-x64": "x86_64-pc-windows-msvc",
 };
 
-/**
- * Chromaprint's fpcalc, pinned by triple and by digest.
- *
- * One asset covers both Macs — upstream ships a universal binary — so the two
- * darwin triples point at the same entry. `member` is the single file worth
- * keeping out of an archive that also carries a licence and a readme.
- *
- * The digests are checked here, at build time, on a machine we control. That is
- * a better place for the check than the user's: a mismatch stops a release
- * instead of stopping an app that has already shipped.
- */
+/** Pinned by triple and digest, checked here at build time. Both Macs share
+ * the universal binary; `member` is the file to extract. */
 const FPCALC = { version: "1.5.1" };
 const FPCALC_ASSETS = {
   "aarch64-apple-darwin": {
@@ -85,20 +48,9 @@ const FPCALC_ASSETS = {
 };
 FPCALC_ASSETS["x86_64-apple-darwin"] = FPCALC_ASSETS["aarch64-apple-darwin"];
 
-/**
- * Static ffmpeg, pinned by triple and by digest, from eugeneware/ffmpeg-static
- * (evermeet/osxexperts/gyan builds republished as bare per-arch binaries).
- *
- * ffmpeg exists in the bundle for exactly one job: remuxing the fragmented DASH
- * m4a into a classic MP4 (`-c copy`, no re-encode) — yt-dlp's own FixupM4a
- * does it at download time, and the library repair pass does it for files
- * downloaded before ffmpeg shipped. Without that remux, every player that
- * reads the classic sample tables (Music.app, iOS, CarPlay) sees an empty
- * `stbl`: 0:00 durations, broken seeking, silent tracks.
- *
- * The binaries are GPL builds; the matching licence text ships beside the
- * binary (`ffmpeg.LICENSE`), which is what redistribution asks of us.
- */
+/** Static GPL ffmpeg (eugeneware/ffmpeg-static), pinned by triple and digest,
+ * used only to remux fragmented DASH m4a into classic MP4. Its licence ships
+ * alongside (`ffmpeg.LICENSE`). */
 const FFMPEG = { release: "b6.1.1" };
 const FFMPEG_ASSETS = {
   "aarch64-apple-darwin": {
@@ -121,23 +73,8 @@ const FFMPEG_ASSETS = {
   },
 };
 
-/**
- * Deno, pinned by triple and by digest.
- *
- * YouTube hands out its stream URLs with the signature and the `n` parameter
- * scrambled, and ships the descrambler as obfuscated JavaScript. yt-dlp used to
- * evaluate that with an interpreter written in Python; it no longer keeps up,
- * and without a real engine only the `visionos` client answers — the single
- * client whose death took every download down in August.
- *
- * Deno is the runtime yt-dlp enables by default, and the one it runs with no
- * permissions at all: no disk, no network, no npm (see `download.py`). 81 MB
- * unpacked, which nearly doubles what the app ships. quickjs would cost 1 MB
- * and four to six seconds more per track — paid on every download, and worst on
- * the oldest machine we support.
- *
- * The zip holds the bare binary at its root, so there is nothing to strip.
- */
+/** Deno, pinned by triple and digest: the JavaScript runtime yt-dlp needs for
+ * YouTube's descrambler, run without permissions. The zip holds the bare binary. */
 const DENO = { version: "2.9.6" };
 const DENO_ASSETS = {
   "aarch64-apple-darwin": { sha256: "213a2f304f04d3c9cb5220669afad138f60a5aab1fe80962abdeb8f35807a472" },
@@ -145,13 +82,10 @@ const DENO_ASSETS = {
   "x86_64-pc-windows-msvc": { sha256: "15e5300b0ba3c3695a7621d90160a746ec9e710228cee639afa9d580f6e3cd11" },
 };
 
-/** System tar, by absolute path. Windows has shipped bsdtar in System32 since
- * 10 1803, and it reads the same gzipped tarball — and the same zip, which is
- * the shape the Windows fpcalc asset comes in. */
+/** By absolute path. Windows 10 1803+ ships bsdtar, which also reads zip. */
 const TAR = process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar";
 
-/** Where the interpreter sits inside the unpacked tree. The Windows
- * distribution has no `bin/`: the executable is at the root. */
+/** The Windows distribution has no `bin/`. */
 const PYTHON_EXE = process.platform === "win32" ? ["python", "python.exe"] : ["python", "bin", "python3"];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -171,8 +105,7 @@ async function exists(target) {
     .catch(() => false);
 }
 
-/** A stamp beside each resource, so a second run is a no-op and a changed pin
- * is not. */
+/** A stamp per resource: a second run is a no-op unless a pin changed. */
 async function isCurrent(dir, stamp) {
   return (await fs.readFile(path.join(dir, ".pin"), "utf8").catch(() => null))?.trim() === stamp;
 }
@@ -204,18 +137,10 @@ async function fetchInterpreter(triple) {
   await stampAs(resources, stamp);
 }
 
-/**
- * Unpacks the interpreter into a scratch directory so pip has something to run.
- * The wheels have to be resolved by the very interpreter that will install
- * them: the tags in a wheel's filename bind it to a Python version and a
- * platform, and resolving with the build machine's own Python would collect a
- * set the app cannot use.
- */
+/** Resolves the wheels with the bundled interpreter itself (wheel tags bind a
+ * Python version and platform). */
 async function fetchWheels(triple) {
-  // The requirements go into the stamp, not just the interpreter: a dependency
-  // added to requirements.txt has to refetch the set, and keying on the pin
-  // alone left the old wheels sitting there looking current. CI already hashes
-  // the file into its cache key, so this is what closes the gap locally.
+  // The requirements are part of the stamp, so a changed lock refetches.
   const requirements = path.join(root, "sidecar", "requirements.txt");
   const digest = createHash("sha256")
     .update(await fs.readFile(requirements))
@@ -242,9 +167,7 @@ async function fetchWheels(triple) {
     "download",
     "--disable-pip-version-check",
     "-q",
-    // Same two flags as the install this set feeds (see python_env.rs): the
-    // lock is the whole tree, and a package with no wheel has to fail on the
-    // build machine rather than turn into a compile on the user's.
+    // Same flags as the app's install (see python_env.rs).
     "--no-deps",
     "--only-binary=:all:",
     "-r",
@@ -260,7 +183,6 @@ async function fetchWheels(triple) {
   await stampAs(wheels, stamp);
 }
 
-/** Fetch one release asset, verified against its pinned digest. */
 async function fetchVerified(url, sha256, label) {
   console.log(`[runtime] fetching ${label}`);
   const response = await fetch(url);
@@ -273,8 +195,7 @@ async function fetchVerified(url, sha256, label) {
   return bytes;
 }
 
-/** Unpacks fpcalc into `tools`. Statically linked upstream, so it needs no
- * ffmpeg beside it. */
+/** Statically linked upstream. */
 async function fetchFpcalc(triple, tools) {
   const asset = FPCALC_ASSETS[triple];
   if (!asset) throw new Error(`no fpcalc asset pinned for ${triple} — see FPCALC_ASSETS in this file`);
@@ -282,12 +203,10 @@ async function fetchFpcalc(triple, tools) {
   const url = `https://github.com/acoustid/chromaprint/releases/download/v${FPCALC.version}/${asset.archive}`;
   const bytes = await fetchVerified(url, asset.sha256, asset.archive);
 
-  // Extension-free on purpose: the asset is a tarball on macOS and a zip on
-  // Windows, and bsdtar sniffs the format rather than trusting the name.
+  // No extension: a tarball on macOS, a zip on Windows; bsdtar sniffs it.
   const archive = path.join(tools, "fpcalc-archive");
   await fs.writeFile(archive, bytes);
-  // BSD tar treats everything after the first member name as more member names,
-  // so the options have to come before it.
+  // BSD tar reads everything after the first member name as more members.
   run(TAR, ["-xf", archive, "-C", tools, "--strip-components=1", asset.member]);
   await fs.rm(archive, { force: true });
 
@@ -297,7 +216,7 @@ async function fetchFpcalc(triple, tools) {
   console.log(`[runtime] fpcalc ${FPCALC.version}, ${(size / 1e6).toFixed(1)} MB`);
 }
 
-/** Unpacks ffmpeg (a bare gzipped binary) and its licence into `tools`. */
+/** A bare gzipped binary plus its licence. */
 async function fetchFfmpeg(triple, tools) {
   const asset = FFMPEG_ASSETS[triple];
   if (!asset) throw new Error(`no ffmpeg asset pinned for ${triple} — see FFMPEG_ASSETS in this file`);
@@ -315,7 +234,7 @@ async function fetchFfmpeg(triple, tools) {
   console.log(`[runtime] ffmpeg ${FFMPEG.release}, ${(size / 1e6).toFixed(1)} MB`);
 }
 
-/** Unpacks deno (a zip holding the bare binary) into `tools`. */
+/** A zip holding the bare binary. */
 async function fetchDeno(triple, tools) {
   const asset = DENO_ASSETS[triple];
   if (!asset) throw new Error(`no deno asset pinned for ${triple} — see DENO_ASSETS in this file`);
@@ -338,12 +257,8 @@ async function fetchDeno(triple, tools) {
   console.log(`[runtime] deno ${DENO.version}, ${(size / 1e6).toFixed(1)} MB`);
 }
 
-/**
- * Populates `resources/tools/` — fpcalc and ffmpeg, which the app copies into
- * place on first use, and deno, which it runs from here. One joint stamp for
- * the directory: the three fetchers share it, so bumping any pin rebuilds all
- * of them — cheaper than teaching each to clean up around the others.
- */
+/** Populates `resources/tools/` under one shared stamp, so bumping any pin
+ * rebuilds all three. */
 async function fetchTools(triple) {
   const stamp = `fpcalc-${FPCALC.version}+ffmpeg-${FFMPEG.release}+deno-${DENO.version}-${triple}`;
   const tools = path.join(resources, "tools");

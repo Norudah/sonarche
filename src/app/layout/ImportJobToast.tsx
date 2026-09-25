@@ -11,17 +11,6 @@ import { STAGE_WEIGHTS } from "@/features/import/stages";
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 import { PipelineRail } from "@/shared/ui/PipelineRail";
 
-/**
- * The running folder import, kept in sight away from its page — the sibling of
- * `DownloadJobToast`, fed by the mutation the import page fires (found through
- * its key) and by the sidecar's own progress events.
- *
- * Leaner than the page's rail on purpose: the scan report — which is what
- * turns "folder 3" into "folder 3 of 12" — lives in the page's state, so out
- * here the copy stage sweeps instead of filling. The covers stage counts its
- * own total and fills for real.
- */
-
 function ratio(done: number, total: number): number {
   if (total <= 0) return 0;
   return Math.min(1, Math.max(0, done / total));
@@ -43,8 +32,7 @@ function LiveImportToast({ onView, viewLabel }: { onView: () => void; viewLabel:
   const line = counter == null ? stage : `${stage} · ${counter}`;
 
   return (
-    // Hard width for the same reason as the download toast: the row layout
-    // around this slot overflows when a flexible child carries a long line.
+    // Fixed width, as in the download toast.
     <div className="flex w-60 flex-col gap-1.5 overflow-hidden">
       <p className="truncate text-[0.8125rem] font-medium text-foreground">{t("toast.title")}</p>
       <PipelineRail
@@ -96,7 +84,6 @@ export function useImportJobToast() {
     return () => toast.close(id);
   }, [show]);
 
-  // The outcome, when it lands out of sight — the import page has its own recap.
   const wasImporting = useRef(false);
   useEffect(() => {
     const ended = wasImporting.current && !importing;

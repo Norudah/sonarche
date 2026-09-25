@@ -3,22 +3,16 @@ import { useTranslation } from "react-i18next";
 import { CATEGORY_TAXONOMY } from "@/features/library/categories/categories";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 
-/**
- * The taxonomy as one-tap suggestions under an editable category field.
- *
- * This is what keeps the stored values canonical across UI languages: the chip
- * shows "Jeux vidéo" but writes "Video Games", so a French user never has to
- * know (or type) the English tag value. Free text through the input itself
- * stays possible — the taxonomy is a starter set, not a fence.
- */
+/** Taxonomy chips under the category field: they show translated labels but
+ * write canonical English values. Free text stays possible. */
 export function CategoryTaxonomyChips({
   value,
   soundtrack,
   onSelect,
 }: {
-  /** The draft's current (canonical) category value. */
+  /** Canonical value. */
   value: string;
-  /** MusicBrainz typed the release a soundtrack: nudge when no category yet. */
+  /** Nudge when MusicBrainz says soundtrack and there's no category yet. */
   soundtrack: boolean;
   onSelect: (canonical: string) => void;
 }) {

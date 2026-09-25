@@ -6,16 +6,7 @@ interface GenresHeaderProps {
   unclassifiedCount: number;
 }
 
-/**
- * Identity and size, like the album and artist headers — the controls are in
- * the bar below.
- *
- * No scope toggle there, since the flat genre list left with the distribution:
- * search is how a specific genre is reached, because a card matches on the
- * genres it holds. No recompute button either: the genre pass is being
- * repurposed as a fallback for when MusicBrainz returns no genre, not a manual
- * action offered here.
- */
+/** Title and counts; controls live in the bar below. */
 export function GenresHeader({ familyCount, genreCount, unclassifiedCount }: GenresHeaderProps) {
   const { t } = useTranslation("library");
 

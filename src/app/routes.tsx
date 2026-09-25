@@ -20,17 +20,12 @@ import { PlaylistDetailView } from "@/features/library/views/PlaylistDetailView"
 import { PlaylistsView } from "@/features/library/views/PlaylistsView";
 import { TracksView } from "@/features/library/views/TracksView";
 
-// Paths and their builders live in the leaf module `@/app/paths` to keep them
-// out of this file's import cycle; re-exported so `@/app/routes` stays their
-// public import site for the many callers that already use it.
+// Re-exported from the cycle-free `@/app/paths`.
 export { albumPath, artistPath, categoryPath, genrePath, paths, playlistPath, triagePaths } from "@/app/paths";
 
-// A memory router has no URL to deep-link, so in dev a `?route=` param seeds the
-// initial entry — the only way to land a browser (or an automated one) straight
-// on a nested view like an album. Stripped entirely from production builds.
+// Dev only: `?route=` seeds the memory router's initial entry for deep links.
 function devInitialEntries(): string[] | undefined {
-  // `typeof window` guard: this module is imported by node-env unit tests (via
-  // `albumPath`), where there is no `window` to read.
+  // Unit tests import this module without a `window`.
   if (!import.meta.env.DEV || typeof window === "undefined") return undefined;
   const route = new URLSearchParams(window.location.search).get("route");
   return route ? [route] : undefined;
@@ -44,17 +39,13 @@ export const router = createMemoryRouter(
         { path: paths.download, element: <DownloadPage /> },
         {
           path: paths.import,
-          // Composed here because the two features must not import each other:
-          // the alignment belongs to the library's metadata domain, but the
-          // place a user reaches for it is right after an import lands.
+          // Composed here: alignment belongs to the library feature but follows an import.
           element: (
             <ImportPage>
               <AlignSection />
             </ImportPage>
           ),
         },
-        // Composed in its own shell component: the history is the archive of
-        // both ways music enters the ark, and neither feature may import the other.
         { path: paths.history, element: <HistoryRoute /> },
         { path: paths.metadata, element: <MetadataPage /> },
         {

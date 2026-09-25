@@ -11,17 +11,16 @@ import { springs } from "@/shared/motion/tokens";
 
 interface PlaylistCardProps {
   playlist: Playlist;
-  /** The name as shown — the favorites' localized label, not its stored name. */
+  /** Favorites shows its localized label. */
   displayName: string;
-  /** The members' covers, resolved by the page — the card has no library. */
+  /** Resolved by the page; the card has no library access. */
   covers: string[];
   trackCount: number;
   style?: CSSProperties;
   onPlay: () => void;
 }
 
-/** Same anatomy as `AlbumCard` — link and play button as siblings, the wrapper
- * as their shared positioning context — so the two shelves move as one. */
+/** Same anatomy as `AlbumCard`: link and play button as siblings. */
 export function PlaylistCard({ playlist, displayName, covers, trackCount, style, onPlay }: PlaylistCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");

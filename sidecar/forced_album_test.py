@@ -75,10 +75,8 @@ class NumberingTest(unittest.TestCase):
 
 
 class ApplyTest(unittest.TestCase):
-    """The whole point of the feature, on a real library: three tracks that each
-    matched a different release end up as one record, in one folder, numbered in
-    playlist order — and the rows they left behind are gone, because a leftover
-    empty row is what makes beets suffix the folder with %aunique."""
+    """Three tracks matched to different releases end as one record, in one
+    folder, in playlist order, with the rows they left removed."""
 
     def setUp(self):
         self.root = tempfile.mkdtemp()

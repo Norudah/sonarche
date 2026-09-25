@@ -14,13 +14,8 @@ import { springs } from "@/shared/motion/tokens";
 
 export type SaveFeedback = { kind: "saved"; tracks: number } | { kind: "failed" } | null;
 
-/**
- * The track panel's action bar — the album modal's, at one track's scale.
- *
- * Re-match sits on the left and is shut while anything is pending: it rewrites
- * tags from MusicBrainz, and running it over a draft used to undo the match on
- * save without a word.
- */
+/** The track drawer's action bar. Re-match is disabled while changes are
+ * pending (saving would undo it). */
 export function MetadataFooter({
   track,
   changed,
@@ -31,7 +26,7 @@ export function MetadataFooter({
   onDismissFeedback,
 }: {
   track: LibraryTrack;
-  /** How many fields the draft moves. Zero means there is nothing to save. */
+  /** Fields the draft moves; zero means nothing to save. */
   changed: number;
   feedback: SaveFeedback;
   isSaving: boolean;
@@ -42,21 +37,17 @@ export function MetadataFooter({
   const { t } = useTranslation("library");
   const rematch = useReenrichTrack();
   const isDirty = changed > 0;
-  // A track filed in a collection stays where its owner put it: the per-track
-  // chain re-files a matched item onto its release's album row, which would
-  // rip it out of the gathering. The sidecar refuses too; here we say why.
+  // Matching would move the track out of its collection; the sidecar refuses too.
   const isCollection = track.albumKind === "collection";
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const startRematch = () => rematch.mutate(track.id);
-  // The dialog is the default; the preference (or its own switch) silences it.
   const requestRematch = () => {
     if (readRematchConfirm()) setIsConfirmOpen(true);
     else startRematch();
   };
 
-  // A save's own feedback owns the line; the re-match result takes it back once
-  // there is nothing pending.
+  // Save feedback wins; the re-match result returns once nothing is pending.
   const line: SaveFeedback | { kind: "matched" } | { kind: "unmatched" } = feedback
     ? feedback
     : rematch.isError
@@ -122,9 +113,7 @@ export function MetadataFooter({
       </AnimatePresence>
 
       <div className="flex items-center gap-2.5 px-6 py-3">
-        {/* The reason rides a tooltip rather than a paragraph beside the button:
-            spelled out in a 31rem drawer it wrapped onto six lines and pushed
-            the actions off the bottom. */}
+        {/* In a tooltip: a paragraph wrapped badly in the narrow drawer. */}
         <ActionHelp
           text={
             isCollection
@@ -149,8 +138,7 @@ export function MetadataFooter({
           </button>
         </ActionHelp>
 
-        {/* Actions only, pinned right: the pending count lives in the header,
-            so nothing here changes width as you type. */}
+        {/* The pending count lives in the header, so buttons don't shift. */}
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <AnimatePresence>
             {isDirty && (

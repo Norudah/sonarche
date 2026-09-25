@@ -6,14 +6,8 @@ import { useTranslation } from "react-i18next";
 import type { PythonInfo } from "@/features/onboarding/api";
 import { PANEL_CARD } from "@/features/onboarding/panels/panelCard";
 
-/**
- * The one step the app cannot take for the user — for now.
- *
- * Written to be deleted: once a standalone interpreter ships inside the bundle,
- * this panel goes and its step is simply always satisfied.
- */
+/** The Python step, only shown when no interpreter is bundled. */
 export interface PythonPanelProps {
-  /** The interpreter that was found, or null while there is none. */
   python: PythonInfo | null;
   onRecheck: () => void;
   isChecking: boolean;
@@ -34,9 +28,7 @@ export function PythonPanel({ python, onRecheck, isChecking }: PythonPanelProps)
     <div className={`${PANEL_CARD} gap-3`}>
       <p className="max-w-prose text-[0.8125rem] leading-relaxed text-muted">{t("steps.python.body")}</p>
 
-      {/* Re-read after the fact, the question is no longer "how do I install it"
-          but "which one did it pick" — a machine can carry four interpreters,
-          and the path is the only answer that settles it. */}
+      {/* After the fact: show which interpreter was picked. */}
       {python ? (
         <div className="rounded-xl bg-panel px-3.5 py-2.5">
           <code className="font-mono text-[0.8125rem] break-all">{python.path}</code>

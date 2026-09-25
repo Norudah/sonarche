@@ -1,59 +1,40 @@
-/**
- * The first-run walkthrough as data, not as a tree of conditionals.
- *
- * Every screen the walkthrough draws — the checklist, the active panel, the
- * "can I finish" button — reads this one list. That is what lets a step change
- * nature without a redesign: the day Python ships inside the bundle, its step
- * is simply always `satisfied`, collapses into a line like any other, and no
- * component has to know it used to be the hard one.
- */
+/** The setup walkthrough as data: every part of the UI reads this one list. */
 
 import type { EnvStatus } from "@/features/onboarding/api";
 
-/**
- * Ordered, and the order is the point: nothing can be installed before an
- * interpreter is found, and nothing can be fingerprinted before the engine
- * exists. That is what earns the walkthrough its numbering — the steps are a
- * real sequence, not a decorated list.
- *
- * Where the music lands is deliberately not among them: it is a fact to state
- * at the end, not a task, and a numbered step that asks nothing would dilute
- * the three that do.
- */
+/** Ordered by dependency: interpreter, then engine, then the key. */
 export const SETUP_STEP_IDS = ["python", "engine", "acoustid"] as const;
 
 export type SetupStepId = (typeof SETUP_STEP_IDS)[number];
 
 export type SetupStepState =
-  /** Done — collapses into a satisfied line. */
   | "satisfied"
-  /** The one the user is on. */
+  /** The current step. */
   | "actionRequired"
-  /** Not reachable yet: an earlier blocking step is still open. */
+  /** Blocked by an earlier blocking step. */
   | "pending"
-  /** Optional, and passed over on purpose. */
+  /** Optional, passed over. */
   | "skipped";
 
 export interface SetupStep {
   id: SetupStepId;
   state: SetupStepState;
-  /** A blocking step must be satisfied before the app can open at all. */
+  /** Must be satisfied before the app can open. */
   blocking: boolean;
 }
 
 export interface SetupInput {
-  /** `null` while the environment check is still in flight. */
+  /** `null` while the check is in flight. */
   env: EnvStatus | null;
   acoustidConfigured: boolean;
-  /** Optional steps the user passed over. In-session only — never persisted. */
+  /** Session only, never persisted. */
   skipped?: readonly SetupStepId[];
 }
 
 const BLOCKING: Record<SetupStepId, boolean> = {
   python: true,
   engine: true,
-  // Strongly pushed, never enforced: without a key the app still runs, it just
-  // guesses tags instead of identifying them.
+  // Recommended, not required: without a key tags are guessed.
   acoustid: false,
 };
 
@@ -70,20 +51,13 @@ function isSatisfied(id: SetupStepId, input: SetupInput): boolean {
   }
 }
 
-/**
- * The steps in order, each carrying its own state.
- *
- * `pending` propagates forward from the first unsatisfied *blocking* step: an
- * optional step left open never holds up the ones behind it, which is what
- * makes "skip the key, finish anyway" possible.
- */
+/** `pending` propagates from the first unsatisfied blocking step; optional
+ * steps never block. */
 export function buildSetupSteps(input: SetupInput): SetupStep[] {
   const skipped = new Set(input.skipped ?? []);
   let blocked = false;
 
-  // The promise the data-driven model was built for: once the app carries its
-  // own interpreter, the Python step does not become a green line to scroll
-  // past — it stops existing, and the two that remain renumber themselves.
+  // A bundled interpreter removes the Python step entirely.
   const ids = SETUP_STEP_IDS.filter((id) => id !== "python" || !input.env?.pythonBundled);
 
   return ids.map((id) => {
@@ -101,25 +75,16 @@ export function buildSetupSteps(input: SetupInput): SetupStep[] {
   });
 }
 
-/** Whether the walkthrough may be finished — optional steps do not count. */
 export function canFinishSetup(steps: readonly SetupStep[]): boolean {
   return steps.every((step) => !step.blocking || step.state === "satisfied");
 }
 
 export type GateState =
-  /** Nothing is known yet; show the splash, not the walkthrough. */
-  | "checking"
-  /** The walkthrough owns the window. */
-  | "onboarding"
-  /** The app may render. */
-  | "ready";
+  /** Show the splash. */
+  "checking" | "onboarding" | "ready";
 
-/**
- * Two different reasons to hold the window, deliberately collapsed into one
- * state: the environment is unusable, *or* it is usable but the user has never
- * been walked through it. The second is why the flag has to be persisted —
- * see `preferences.rs`.
- */
+/** Holds the window if the environment is unusable or the walkthrough was
+ * never completed (hence the persisted flag, see `preferences.rs`). */
 export function gateState(input: {
   steps: readonly SetupStep[];
   envKnown: boolean;
@@ -130,16 +95,8 @@ export function gateState(input: {
   return input.onboardingCompleted ? "ready" : "onboarding";
 }
 
-/**
- * Why the walkthrough is on screen.
- *
- * The steps are the same either way — an engine is an engine — but the words
- * around them cannot be: someone whose venv was wiped by an update is not
- * "before their first play", and greeting them as a newcomer every time their
- * dependencies move is the app forgetting them.
- */
+/** Same steps either way; the wording differs for returning users. */
 export type SetupMode =
-  /** Never been through it: the flag has never been set. */
   | "firstRun"
-  /** Been here before; the environment is what came undone. */
+  /** The environment broke after a completed setup. */
   | "repair";

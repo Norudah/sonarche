@@ -1,50 +1,30 @@
 import type { Preferences, RateLimitKey } from "@/features/settings/api";
 
-/** The preference fields that hold a delay. Derived rather than
- * `keyof Preferences`: not every preference is a number of seconds — the audio
- * format is a string sitting in the same object — and a slider pointed at one
- * would only fail at runtime. */
+/** Numeric preference fields only (`audioFormat` is a string). */
 type DelayField = {
   [K in keyof Preferences]: Preferences[K] extends number ? K : never;
 }[keyof Preferences];
 
 /**
- * The politeness delays, and the scale their sliders run on.
- *
- * The scale is a list of stops rather than a `min/max/step` triple, because the
- * interesting part of every one of these ranges is its first two seconds and a
- * uniform step cannot serve both ends. At one-second steps there was nothing
- * between "instant" and "one second" — the whole region where a delay actually
- * changes behaviour — and at quarter-second steps a fifteen-second download
- * delay would have sixty of them.
- *
- * So: quarter seconds up to two, whole seconds after. Stops are evenly spaced
- * along the track, which spends most of the rail on the part worth aiming at.
- * The printed scale is positioned from the stop indexes for the same reason —
- * a `justify-between` row of numbers would claim a linear track that is not.
- *
- * Bounds mirror `preferences.rs`; the backend clamps anyway, this is UX.
+ * A delay and its slider scale: quarter seconds up to two, whole seconds
+ * after, evenly spaced along the track. Bounds mirror `preferences.rs`
+ * (the backend clamps anyway).
  */
 export interface RateLimitDef {
   key: RateLimitKey;
   field: DelayField;
   max: number;
-  /** Below this, the slider shows the "you are being rude" warning. One second
-   * for all three: it is the floor the app asks users to stay above, whatever
-   * the service's own documented limit happens to be. */
+  /** Below this, the slider warns. */
   politeThreshold: number;
-  /** Round reference batch used for the duration estimate line. */
+  /** Batch size for the duration estimate. */
   sampleCount: number;
-  /** Where this delay's strings live in the `settings` namespace. Carried on
-   * the def rather than built from `key`: the download pause is filed with the
-   * page it paces, not with the services pane it used to share. */
+  /** Strings live under this base in the `settings` namespace. */
   labelBase: string;
 }
 
 const POLITE_FLOOR = 1;
 
-/** Only the download delay keeps a dial. The API delays became fixed — shared
- * keys, see `FIXED_API_DELAYS` — so their slider defs went with them. */
+/** Only the download delay is tunable. */
 export const RATE_LIMITS: RateLimitDef[] = [
   {
     key: "download",
@@ -56,26 +36,17 @@ export const RATE_LIMITS: RateLimitDef[] = [
   },
 ];
 
-/** The two pauses the app imposes rather than offers, in display order. Read
- * off the preferences (the backend stamps them to its defaults on every load)
- * so the printed number can never drift from the enforced one. */
+/** Read from preferences (reset to defaults by the backend on load). */
 export const FIXED_API_DELAYS: { key: "acoustid" | "lastfm"; field: DelayField }[] = [
   { key: "acoustid", field: "acoustidLookupDelaySeconds" },
   { key: "lastfm", field: "lastfmFetchDelaySeconds" },
 ];
 
-/** Where the fine grain stops and whole seconds take over. */
 const FINE_UNTIL = 2;
 const FINE_STEP = 0.25;
 
-/**
- * Every value the slider can land on, ascending, always starting at 0 and
- * ending at `max`.
- *
- * Rounded on the way out: 0.25 accumulated eight times in binary floating point
- * lands on 1.9999999999999998, which would then never compare equal to a stored
- * 2 and would print as `2,00` only by luck of the formatter.
- */
+/** Every slider value from 0 to `max`. Rounded to avoid float drift
+ * (8 × 0.25 = 1.9999999999999998). */
 export function stopsFor(max: number): number[] {
   const stops: number[] = [];
   for (let value = 0; value <= Math.min(max, FINE_UNTIL) + 1e-9; value += FINE_STEP) {
@@ -88,11 +59,7 @@ export function stopsFor(max: number): number[] {
   return stops;
 }
 
-/**
- * The stop a stored value sits on. Anything between two stops — a value saved
- * by an older build, or clamped by the backend — snaps to the closest rather
- * than being refused, so the slider always has a position to show.
- */
+/** Snaps a stored value to the closest stop. */
 export function nearestStopIndex(stops: number[], seconds: number): number {
   let best = 0;
   for (let i = 1; i < stops.length; i++) {
@@ -103,16 +70,11 @@ export function nearestStopIndex(stops: number[], seconds: number): number {
 
 export interface DelayMark {
   value: number;
-  /** Percent along the track, derived from the stop index — the track is linear
-   * in stops, not in seconds. */
+  /** Percent along the track, by stop index. */
   position: number;
 }
 
-/**
- * The handful of values worth printing under the track: the two ends, the
- * polite floor, the two-second hinge, and round numbers past it. Enough to read
- * the scale, few enough not to become a ruler.
- */
+/** The labelled values: ends, polite floor, the 2 s hinge, round numbers after. */
 export function marksFor(max: number): DelayMark[] {
   const stops = stopsFor(max);
   const wanted = [0, 1, 2, 5, 10, 15].filter((value) => value <= max);
@@ -124,8 +86,7 @@ export function marksFor(max: number): DelayMark[] {
   }));
 }
 
-/** `0` is a word, not a number — "instant" is what turning the delay off means,
- * and printing `0 s` invites reading it as a very short pause. */
+/** `0` prints as a word ("instant"). */
 export function formatDelay(seconds: number, locale: string, instantLabel: string): string {
   if (seconds === 0) return instantLabel;
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(seconds)} s`;

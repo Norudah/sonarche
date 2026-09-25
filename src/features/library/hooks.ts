@@ -27,22 +27,8 @@ export const libraryKey = ["library"] as const;
 export const artistImagesKey = ["artist-images"] as const;
 export const downloadTargetsKey = ["download-target-albums"] as const;
 
-/**
- * The whole library, once.
- *
- * `staleTime: Infinity` because nothing changes this data behind our back: the
- * beets DB moves only through our own commands, and every one of them —
- * edit, delete, re-enrich, recompute, a finished download, the dev wipe —
- * invalidates this key, which refetches an active query regardless of staleness.
- * The default (stale immediately) meant every route that mounts this hook
- * refetched the entire listing on arrival: a full Rust -> Python -> SQLite
- * round-trip, JSON for every track in the library, to redraw a page whose data
- * had not moved. Navigating between two shelves paid for the library twice.
- *
- * The cost of being wrong is a listing that lags an out-of-band edit until the
- * next launch — which `refetchOnWindowFocus: false` already meant we would not
- * have caught anyway.
- */
+/** The whole library. `staleTime: Infinity`: it only changes through our own
+ * commands, all of which invalidate this key. */
 export function useLibrary() {
   return useQuery({
     queryKey: libraryKey,
@@ -57,15 +43,13 @@ export function useDeleteTrack() {
     mutationFn: deleteTrack,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
-      // The backend pruned the track out of every playlist alongside.
+      // The backend also removed it from every playlist.
       queryClient.invalidateQueries({ queryKey: playlistsKey });
     },
   });
 }
 
-/** Delete a whole album's items as one unit. Sequential rather than parallel:
- * each delete_track call has beets rewrite the same library file, and the
- * cache is invalidated once at the end instead of N times mid-flight. */
+/** Sequential: each call rewrites the same beets file. One invalidation at the end. */
 export function useDeleteTracks() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -79,29 +63,21 @@ export function useDeleteTracks() {
   });
 }
 
-/** Persist metadata edits for one or many tracks in a single call, then
- * refresh the library once. The batch is the perf-sensitive shape: an album's
- * worth of common-field edits ships as one round-trip, not one per track. */
+/** One round-trip for a batch of edits. */
 export function useUpdateTracks() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updateTracks,
-    // Deliberately not awaited: the caller's own `onSuccess` has to run in this
-    // same tick, before the refetch lands. Renaming a record depends on it — the
-    // album route is built from (artist, title), so the panel must move the URL
-    // to the new name while the old data is still on screen. `AlbumDetailView`
-    // holds the page steady across the gap.
+    // Not awaited: the caller's onSuccess (e.g. moving the album URL on rename)
+    // must run before the refetch lands.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKey });
-      // An albumartist rename moves the artist's image with the name; the
-      // name -> image map has to follow.
+      // Renames move artist images.
       queryClient.invalidateQueries({ queryKey: artistImagesKey });
     },
   });
 }
 
-/** Refile tracks onto another record. One invalidation for the whole batch —
- * the move is a single sidecar round-trip whatever the count. */
 export function useMoveTracks() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -112,9 +88,7 @@ export function useMoveTracks() {
   });
 }
 
-/** Declare an album a collection, or take it back to being an album. Only the
- * listing is invalidated: the kind lives on beets' album row and nothing else
- * caches it. */
+/** Only the listing caches the kind. */
 export function useSetAlbumKind() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -125,7 +99,6 @@ export function useSetAlbumKind() {
   });
 }
 
-/** Answer a check — "seen, and wanted as it is" — or take the answer back. */
 export function useSetCheckAccepted() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -156,22 +129,12 @@ export function useReenrichTrack() {
   });
 }
 
-/** Re-run the acoustic match over a whole album, and report how many tracks
- * came back matched. Sequential for the same reason as `useDeleteTracks`: each
- * call has beets rewrite the same library file, so firing eighteen at once only
- * makes them queue on that file — with the cache invalidated once at the end
- * rather than eighteen times mid-flight.
- *
- * The sequence is also what makes `cancel` honest: the flag is read between
- * tracks, so stopping never abandons a half-written file — the track in flight
- * finishes, the rest are simply not started. */
+/** Re-matches a whole album sequentially (one beets writer); cancelling
+ * finishes the track in flight and skips the rest. Reports matched counts. */
 export function useReenrichAlbum() {
   const queryClient = useQueryClient();
-  // Twenty-nine sequential network round-trips is a wait, not a blink: a
-  // spinner alone leaves the user unable to decide whether to sit through it.
   const [progress, setProgress] = useState<{ done: number; matched: number; total: number } | null>(null);
-  // The ref is what the loop reads (state would be a stale closure there); the
-  // state is what the Stop button reflects while the current track drains.
+  // The loop reads the ref; the state drives the UI.
   const cancelRef = useRef(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
@@ -205,10 +168,7 @@ export function useReenrichAlbum() {
   return { ...mutation, progress, cancel, isCancelling };
 }
 
-/** Replace the cover of every beets album behind one shelf album. Usually one
- * id; a group spanning two beets rows (a merge beets has not consolidated yet)
- * gets the picture on both, so no folder keeps the old art. Sequential for the
- * same single-writer reason as the other batch mutations. */
+/** Sets the cover on every beets album row behind one shelf album. Sequential. */
 export function useSetAlbumCover() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -221,13 +181,8 @@ export function useSetAlbumCover() {
   });
 }
 
-/** The artist -> image URL map, once. Same `staleTime: Infinity` reasoning as
- * the library: only our own mutations move it, and each invalidates the key.
- *
- * The listing itself is what the cache holds, with the map derived in `select`:
- * the file paths are the other reading of the same rows (see
- * `useArtistImagePath`), and two hooks on one key may not disagree about what
- * that key stores. */
+/** Artist -> image URL. The cache holds the listing; the map is derived in
+ * `select` (`useArtistImagePath` reads the same rows). */
 export function useArtistImages() {
   return useQuery({
     queryKey: artistImagesKey,
@@ -237,8 +192,7 @@ export function useArtistImages() {
   });
 }
 
-/** Where one artist's image lives on disk — what "reframe this one" reopens.
- * Null while nothing is stored for them. */
+/** Null when none is stored. */
 export function useArtistImagePath(name: string): string | null {
   return (
     useQuery({
@@ -271,14 +225,8 @@ export function useRemoveArtistImage() {
   });
 }
 
-/**
- * The albums a download is filing into right now.
- *
- * Kept live off the job stream rather than off the download feature's own
- * query: the library may not import from a sibling feature, and the backend
- * already holds the answer as one list of ids. `jobs:updated` fires on every
- * transition, so the set empties itself the moment the last job settles.
- */
+/** Albums running downloads file into, refreshed on `jobs:updated`. From the
+ * backend, since the library can't import the download feature. */
 export function useDownloadTargetAlbums() {
   const queryClient = useQueryClient();
   const query = useQuery({

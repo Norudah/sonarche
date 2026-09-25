@@ -1,22 +1,10 @@
-//! Taking one download back out of the library.
+//! Undoing one download.
 //!
-//! The download twin of [`crate::import_undo`], addressed differently: a
-//! download has no source folder and no beets mark — the item ids recorded on
-//! the job row (`jobs.item_id`, `job_tracks.item_id`) are its only memory.
-//! The removal itself is the sidecar's shared `undo_removal`, which goes
-//! through beets so album rows, covers and emptied folders go with the
-//! tracks. What belongs here is what beets does not know about:
-//!
-//! * playlists, which live in another database file and therefore cannot lose
-//!   their members to a foreign key;
-//! * the M3U8 mirror those playlists are written out to;
-//! * the `undone_at` stamp on the job row, which is what stops a second undo
-//!   and what the history card reads instead of asking the library;
-//! * the refusal to run while a library import is writing.
-//!
-//! Unlike an import, a download undo destroys the only copy: the staged file
-//! was consumed by the import, so nothing is coming back without downloading
-//! again. The confirmation says so; this module makes its counts true.
+//! The job row's item ids are the only record of what it filed. Removal goes
+//! through the sidecar's `undo_removal` (beets); this module handles what
+//! beets doesn't know: playlists, their M3U8 mirror, the job's `undone_at`
+//! stamp, and refusing while an import runs. Unlike an import undo, this
+//! deletes the only copy.
 
 use std::collections::HashSet;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -31,25 +19,18 @@ use crate::library_import::LibraryImportState;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// Deleting at most a playlist's worth of files — minutes at the very worst,
-/// but a walk over real IO, not a query.
 const UNDO_TIMEOUT: Duration = Duration::from_secs(600);
 
-/// What undoing a download would take away, counted from the library as it is
-/// now: tracks may have been deleted by hand since, and an album may have
-/// grown. The same shape as the import undo's preview, deliberately — the two
-/// confirmations say the same kind of sentence.
+/// What undoing would remove, counted from the current library. Same shape
+/// as the import undo preview.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UndoPreview {
     pub tracks: u64,
-    /// Albums that disappear with their tracks.
     pub albums_removed: u64,
-    /// Albums that merely lose some — the download had landed on a record
-    /// that was already on the shelf.
+    /// Albums that only lose some tracks.
     pub albums_kept: u64,
-    /// Playlist entries that go with the tracks. Filled here, not by the
-    /// sidecar: playlists are the app's, not beets'.
+    /// Filled here: playlists are the app's, not beets'.
     #[serde(default)]
     pub playlist_entries: u64,
 }
@@ -58,17 +39,14 @@ pub struct UndoPreview {
 #[serde(rename_all = "camelCase")]
 pub struct UndoOutcome {
     pub removed: u64,
-    /// Rows dropped whose file sat outside the library, so the file was left
-    /// alone. Reported rather than swallowed — see the import undo.
+    /// Rows dropped while their file, outside the library, was left alone.
     #[serde(default)]
     pub foreign: u64,
-    /// Playlist entries removed along the way.
     #[serde(default)]
     pub playlist_entries: u64,
 }
 
-/// The sidecar's reply. `item_ids` never crosses to the front — its only
-/// reader is the playlist prune.
+/// `item_ids` is only used to prune playlists.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SidecarReply {
@@ -93,7 +71,7 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// The job, its recorded items, or the stated reason there is nothing to undo.
+/// The job and its recorded items, or why there is nothing to undo.
 async fn undoable(jobs: &JobsState, id: &str) -> AppResult<(Job, Vec<i64>)> {
     let job = jobs
         .get(id)
@@ -156,8 +134,7 @@ pub async fn run(
             "this download was already undone".into(),
         ));
     }
-    // An import copying into the library while this deletes out of it would
-    // race file by file, and beets holds one lock for both.
+    // An import writing into the library would race the deletion.
     if imports.is_running().await {
         return Err(AppError::InvalidInput(
             "an import is running; stop it first".into(),
@@ -180,9 +157,8 @@ pub async fn run(
             .await?,
     )?;
 
-    // Best-effort, in this order, and after the removal — same reasoning as
-    // the import undo: pruning first and then failing to remove would lose
-    // memberships for tracks still there.
+    // After the removal: pruning first and then failing would lose memberships
+    // of tracks that still exist.
     let doomed: HashSet<i64> = reply.item_ids.into_iter().collect();
     let playlist_entries = match jobs.prune_playlists(doomed).await {
         Ok(count) => count as u64,

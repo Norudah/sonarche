@@ -9,17 +9,12 @@ import { moveTracks, updateTracks, type LibraryTrack, type MoveSpec } from "@/fe
 import { libraryKey, useMoveTracks } from "@/features/library/hooks";
 import { TOAST_EXPLAINED, TOAST_GLANCE, TOAST_UNDO } from "@/shared/toast/durations";
 
-/**
- * The move, told and reversible: performs one request, announces it, and hangs
- * the way back on the toast. Undo is the same verb pointed at the snapshot's
- * records (see `buildMoveUndo`) — no marker on disk, no second machinery.
- */
+/** Runs a move, announces it, and offers undo on the toast (see `buildMoveUndo`). */
 export function useMoveWithUndo() {
   const { t } = useTranslation("library");
   const queryClient = useQueryClient();
   const move = useMoveTracks();
-  // One undo per move, however long the toast lingers or however fast the
-  // clicks land.
+  // One undo per move.
   const undoing = useRef(false);
 
   const undo = async (snapshot: LibraryTrack[], toastId: string) => {
@@ -40,8 +35,7 @@ export function useMoveWithUndo() {
     }
   };
 
-  /** Run `spec`; `snapshot` is the moved tracks as they are *now*, i.e. before
-   * the move — everything the way back needs to know. */
+  /** `snapshot`: the tracks before the move. */
   const run = (spec: MoveSpec, snapshot: LibraryTrack[], targetName: string, onSuccess?: () => void) => {
     undoing.current = false;
     move.mutate(spec, {
@@ -52,9 +46,7 @@ export function useMoveWithUndo() {
           undoable
             ? {
                 timeout: TOAST_UNDO,
-                // Soft rather than filled: the toast reports something that
-                // already worked, so the loudest object in it should not be
-                // the button that takes it back.
+                // Soft: the toast reports a success.
                 actionProps: {
                   variant: "secondary",
                   children: t("move.undo"),

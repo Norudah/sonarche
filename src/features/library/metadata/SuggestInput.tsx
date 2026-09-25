@@ -7,15 +7,12 @@ import { filterSuggestions, hasExactSuggestion, type SuggestKind, type Suggestio
 import { useSuggestionPool } from "./SuggestionsContext";
 
 const MAX_SHOWN = 8;
-/** Wide enough for value + context + count even on a narrow field (the album
- * modal's genre field is ~150px; a list that wide is unreadable). */
+/** Readable even beside a narrow field. */
 const MIN_LIST_PX = 288;
 const MAX_LIST_PX = 224;
 const EDGE_PX = 8;
 
-/** Where the floating list sits, in viewport coordinates. Anchored by `top`
- * below the field, by `bottom` above it when the field is near the floor —
- * growth then goes upward instead of off-screen. */
+/** Viewport position: below the field, or above it near the bottom edge. */
 interface Placement {
   left: number;
   top: number | null;
@@ -25,23 +22,13 @@ interface Placement {
 }
 
 /**
- * A text input that can attach its value to an existing library entry.
+ * Text input suggesting existing library values; selecting writes the stored
+ * string exactly (so "ac/dc" doesn't split from "AC/DC"). Free text stays
+ * valid, shown as its own row. Nothing is highlighted by default, so Enter
+ * never swaps typed text for a match.
  *
- * Typing filters the pool and opens the list; selecting writes the stored
- * string exactly, which is the whole point — matching "ac/dc" to "AC/DC" by
- * hand is what splits libraries. Free text stays a first-class answer: when
- * the typed value matches no entry the list says so in a distinct row, rather
- * than pretending the library already knows it.
- *
- * The list is portaled to `body` and positioned from the input's viewport
- * rect: rendered inside the field it was clipped by every scrolling ancestor
- * (the album modal's identity column cut it off mid-word). The portal sits
- * outside react-aria's overlay tree, which the list has to declare — see the
- * top-layer attribute below — or the host modal treats it as outside world.
- *
- * The highlight starts on nothing: Enter must never silently swap freshly
- * typed text for the first match — attaching is always an explicit arrow-key
- * or pointer move.
+ * The list is portaled to `body` (ancestors clip it) and positioned from the
+ * input's rect; see the top-layer attribute below.
  */
 export function SuggestInput({
   value,
@@ -65,15 +52,12 @@ export function SuggestInput({
 
   const typed = value.trim();
   const matches = pool && isOpen ? filterSuggestions(pool, typed).slice(0, MAX_SHOWN) : [];
-  // The free-text row: present whenever the typed value is not a stored entry,
-  // so the list always answers "what will this write?".
+  // The free-text row: shows what will be written when it's not an entry.
   const hasFreeRow = pool != null && isOpen && typed !== "" && !hasExactSuggestion(pool, typed);
   const rowCount = matches.length + (hasFreeRow ? 1 : 0);
   const isShown = isOpen && rowCount > 0;
 
-  // The anchor rect is re-read on every scroll (capture: the scrolling ancestor
-  // is the modal column, not the window) and resize, so the list follows its
-  // field instead of hanging where the field used to be.
+  // Re-read on scroll (capture: the scrolling ancestor isn't the window) and resize.
   useLayoutEffect(() => {
     if (!isShown) {
       setPlacement(null);
@@ -124,8 +108,7 @@ export function SuggestInput({
           return;
         }
         const step = event.key === "ArrowDown" ? 1 : -1;
-        // Cycle through [-1 (nothing), 0..rowCount-1]: shift into 0-based,
-        // wrap over rowCount+1 positions, shift back.
+        // Cycles through -1 (nothing) and 0..rowCount-1.
         setHighlight((prev) => ((prev + 1 + step + rowCount + 1) % (rowCount + 1)) - 1);
         return;
       }
@@ -134,8 +117,7 @@ export function SuggestInput({
         select(highlight < matches.length ? matches[highlight] : null);
         return;
       }
-      // preventDefault so the drawer/modal document listener leaves its own
-      // Escape handling to us while the list is up.
+      // So the drawer/modal Escape listener leaves it to us.
       if (event.key === "Escape" && isShown) {
         event.preventDefault();
         close();
@@ -177,16 +159,10 @@ export function SuggestInput({
           <ul
             id={listId}
             role="listbox"
-            // react-aria's modals mark everything outside themselves `inert`
-            // while open — a body portal added afterwards included, which left
-            // the list perfectly visible and completely dead to the pointer.
-            // This attribute is the escape hatch its own toast region uses: it
-            // also stops the click reading as an interaction outside the
-            // overlay, and lets focus stay here under a contained scope.
+            // react-aria marks everything outside an open modal `inert`, portals
+            // included; this attribute (used by its toast region) exempts the list.
             data-react-aria-top-layer="true"
-            // Keep the input focused through a click: blur would tear the list
-            // down before the click lands (and unmount a tracklist cell
-            // entirely).
+            // Keeps the input focused; a blur would close the list before the click lands.
             onMouseDown={(event) => event.preventDefault()}
             style={{
               left: placement.left,
@@ -207,8 +183,7 @@ export function SuggestInput({
                 onClick={() => select(suggestion)}
                 className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 ${highlight === index ? "bg-default/60" : ""}`}
               >
-                {/* Album entries carry their cover — the fastest way to tell two
-                    editions apart. The empty slot keeps coverless rows aligned. */}
+                {/* Covers help tell editions apart; the empty slot keeps rows aligned. */}
                 {suggest === "album" &&
                   (suggestion.image ? (
                     <img

@@ -7,36 +7,23 @@ import { HeroPlayButtons } from "@/features/library/HeroPlayButtons";
 import { HeroWash } from "@/features/library/HeroWash";
 
 interface CategoryHeroProps {
-  /** The category's display name (translated taxonomy value or free tag). */
+  /** Translated taxonomy value or free tag. */
   categoryLabel: string;
-  /** Always the whole category's, never the selected genre's — see below. */
+  /** Always the whole category's. */
   albumCount: number;
   trackCount: number;
   artistCount: number;
   share: number;
   onPlay: () => void;
   onShuffle: () => void;
-  /** The view switcher, in the same spot as on the genre and artist heroes. */
+  /** The view switcher. */
   actions?: ReactNode;
   ref?: Ref<HTMLElement>;
 }
 
-/**
- * The genre hero's twin — text on the wash, no invented artwork — with one
- * deliberate difference: the genre chips never rename this page.
- *
- * They used to. Picking "Synthwave" inside "Video Games" retitled the hero
- * "Synthwave" and left the category nowhere on screen, so a chip on the
- * category card appeared to open a genre page. That was the bug: on the genres
- * axis a sub-genre is a subject with a page of its own, but on this axis a
- * genre is not a sub-category — it is a cut across the category, and a cut does
- * not get to take over the identity of what it cuts.
- *
- * So the title and its counts describe the whole category, always, and the
- * selection lives in the active chip below and in the list it narrows. Same
- * rule the filter bar already follows: the numbers up here state the scope, not
- * the filter.
- */
+/** Like the genre hero, but a selected genre never retitles the page: here a
+ * genre cuts across the category rather than being a sub-category. Counts
+ * describe the whole category. */
 export function CategoryHero({
   categoryLabel,
   albumCount,

@@ -9,9 +9,7 @@ import relayout
 
 
 class RelayoutTest(unittest.TestCase):
-    """Against a real beets library: the pass is nothing but what beets does
-    when asked to move everything — files landing where the current templates
-    say, art riding along, old folders pruned."""
+    """Against a real beets library."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -105,10 +103,7 @@ class RelayoutTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.db))
 
     def test_a_blank_row_dissolves_instead_of_relayouting_as_unknown_album(self):
-        """The legacy guessed-single filing: a blank-titled row whose folder
-        %aunique could only name by row id. Re-filing it would park it as
-        Library/Unknown Artist/Unknown Album for good; dissolving it hands the
-        items back to the singleton path, where the provisional flag routes."""
+        """A legacy blank-titled row is dissolved into singletons, not re-filed."""
         lib = Library(self.db, directory=self.dir)
         item = Item(
             path=self._file("LIVinglife/_86/track.mp3"),

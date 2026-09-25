@@ -9,8 +9,7 @@ import { durations, easings, fade } from "@/shared/motion/tokens";
 import { Equalizer } from "@/shared/player/Equalizer";
 import type { PlayableTrack } from "@/shared/player/types";
 
-/** Wraps a line of the bar in its destination when it has one — the hrefs
- * arrive ready-made on the track, so this stays route-agnostic. */
+/** Wraps a line in its link when the track provides one. */
 function MaybeLink({ to, label, children }: { to: string | null | undefined; label: string; children: ReactNode }) {
   if (!to) return <>{children}</>;
   return (
@@ -26,9 +25,7 @@ function MaybeLink({ to, label, children }: { to: string | null | undefined; lab
 
 export function NowPlaying({ current, isPlaying }: { current: PlayableTrack | null; isPlaying: boolean }) {
   const { t } = useTranslation("player");
-  // The frame stays put; only what sits inside it swaps. Keying on the track id
-  // (not on the art URL) means a track whose cover lands late does not re-run
-  // the transition — the row is still the same song.
+  // Keyed on the track id, so a late-loading cover doesn't replay the transition.
   const trackKey = current?.id ?? "idle";
 
   const cover = (
@@ -77,8 +74,7 @@ export function NowPlaying({ current, isPlaying }: { current: PlayableTrack | nu
       >
         {current ? (
           <>
-            {/* The title leads to the record it lives on — there is no track
-             * page, and the album is where every path from the bar converges. */}
+            {/* No track page: the title links to its album. */}
             <p className="truncate text-sm font-medium">
               <MaybeLink to={current.albumUrl} label={t("goToAlbum")}>
                 {current.title}

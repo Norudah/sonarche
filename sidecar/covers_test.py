@@ -52,9 +52,7 @@ class RenditionTest(unittest.TestCase):
         self.assertEqual(covers.read_dimensions(art), (500, 250))
 
     def test_a_png_stays_a_png(self):
-        """The rendition is written over beets' own artpath, so re-encoding a
-        `.png` as JPEG would leave every later reader guessing wrong. Alpha is
-        the tell: it does not survive a silent conversion."""
+        """The rendition overwrites beets' artpath, so it must keep the source format."""
         art = self._make("cover.png", 1400, mode="RGBA")
 
         self.assertTrue(covers.ensure_display_rendition(art))
@@ -86,9 +84,7 @@ class RenditionTest(unittest.TestCase):
         self.assertFalse(covers.ensure_display_rendition(broken))
 
     def test_a_legacy_archive_is_not_touched_by_the_rendition(self):
-        """The rendition pass has one job. Legacy `cover-hq.*` files are the
-        cleanup pass's business, and quietly eating one here would make the
-        rendition sweep destructive in a folder it only came to shrink."""
+        """Legacy `cover-hq.*` files belong to the cleanup pass, not this one."""
         art = self._make("cover.jpg", 1400)
         hq = self._make("cover-hq.jpg", 3000)
         with open(hq, "rb") as f:

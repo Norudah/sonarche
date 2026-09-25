@@ -1,16 +1,10 @@
-//! One-shot library repair: remux fragmented DASH m4a files into classic MP4s.
+//! Launch-time library repairs, run once the setup gate opens: remux
+//! fragmented DASH m4a files (downloaded before ffmpeg was bundled) into
+//! classic MP4, sweep legacy cover archives, and re-file after template
+//! changes.
 //!
-//! Downloads made before the app bundled ffmpeg kept the fragmented
-//! container — fine for our own player, unreadable durations (0:00) and broken
-//! seeking everywhere Apple's parsers read the classic sample tables. The
-//! shell fires this once per launch after the setup gate opens.
-//!
-//! Incremental, not a full walk: the pass persists how far it got (the highest
-//! beets item id it settled) and the next launch scans only what arrived
-//! since. The old full scan opened every m4a in the library to read its box
-//! headers — "cheap" in CPU, but tens of thousands of seeks on a cold spinning
-//! disk, at every single launch, forever. Downloads are fixed at the source
-//! nowadays; the only new files this can still catch are imports.
+//! The remux is incremental: a watermark stores the highest beets item id
+//! already checked, so each launch only scans newer items.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -23,31 +17,21 @@ use crate::error::{AppError, AppResult};
 use crate::python_env::{self, AppPaths};
 use crate::sidecar::SidecarState;
 
-/// Scan is seconds, but the first run rewrites the whole backlog; a big
-/// library on a slow disk deserves better than a timeout mid-repair.
+/// The first run may rewrite a large backlog.
 const REMUX_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
-/// One `listdir` per album folder — minutes would already be generous.
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
-/// One rename per file on its own volume; an hour covers a huge library on a
-/// network share without letting a wedged pass hold the slot forever.
 const RELAYOUT_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
-/// The file that says the library already sits where the current templates put
-/// it. **Its name is the version of those templates**: change a path template
-/// and this name changes with it, which is the whole mechanism — every install
-/// that has not seen the new name re-files itself once, on the next launch, and
-/// never again.
+/// Marker for the current path templates. Its name is the template version:
+/// renaming it makes every install re-file once.
 ///
-/// - `library-zoned` — the `Library/` + `Unidentified/` split.
-/// - `library-filed-v2` — compilations left `Compilations/` and file under
-///   their album artist like every other record.
+/// - `library-zoned`: the `Library/` + `Unidentified/` split.
+/// - `library-filed-v2`: compilations file under their album artist.
 const LAYOUT_MARKER: &str = "library-filed-v2";
 
-/// Every name [`LAYOUT_MARKER`] has ever had. The erase removes all of them: a
-/// stale marker from a library that no longer exists is debt, whichever
-/// generation wrote it.
+/// Every marker name ever used, all removed by an erase.
 pub const LAYOUT_MARKERS: &[&str] = &["library-zoned", LAYOUT_MARKER];
 
 #[derive(Default)]
@@ -83,9 +67,7 @@ impl RemuxState {
             )
             .await?;
 
-        // Only ever forward, and only on a completed pass: a request that
-        // timed out or died mid-repair returns above and leaves the watermark
-        // where it was, so the next launch picks the backlog up again.
+        // Only advanced on a completed pass.
         if let Some(settled) = report.get("checked_through").and_then(Value::as_i64) {
             if settled > since {
                 let _ = tokio::fs::write(&watermark, settled.to_string()).await;
@@ -95,22 +77,15 @@ impl RemuxState {
         self.cleanup_legacy_archives(app, &paths).await;
         let relayouted = self.relayout_zones(app, &paths).await;
         if let (Some(map), Some(moved)) = (report.as_object_mut(), relayouted) {
-            // Surfaced on the repair report so the shell knows to refetch the
-            // library — every artUrl and path just changed under it.
+            // Tells the shell to refetch the library: paths changed.
             map.insert("relayouted".into(), json!(moved));
         }
         Ok(report)
     }
 
-    /// The one-time re-file of the library onto the current path templates (see
-    /// `APP_PATHS` in python_env.rs). Same launch slot and same marker pattern
-    /// as the archive sweep: debt left by older versions whose templates filed
-    /// music somewhere the app no longer points at. Returns how many records
-    /// moved, or None when the pass did not run.
-    ///
-    /// beets recomputes a destination only when something moves, so a template
-    /// change reaches nothing already on disk — the pass is what makes it
-    /// retroactive, and [`LAYOUT_MARKER`] is what makes it happen once.
+    /// Re-files the library onto the current templates (`APP_PATHS` in
+    /// python_env.rs), once per [`LAYOUT_MARKER`]. beets only recomputes a path
+    /// when something moves. Returns how many records moved, or None if skipped.
     async fn relayout_zones(&self, app: &AppHandle, paths: &AppPaths) -> Option<i64> {
         let marker = app.path().app_data_dir().ok()?.join(LAYOUT_MARKER);
         if tokio::fs::try_exists(&marker).await.unwrap_or(false) {
@@ -131,18 +106,14 @@ impl RemuxState {
             .await
             .ok()?;
         let _ = tokio::fs::write(&marker, "done").await;
-        // The M3U mirror renders absolute paths; every one of them just moved.
         crate::playlists_mirror::sync_after_library_change(app).await;
         let moved = report.get("albums").and_then(Value::as_i64).unwrap_or(0)
             + report.get("singles").and_then(Value::as_i64).unwrap_or(0);
         Some(moved)
     }
 
-    /// The one-time sweep of the `cover-hq.*` archives 2.x kept beside every
-    /// cover. Rides the same launch slot as the remux pass because it is the
-    /// same kind of debt — files older versions left that no current write
-    /// path maintains. Failure is silent and unmarked: the next launch simply
-    /// tries again.
+    /// One-time sweep of 2.x `cover-hq.*` archives. Silent on failure; retried
+    /// next launch.
     async fn cleanup_legacy_archives(&self, app: &AppHandle, paths: &AppPaths) {
         let marker = match app.path().app_data_dir() {
             Ok(dir) => dir.join("cover-hq-cleaned"),
@@ -171,16 +142,13 @@ impl RemuxState {
     }
 }
 
-/// Beside the databases in app data, and on the data-erase removal list
-/// (`reset::user_data_to_remove`): an erased library is a different library,
-/// and its scan starts over. Item ids in beets only grow, so a surviving
-/// watermark can never hide a genuinely new file.
+/// Removed by a data erase. beets ids only grow, so a surviving watermark
+/// can't hide new files.
 fn watermark_path(app: &AppHandle) -> AppResult<PathBuf> {
     Ok(app.path().app_data_dir()?.join("remux-checked"))
 }
 
-/// An unreadable or absent file is watermark zero: scan everything, exactly
-/// what the first launch after this feature — or after an erase — should do.
+/// Missing or unreadable means zero: scan everything.
 async fn read_watermark(path: &PathBuf) -> i64 {
     tokio::fs::read_to_string(path)
         .await

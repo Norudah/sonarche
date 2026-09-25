@@ -131,9 +131,7 @@ class ArtPathsByAlbumTest(unittest.TestCase):
         self.assertEqual(art_paths_by_album(conn, "/music"), {1: None})
 
     def test_archived_hq_cover_is_not_what_the_ui_gets(self):
-        """The 500px rendition is the display path even when the CAA original
-        sits right next to it: the UI draws covers at 384px at the very most,
-        and a 5000px original costs ~100 MB of bitmap to do it."""
+        """The 500px rendition is used even when a full-size original sits beside it."""
         with tempfile.TemporaryDirectory() as art_dir:
             artpath = os.path.join(art_dir, "cover.jpg")
             open(artpath, "wb").close()
@@ -384,9 +382,7 @@ class ApplyFieldsTest(unittest.TestCase):
 
 
 class UpdateMovesTheFileTest(unittest.TestCase):
-    """Regression: renaming an album or its artist left the file under the old
-    folder. The database said one thing and the disk another, and only a real
-    move on a real file can prove that fixed."""
+    """Renaming an album or its artist must move the file."""
 
     def setUp(self):
         import struct

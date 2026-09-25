@@ -18,9 +18,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Outermost of the three: the theme is the only one that reaches outside
-          React — the <html> attribute and the native window frame — and it has
-          to be in place before anything under it paints. */}
+      {/* Outermost: the theme also drives <html> and the native window frame. */}
       <ThemeProvider>
         <MotionProvider>
           <PlayerProvider>

@@ -2,12 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { Album } from "@/features/library/albums/albums";
 
-/**
- * One album entry of the scan's plan, kept in wire casing on purpose: the plan
- * is a round-trip document — it goes back to the sidecar verbatim on apply, and
- * the sidecar re-validates every field of it at write time. Mapping it to front
- * casing would mean un-mapping it again, with a bug waiting in each direction.
- */
+/** Kept in wire casing: the plan goes back to the sidecar verbatim on apply. */
 export interface AlignPlanAlbum {
   album_id: number;
   album: string;
@@ -18,8 +13,7 @@ export interface AlignPlanAlbum {
   release_artist: string;
   release_year: number | null;
   cover_missing: boolean;
-  /** `genres` are MusicBrainz' community genres for the mapped track — seeded
-   * through the genre pipeline at apply time, never counted as a fill. */
+  /** MusicBrainz genres, seeded through the genre pipeline; not counted as fills. */
   items: { item_id: number; fills: Record<string, string | number>; genres?: string[] }[];
   album_fills: Record<string, string | number>;
 }
@@ -56,8 +50,7 @@ export async function alignApply(plan: AlignPlan): Promise<AlignResult> {
   };
 }
 
-/** What the verdict announces: albums identified, fields the fill would write
- * (items and album rows together), covers it would fetch. Pure. */
+/** Albums identified, fields to write, covers to fetch. */
 export function summarizePlan(plan: AlignPlan): { albums: number; fields: number; covers: number } {
   let fields = 0;
   let covers = 0;
@@ -69,12 +62,8 @@ export function summarizePlan(plan: AlignPlan): { albums: number; fields: number
   return { albums: plan.albums.length, fields, covers };
 }
 
-/**
- * The idle line's count: albums where no track carries a MusicBrainz match.
- * A proxy — the scan keys on the album row's own release id, which the front
- * never loads — but it moves the same way: filling a plan writes mb_trackid on
- * the very tracks counted here. Pure.
- */
+/** Albums with no MusicBrainz-matched track: a front-side proxy for what the
+ * scan targets (album rows without a release id). */
 export function unidentifiedAlbumCount(albums: Album[]): number {
   return albums.filter((album) => album.tracks.every((track) => track.mbTrackId == null)).length;
 }

@@ -5,17 +5,10 @@ import { runHomeTour } from "@/app/tour/homeTourDriver";
 import { homeTourSeen, markHomeTourSeen, onHomeTourRequest } from "@/shared/lib/homeTour";
 import { closeSettings } from "@/shared/lib/settingsDialog";
 
-/** How long after the shell appears the first-run tour waits: past the longest
- * splash beat (`aboard`, 2400 ms) and its cross-fade, so the spotlight lands on
- * a settled window instead of opening under the curtain. */
+/** Waits out the splash (`aboard`, 2400 ms) and its cross-fade. */
 const FIRST_RUN_DELAY_MS = 3200;
 
-/**
- * Owns when the tour runs: once on the first launch that shows the shell
- * (right after the setup walkthrough on a fresh install), and again whenever
- * Settings asks. Mounted inside the gate, so "the shell appeared" and "this
- * mounted" are the same moment.
- */
+/** Runs the tour on the first launch that shows the shell, and on request from Settings. */
 export function HomeTourHost() {
   const { t, i18n } = useTranslation("common");
   const [isOpen, setIsOpen] = useState(false);
@@ -36,16 +29,14 @@ export function HomeTourHost() {
   useEffect(
     () =>
       onHomeTourRequest(() => {
-        // The request comes from the settings dialog, which is sitting over
-        // the very chrome the first spotlight is about to point at.
+        // The settings dialog would cover the first spotlight target.
         closeSettings();
         setIsOpen(true);
       }),
     [],
   );
 
-  // Read through refs so the driver is not torn down and relaunched because a
-  // render gave `t` or the close callback a new identity mid-tour.
+  // Refs keep the driver alive across renders.
   const tRef = useRef(t);
   const languageRef = useRef(i18n.language);
   useEffect(() => {
@@ -60,8 +51,7 @@ export function HomeTourHost() {
       language: languageRef.current,
       onClose: () => {
         setIsOpen(false);
-        // Seen is seen, however it ended: a skipped tour re-offering itself on
-        // every launch is nagging, and Settings holds the way back.
+        // However it ended; Settings can replay it.
         markHomeTourSeen();
       },
     });

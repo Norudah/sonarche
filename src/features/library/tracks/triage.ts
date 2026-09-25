@@ -2,46 +2,32 @@ import type { LibraryTrack } from "@/features/library/api";
 import { FAMILY_NONE, FAMILY_OTHER, familyKeyOf } from "@/features/library/genres/genres";
 import { decadeOf } from "@/features/library/tracks/facets";
 
-/** Sentinel `?genre=` values of the triage contract (`triagePaths` in
- * `@/app/paths`). Any other value is an exact genre name. */
+/** Sentinel `?genre=` values (`triagePaths` in `@/app/paths`); anything else
+ * is a genre name. */
 export const GENRE_MISSING = "missing";
 export const GENRE_OFF_TREE = "off-tree";
 
-/**
- * Everything the explorer's URL can say about which tracks to show.
- *
- * Two kinds of entry share the shape. The triage deep links (`missing`,
- * `suspect`, `duplicates`, the two `genre` sentinels) are corrections arriving
- * from the Metadata queue; the axes the user picks in the filter bar (`family`,
- * `category`, `decade`, a plain `genre`) are browsing. They parse and apply the
- * same way — only the chip's colour tells them apart.
- */
+/** Everything the URL says about which tracks to show: correction filters from
+ * the Metadata page and browsing axes, parsed the same way. */
 export interface TrackTriage {
-  /** `?missing=year` */
   missingYear: boolean;
-  /** `?missing=track` — no position on its record. Shares the `missing` param
-   * with the year, which is why the two can never be on at once; nothing has
-   * ever needed them to be. */
+  /** `?missing=track`, sharing the param with the year (exclusive). */
   missingTrackNumber: boolean;
-  /** `?genre=` — a sentinel, a plain genre name, or null when absent. */
+  /** A sentinel or a genre name. */
   genre: string | null;
-  /** `?family=` — a genre family *key* (the genres page's own segment), the
-   * whole-family counterpart of `?genre=`. Null when absent. */
+  /** `?family=`, a genre family key. */
   family: string | null;
-  /** `?category=` — a stored category value (the grouping tag), the axis the
-   * category pages file by. Null when absent. */
+  /** `?category=`, a stored grouping value. */
   category: string | null;
-  /** `?decade=1990` — the decade's first year. Null when absent or unparsable. */
+  /** `?decade=1990`, the decade's first year. */
   decade: number | null;
-  /** `?suspect=match` — matches contradicting the download's own title. */
+  /** `?suspect=match` */
   suspectMatch: boolean;
-  /** `?duplicates=recording` — tracks sharing a MusicBrainz recording. */
+  /** `?duplicates=recording` */
   duplicateRecording: boolean;
 }
 
-/** Nothing active — the shape to spread from when a caller wants one filter on
- * its own. Declared beside the type so adding an axis cannot leave a call site
- * behind (which is exactly what the category and decade axes did). */
+/** Nothing active, next to the type so a new axis can't be forgotten. */
 export const NO_TRIAGE: TrackTriage = {
   missingYear: false,
   missingTrackNumber: false,
@@ -53,9 +39,7 @@ export const NO_TRIAGE: TrackTriage = {
   duplicateRecording: false,
 };
 
-/** Normalised through `decadeOf`, so a hand-edited `?decade=1994` lands on the
- * nineties instead of matching nothing. Anything non-numeric is dropped rather
- * than filtering the list down to zero on a typo. */
+/** Normalised through `decadeOf`; non-numeric values are dropped. */
 function parseDecade(raw: string | null): number | null {
   if (raw == null) return null;
   const year = Number.parseInt(raw, 10);
@@ -75,9 +59,7 @@ export function parseTrackTriage(params: URLSearchParams): TrackTriage {
   };
 }
 
-/** Tracks whose recording id another track of the list also carries — the
- * same audio filed twice (a playlist re-importing an already-owned single).
- * Unmatched tracks (null id) never pair up. */
+/** Tracks sharing a recording id with another track; null ids never pair. */
 export function duplicateRecordingTracks(tracks: LibraryTrack[]): LibraryTrack[] {
   const seen = new Map<string, number>();
   for (const track of tracks) {
@@ -88,19 +70,14 @@ export function duplicateRecordingTracks(tracks: LibraryTrack[]): LibraryTrack[]
 
 type Predicate = (track: LibraryTrack) => boolean;
 
-/** One test per active filter. Order is irrelevant to the result, so the cheap
- * comparisons come first and a track filtered out by year never has its family
- * resolved. */
+/** One test per active filter, cheapest first. */
 function predicatesOf(triage: TrackTriage): Predicate[] {
   const tests: Predicate[] = [];
 
-  // The triage sentinels skip what their owner has answered, so a door opens on
-  // exactly what its line counted. Only these: the browsing axes below (family,
-  // category, decade, an exact genre) are navigation, and hiding tracks from a
-  // genre page because of a metadata verdict would be a different app.
+  // Correction filters skip accepted tracks, matching the Metadata counts.
+  // Browsing axes don't.
   if (triage.missingYear) tests.push((track) => track.year == null && !track.accepted.includes("year"));
-  // `> 0` and not just non-null: beets stores an absent track number as 0, so a
-  // null check alone would call an untagged file numbered.
+  // beets stores a missing track number as 0.
   if (triage.missingTrackNumber)
     tests.push((track) => (track.track == null || track.track <= 0) && !track.accepted.includes("track"));
   if (triage.decade != null) {
@@ -112,9 +89,7 @@ function predicatesOf(triage: TrackTriage): Predicate[] {
     tests.push((track) => track.category === category);
   }
 
-  // The two sentinels go through `familyKeyOf`, so a track counts as
-  // unclassified or off-tree here exactly when the genres page files it that
-  // way. Anything else is an exact genre name.
+  // Through `familyKeyOf`, exactly as the genres page files tracks.
   if (triage.genre === GENRE_MISSING)
     tests.push((track) => familyKeyOf(track) === FAMILY_NONE && !track.accepted.includes("genre"));
   else if (triage.genre === GENRE_OFF_TREE)
@@ -124,8 +99,6 @@ function predicatesOf(triage: TrackTriage): Predicate[] {
     tests.push((track) => track.genre === genre);
   }
 
-  // The family key resolves through `familyKeyOf` too, so "show this family's
-  // tracks" lands on exactly the set the family page counted.
   if (triage.family != null) {
     const family = triage.family;
     tests.push((track) => familyKeyOf(track) === family);
@@ -136,22 +109,11 @@ function predicatesOf(triage: TrackTriage): Predicate[] {
   return tests;
 }
 
-/**
- * Filters compose: `?missing=year&genre=missing` means both at once.
- *
- * One pass over the library rather than one `.filter()` per active filter. With
- * seven possible axes, chaining allocated up to seven intermediate arrays of a
- * library-sized list to answer a question a single traversal answers — and each
- * track now short-circuits on its first failing test instead of surviving every
- * stage.
- *
- * Duplicates cannot join that pass: a track is a duplicate only relative to the
- * rest of the set, so it runs last, over whatever the per-track tests left.
- */
+/** Filters compose, in one pass. Duplicates run last: they depend on the rest
+ * of the set. */
 export function applyTrackTriage(tracks: LibraryTrack[], triage: TrackTriage): LibraryTrack[] {
   const tests = predicatesOf(triage);
-  // The untouched array by reference, not a copy: this is the default state of
-  // every explorer, and it must not allocate.
+  // Same reference when nothing is active.
   const result = tests.length === 0 ? tracks : tracks.filter((track) => tests.every((test) => test(track)));
   return triage.duplicateRecording ? duplicateRecordingTracks(result) : result;
 }

@@ -24,8 +24,7 @@ import { HISTORY_PAGE_SIZE } from "@/features/download/queue/page";
 import { libraryKey } from "@/features/library/hooks";
 
 export const jobsKey = ["download", "jobs"];
-/** Prefix of every archive-page query — invalidated wholesale, since one job
- * transition can move rows across pages. */
+/** Invalidated as a whole: one transition can move rows across pages. */
 export const jobsPagesKey = ["download", "jobs-pages"];
 
 function upsertJob(queryClient: QueryClient, job: DownloadJob) {
@@ -36,19 +35,17 @@ function upsertJob(queryClient: QueryClient, job: DownloadJob) {
   queryClient.invalidateQueries({ queryKey: jobsPagesKey });
 }
 
-/** Job list, kept live by the backend's `jobs:updated` events. */
+/** Kept live by the backend's `jobs:updated` events. */
 export function useJobs() {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: jobsKey, queryFn: listJobs });
 
-  // Sync with the Tauri event stream: the Rust worker owns job state and
-  // broadcasts every transition; the query cache just mirrors it.
+  // The Rust worker owns job state; the cache mirrors its events.
   useEffect(() => {
     const unlisten = listen<WireJob>("jobs:updated", (event) => {
       const job = mapJob(event.payload);
       upsertJob(queryClient, job);
-      // Cancelled counts too: an album stopped mid-run may already have filed
-      // part of its tracks into the library.
+      // A cancelled album may already have filed some tracks.
       if (job.status === "done" || job.status === "cancelled") {
         queryClient.invalidateQueries({ queryKey: libraryKey });
       }
@@ -61,12 +58,8 @@ export function useJobs() {
   return query;
 }
 
-/**
- * One page of the whole archive, kept live the same way `useJobs` is: the
- * backend's `jobs:updated` events invalidate the page queries (a transition
- * can move rows across pages, so upserting into one page would lie), and the
- * previous page stays on screen while the next one loads.
- */
+/** One archive page. Events invalidate the page queries; the previous page
+ * stays shown while the next loads. */
 export function useJobsPage(page: number, size = HISTORY_PAGE_SIZE) {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -75,9 +68,7 @@ export function useJobsPage(page: number, size = HISTORY_PAGE_SIZE) {
     placeholderData: keepPreviousData,
   });
 
-  // The history page mounts this hook without `useJobs`, so the library
-  // refresh on a finishing job rides here too — invalidation is idempotent
-  // when both hooks happen to listen.
+  // The history page doesn't mount `useJobs`, so refresh the library here too.
   useEffect(() => {
     const unlisten = listen<WireJob>("jobs:updated", (event) => {
       queryClient.invalidateQueries({ queryKey: jobsPagesKey });
@@ -110,8 +101,6 @@ export function useRetryJob() {
   });
 }
 
-/** Stops a queued or running job; the worker records the cancelled state and
- * the event stream carries it here. */
 export function useCancelJob() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -120,13 +109,7 @@ export function useCancelJob() {
   });
 }
 
-/**
- * What undoing this download would take away, asked only while the question
- * is on screen. A query rather than a call made before opening the dialog —
- * same reasoning as the import undo's preview: the confirmation should appear
- * at once and fill in, and a stale count under a destructive button is worse
- * than no count.
- */
+/** Fetched only while the confirmation is open, so the count is fresh. */
 export function useDownloadUndoPreview(id: string, enabled: boolean) {
   return useQuery<DownloadUndoPreview>({
     queryKey: ["download-undo-preview", id],
@@ -137,12 +120,7 @@ export function useDownloadUndoPreview(id: string, enabled: boolean) {
   });
 }
 
-/**
- * Take one download back out. Everything is invalidated, like the import
- * undo: tracks, albums, covers and playlist entries go in one sweep, and
- * naming the caches would mean reaching into three other features. The job
- * row itself comes back stamped through the `jobs:updated` event.
- */
+/** Invalidates everything: tracks, albums, covers and playlists all change. */
 export function useUndoDownload() {
   const queryClient = useQueryClient();
   return useMutation<DownloadUndoOutcome, unknown, string>({
@@ -151,8 +129,6 @@ export function useUndoDownload() {
   });
 }
 
-/** Re-file what a finished download produced onto another record. The library
- * is what visibly changes; the job row rides back through the event. */
 export function useChangeJobDestination() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -165,7 +141,7 @@ export function useChangeJobDestination() {
   });
 }
 
-/** Clears completed/failed jobs from the history; in-flight jobs are untouched. */
+/** Clears finished jobs; running jobs stay. */
 export function useClearJobHistory() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -179,10 +155,8 @@ export function useClearJobHistory() {
 
 export type EnrichStage = "fingerprint" | "lookup" | "match" | "apply" | "track_done";
 
-/** Per-item enrich stage of the currently enriching job, keyed by beets item
- * id. The queue is sequential, so at most one job is enriching at a time;
- * the map lets an album's child rows animate one by one instead of staying
- * mute until the album-wide request returns. */
+/** Per-item enrich stage of the job being identified, so album rows update
+ * one by one. */
 export function useEnrichProgress(active: boolean) {
   const [stages, setStages] = useState<Record<number, EnrichStage>>({});
   useEffect(() => {
@@ -204,8 +178,7 @@ export function useEnrichProgress(active: boolean) {
   return stages;
 }
 
-/** Download percentage of the currently active job. The queue is strictly
- * sequential, so at most one job is downloading at a time. */
+/** Download percentage of the active job (the queue is sequential). */
 export function useActiveDownloadProgress(active: boolean) {
   const [percent, setPercent] = useState<number | null>(null);
   useEffect(() => {

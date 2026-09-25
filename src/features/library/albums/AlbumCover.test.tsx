@@ -6,11 +6,7 @@ import { AlbumCover } from "@/features/library/albums/AlbumCover";
 
 afterEach(cleanup);
 
-/**
- * The loading mode is a performance contract, not decoration: a library-wide
- * grid holds one cover per album, and dropping `lazy` puts every one of them
- * on the wire at once.
- */
+/** `lazy` is a performance contract: a grid holds one cover per album. */
 describe("AlbumCover", () => {
   it("defers loading when asked", () => {
     const { container } = render(<AlbumCover artUrl="/cover.jpg" className="size-full" loading="lazy" />);

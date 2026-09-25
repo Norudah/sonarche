@@ -1,33 +1,17 @@
-//! Putting the app back to a known state.
+//! Resetting the app to a known state.
 //!
-//! Four operations, and the line that matters runs between them: some destroy
-//! things the app can rebuild by itself in a few minutes, and one destroys
-//! music that exists nowhere else.
+//! User-facing (settings danger zone):
+//! * [`erase_data`]: all user data (library root, beets index, staging,
+//!   history, log, preferences). The setup survives: engine, AcoustID key,
+//!   walkthrough flag.
+//! * [`erase_library`], [`erase_artist_images`], [`erase_playlists`]: one
+//!   store at a time, so resetting the music keeps hand-placed images.
+//! * [`reinstall_environment`]: the Python environment and tools, which the
+//!   app rebuilds. Touches no user data.
 //!
-//! Shipped to everyone, behind the settings screen's danger zone:
-//!
-//! * [`erase_data`] — the destructive one. The whole library root (audio
-//!   files, playlists' M3U8 mirror, artist and playlist images), the beets
-//!   index, staged downloads, the history and its dead predecessors, the
-//!   log, every preference. Everything the user put in — except the setup:
-//!   the engine, the AcoustID key and the walkthrough flag survive, because
-//!   an erase asks for a factory-fresh *library*, not a torn-down app.
-//! * [`erase_library`], [`erase_artist_images`], [`erase_playlists`] — the
-//!   same stores the full erase covers, one at a time, so resetting the music
-//!   does not cost the artist images someone placed by hand (there is no
-//!   automatic source to put them back). The history has its own sweep
-//!   already (`JobsState::clear_history`); the settings screen reuses it.
-//! * [`reinstall_environment`] — the harmless one. The Python environment and
-//!   the downloaded tools, which the app rebuilds on the next launch. Named
-//!   apart from the one above precisely so the two can never be confused at
-//!   the moment of clicking. It leaves the walkthrough flag standing: the
-//!   setup screen it sends you back to is a repair, not a first run.
-//!
-//! Dev builds only, for testing:
-//!
-//! * [`reset_setup`] — the same rebuildable half, but à la carte, so an
-//!   onboarding pass can replay without dropping a real AcoustID key.
-//! * [`reset_library`] — wipes the music with no confirmation at all.
+//! Dev builds only:
+//! * [`reset_setup`]: the rebuildable parts, à la carte.
+//! * [`reset_library`]: wipes the music without confirmation.
 
 use std::path::{Path, PathBuf};
 
@@ -40,22 +24,17 @@ use crate::python_env::{AppPaths, LibraryRoot};
 use crate::sidecar::SidecarState;
 use crate::{preferences, settings};
 
-/// One checkbox each, rather than a single "reset everything": replaying the
-/// AcoustID step means dropping the key, but re-testing the install does not —
-/// and having to paste a real key back after every run makes the reset useless.
+/// Separate flags so replaying one step (e.g. the install) doesn't drop the
+/// AcoustID key.
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ResetTargets {
-    /// The Python virtualenv and everything pip put in it.
     pub venv: bool,
-    /// The working copies of fpcalc and ffmpeg. Restored from the bundle on
-    /// next use.
+    /// Working copies of fpcalc and ffmpeg, restored from the bundle.
     pub tools: bool,
-    /// The stored AcoustID key.
     pub api_keys: bool,
-    /// Terminal jobs in the download history. In-flight jobs are left alone.
+    /// Finished jobs only.
     pub history: bool,
-    /// The "walkthrough seen" flag.
     pub onboarding: bool,
 }
 
@@ -68,30 +47,24 @@ fn ensure_dev(what: &str) -> AppResult<()> {
     )))
 }
 
-/// The directories a set of targets removes.
-///
-/// Split out from the IO so the guarantee in this module's docs is testable:
-/// no combination of targets may ever yield the library directory or the beets
-/// database. See the test at the bottom of this file.
+/// Pure, so the tests can prove no combination reaches the library or the
+/// beets database.
 fn dirs_to_remove(paths: &AppPaths, targets: &ResetTargets) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if targets.venv {
         dirs.push(paths.venv_dir.clone());
-        // The unpacked interpreter goes with it: leaving it behind would skip
-        // the extraction step on the replay, which is now part of the install.
+        // Otherwise the replay would skip extraction.
         dirs.push(paths.runtime_dir.clone());
     }
     if targets.tools {
         dirs.push(paths.tools_dir.clone());
-        // deno itself lives in the read-only resources, so its cache is the
-        // only part of it that app data holds — and the only part to clear.
+        // deno itself is a read-only resource; only its cache lives in app data.
         dirs.push(paths.deno_cache_dir.clone());
     }
     dirs
 }
 
-/// Wipe the rebuildable half of the install. Everything removed here is
-/// recreated by the walkthrough; nothing removed here is user data.
+/// Removes the rebuildable half of the install. No user data.
 pub async fn reset_setup(
     app: &AppHandle,
     jobs: &JobsState,
@@ -101,12 +74,8 @@ pub async fn reset_setup(
     ensure_dev("setup reset")?;
     let paths = AppPaths::resolve(app)?;
 
-    // Before the files go, not after: the sidecar is a long-lived process
-    // running the venv's interpreter. Deleting the venv underneath it leaves it
-    // very much alive — Unix keeps a running binary's inode — so the reinstall
-    // would finish and the *old* process would still be the one answering, out
-    // of a venv that no longer exists. A replay that leaves the previous engine
-    // in place is not a replay.
+    // Stop the sidecar first: a running process keeps its deleted interpreter
+    // alive on Unix, and would keep answering after the reinstall.
     if targets.venv {
         sidecar.shutdown().await;
         eprintln!("[dev] setup reset: sidecar stopped");
@@ -123,8 +92,7 @@ pub async fn reset_setup(
         eprintln!("[dev] setup reset: cleared the AcoustID key");
     }
     if targets.history {
-        // Through the store rather than by deleting the file: the worker holds
-        // an open connection to it for the whole run.
+        // Through queries: the worker keeps the DB open.
         jobs.clear_history().await;
         eprintln!("[dev] setup reset: cleared the job history");
     }
@@ -135,10 +103,7 @@ pub async fn reset_setup(
     Ok(())
 }
 
-/// Wipe the whole music library (audio files + beets DB) so bug-fix scenarios
-/// restart from a clean slate. The beets zone only: `Artwork/` and the marker
-/// are not what a "wipe the music" scenario is about, and the images are
-/// precious, not rebuildable.
+/// Wipes the beets zone (audio + DB). `Artwork/` and the marker stay.
 pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     ensure_dev("library reset")?;
     let paths = AppPaths::resolve(app)?;
@@ -148,20 +113,16 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     }
     tokio::fs::create_dir_all(&music_dir).await?;
     let _ = tokio::fs::remove_file(&paths.beets_db).await;
-    // With it, always: it lists the source folders beets has taken on, and a
-    // library that no longer holds them must not keep skipping them.
+    // Its folder list would make beets skip re-imports.
     let _ = tokio::fs::remove_file(&paths.beets_import_state).await;
-    // The playlist rows survive — they are not the beets zone — but every id
-    // in them just stopped resolving, so the mirror empties out with the
-    // library rather than pointing at files that are gone.
+    // Playlist rows survive but their ids no longer resolve.
     crate::playlists_mirror::sync_after_library_change(app).await;
     eprintln!("[dev] library reset: files and beets DB wiped");
     Ok(())
 }
 
-/// Refuse to delete under running work: a download writes into staging and the
-/// library, an import copies into the library file by file. The job check
-/// cannot see a library import — it is not a job — hence the second gate.
+/// Refuses while a download or library import is writing. Imports aren't
+/// jobs, hence the second check.
 async fn ensure_idle(app: &AppHandle, jobs: &JobsState) -> AppResult<()> {
     if jobs.list().await.iter().any(|job| {
         matches!(
@@ -186,41 +147,23 @@ async fn ensure_idle(app: &AppHandle, jobs: &JobsState) -> AppResult<()> {
     Ok(())
 }
 
-/// Everything a full data erase removes, as paths.
+/// Everything a full erase removes. Pure, for the tests.
 ///
-/// Split out from the IO for the same reason as [`dirs_to_remove`]: this is the
-/// list nobody may get wrong, and a test can read it without a filesystem. The
-/// venv, the runtime and the tools are deliberately absent — a user asking to
-/// forget their library has not asked to re-download a Python.
-///
-/// `data_dir` is the app-data folder, for the store's dead predecessors: the
-/// history shipped as `jobs.json`, then briefly as `jobs.db`, and both
-/// migrations leave their source behind on purpose (a migration that deletes
-/// its input cannot be retried). An erase is exactly where those copies of the
-/// user's history must stop surviving.
+/// The venv, runtime and tools are kept. `data_dir` covers the legacy
+/// history files (`jobs.json`, then `jobs.db`) that migrations leave behind.
 fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
     let mut targets = vec![
-        // The whole root: music, playlists, artwork and the marker go
-        // together — a new identity is minted when the folder is recreated,
-        // because an erased library is a different library.
+        // The whole root; a new identity is minted when it's recreated.
         paths.library_root.clone(),
         paths.beets_db.clone(),
-        // The incremental guard's memory. It travels with the database it is
-        // about — kept, it would make the next import of a once-seen folder do
-        // nothing at all, on an app with an empty library.
+        // Kept, it would make re-imports of seen folders do nothing.
         paths.beets_import_state.clone(),
-        // Staged downloads: audio that never finished its import is still the
-        // user's data, and an erase that left it would keep actual music.
+        // Unimported downloads are user audio too.
         paths.staging_dir.clone(),
-        // The repair pass's watermark: it counts beets item ids, and the fresh
-        // library restarts those from 1 — kept, it would exempt the next
-        // library's first files from the fragmentation scan.
+        // The remux watermark counts beets ids, which restart at 1.
         data_dir.join("remux-checked"),
     ];
-    // The relayout markers, every generation of them: a fresh library files
-    // itself right from the start, so re-running the pass is a no-op — but a
-    // stale marker claiming work done on a library that no longer exists is
-    // debt.
+    // Every generation of relayout markers.
     for marker in crate::remux::LAYOUT_MARKERS {
         targets.push(data_dir.join(marker));
     }
@@ -236,12 +179,8 @@ fn user_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
     targets
 }
 
-/// Wipe everything the user put in: the music, the index, the history, the
-/// preferences. Keeps the setup — the engine, the AcoustID key, the
-/// walkthrough flag — so the erased app is usable the moment it reopens.
-///
-/// Refuses while work is in flight rather than deleting a folder something is
-/// writing into — the same rule as a library move, for the same reason.
+/// Erases all user data but keeps the setup (engine, AcoustID key,
+/// walkthrough flag). Refused while work is running.
 pub async fn erase_data(
     app: &AppHandle,
     jobs: &JobsState,
@@ -252,9 +191,7 @@ pub async fn erase_data(
     let paths = AppPaths::resolve(app)?;
     let data_dir = app.path().app_data_dir()?;
 
-    // Both hold the files open, and on Windows an open file cannot be removed.
-    // The player call goes through `off_runtime` like every other one: `stop`
-    // waits on the audio thread's mutex.
+    // Both hold files open, which Windows can't delete.
     crate::player::off_runtime(app.clone(), |player| player.stop()).await?;
     sidecar.shutdown().await;
 
@@ -267,29 +204,20 @@ pub async fn erase_data(
             }
         }
     }
-    // Emptied, not left gone: the download worker assumes the staging folder
-    // exists, and the next download must not be the thing that finds out.
+    // The download worker expects it to exist.
     tokio::fs::create_dir_all(&paths.staging_dir).await?;
 
     jobs.clear_history().await;
-    // The files went with the directory above; the index rows go here.
     if let Err(err) = jobs.clear_artist_images().await {
         eprintln!("[reset] artist image index not cleared: {err}");
     }
-    // Playlists are lists of item ids that just ceased to exist: rows only.
     if let Err(err) = jobs.clear_playlists().await {
         eprintln!("[reset] playlists not cleared: {err}");
     }
 
-    // The AcoustID key is deliberately spared. It is not data *about* the
-    // library — it is the user's credential, tedious to obtain, and erasing it
-    // silently re-opened the walkthrough at the key step: an erase should
-    // yield a factory-fresh library in a still-set-up app.
-    //
-    // The preferences file goes wholesale, so the library location goes with
-    // it: an erased app opens at its default folder, not at the external disk
-    // whose contents it just deleted. The walkthrough flag is put back below —
-    // same reasoning as the key, the setup survives the erase.
+    // The AcoustID key is a credential, not library data: it's kept. The
+    // preferences file goes (resetting the library location to the default),
+    // and the setup flags are restored below.
     let (was_set_up, tour_seen) = preferences::load(app)
         .await
         .map(|prefs| (prefs.onboarding_completed, prefs.home_tour_seen))
@@ -300,47 +228,33 @@ pub async fn erase_data(
     if was_set_up {
         preferences::set_onboarding_completed(app, true).await?;
     }
-    // Same side of the line as the walkthrough flag: the guided tour is part
-    // of the setup, not of the library the user just asked to forget.
     if tour_seen {
         preferences::set_home_tour_seen(app, true).await?;
     }
 
-    // Recreate the (now default) library folder so the next launch has
-    // somewhere to import into — full layout, fresh marker.
+    // Recreate the default library folder with a fresh marker.
     let paths = AppPaths::resolve(app)?;
     let root = paths.library_root.clone();
     tauri::async_runtime::spawn_blocking(move || crate::library_layout::ensure_layout(&root))
         .await
         .map_err(|err| AppError::Setup(format!("layout task panicked: {err}")))??;
 
-    // The log went last: its lines name tracks and folders, and the erase's
-    // own receipt below becomes the fresh file's first line.
+    // Last: the log names tracks; the erase receipt starts the new file.
     crate::logs::clear(app);
     crate::logs::write("[reset] user data erased");
     Ok(())
 }
 
-/// What a library-only erase removes: the beets zone and the caches keyed on
-/// its item ids — never `Artwork/`, never the playlists, never the histories.
-///
-/// Split out from the IO for the same reason as [`user_data_to_remove`]: the
-/// whole point of this erase is what it spares, and a test can hold it to
-/// that without a filesystem.
+/// What a library-only erase removes: the beets zone and caches keyed on its
+/// ids. Never `Artwork/`, playlists or histories. Pure, for the tests.
 fn library_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
     vec![
         paths.music_dir(),
         paths.beets_db.clone(),
-        // The incremental guard's memory travels with the database it is
-        // about — kept, it would make the next import of a once-seen folder
-        // do nothing at all, on an app with an empty library.
         paths.beets_import_state.clone(),
-        // The repair pass's watermark counts beets item ids, which the fresh
-        // index restarts from 1.
         data_dir.join("remux-checked"),
     ]
     .into_iter()
-    // The relayout markers follow the library they describe.
     .chain(
         crate::remux::LAYOUT_MARKERS
             .iter()
@@ -349,10 +263,8 @@ fn library_data_to_remove(paths: &AppPaths, data_dir: &Path) -> Vec<PathBuf> {
     .collect()
 }
 
-/// Wipe the music and its index, and only that: `Artwork/` (artist and
-/// playlist images), the playlists' names, the histories and every preference
-/// stay. The user-facing sibling of the dev-only [`reset_library`], with the
-/// full erase's discipline around running work and open files.
+/// Erases the music and its index only; images, playlist names, histories and
+/// preferences stay. Same guards as the full erase.
 pub async fn erase_library(
     app: &AppHandle,
     jobs: &JobsState,
@@ -363,8 +275,7 @@ pub async fn erase_library(
     let paths = AppPaths::resolve(app)?;
     let data_dir = app.path().app_data_dir()?;
 
-    // Both hold the audio files (and the beets database) open, and on Windows
-    // an open file cannot be removed.
+    // Both hold files open, which Windows can't delete.
     crate::player::off_runtime(app.clone(), |player| player.stop()).await?;
     sidecar.shutdown().await;
 
@@ -379,9 +290,7 @@ pub async fn erase_library(
     }
     tokio::fs::create_dir_all(paths.music_dir()).await?;
 
-    // The lists survive a library erase; their contents cannot. A fresh index
-    // hands out item ids from 1 again, so a kept membership would soon point
-    // at whichever unrelated track inherits its id.
+    // New beets ids restart at 1, so memberships must go.
     if let Err(err) = jobs.clear_playlist_memberships().await {
         eprintln!("[reset] playlist memberships not cleared: {err}");
     }
@@ -391,10 +300,7 @@ pub async fn erase_library(
     Ok(())
 }
 
-/// Take every artist image away at once: the files under `Artwork/Artists/`
-/// and the index rows. The generated avatars come back on their own; the
-/// pictures do not — which is exactly why this is its own erase instead of a
-/// side effect of the library one.
+/// Removes every artist image (files and rows).
 pub async fn erase_artist_images(app: &AppHandle, jobs: &JobsState) -> AppResult<()> {
     let dir = AppPaths::resolve(app)?.artist_images_dir();
     if tokio::fs::try_exists(&dir).await.unwrap_or(false) {
@@ -407,9 +313,7 @@ pub async fn erase_artist_images(app: &AppHandle, jobs: &JobsState) -> AppResult
     Ok(())
 }
 
-/// Delete every playlist: rows (the built-in favorites list comes back
-/// empty), cover tiles, and the M3U8 mirror re-synced down to nothing. The
-/// music itself is not touched.
+/// Deletes every playlist (favorites comes back empty), covers and mirror.
 pub async fn erase_playlists(app: &AppHandle, jobs: &JobsState) -> AppResult<()> {
     let covers_dir = AppPaths::resolve(app)?.playlist_covers_dir();
     if tokio::fs::try_exists(&covers_dir).await.unwrap_or(false) {
@@ -423,15 +327,11 @@ pub async fn erase_playlists(app: &AppHandle, jobs: &JobsState) -> AppResult<()>
     Ok(())
 }
 
-/// Throw away the Python environment and the downloaded tools. Touches nothing
-/// the user owns; the next launch rebuilds it.
+/// Removes the Python environment and tools; the next launch rebuilds them.
 pub async fn reinstall_environment(app: &AppHandle, sidecar: &SidecarState) -> AppResult<()> {
     let paths = AppPaths::resolve(app)?;
 
-    // Before the files go: the sidecar is running the venv's own interpreter,
-    // and Unix keeps a running binary's inode alive. Delete underneath it and
-    // the reinstall finishes while the *old* process is still the one
-    // answering, out of a venv that no longer exists.
+    // Stop the sidecar first (see `reset_setup`).
     sidecar.shutdown().await;
 
     for dir in [
@@ -444,13 +344,8 @@ pub async fn reinstall_environment(app: &AppHandle, sidecar: &SidecarState) -> A
             tokio::fs::remove_dir_all(dir).await?;
         }
     }
-    // The walkthrough flag is deliberately left alone. The gate reopens on its
-    // own — a missing venv is an unfinished step, and that verdict comes from
-    // the steps, not from this flag. Clearing it here would also erase the one
-    // thing that tells the walkthrough who it is talking to, and someone
-    // rebuilding an engine they installed months ago would be greeted as a
-    // newcomer, "before their first play". Only the dev reset drops the flag,
-    // because replaying the first run is exactly what it is for.
+    // The walkthrough flag stays: the missing venv reopens the setup step as a
+    // repair, not a first run.
 
     crate::logs::write("[reset] environment removed, the walkthrough will rebuild it");
     Ok(())
@@ -486,8 +381,7 @@ mod tests {
         }
     }
 
-    /// The whole point of the setup reset: it is safe to run with a library you
-    /// care about. Enumerates every target combination, not a happy path.
+    /// Every target combination spares the library.
     #[test]
     fn no_target_combination_ever_removes_user_data() {
         let paths = paths();
@@ -507,10 +401,7 @@ mod tests {
         }
     }
 
-    /// The two user-facing resets have to stay on opposite sides of the one
-    /// line that matters. Asserted as sets rather than by reading the code:
-    /// the day someone adds the venv to the erase list to "make it thorough",
-    /// this is what says no.
+    /// The data erase and the environment reinstall never overlap.
     #[test]
     fn erasing_data_and_reinstalling_the_engine_touch_nothing_in_common() {
         let paths = paths();
@@ -530,10 +421,7 @@ mod tests {
         }
     }
 
-    /// The erase is the only operation allowed to reach the music, and it must
-    /// actually reach both halves of it — the files and the index. A reset that
-    /// dropped the database and left 60 GB of audio behind would look like it
-    /// worked and quietly keep the disk full.
+    /// The erase reaches both the files and the index.
     #[test]
     fn erasing_data_takes_the_files_and_the_index_together() {
         let paths = paths();
@@ -542,21 +430,16 @@ mod tests {
 
         assert!(removed.contains(&paths.library_root));
         assert!(removed.contains(&paths.beets_db));
-        // Images, playlists' M3U8 mirror: all under the root, gone with it.
         assert!(removed
             .iter()
             .any(|path| paths.artist_images_dir().starts_with(path)));
-        // Staged downloads are the user's audio too.
         assert!(removed.contains(&paths.staging_dir));
-        // The store's dead predecessors hold copies of the history.
         for legacy in ["jobs.json", "jobs.json.migrated", "jobs.db"] {
             assert!(removed.contains(&data_dir.join(legacy)), "{legacy}");
         }
     }
 
-    /// The live store keeps an open connection for the whole run; it is
-    /// emptied through queries, never file-deleted. The day someone adds it
-    /// to the removal list "to be thorough", this is what says no.
+    /// The live store is emptied through queries, never deleted as a file.
     #[test]
     fn the_erase_never_file_deletes_the_live_store() {
         let data_dir = PathBuf::from("/data");
@@ -567,10 +450,7 @@ mod tests {
         }
     }
 
-    /// The library erase exists so someone can reset their music without
-    /// losing what has no automatic source: hand-placed artist images, the
-    /// playlists' names, the histories. It must reach both halves of the
-    /// beets zone and nothing above it.
+    /// The library erase covers the beets zone and nothing above it.
     #[test]
     fn the_library_erase_spares_everything_that_is_not_the_beets_zone() {
         let paths = paths();
@@ -583,11 +463,9 @@ mod tests {
         assert!(removed.contains(&data_dir.join("remux-checked")));
 
         for path in &removed {
-            // Never the root wholesale: `Artwork/` and the marker live there.
             assert_ne!(path, &paths.library_root, "{path:?}");
             assert!(!paths.artist_images_dir().starts_with(path), "{path:?}");
             assert!(!paths.playlist_covers_dir().starts_with(path), "{path:?}");
-            // The live store is emptied through queries, never file-deleted.
             assert!(!path.starts_with(data_dir.join("sonarche.db")), "{path:?}");
             assert_ne!(path, &paths.staging_dir, "{path:?}");
         }

@@ -6,10 +6,7 @@ import { SERVICE_NAMES, type ServiceState, type ServiceStatus } from "@/features
 import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useCheckServices } from "@/features/settings/hooks";
 
-/* Three states, three registers. `unreachable` is amber and not red on
- * purpose: from here it is indistinguishable from the user's own connection
- * being down, and accusing a service of being broken when the wifi is off is
- * the one wrong answer this panel can give. */
+/* `unreachable` is amber: it can't be told apart from the user being offline. */
 const DOT: Record<ServiceState, string> = {
   up: "bg-success",
   down: "bg-danger",
@@ -37,19 +34,8 @@ function ServiceRow({ name, status }: { name: string; status: ServiceStatus | un
   );
 }
 
-/**
- * Are the six outside services answering?
- *
- * This card exists because of a real evening spent proving that missing lyrics
- * were LRCLIB's fault and not Sonarche's — with a terminal, a TLS trace and no
- * help from the app. Every one of these services can go quiet, and every time
- * one does the symptom surfaces somewhere else entirely: an import with no
- * cover, a genre pass that finds nothing, plain-text lyrics where synchronised
- * ones were expected.
- *
- * Nothing runs on mount. Six outbound requests are not something a screen
- * should fire because it happened to be opened — the button is the consent.
- */
+/** Health of the external services, whose failures surface elsewhere (no
+ * cover, no genre, plain lyrics). Runs only on button press. */
 export function ServiceHealthCard() {
   const { t } = useTranslation("settings");
   const check = useCheckServices();

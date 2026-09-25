@@ -1,24 +1,18 @@
-"""Propose rich metadata candidates for a single track via the beets API (read-only).
+"""beets/MusicBrainz helpers shared by the enrichment passes (read-only).
 
-The library importer only ever gets a lone file, so album-level autotag is hopeless
-(a 1-track "album" is penalised against full releases). Instead we identify the
-*recording* (singleton search), then resolve each recording to a concrete *release*
-so we can surface album, year, track number and cover art. The user picks; nothing is
-written here."""
+A recording is resolved to its canonical release to get album, year, track
+number and cover art."""
 
 import protocol
 
-# beets plugins must be loaded once before autotag can reach any metadata source.
 _loaded = False
 
-# How many recording matches to resolve; each costs MusicBrainz calls (rate-limited).
+# Each costs rate-limited MusicBrainz calls.
 _MAX_CANDIDATES = 4
 
-# Release-group primary types, best first, for picking a recording's canonical release.
+# Best first.
 _PRIMARY_RANK = {"Album": 0, "EP": 1, "Single": 2, "Broadcast": 3, "Other": 4}
-# Secondary types mark non-canonical releases (best-of, live, remix collections).
-# Any of these pushes a release below clean studio releases, so a recording that
-# also lives on a compilation ("Made in Germany 1995–2011") resolves to its album.
+# Secondary types that push a release below clean studio releases.
 _UNWANTED_SECONDARY = frozenset({
     "Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo",
     "Soundtrack", "Interview", "Audiobook", "Audio drama", "Spokenword",
@@ -27,11 +21,7 @@ _UNWANTED_SECONDARY = frozenset({
 
 
 def ensure_plugins():
-    """Load the plugins declared in the beets config.
-
-    The Rust host sets BEETSDIR, so the in-process config is the very
-    config.yaml `write_beets_config()` regenerates on every launch — one
-    config site, nothing redefined programmatically here."""
+    """Load the plugins declared in the beets config (BEETSDIR is set by the host)."""
     global _loaded
     if _loaded:
         return
@@ -60,9 +50,8 @@ def lastgenre_plugin():
 
 
 def release_rank(release: dict) -> tuple:
-    """Sort key: lower is better. Studio album beats single beats compilation/
-    live/remix; earliest date breaks ties (original over reissue). Also used to
-    compare picks across the several recordings one fingerprint resolves to."""
+    """Sort key, lower is better: studio album > single > compilation/live;
+    earliest date breaks ties."""
     rg = release.get("release_group") or {}
     secondary = rg.get("secondary_types") or []
     unwanted = any(s in _UNWANTED_SECONDARY for s in secondary)
@@ -70,10 +59,8 @@ def release_rank(release: dict) -> tuple:
 
 
 def pick_release(releases: list) -> dict | None:
-    """Pick a recording's canonical release: an official studio album, not a
-    best-of/live/remix, earliest date winning (original over reissue). Requires
-    the recording lookup to include `release-groups`, else every type ranks equal
-    and it degrades to earliest-date."""
+    """A recording's canonical release (see `release_rank`). The lookup must
+    include `release-groups`, or ranking degrades to earliest date."""
     if not releases:
         return None
     official = [r for r in releases if r.get("status") == "Official"] or releases

@@ -1,11 +1,9 @@
-//! The shape of the library folder, and the marker that names it ours.
+//! Library folder layout and the marker that claims it.
 //!
-//! The root the user picks holds zones, not artist folders: `Music/` is the
-//! beets `directory:`, `Artwork/` holds artist and playlist images, and the
-//! hidden `.sonarche/` carries `library.json` — the file that says "this
-//! folder is a Sonarche library" and which layout it uses. Everything here is
-//! synchronous `std::fs` on purpose: it runs from Tauri's setup hook, before
-//! the async runtime has anything to do.
+//! The chosen root holds zones: `Music/` (beets' `directory:`), `Artwork/`
+//! (artist and playlist images), `Playlists/` (M3U8 mirror) and the hidden
+//! `.sonarche/` with `library.json`. Synchronous `std::fs`: it runs from the
+//! setup hook.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,42 +12,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppResult;
 
-/// The folder the library always lives in, inside whatever parent is chosen.
-///
-/// The picker asks for a parent and we append this, rather than taking the
-/// picked folder as the library itself. Two reasons, both about the folder the
-/// user did not mean to give us: a stray click on Home would spray an album
-/// tree over their home directory, and "remove the library" further down the
-/// settings screen would then have a folder full of unrelated things to
-/// remove. A named folder is one we can be sure we own.
+/// Always appended to the picked parent, so a stray pick (e.g. Home) never
+/// turns an unrelated folder into the library.
 pub const FOLDER_NAME: &str = "Sonarche";
 
-/// The beets zone: `directory:` points here, and only here.
 pub const MUSIC_DIR: &str = "Music";
-/// Artist and playlist images, under human-readable names.
 pub const ARTWORK_DIR: &str = "Artwork";
-/// The M3U8 mirror — written by us, readable by anything else.
 pub const PLAYLISTS_DIR: &str = "Playlists";
 pub const ARTWORK_ARTISTS: &str = "Artists";
 pub const ARTWORK_PLAYLISTS: &str = "Playlists";
-/// Our hidden corner: marker, and whatever future state wants a home.
 pub const MARKER_DIR: &str = ".sonarche";
 pub const MARKER_FILE: &str = "library.json";
 
-/// Names the root reserves for itself. Compared without case: APFS and NTFS
-/// would happily collide "music" with `Music/`.
+/// Compared case-insensitively (APFS and NTFS are case-insensitive).
 pub const RESERVED: [&str; 4] = [MUSIC_DIR, ARTWORK_DIR, MARKER_DIR, PLAYLISTS_DIR];
 
 pub fn is_reserved(name: &str) -> bool {
     RESERVED.iter().any(|r| r.eq_ignore_ascii_case(name))
 }
 
-/// What `library.json` holds.
-///
-/// `identity` names this library across moves and reinstalls; it is minted
-/// once and only replaced when the data itself is erased. `layout_version` is
-/// forensic, not a gate — detection stays by shape (see the schema-migration
-/// note in `jobs_store.rs` for why version gating is a trap).
+/// Contents of `library.json`. `identity` survives moves and is replaced only
+/// by an erase. `layout_version` is informational; detection is by shape.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryMarker {
@@ -72,28 +55,19 @@ pub fn marker_path(root: &Path) -> PathBuf {
     root.join(MARKER_DIR).join(MARKER_FILE)
 }
 
-/// The marker, or `None` for anything short of a readable one — a missing
-/// file and a corrupt file get the same answer, because the remedy is the
-/// same: treat the layout as unproven and let the idempotent migration prove
-/// it again.
+/// The marker, or `None` if missing or unreadable (both mean "unproven").
 pub fn read_marker(root: &Path) -> Option<LibraryMarker> {
     let raw = fs::read_to_string(marker_path(root)).ok()?;
     serde_json::from_str(&raw).ok()
 }
 
-/// The zones without the marker. This is what every-launch repair
-/// ([`crate::python_env::adopt_library_dir`]) may call: directories are cheap
-/// and safe to re-assert, while the marker is a *claim* — "this layout has
-/// been proven" — that only the migration and the erase path may make. An
-/// adopt that wrote the marker would stamp a half-migrated library as done
-/// and the next launch would never finish the job.
+/// Creates the zones without the marker. Safe on every launch; the marker is
+/// only written once a migration has completed.
 pub fn ensure_zones(root: &Path) -> AppResult<()> {
     fs::create_dir_all(root.join(MUSIC_DIR))?;
     fs::create_dir_all(root.join(ARTWORK_DIR).join(ARTWORK_ARTISTS))?;
     fs::create_dir_all(root.join(ARTWORK_DIR).join(ARTWORK_PLAYLISTS))?;
-    // Present from day one, even empty: opening the folder in a file manager
-    // should show the whole shape of the library, not a shape that grows as
-    // features get used. The mirror only ever sweeps files, never the folder.
+    // Created up front so the folder shows the full layout.
     fs::create_dir_all(root.join(PLAYLISTS_DIR))?;
     let marker_dir = root.join(MARKER_DIR);
     fs::create_dir_all(&marker_dir)?;
@@ -101,8 +75,7 @@ pub fn ensure_zones(root: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Make the layout true and claimed: zones plus marker. Idempotent — an
-/// existing marker (and its identity) is left alone.
+/// Zones plus marker. Idempotent; an existing marker is kept.
 pub fn ensure_layout(root: &Path) -> AppResult<()> {
     ensure_zones(root)?;
     if read_marker(root).is_none() {
@@ -112,27 +85,17 @@ pub fn ensure_layout(root: &Path) -> AppResult<()> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// Launch migration: the old flat layout (artist folders at the root) becomes
-// the zoned one. Silent, synchronous, and idempotent — it runs from the setup
-// hook before the jobs worker or the first render can look at the library, so
-// there is nothing to pause and nobody to ask. Beets needs no database rewrite:
-// paths are stored relative to `directory:`, and moving every artist folder
-// into `Music/` while repointing `directory:` leaves each relative path
-// exactly as it was (see the note atop `library_move.rs`).
-// ---------------------------------------------------------------------------
+// Launch migration: artist folders at the root move into `Music/`. Runs from
+// the setup hook, idempotent. No beets DB rewrite: paths are stored relative
+// to `directory:` (see `library_move.rs`).
 
-/// Where a reserved-named entry waits while `Music/` is created. An artist
-/// really can be called "Music" — parking first, moving last, resolves the
-/// collision without a database in sight.
+/// Temporary name for a root entry that collides with a zone (an artist
+/// called "Music").
 const PARK_PREFIX: &str = ".sonarche-park-";
-/// Present while a migration is under way; its existence is what removes the
-/// ambiguity after a crash — with it on disk, a `Music/` at the root is OURS
-/// (we created it), never an artist that happens to share the name.
+/// Exists while a migration runs, so after a crash a root `Music/` is known
+/// to be ours.
 const IN_PROGRESS_FILE: &str = "migration.json";
 
-/// One root entry, as the planner sees it. A plain value so the planner can be
-/// pure and tested without a filesystem.
 #[derive(Debug, Clone)]
 pub struct RootEntry {
     pub name: String,
@@ -140,37 +103,33 @@ pub struct RootEntry {
     pub is_empty_dir: bool,
 }
 
-/// What the executor does, in order. Every step is "do it if not already
-/// done", which makes resuming after a crash the same code as running fresh.
+/// Executor steps, each skipped if already done, so resuming after a crash
+/// runs the same code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlanStep {
-    /// A reserved-named entry steps aside: `Music` → `.sonarche-park-Music`.
-    Park { name: String },
-    /// `mkdir Music`, once the name is free.
+    /// `Music` → `.sonarche-park-Music`.
+    Park {
+        name: String,
+    },
     EnsureMusic,
-    /// An ordinary entry (artist folder, stray `.DS_Store`) files into `Music/`.
-    MoveIntoMusic { name: String },
-    /// A parked entry lands at its final home: `Music/Music`, `Music/Artwork`.
-    UnparkIntoMusic { park: String, dest: String },
+    MoveIntoMusic {
+        name: String,
+    },
+    /// `Music/Music`, `Music/Artwork`.
+    UnparkIntoMusic {
+        park: String,
+        dest: String,
+    },
 }
 
-/// Decide what has to move. Pure — the filesystem work is [`execute`]'s.
+/// Plans the migration (pure; see [`execute`]).
 ///
-/// `resuming` is the crash-recovery switch: with `migration.json` on disk, a
-/// `Music/` at the root is the zone this code created and must not be parked
-/// again. Without it, a fresh look at an old layout begins.
-///
-/// One deliberate blind spot: a root whose entries are *all* reserved names is
-/// read as an already-migrated library that lost its marker (a hand-deleted
-/// `.sonarche/`), and adopted as-is. The one collection it misreads — an
-/// old-layout library whose only artist is literally named "Music" — is
-/// vanishingly rarer than a deleted dotfolder.
+/// `resuming` means `migration.json` exists, so a root `Music/` is our zone.
+/// A root made only of reserved names is treated as a migrated library whose
+/// marker was deleted, not as an artist called "Music".
 pub fn plan_root_migration(entries: &[RootEntry], resuming: bool) -> Vec<PlanStep> {
-    // The marker-lost heuristic, first: a root made only of our own names
-    // (plus dotfile junk — macOS puts a `.DS_Store` everywhere) is an
-    // already-migrated library whose `.sonarche/` was hand-deleted. Adopt it
-    // as-is — parking its `Music/` would nest the zone into itself. A parked
-    // entry disables the shortcut: it exists to be unparked.
+    // Only reserved names (plus dotfiles like `.DS_Store`): adopt as-is rather
+    // than nesting `Music/` into itself.
     if !resuming
         && !entries.iter().any(|e| e.name.starts_with(PARK_PREFIX))
         && entries
@@ -200,8 +159,7 @@ pub fn plan_root_migration(entries: &[RootEntry], resuming: bool) -> Vec<PlanSte
             let ours = entry.is_dir
                 && (entry.is_empty_dir || (resuming && name.eq_ignore_ascii_case(MUSIC_DIR)));
             if ours {
-                // An empty reserved dir carries nothing an artist would own;
-                // under `resuming`, a filled `Music/` is the destination zone.
+                // Empty reserved dirs hold nothing; when resuming, `Music/` is the target.
                 continue;
             }
             parks.push(PlanStep::Park {
@@ -218,8 +176,7 @@ pub fn plan_root_migration(entries: &[RootEntry], resuming: bool) -> Vec<PlanSte
         });
     }
 
-    // The marker-lost heuristic: nothing to move and nothing parked mid-flight
-    // means the shape is already the new one — adopt, don't nest.
+    // Nothing to move: already the new layout.
     if parks.is_empty() && moves.is_empty() && unparks.is_empty() {
         return Vec::new();
     }
@@ -237,19 +194,16 @@ struct ExecOutcome {
     failed: usize,
 }
 
-/// Carry the plan out, best-effort per entry: one artist folder that will not
-/// budge (a sync client holding it open, say) is logged and left for the next
-/// launch, instead of failing the whole migration — a three-quarters-migrated
-/// library that opens beats an app that refuses to start.
+/// Best-effort per entry: a folder that won't move is logged and retried at
+/// next launch rather than failing the whole migration.
 enum StepResult {
     Done,
     Skipped,
     Failed,
 }
 
-/// One idempotent rename: a missing source was handled on a previous launch,
-/// an occupied destination is a real conflict this code will not resolve by
-/// overwriting.
+/// Idempotent rename: a missing source was already moved; an occupied
+/// destination is a conflict, never overwritten.
 fn step_rename(from: PathBuf, to: PathBuf) -> StepResult {
     if !from.exists() {
         return StepResult::Skipped;
@@ -319,17 +273,16 @@ fn scan_root(root: &Path) -> std::io::Result<Vec<RootEntry>> {
     Ok(entries)
 }
 
-/// The root migration proper: marker fast path, plan, execute, and only on a
-/// clean run the marker — the commit point — is written.
+/// Marker fast path, plan, execute; the marker is written only after a clean
+/// run.
 fn migrate_root(root: &Path) -> AppResult<()> {
     if read_marker(root).is_some() {
-        // Steady state. A stale in-progress file (crash after the marker was
-        // written, before the cleanup) is swept here.
+        // Sweep an in-progress file left by a crash after the marker was written.
         let _ = fs::remove_file(in_progress_path(root));
         return Ok(());
     }
     if !root.exists() || fs::read_dir(root)?.next().is_none() {
-        // Fresh install (or a freshly erased library): nothing to move.
+        // Fresh install or erased library.
         return ensure_layout(root);
     }
 
@@ -338,8 +291,7 @@ fn migrate_root(root: &Path) -> AppResult<()> {
     let plan = plan_root_migration(&entries, resuming);
 
     if !plan.is_empty() && !resuming {
-        // Declare the migration before the first rename, so a crash halfway
-        // leaves a flag instead of an ambiguity.
+        // Flag the migration before the first rename.
         let marker_dir = root.join(MARKER_DIR);
         fs::create_dir_all(&marker_dir)?;
         hide_dir(&marker_dir);
@@ -365,7 +317,6 @@ fn migrate_root(root: &Path) -> AppResult<()> {
         );
     }
     if outcome.failed > 0 {
-        // No marker: the next launch sees the in-progress file and finishes.
         eprintln!(
             "[library] migration incomplete ({} left), will retry next launch",
             outcome.failed
@@ -377,8 +328,8 @@ fn migrate_root(root: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Everything the launch owes the library before anyone else may touch it.
-/// Never fails the launch: an error is logged and retried next time.
+/// Everything the launch owes the library before anything else touches it.
+/// Errors are logged and retried next launch.
 pub fn run_launch_migration(app: &tauri::AppHandle, jobs: &crate::jobs::JobsState) {
     use tauri::Manager;
 
@@ -400,17 +351,13 @@ pub fn run_launch_migration(app: &tauri::AppHandle, jobs: &crate::jobs::JobsStat
         }
         Err(err) => eprintln!("[library] artwork migration skipped: {err}"),
     }
-    // Belt and braces: the beets configs and the asset scope must describe the
-    // new layout before the worker resumes a queued job — not merely by the
-    // first env check.
+    // The beets configs and asset scope must match before the worker resumes.
     if let Err(err) = tauri::async_runtime::block_on(crate::python_env::adopt_library_dir(app)) {
         eprintln!("[library] could not adopt the migrated layout: {err}");
     }
 }
 
-/// Rename, surviving a volume boundary: app data and the library root are not
-/// promised to share a filesystem, and these are 500px images — a copy is
-/// nothing.
+/// Rename with a copy fallback across volumes.
 fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
     if fs::rename(from, to).is_ok() {
         return Ok(());
@@ -419,15 +366,12 @@ fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::remove_file(from)
 }
 
-/// One image collection's move from a technical-name legacy dir to a
-/// readable-name zone. Row by row, deterministically (the caller passes rows
-/// sorted by name): compute the readable destination, move the file, then
-/// repoint the row — in that order, so a crash leaves a file the next launch
-/// adopts rather than a row pointing at nothing. Returns the filenames now
-/// referenced, so the caller's sweep knows what it may not delete.
+/// Moves one image collection from a legacy dir (technical names) to its zone
+/// (readable names), row by row: move the file, then repoint the row, so a
+/// crash leaves a file to adopt rather than a dangling row. Returns the
+/// filenames still referenced.
 ///
-/// `entries` is (key, display-name, current filename); `repoint`/`forget`
-/// write the store side.
+/// `entries` is (key, display name, current filename), sorted by name.
 fn migrate_image_rows<K: Copy>(
     what: &str,
     entries: &[(K, String, String)],
@@ -440,8 +384,7 @@ fn migrate_image_rows<K: Copy>(
     use crate::artwork;
 
     fs::create_dir_all(dest_dir)?;
-    // Stems already settled — rows whose file is in place keep their name and
-    // block it for everyone else.
+    // Rows already in place keep their names.
     let mut taken: Vec<String> = entries
         .iter()
         .filter(|(_, _, filename)| dest_dir.join(filename).exists())
@@ -463,18 +406,17 @@ fn migrate_image_rows<K: Copy>(
 
         if legacy.exists() {
             if let Err(err) = move_file(&legacy, &dest) {
-                // Keep the row (and its legacy file) for the next launch.
+                // Keep the row for the next launch.
                 eprintln!("[{what}] could not migrate {filename}: {err}");
                 continue;
             }
             repoint(*key, &readable)?;
             taken.push(stem);
         } else if dest.exists() {
-            // A previous run crashed between the move and the row update.
+            // Crashed between the move and the row update.
             repoint(*key, &readable)?;
             taken.push(stem);
         } else {
-            // The file exists nowhere: a dead index row, swept like any orphan.
             eprintln!("[{what}] {name:?} points at a missing file, forgetting it");
             forget(*key)?;
         }
@@ -482,9 +424,8 @@ fn migrate_image_rows<K: Copy>(
     Ok(())
 }
 
-/// Sweep a legacy image dir: everything unreferenced goes, then the dir
-/// itself — `remove_dir`, not `remove_dir_all`, so a file a failed move still
-/// references keeps the dir (and the retry) alive.
+/// Deletes unreferenced files, then the dir if empty (`remove_dir` keeps it
+/// while a failed move still references a file).
 fn sweep_legacy_dir(dir: &Path, still_referenced: &[String]) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -498,10 +439,8 @@ fn sweep_legacy_dir(dir: &Path, still_referenced: &[String]) {
     let _ = fs::remove_dir(dir);
 }
 
-/// The images' side of the launch migration: app data's `artists/` and
-/// `playlists/` (UUID names) become the library's `Artwork/Artists/` and
-/// `Artwork/Playlists/` (readable names). Independent of the root marker —
-/// the fast path is simply "no legacy dir left".
+/// Moves app data's `artists/` and `playlists/` into `Artwork/Artists/` and
+/// `Artwork/Playlists/` with readable names.
 fn migrate_artwork(
     paths: &crate::python_env::AppPaths,
     app_data: &Path,
@@ -511,8 +450,7 @@ fn migrate_artwork(
     let legacy_playlists = app_data.join("playlists");
 
     if legacy_artists.exists() {
-        // Name-keyed: rows arrive sorted by name, which makes the collision
-        // numbering deterministic across retries.
+        // Sorted by name, so collision numbering is deterministic across retries.
         let rows = jobs.with_conn_blocking(crate::jobs_store::list_artist_images)?;
         let entries: Vec<(usize, String, String)> = rows
             .iter()
@@ -584,9 +522,7 @@ fn migrate_artwork(
     Ok(())
 }
 
-/// A leading dot means nothing to Windows Explorer; the hidden attribute has
-/// to be set by hand. Best-effort — a visible `.sonarche` is a cosmetic bug,
-/// not a broken library.
+/// Windows ignores the leading dot; set the hidden attribute. Best-effort.
 #[cfg(windows)]
 fn hide_dir(path: &Path) {
     use std::os::windows::ffi::OsStrExt;
@@ -598,7 +534,7 @@ fn hide_dir(path: &Path) {
         .chain(std::iter::once(0))
         .collect();
     // SAFETY: `wide` is a valid, NUL-terminated UTF-16 path that outlives the
-    // call; the function reads it and touches nothing else of ours.
+    // call, which only reads it.
     unsafe {
         SetFileAttributesW(wide.as_ptr(), FILE_ATTRIBUTE_HIDDEN);
     }
@@ -657,12 +593,11 @@ mod tests {
         fs::create_dir_all(root.path().join(MARKER_DIR)).unwrap();
         fs::write(marker_path(root.path()), "not json").unwrap();
         assert!(read_marker(root.path()).is_none());
-        // And ensure_layout replaces it rather than choking on it.
         ensure_layout(root.path()).unwrap();
         assert!(read_marker(root.path()).is_some());
     }
 
-    // -- planner ------------------------------------------------------------
+    // Planner
 
     fn dir(name: &str) -> RootEntry {
         RootEntry {
@@ -733,7 +668,7 @@ mod tests {
 
     #[test]
     fn an_all_reserved_root_is_read_as_already_migrated() {
-        // The marker was hand-deleted: adopt, never nest Music into itself.
+        // Marker deleted by hand: adopt, never nest.
         let entries = [dir("Music"), dir("Artwork"), dir(MARKER_DIR)];
         assert!(plan_root_migration(&entries, false).is_empty());
     }
@@ -764,7 +699,7 @@ mod tests {
         );
     }
 
-    // -- executor + orchestrator, on a real (temp) filesystem ---------------
+    // Executor and orchestrator, on a temp filesystem
 
     fn touch(path: &Path) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -830,8 +765,7 @@ mod tests {
     #[test]
     fn an_interrupted_migration_resumes_where_it_stopped() {
         let root = temp_root();
-        // Frozen mid-flight: the flag exists, "Music" the artist is parked,
-        // Music/ the zone was created and one artist is already inside.
+        // Frozen mid-flight: flag present, "Music" parked, one artist moved.
         touch(&root.path().join(format!("{PARK_PREFIX}Music/Album/t.m4a")));
         touch(&root.path().join("Music/Done Artist/Album/t.m4a"));
         touch(&root.path().join("Left Behind/Album/t.m4a"));
@@ -853,7 +787,6 @@ mod tests {
         migrate_root(root.path()).unwrap();
         assert!(read_marker(root.path()).is_some());
         assert!(root.path().join(MUSIC_DIR).is_dir());
-        // Nothing was invented: Music/ is empty.
         assert!(fs::read_dir(root.path().join(MUSIC_DIR))
             .unwrap()
             .next()
@@ -863,8 +796,7 @@ mod tests {
     #[test]
     fn a_blocked_entry_leaves_the_marker_unwritten() {
         let root = temp_root();
-        // Resuming, and the same artist somehow exists on both sides — the one
-        // collision a rename cannot resolve on its own.
+        // The same artist exists on both sides: a conflict rename can't resolve.
         touch(&root.path().join("Skillet/Awake/Monster.m4a"));
         touch(&root.path().join("Music/Skillet/other.m4a"));
         fs::create_dir_all(root.path().join(MARKER_DIR)).unwrap();
@@ -877,15 +809,14 @@ mod tests {
             in_progress_path(root.path()).exists(),
             "flag stays for the retry"
         );
-        // And nothing was destroyed on either side.
+        // Nothing destroyed on either side.
         assert!(root.path().join("Skillet/Awake/Monster.m4a").is_file());
         assert!(root.path().join("Music/Skillet/other.m4a").is_file());
     }
 
-    // -- artwork migration --------------------------------------------------
+    // Artwork migration
 
-    /// The row store as two closures over a plain map — the real ones are thin
-    /// SQL; what needs proving is the file/row choreography.
+    /// The row store as closures over a map; what matters is the file/row order.
     fn run_artwork(
         entries: &[(usize, String, String)],
         legacy: &Path,
@@ -944,7 +875,6 @@ mod tests {
         touch(&legacy.join("a.jpg"));
         touch(&legacy.join("b.jpg"));
 
-        // Sorted by name, as the caller promises: "AC/DC" then "AC:DC".
         let entries = [entry(0, "AC/DC", "a.jpg"), entry(1, "AC:DC", "b.jpg")];
         let outcome = run_artwork(&entries, &legacy, &dest);
 
@@ -973,7 +903,7 @@ mod tests {
         let legacy = root.path().join("legacy");
         let dest = root.path().join("dest");
         fs::create_dir_all(&legacy).unwrap();
-        // File already moved and renamed, row still on the technical name.
+        // File already moved, row still on the technical name.
         touch(&dest.join("Skillet.jpg"));
 
         let entries = [entry(0, "Skillet", "ab12.jpg")];

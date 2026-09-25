@@ -7,27 +7,12 @@ import { SETUP_RESET_TARGET_NAMES, type SetupResetTargetName } from "@/features/
 import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useResetSetupDev } from "@/features/settings/hooks";
 
-/**
- * Replay the first-run walkthrough without losing anything.
- *
- * A checklist rather than one button: re-testing the install does not mean
- * dropping the AcoustID key, and having to paste a real key back after every
- * run would make the reset too expensive to use. Neutral on purpose — the
- * destructive reset lives in its own card, in its own register.
- *
- * The boxes are drawn now. HeroUI's checkbox is compound like its switch, and
- * this was the app's only call site: a bare `<Checkbox>{label}</Checkbox>`
- * renders the label, the state and the click target, and no box at all — five
- * lines of text you had to guess were selectable, in the one pane whose whole
- * job is being obvious to whoever is testing the app.
- */
+/** Replays the walkthrough; a checklist so the AcoustID key can be kept. */
 export function SetupResetCard() {
   const { t } = useTranslation("settings");
   const reset = useResetSetupDev();
-  // The card says "replay the setup", so the default selection has to be one:
-  // the flag alone only replays the *screen*, with both engine steps already
-  // green — which looks like the button did nothing. The key stays unchecked,
-  // being the only item here that costs something real to put back.
+  // Engine steps are reset by default, or the replay shows them already green.
+  // The key is kept: it's the costly one to restore.
   const [selected, setSelected] = useState<Set<SetupResetTargetName>>(new Set(["venv", "tools", "onboarding"]));
 
   const toggle = (name: SetupResetTargetName, on: boolean) =>

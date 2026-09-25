@@ -1,20 +1,10 @@
 /**
- * Route paths and the helpers that build them, kept in a dependency-free leaf
- * module — deliberately apart from `routes.tsx`.
- *
- * `routes.tsx` pulls in every page and layout, which pull the sidebar back in,
- * which needs these paths: a cycle. Anything that reads a path at module-eval
- * time (a nav table built at import, not inside a component) would hit `paths`
- * while `routes.tsx` is still initialising and throw "Cannot access 'paths'
- * before initialization". Living here, the paths finish evaluating before any
- * of that graph runs. `routes.tsx` re-exports these, so `@/app/routes` stays a
- * valid import site for everything that already used it.
+ * Route paths and builders, in a dependency-free module: `routes.tsx` imports
+ * every page, which import these paths back, and module-eval reads would hit
+ * the cycle. `routes.tsx` re-exports them.
  */
 
-/**
- * Route ids stay technical (download / library); the visual identity
- * ("Explorer" / "Arche") is only i18n labels. Download is the default landing.
- */
+/** Technical route ids; "Explorer" / "Arche" are only i18n labels. */
 export const paths = {
   download: "/",
   import: "/import",
@@ -34,33 +24,15 @@ export const paths = {
   libraryPlaylist: "/library/playlists/:id",
 } as const;
 
-/**
- * Metadata-triage deep links — the contract between the Metadata page's
- * correction queue and the explorer views. Each
- * line of the queue navigates to one of these; the explorers parse the same
- * params back out (see the `triage` module beside each view, whose tests
- * round-trip against these strings so the two sides cannot drift).
- *
- * `?genre=` is the param the family page already carries a plain genre name
- * in, kept with the same meaning here; `missing` and `off-tree` are sentinel
- * values no real genre uses.
- */
-/**
- * The lens's entrance — `?vue=inspection`, which hands the arriving page over in
- * inspection mode. It is not where the mode is stored (see `inspectMode`): it is
- * consumed on arrival, so a door from the Metadata page opens on the table that
- * shows what the door was about.
- *
- * Declared here with the rest of the URL contract, and here rather than in the
- * feature so this module stays the dependency-free leaf it is.
- */
+/** `?vue=inspection` opens the arriving page in inspection mode; consumed on
+ * arrival (the mode itself lives in `inspectMode`). */
 export const INSPECT_PARAM = "vue";
 export const INSPECT_VALUE = "inspection";
 
-/** Appended to the track doors only: the albums shelf shows cards, and the lens
- * has nothing to change there yet. */
+// Track views only: the albums shelf has no inspection mode.
 const LENS = `${INSPECT_PARAM}=${INSPECT_VALUE}`;
 
+/** Metadata-triage deep links, parsed back by each view's `triage` module (tests round-trip them). */
 export const triagePaths = {
   missingYear: `${paths.libraryTracks}?missing=year&${LENS}`,
   missingTrackNumber: `${paths.libraryTracks}?missing=track&${LENS}`,
@@ -73,60 +45,32 @@ export const triagePaths = {
   artistImageMissing: `${paths.libraryArtists}?missing=image`,
 } as const;
 
-/**
- * Artist and title as two segments rather than one joined key: React Router
- * decodes path params, so anything we join here we would have to split back out
- * of an already-decoded string — which is impossible to do safely once a name
- * contains the separator. Two segments let the router do the encoding round-trip
- * for each half on its own.
- */
+/** Two segments, not a joined key: router params arrive decoded, so a joined
+ * name couldn't be split safely. */
 export function albumPath(artist: string, title: string): string {
   return `${paths.libraryAlbums}/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
 }
 
-/** One segment, and it can stay one: an artist is a single name, so nothing has
- * to be split back apart on the way in. */
 export function artistPath(name: string): string {
   return `${paths.libraryArtists}/${encodeURIComponent(name)}`;
 }
 
 /**
- * The family alone, or a specific genre inside it.
- *
- * The path segment carries the family *key*, not its label: the key is what the
- * sidecar computed and what survives a language change, while the two sentinels
- * have no name of their own to put in a URL.
- *
- * The genre rides in the query rather than as a second segment, for two reasons
- * that point the same way. Modelling: a genre is scoped inside its family, so
- * it refines that page rather than naming a different resource. And mechanics:
- * React Router expands an optional segment (`:family/:genre?`) into two
- * separate route entries, so flipping a chip unmounted the page and mounted a
- * fresh one — the hero restarted its backdrop fade and the shelf rebuilt every
- * card, which is exactly the jump this is meant to avoid. A query keeps one
- * match, so the page stays mounted and only the cards that differ move.
- *
- * It is still in the URL, so the selection survives leaving the page and coming
- * back — which component state did not.
+ * The family segment carries the key (language-independent). The genre goes
+ * in the query: an optional segment makes React Router remount the page.
  */
 export function genrePath(family: string, genre?: string): string {
   const base = `${paths.libraryGenres}/${encodeURIComponent(family)}`;
   return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
 }
 
-/**
- * A category, or one genre inside it — the same shape as `genrePath` for the
- * same reasons: the segment carries the stored (canonical English) value that
- * survives a language switch, and the genre refines the page through a query
- * param so flipping a chip never remounts it.
- */
+/** Same shape as `genrePath`: the stored English value, genre in the query. */
 export function categoryPath(category: string, genre?: string): string {
   const base = `${paths.libraryCategories}/${encodeURIComponent(category)}`;
   return genre == null ? base : `${base}?genre=${encodeURIComponent(genre)}`;
 }
 
-/** The store's numeric id, not the name: a playlist is freely renameable, and
- * a URL built on the name would die with every rename. */
+/** By id: playlists can be renamed. */
 export function playlistPath(id: number): string {
   return `${paths.libraryPlaylists}/${id}`;
 }

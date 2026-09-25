@@ -7,7 +7,7 @@ import type { SuggestKind } from "@/features/library/metadata/suggestions";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/** i18n key under `metadata.fields` for each common tag. */
+/** i18n key under `metadata.fields`. */
 const FIELD_LABEL: Record<AlbumCommonField, string> = {
   album: "album",
   albumartist: "albumArtist",
@@ -16,23 +16,15 @@ const FIELD_LABEL: Record<AlbumCommonField, string> = {
   grouping: "category",
 };
 
-/** Suggestion pool per common tag — the album artist draws from the same name
- * pool as the track artist, since either field may already know the spelling. */
+/** The album artist shares the name pool with track artists. */
 const FIELD_SUGGEST: Partial<Record<AlbumCommonField, SuggestKind>> = {
   album: "album",
   albumartist: "artist",
   genre: "genre",
 };
 
-/**
- * The tags every track on the record shares — edited once here, written to all
- * of them.
- *
- * The album artist carries the panel's one heavy explanation, as a popover
- * rather than a tooltip: the difference between filing a record and describing a
- * track needs a paragraph and an example, and the user should be able to keep it
- * open while looking at the tracklist beside it.
- */
+/** Record-wide tags, edited once and written to every track. The album
+ * artist's explanation is a popover, to keep it open while reading. */
 export function CommonFields({
   baseline,
   values,
@@ -46,14 +38,14 @@ export function CommonFields({
 }: {
   baseline: AlbumCommonBaseline;
   values: AlbumCommonValues;
-  /** Original value of each common field the user has moved. */
+  /** Original values of moved fields. */
   origins: Partial<AlbumCommonValues>;
-  /** How many distinct values a mixed field holds, for its placeholder. */
+  /** Distinct values of mixed fields, for the placeholder. */
   distinctCounts: Partial<Record<AlbumCommonField, number>>;
-  /** The browse family the genre resolves to — computed, shown, never edited. */
+  /** Derived from the genre; read-only. */
   genreFamily: string;
   trackCount: number;
-  /** MusicBrainz typed the release a soundtrack — the category nudge's cue. */
+  /** MusicBrainz soundtrack: cue for the category nudge. */
   soundtrack: boolean;
   onChange: (field: AlbumCommonField, value: string) => void;
   onRevert: (field: AlbumCommonField) => void;
@@ -146,9 +138,7 @@ export function CommonFields({
         }
       />
 
-      {/* Chips only, no free-text input: the taxonomy writes canonical English
-          values while showing translated labels, and a typed value would break
-          that pairing. Revisited the day the app shows the canonical words. */}
+      {/* Chips only: the stored values are canonical English under translated labels. */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-[0.75rem] font-medium text-muted">

@@ -9,21 +9,7 @@ import { SettingsPanel, SwitchRow } from "@/features/settings/SettingsPanel";
 import { usePreferences, useSetRateLimitDelay } from "@/features/settings/hooks";
 import { storeAutoExpand, useAutoExpand } from "@/shared/lib/optionPanels";
 
-/**
- * The two pages that put music in the ark, and the pace at which one of them
- * works.
- *
- * A category of its own rather than two switches filed under Appearance: what
- * a panel does when a link is pasted is not how the app is dressed, and the
- * download and import pages are a pair everywhere else in the product — same
- * sidebar group, same composer grammar, one shared history page.
- *
- * The download pause used to be a category on its own, holding one slider and
- * a read-only card. It is filed here now, under the page it paces: someone
- * hunting it is thinking "my long playlists keep failing", not "rate limits".
- * The delays the app *imposes* stayed behind with the services that impose
- * them — those are not about downloading, and they are not adjustable.
- */
+/** Settings for the download and import pages, including the download pause. */
 export function AddingSection() {
   const { t } = useTranslation("settings");
   const download = useAutoExpand("download");
@@ -48,7 +34,7 @@ export function AddingSection() {
         />
       </SettingsPanel>
 
-      {/* Auto-saves on slider release — nothing here has a footer to press. */}
+      {/* Saves on slider release. */}
       {preferences.isPending ? (
         <Spinner size="sm" aria-label={t("loading")} />
       ) : (

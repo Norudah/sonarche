@@ -1,20 +1,8 @@
-//! `Playlists/`: the library's playlists, written out as M3U8.
+//! `Playlists/`: the playlists written out as M3U8, for other players.
 //!
-//! A playlist lives in sonarche.db and nowhere else — which makes it invisible
-//! to Music.app, to a phone, to whatever the user copies the folder onto. This
-//! writes a mirror: one `.m3u8` per non-empty playlist, rewritten in full after
-//! every mutation.
-//!
-//! Mirror, not storage. The M3U format has no stable identifier — a track is a
-//! path, so renaming one file silently drops it from every list that named it —
-//! so nothing here is ever read back. sonarche.db stays the source of truth and
-//! `Playlists/` is a rendering of it, the same way `Music/` is beets' rendering
-//! of the index. Delete a file by hand and the next write puts it back.
-//!
-//! Paths are relative (`../Music/…`), which is what makes copying the whole
-//! `Sonarche/` folder to another disc a working backup rather than a folder of
-//! dead links. Beets already stores its paths relative to `directory:`, so the
-//! relative form is a prefix away — see `resolve_tracks`.
+//! A write-only mirror, rewritten after every mutation: M3U has no stable
+//! identifiers, so sonarche.db stays the source of truth. Paths are relative
+//! (`../Music/…`) so a copy of the `Sonarche/` folder keeps working.
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
@@ -30,45 +18,29 @@ use crate::library_layout::MUSIC_DIR;
 use crate::playlists::{PlaylistRow, PLAYLIST_STEM_FALLBACK};
 use crate::python_env::AppPaths;
 
-/// UTF-8 is the whole point of the `8`: playlist and track names are not
-/// ASCII, and plain `.m3u` leaves the encoding to the reader's guess.
+/// UTF-8, unlike plain `.m3u`.
 const EXTENSION: &str = "m3u8";
 
-/// How many ids one `WHERE id IN (…)` carries. SQLite's default variable
-/// ceiling is 999; staying under it costs one extra round trip per 900 tracks
-/// and removes a failure mode that only shows up on large libraries.
+/// Stays under SQLite's default limit of 999 bound variables.
 const ID_CHUNK: usize = 900;
 
-/// What one entry needs to be more than a bare path: readers show `title` in
-/// their own UI, and `seconds` fills the duration column before anything has
-/// been decoded.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MirrorTrack {
-    /// Written as-is into the file: relative to the playlists folder when the
-    /// track lives under `Music/`, absolute otherwise.
+    /// Relative to the playlists folder under `Music/`, absolute otherwise.
     pub path: String,
     pub title: String,
     pub artist: String,
     pub seconds: i64,
 }
 
-/// One file to write. Held in memory before touching the disc so the whole
-/// folder is planned — including collisions — before any of it exists.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MirrorFile {
     pub filename: String,
     pub contents: String,
 }
 
-/// The files `Playlists/` should hold, given the playlists and the tracks they
-/// resolve to.
-///
-/// Empty playlists produce nothing. A new library's Favorites is empty, and an
-/// empty file would mean the folder appears — with a stub in it — before the
-/// user has made a single playlist.
-///
-/// Ids missing from `tracks` are skipped rather than written blank: a playlist
-/// can outlive a deleted file, and the front already filters those rows out.
+/// The files `Playlists/` should hold. Empty playlists produce nothing, and
+/// ids missing from `tracks` (deleted files) are skipped.
 pub fn plan(rows: &[PlaylistRow], tracks: &HashMap<i64, MirrorTrack>) -> Vec<MirrorFile> {
     let mut taken: Vec<String> = Vec::new();
     let mut files = Vec::new();
@@ -81,9 +53,7 @@ pub fn plan(rows: &[PlaylistRow], tracks: &HashMap<i64, MirrorTrack>) -> Vec<Mir
         if entries.is_empty() {
             continue;
         }
-        // Numbering is only stable if the walk order is: `list` returns
-        // playlists in a fixed order, so "Live (2)" stays on the same playlist
-        // across rewrites instead of trading places with its twin.
+        // `rows` has a fixed order, so collision numbering is stable across rewrites.
         let stem = artwork::unique_stem(&row.name, PLAYLIST_STEM_FALLBACK, &taken);
         taken.push(stem.clone());
         files.push(MirrorFile {
@@ -94,7 +64,7 @@ pub fn plan(rows: &[PlaylistRow], tracks: &HashMap<i64, MirrorTrack>) -> Vec<Mir
     files
 }
 
-/// Extended M3U: a header, then a metadata line and a path per track.
+/// Extended M3U: header, then a metadata line and a path per track.
 fn render(entries: &[&MirrorTrack]) -> String {
     let mut out = String::from("#EXTM3U\n");
     for track in entries {
@@ -109,17 +79,13 @@ fn render(entries: &[&MirrorTrack]) -> String {
     out
 }
 
-/// A tag can hold a newline; a line break inside `#EXTINF` would turn the rest
-/// of the title into a path.
+/// A newline in a tag would turn the rest of `#EXTINF` into a path.
 fn sanitize_line(value: &str) -> String {
     value.replace(['\n', '\r'], " ")
 }
 
-/// Resolve beets item ids to what the mirror writes for them.
-///
-/// Read-only on purpose: the beets database is the sidecar's to write, and
-/// opening it any other way is how two writers meet. Unknown ids simply miss
-/// from the map.
+/// Resolves beets item ids to mirror entries, opening beets' DB read-only.
+/// Unknown ids are absent from the map.
 pub fn resolve_tracks(
     beets_db: &Path,
     ids: &BTreeSet<i64>,
@@ -169,13 +135,8 @@ pub fn resolve_tracks(
     Ok(tracks)
 }
 
-/// The path an entry carries, from the path beets stored.
-///
-/// Beets keeps paths relative to `directory:` with a POSIX separator when the
-/// file lives under it — which, since `directory:` is `Music/`, makes the
-/// mirror's own relative form one prefix away. Anything absolute (a file
-/// outside the library) is written as it stands: a broken relative link would
-/// be worse than an honest machine-specific one.
+/// beets stores paths under `directory:` (`Music/`) relative with `/`, so the
+/// mirror path is one prefix away. Absolute paths are written as-is.
 fn mirror_path(stored: &str) -> String {
     if Path::new(stored).is_absolute() || stored.starts_with('/') {
         return stored.to_string();
@@ -183,15 +144,10 @@ fn mirror_path(stored: &str) -> String {
     format!("../{MUSIC_DIR}/{stored}")
 }
 
-/// Bring `Playlists/` in line with `files`, and nothing else in line with
-/// anything.
-///
-/// Only `.m3u8` is ever removed. The folder is ours, but a user who dropped
-/// their own file in it should find it there afterwards.
+/// Syncs `Playlists/` with `files`. Only `.m3u8` files are ever removed.
 pub fn write(dir: &Path, files: &[MirrorFile]) -> AppResult<()> {
     if files.is_empty() {
-        // Nothing to mirror: sweep what is left, but do not create the folder
-        // just to leave it empty.
+        // Nothing to mirror: sweep, but don't create the folder.
         if dir.exists() {
             sweep(dir, &BTreeSet::new())?;
         }
@@ -201,9 +157,7 @@ pub fn write(dir: &Path, files: &[MirrorFile]) -> AppResult<()> {
     let mut written = BTreeSet::new();
     for file in files {
         let path = dir.join(&file.filename);
-        // Write-if-changed. A rewrite that only bumps mtimes wakes every
-        // syncing client watching the folder, for a file that is byte-for-byte
-        // what it already held.
+        // Skip unchanged files so sync clients aren't woken for nothing.
         let current = fs::read_to_string(&path).ok();
         if current.as_deref() != Some(file.contents.as_str()) {
             fs::write(&path, &file.contents)?;
@@ -214,11 +168,8 @@ pub fn write(dir: &Path, files: &[MirrorFile]) -> AppResult<()> {
     Ok(())
 }
 
-/// Drop the playlists that no longer exist — renamed, deleted, or emptied.
-///
-/// Names are compared lowercased: on APFS and NTFS the file we just wrote as
-/// "Été.m3u8" can be sitting there under a different case, and an exact
-/// comparison would call it an orphan and delete what was just written.
+/// Removes playlists that no longer exist. Names compare lowercased, as the
+/// filesystem may return a just-written file under another case.
 fn sweep(dir: &Path, keep: &BTreeSet<String>) -> AppResult<()> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Ok(());
@@ -236,7 +187,6 @@ fn sweep(dir: &Path, keep: &BTreeSet<String>) -> AppResult<()> {
     Ok(())
 }
 
-/// The whole pass, synchronous: resolve, plan, write.
 pub fn sync_blocking(paths: &AppPaths, rows: &[PlaylistRow]) -> AppResult<()> {
     let ids: BTreeSet<i64> = rows
         .iter()
@@ -246,10 +196,8 @@ pub fn sync_blocking(paths: &AppPaths, rows: &[PlaylistRow]) -> AppResult<()> {
     write(&paths.playlists_dir(), &plan(rows, &tracks))
 }
 
-/// The launch pass, from the setup hook: synchronous, because the worker is
-/// not running yet and nothing else is competing for the connection. Silent on
-/// failure for the same reason as `sync` — a mirror is never worth blocking a
-/// launch over.
+/// Launch pass from the setup hook (the worker isn't running yet). Failures
+/// are only logged.
 pub fn sync_at_launch(app: &AppHandle, jobs: &JobsState) {
     let outcome = AppPaths::resolve(app).and_then(|paths| {
         let rows = jobs.with_conn_blocking(crate::playlists::list)?;
@@ -260,11 +208,8 @@ pub fn sync_at_launch(app: &AppHandle, jobs: &JobsState) {
     }
 }
 
-/// The hook every mutation calls. Best-effort by design: the playlist is
-/// already saved by the time this runs, and a folder that could not be written
-/// — a full disc, a volume that went away — must not turn a successful
-/// mutation into an error the user has to make sense of. The next pass fixes
-/// it.
+/// Called after every mutation. Best-effort: the playlist is already saved,
+/// and the next pass repairs the mirror.
 pub async fn sync(app: &AppHandle, jobs: &JobsState) {
     let Ok(paths) = AppPaths::resolve(app) else {
         return;
@@ -284,11 +229,9 @@ pub async fn sync(app: &AppHandle, jobs: &JobsState) {
     }
 }
 
-/// Same pass, for callers that hold the app handle but not the jobs state —
-/// the library operations that move files without knowing playlists exist.
+/// For callers without the jobs state (library operations that move files).
 pub async fn sync_after_library_change(app: &AppHandle) {
-    // `state` panics on a state that was never managed; the mirror is not
-    // worth taking the app down for.
+    // `state` would panic if unmanaged.
     let Some(jobs) = app.try_state::<JobsState>() else {
         return;
     };
@@ -321,8 +264,7 @@ mod tests {
         }
     }
 
-    /// The columns and the storage class beets actually uses: `path` is a
-    /// BLOB, `length` a float, and a relative path uses `/` on every platform.
+    /// beets' real storage: `path` is a BLOB, `length` a float, `/` separators.
     fn beets_db_with(rows: &[(i64, &str, &str, &str, f64)]) -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
         let conn = Connection::open(dir.path().join("library.db")).unwrap();
@@ -364,8 +306,6 @@ mod tests {
         assert!(!tracks.contains_key(&99));
     }
 
-    /// Every id in one statement is the shape that breaks first on a real
-    /// library — SQLite caps bound variables well under a big playlist.
     #[test]
     fn more_ids_than_one_statement_can_bind_are_resolved_in_full() {
         let paths: Vec<String> = (0..2_500).map(|i| format!("A/B/{i}.m4a")).collect();
@@ -430,7 +370,6 @@ mod tests {
         assert_eq!(paths, vec!["../Music/b.m4a", "../Music/a.m4a"]);
     }
 
-    /// A playlist can hold an id whose file was deleted from the library.
     #[test]
     fn unresolved_ids_are_skipped_not_written_blank() {
         let tracks = HashMap::from([(1, track("../Music/a.m4a", "A", "X", 1))]);
@@ -461,7 +400,6 @@ mod tests {
         assert_eq!(files[1].filename, "AC_DC (2).m3u8");
     }
 
-    /// A newline in a title would turn the rest of it into a path line.
     #[test]
     fn newlines_in_tags_cannot_break_out_of_the_metadata_line() {
         let tracks = HashMap::from([(1, track("../Music/a.m4a", "Bad\n/etc/passwd", "X", 1))]);
@@ -525,8 +463,6 @@ mod tests {
         assert!(target.join("old.m3u").exists());
     }
 
-    /// The written file must survive its own sweep when the filesystem hands
-    /// its name back under a different case.
     #[test]
     fn the_sweep_compares_names_without_case() {
         let dir = tempfile::tempdir().unwrap();

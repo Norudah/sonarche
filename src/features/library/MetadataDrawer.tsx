@@ -22,22 +22,8 @@ import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/**
- * One track's metadata.
- *
- * Still a drawer, unlike the album panel: a single track's form fits on screen
- * whole, and a modal would cost the context behind it for nothing. What the two
- * share is the grammar — same labels, same help, same always-editable fields
- * marked when they move, same footer, same exit guard.
- *
- * The album artist is editable here, like the album title and with the same
- * semantics: the write path fans both out to the album row and re-files the
- * whole record, so editing it from one track renames the record — it cannot
- * split it. It used to be read-only context, a fix for an older per-item write
- * that DID split records; hiding it outlived that write path, and left the one
- * field that decides an album's grouping unreachable from anywhere when it was
- * blank (every guessed track is), which is its own way of splitting records.
- */
+/** One track's metadata in a drawer. Editing the album artist renames the
+ * whole record (the write fans out to the album row). */
 function MetadataForm({
   track,
   onClose,
@@ -45,8 +31,7 @@ function MetadataForm({
 }: {
   track: LibraryTrack;
   onClose: () => void;
-  /** Where the Drawer's own dismiss gestures (backdrop, Escape) find the
-   * guard-aware close — only this form knows whether a draft is at stake. */
+  /** Guard-aware close for the drawer's backdrop and Escape. */
   requestCloseRef: RefObject<() => void>;
 }) {
   const { t } = useTranslation("library");
@@ -61,9 +46,7 @@ function MetadataForm({
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isArtistOpen, setIsArtistOpen] = useState(false);
 
-  // The record this track belongs to — the cover is the album's, so that is
-  // what the artwork affordance edits. A singleton resolves to none and the
-  // affordance stays off.
+  // The cover belongs to the album; singletons have none to edit.
   const albums = useMemo(() => groupAlbums(libraryTracks ?? []), [libraryTracks]);
   const album = useMemo(() => {
     if (!track.album.trim()) return null;
@@ -71,8 +54,6 @@ function MetadataForm({
     return findAlbum(albums, filedUnder, track.album);
   }, [albums, track]);
 
-  // The one the record is filed under — their disc rides the artwork's corner
-  // and opens the same image modal as the artist page.
   const artistImages = useArtistImages();
   const artist = useMemo(
     () => findArtist(groupArtists(albums), track.albumArtist.trim() || track.artist.trim()),
@@ -83,8 +64,7 @@ function MetadataForm({
   const patch = diffFields(live, draft);
   const changed = Object.keys(patch).length;
 
-  // A re-enrich (or another surface's save) hands us a new track. Adopt it,
-  // unless the user has something pending — a refetch must not eat an edit.
+  // Adopt a refreshed track unless an edit is pending.
   const [synced, setSynced] = useState(track);
   if (track !== synced) {
     setSynced(track);
@@ -93,8 +73,7 @@ function MetadataForm({
 
   const setField = (key: keyof FieldValues) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
   const revert = (key: keyof FieldValues) => () => setDraft((prev) => ({ ...prev, [key]: live[key] }));
-  // Same effective-edit rule as the save, so a "modified" mark can never point
-  // at an edit the save would not write.
+  // Same rule as the save, so "modified" marks match what gets written.
   const originOf = (key: keyof FieldValues) => (fieldEdit(key, live, draft) != null ? live[key] : undefined);
 
   const save = () => {
@@ -122,13 +101,9 @@ function MetadataForm({
     else onClose();
   };
 
-  // The backdrop click lands on the Drawer, outside this form; hand it the
-  // current requestClose so that gesture meets the same guard as the ✕.
-  // Escape rides the same wiring: on macOS a button click leaves focus on the
-  // body — outside both this tree and react-aria's overlay — so an element
-  // handler misses the key. One document listener owns it instead; overlays
-  // that answer Escape themselves (help popovers, the guard) preventDefault
-  // first, and `isKeyboardDismissDisabled` keeps react-aria from competing.
+  // A document-level Escape handler: on macOS a clicked button leaves focus on
+  // the body, where element handlers miss it. Overlays handling Escape
+  // themselves call preventDefault first.
   useEffect(() => {
     requestCloseRef.current = requestClose;
   });
@@ -140,14 +115,13 @@ function MetadataForm({
     return () => document.removeEventListener("keydown", onEscape);
   }, [requestCloseRef]);
 
-  // The album is keyed by its album artist (the identity shared across the
-  // record), falling back to the track artist for a single that has none.
+  // Keyed by album artist, falling back to the track artist.
   const openAlbum = () => {
     navigate(albumPath(track.albumArtist || track.artist, track.album));
     onClose();
   };
 
-  /** ⌘S writes without leaving. Escape lives on the document, above. */
+  /** ⌘S saves without closing. */
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -156,9 +130,7 @@ function MetadataForm({
   };
 
   return (
-    // data-slot="drawer-body" opts the whole panel out of HeroUI's drag-to-dismiss
-    // (it excludes pointer-downs inside a drawer-body), so text selection for
-    // copy-paste works.
+    // data-slot="drawer-body" disables HeroUI's drag-to-dismiss here, so text can be selected.
     <div data-slot="drawer-body" className="flex h-full flex-col" onKeyDown={onKeyDown}>
       <MetadataHeader
         track={track}
@@ -253,8 +225,7 @@ function MetadataForm({
         />
 
         {track.bonusSource && (
-          // Adopted bonus track: filed with the main album for convenience
-          // (iTunes/Spotify-style) — keep the real origin explicit.
+          // Adopted bonus track: show its real origin.
           <p className="rounded-xl bg-default/40 px-3.5 py-2.5 text-[0.75rem] text-muted">
             {t("metadata.bonusFrom", { source: track.bonusSource })}
           </p>
@@ -349,9 +320,7 @@ function MetadataForm({
 }
 
 export function MetadataDrawer({ track, onClose }: { track: LibraryTrack | null; onClose: () => void }) {
-  // `isOpen` is controlled, so react-aria can never close this on its own
-  // terms: Escape and the backdrop click only *request* it, and the form
-  // answers — straight close, or the exit guard when a draft is at stake.
+  // Controlled: Escape and backdrop only request a close; the form decides.
   const requestCloseRef = useRef(onClose);
   const state = useOverlayState({
     isOpen: track != null,
@@ -362,19 +331,12 @@ export function MetadataDrawer({ track, onClose }: { track: LibraryTrack | null;
 
   return (
     <Drawer state={state}>
-      {/* Keyboard dismiss stays off: Escape is handled by the form's own
-          document listener (react-aria's would miss it whenever focus sits on
-          the body, and would double-handle it whenever it does not). */}
+      {/* Escape is handled by the form's document listener. */}
       <Drawer.Backdrop isKeyboardDismissDisabled>
         <Drawer.Content placement="right">
-          {/* Width belongs on the dialog, not the content (that one is the
-              full-screen positioning layer). HeroUI's default sm:w-96 is too
-              narrow for a two-column metadata form.
-              Drag-to-dismiss is switched off entirely: its handlers live on
-              this dialog and portaled overlays (the cover modal, popovers)
-              still bubble pointer events here through the React tree, so
-              selecting text in them dragged the drawer along. Own props spread
-              after the built-in handlers, so undefined removes them. */}
+          {/* Width on the dialog (the content is the positioning layer). Drag-to-dismiss
+              is disabled: portaled overlays bubble pointer events here, so selecting
+              text in them dragged the drawer. */}
           <Drawer.Dialog
             className="flex h-full w-[85vw] flex-col overflow-hidden p-0! sm:w-[31rem]"
             onPointerDown={undefined}

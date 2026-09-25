@@ -1,28 +1,15 @@
 import { MicVocal } from "lucide-react";
 
 interface ArtistAvatarProps {
-  /** A user-chosen picture; when set, it replaces the placeholder. */
+  /** A user-chosen picture, replacing the placeholder. */
   imageUrl?: string | null;
-  /** Sizing + any ring/shadow — the disc fills whatever box it is given. */
+  /** Size and any ring/shadow; the disc fills the box. */
   className?: string;
 }
 
-/**
- * The artist's disc: their own picture when they have one, a mic otherwise.
- *
- * A circle is the universal "person" mark against the square "release" cover,
- * so the artists shelf stops reading as the albums shelf a second time. The
- * stand-in has been through two lives already: line-art genre motifs (a whole
- * drawing system that said "no photo" in a complicated way), then the artist's
- * initial — which made the shelf read like a chat roster. One quiet vocal mic
- * for everyone says "performer, no picture yet" without pretending to be
- * identity; the image modal's copy makes the invitation to replace it
- * explicit.
- *
- * Percentage-sized icon so it scales with the disc from the 36px sticky-bar
- * thumb to the 192px hero without a size variant — lucide is vector, the
- * stroke follows. Colour rides the `.artist-avatar` tokens in theme.css.
- */
+/** The artist's disc: their picture, else a microphone. Round so artists
+ * don't read as albums. The icon is sized in percent to scale with the disc;
+ * colours come from `.artist-avatar` in theme.css. */
 export function ArtistAvatar({ imageUrl, className = "" }: ArtistAvatarProps) {
   return (
     <div

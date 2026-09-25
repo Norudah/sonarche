@@ -15,20 +15,14 @@ use uuid::Uuid;
 use crate::error::{AppError, AppResult};
 use crate::python_env::AppPaths;
 
-/// A reply, still as the bytes the sidecar wrote.
-///
-/// `RawValue` rather than `Value` because of one caller: the library listing is
-/// ~6.4 MB of JSON at 10 000 tracks, and parsing that into a tree only to
-/// serialize it straight back out for the IPC allocates a map and a string per
-/// field per track, twice, for nothing. Kept raw, it is copied once and handed
-/// to Tauri as-is. Every other reply is a handful of bytes and gets parsed on
-/// arrival by whoever wants a `Value` — see `SidecarState::request`.
+/// A reply as the raw bytes the sidecar wrote. Kept raw so the library
+/// listing (~6.4 MB at 10 000 tracks) reaches the IPC without a parse and
+/// re-serialize round-trip.
 type Reply = Result<Box<RawValue>, String>;
 
 type Pending = Arc<Mutex<HashMap<String, oneshot::Sender<Reply>>>>;
 
-/// Just enough of a response line to route it. `result` deliberately stays raw:
-/// naming it `Value` here would reintroduce the parse this type exists to skip.
+/// `result` stays raw on purpose.
 #[derive(Deserialize)]
 struct Envelope {
     id: Option<String>,
@@ -49,50 +43,30 @@ struct SidecarHandle {
     pending: Pending,
 }
 
-/// One sidecar process and the requests in flight on it.
-///
-/// A channel is strictly serial by construction: `main.py` reads one line,
-/// runs its handler to completion, and only then reads the next. That is why
-/// there are two of them (see `SidecarState`) rather than one shared pipe.
+/// One sidecar process. Strictly serial: `main.py` handles one line at a time.
 #[derive(Default)]
 struct SidecarChannel {
     inner: Mutex<Option<SidecarHandle>>,
 }
 
-/// Two sidecar processes, split by what the request does rather than by which
-/// module answers it.
-///
-/// The Python loop handles one request at a time, and the work it does is not
-/// short: an album enrich fingerprints every track, calls MusicBrainz, the
-/// Cover Art Archive and Last.fm, and paces itself with real sleeps between
-/// them — minutes, routinely. On a single pipe every read queued behind that,
-/// so opening the library during a download waited out the whole album and then
-/// failed on the 60s query timeout, with nothing actually broken.
-///
-/// `read` answers the listing and nothing else. It opens the beets DB read-only
-/// (`mode=ro`), so the split costs no write safety: the writer stays alone on
-/// `work`, and the reader cannot become a second one.
+/// Two sidecar processes: `work` for anything long or writing (an album
+/// enrich takes minutes), `read` for the library listing so it never waits
+/// behind it. `read` opens beets' DB read-only, so there is still one writer.
 #[derive(Default)]
 pub struct SidecarState {
     work: SidecarChannel,
     read: SidecarChannel,
 }
 
-/// What a response line asks this side to do.
 enum Routed {
-    /// A progress event: no id, forwarded whole to the front.
+    /// No id; forwarded to the front.
     Event,
-    /// A reply to the request with this id.
     Reply(String, Reply),
-    /// Nothing to do — an id we are not waiting on, or an unparseable line.
+    /// An unknown id or an unparseable line.
     Ignore,
 }
 
-/// Read one response line.
-///
-/// Settling ok/error here rather than in the caller is deliberate: past this
-/// point the payload is opaque bytes, so this is the last place that can tell a
-/// result from a failure without parsing it a second time.
+/// Routes one response line, settling ok/error before the payload goes opaque.
 fn route(line: &str) -> Routed {
     let Ok(msg) = serde_json::from_str::<Envelope>(line) else {
         return Routed::Ignore;
@@ -103,8 +77,7 @@ fn route(line: &str) -> Routed {
     let Some(id) = msg.id else {
         return Routed::Ignore;
     };
-    // A result the sidecar reported as absent is `null`, not an error: some
-    // commands legitimately answer with nothing.
+    // An absent result is `null`, not an error.
     let reply = if msg.ok == Some(true) {
         Ok(msg.result.unwrap_or_else(|| RawValue::NULL.to_owned()))
     } else {
@@ -136,7 +109,6 @@ fn spawn_stdout_reader(app: AppHandle, stdout: tokio::process::ChildStdout, pend
             }
         }
         eprintln!("[sidecar] stdout closed");
-        // Drop pending senders so awaiting requests fail fast instead of timing out.
         pending.lock().await.clear();
     });
 }
@@ -145,8 +117,7 @@ fn spawn_stderr_reader(stderr: tokio::process::ChildStderr) {
     tauri::async_runtime::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            // To the log file, not just stderr: this stream carries the
-            // sidecar's tracebacks, and on Windows stderr goes nowhere.
+            // stderr carries tracebacks, and goes nowhere on Windows.
             crate::logs::write(&format!("[sidecar] {line}"));
         }
     });
@@ -170,23 +141,13 @@ async fn start(app: &AppHandle) -> AppResult<SidecarHandle> {
         .arg("-u")
         .arg(&paths.sidecar_main)
         .env("PYTHONUNBUFFERED", "1")
-        // Python's UTF-8 Mode. `protocol` pins the channel's own encoding, but
-        // that only covers the three streams it owns; this covers the rest —
-        // `open()`'s default, the filesystem encoding, and the locale encoding
-        // that `subprocess` text mode reads. Without it, on Windows, all of
-        // those are cp1252 and any accent is a crash waiting for the right
-        // filename.
+        // UTF-8 Mode for everything `protocol` doesn't cover (open(), filesystem,
+        // subprocess); Windows defaults to cp1252.
         .env("PYTHONUTF8", "1")
-        // The in-process beets must read the same config.yaml the beet CLI
-        // gets via --config; otherwise it would pick up the user's own beets
-        // config (or none), drifting from write_beets_config().
+        // Same config.yaml the beet CLI gets via --config, not the user's own.
         .env("BEETSDIR", beets_dir)
-        // Where the user's genre placements live, and where the sidecar
-        // regenerates the derived tree/whitelist the config above names.
         .env("SONARCHE_GENRES_DIR", &paths.genres_dir)
-        // deno writes a small cache wherever this points, and defaults to the
-        // user's own cache folder — outside anything a reinstall can clear, and
-        // shared with a deno they may have installed themselves.
+        // Keep deno's cache in app data rather than the user's cache folder.
         .env("DENO_DIR", &paths.deno_cache_dir)
         .current_dir(
             paths
@@ -235,7 +196,6 @@ impl SidecarChannel {
 
         let pending = {
             let mut guard = self.inner.lock().await;
-            // Restart the sidecar if it died since the last request.
             let dead = matches!(
                 guard.as_mut().map(|h| h.child.try_wait()),
                 Some(Ok(Some(_)))
@@ -281,12 +241,8 @@ impl SidecarChannel {
 }
 
 impl SidecarState {
-    /// Anything that downloads, imports, enriches or writes tags. Serial, and
-    /// free to take as long as it takes.
-    ///
-    /// Parses the reply into a `Value` for the caller's convenience: these
-    /// replies are a handful of fields (`{"updated": 3}`, `{"matched": true}`),
-    /// so the tree costs nothing and the callers read it.
+    /// Downloads, imports, enrichment, tag writes: serial, long-running. The
+    /// small reply is parsed into a `Value`.
     pub async fn request(
         &self,
         app: &AppHandle,
@@ -298,10 +254,8 @@ impl SidecarState {
         Ok(serde_json::from_str(raw.get())?)
     }
 
-    /// Read-only queries the UI waits on. Never queues behind `request`, and
-    /// answers in the sidecar's own bytes — nothing here inspects the payload,
-    /// and the listing is far too big to parse for the privilege of not
-    /// looking at it.
+    /// Read-only queries the UI waits on. Never queues behind `request`; the
+    /// reply is returned unparsed.
     pub async fn read(
         &self,
         app: &AppHandle,
@@ -312,10 +266,8 @@ impl SidecarState {
         self.read.request(app, cmd, params, timeout).await
     }
 
-    /// Kill the work process to interrupt whatever request is in flight on it —
-    /// the one lever a cancel has over a busy serial channel (yt-dlp dies with
-    /// its parent). Every pending work request fails fast, and the next request
-    /// restarts the process; the read channel is untouched.
+    /// Kills the work process to interrupt its request (yt-dlp dies with it).
+    /// Pending work requests fail fast; the next one restarts the process.
     pub async fn abort_work(&self) {
         self.work.shutdown().await;
     }
@@ -339,8 +291,7 @@ mod tests {
 
     #[test]
     fn result_is_handed_back_as_the_bytes_the_sidecar_wrote() {
-        // The whole point of the read channel: no reserialization, so the
-        // payload must come out byte-identical, key order included.
+        // Must come out byte-identical, key order included.
         let payload = r#"{"tracks":[{"id":1,"title":"Lucy","length":200.1}]}"#;
         let (id, reply) = reply_of(&format!(r#"{{"id":"abc","ok":true,"result":{payload}}}"#));
 
@@ -350,10 +301,7 @@ mod tests {
 
     #[test]
     fn a_raw_result_serializes_as_json_not_as_an_escaped_string() {
-        // What the IPC does with the command's return value. A `RawValue` that
-        // serialized as a quoted string would reach the front as text, and
-        // `listLibrary` would map over a string instead of tracks — so this is
-        // the assertion the read channel actually rests on.
+        // Must serialize as JSON, not as a quoted string.
         let payload = r#"{"tracks":[{"id":1,"title":"Lucy"}]}"#;
         let (_, reply) = reply_of(&format!(r#"{{"id":"abc","ok":true,"result":{payload}}}"#));
 
@@ -386,8 +334,7 @@ mod tests {
 
     #[test]
     fn progress_events_are_forwarded_not_matched_to_a_request() {
-        // Events carry no id; routing one as a reply would drop it and leave
-        // the real request hanging until its timeout.
+        // Events carry no id and must not be routed as replies.
         assert!(matches!(
             route(r#"{"event":"download_progress","data":{"percent":42.0}}"#),
             Routed::Event

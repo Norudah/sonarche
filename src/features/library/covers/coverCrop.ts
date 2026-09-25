@@ -1,21 +1,10 @@
 import type { CoverCrop } from "@/features/library/api";
 
 /**
- * Crop math for the image replacement modals, kept apart from the components so
- * the pixel arithmetic — the part a one-off rounding error would quietly ruin —
- * is testable without a DOM.
- *
- * The model is three numbers. `zoom` sizes the square window as a fraction of
- * the source's short side (1 is the largest square the picture holds), and
- * `x`/`y` say where that window sits, 0…1 along each axis. Everything else —
- * the on-screen geometry, the pixel rectangle sent to the sidecar — derives
- * from them.
- *
- * A zoom above 1 asks for a window wider than the picture, which is the one
- * thing this cannot deliver: what would come back is letterboxed, and a cover
- * has to be square. The frame is allowed to go there anyway — refusing to move
- * is how an interface fails to explain itself — and `frameFits` is what the
- * modals disable their confirm on.
+ * Pure crop math for the image modals. A frame is `zoom` (window side as a
+ * fraction of the source's short side, 1 = largest square) plus `x`/`y`
+ * (0…1 position). Zoom above 1 leaves the picture and can't be confirmed
+ * (`frameFits`).
  */
 
 export interface SourceSize {
@@ -23,28 +12,22 @@ export interface SourceSize {
   height: number;
 }
 
-/** Where the square window sits over the source, and how big it is. */
 export interface CropFrame {
-  /** Window side as a fraction of the source's short side. 1 = the largest
-   * square; below, zoomed in; above, the frame leaves the picture. */
+  /** Fraction of the short side: 1 = largest square, above 1 leaves the picture. */
   zoom: number;
-  /** 0…1 along the width — 0.5 is centred. No effect on an axis with no play. */
+  /** 0…1 along the width; 0.5 is centred. */
   x: number;
   /** 0…1 along the height. */
   y: number;
 }
 
-/** The whole picture, centred: what a freshly picked image opens on. */
+/** Whole picture, centred. */
 export const WHOLE_FRAME: CropFrame = { zoom: 1, x: 0.5, y: 0.5 };
 
-/** Below this the crop stops being a crop and becomes a detail; a 600px source
- * at 0.3 already lands under the 500px the display rendition wants. */
+/** A 600px source at 0.3 is already below the 500px rendition. */
 export const MIN_ZOOM = 0.3;
 
-/** Enough overshoot past the largest square for the frame to visibly leave the
- * picture — that overflow is the explanation, the warning only names it. Kept
- * short: past this point the slider is offering travel nothing can be confirmed
- * from, and a sixth of the track is already plenty to hit by accident. */
+/** Enough overshoot to visibly leave the picture, not more. */
 export const MAX_ZOOM = 1.15;
 
 export function clamp01(value: number): number {
@@ -55,26 +38,18 @@ export function clampZoom(zoom: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 }
 
-/** The window's side in source pixels. */
+/** In source pixels. */
 export function frameSide(source: SourceSize, zoom: number): number {
   return Math.round(clampZoom(zoom) * Math.min(source.width, source.height));
 }
 
-/** Whether the window is entirely inside the picture — what a square cover
- * needs, and the only thing standing between the frame and the confirm button. */
+/** Whether the window is inside the picture (required to confirm). */
 export function frameFits(source: SourceSize, zoom: number): boolean {
   return frameSide(source, zoom) <= Math.min(source.width, source.height);
 }
 
-/**
- * The square cut from the source, in source pixels — or null when the frame is
- * the whole picture and there is nothing to cut.
- *
- * A frame larger than the picture is clamped back into it rather than sent as
- * negative offsets (the wire type is unsigned, and the sidecar clamps too).
- * Nothing ships in that state — `frameFits` blocks it upstream — but the weight
- * estimate reads this on every keystroke, and it has to stay answerable.
- */
+/** The square to cut in source pixels, or null for the whole picture.
+ * Oversized frames are clamped (the weight estimate still reads them). */
 export function cropRect(source: SourceSize, frame: CropFrame): CoverCrop | null {
   const { width, height } = source;
   const size = Math.min(frameSide(source, frame.zoom), width, height);
@@ -87,37 +62,27 @@ export function cropRect(source: SourceSize, frame: CropFrame): CoverCrop | null
 }
 
 /**
- * The crop stage's on-screen geometry, in CSS pixels.
- *
- * The box drawn is the union of the picture and the window, scaled so its long
- * side is `maxPx`. While the window is inside the picture that union *is* the
- * picture — the image holds still and the frame slides over it, which is what
- * the stage has always done. Past that, the union is the window: the frame
- * holds still instead and the picture slides under it, its edges coming into
- * view. The switch is continuous, and in both regimes what the pointer drags
- * follows the pointer.
+ * On-screen stage geometry (CSS px): the union of picture and window, long
+ * side `maxPx`. Inside the picture, the window moves over a still image;
+ * beyond it, the window holds still and the picture moves.
  */
 export interface StageLayout {
-  /** The box, and the frame both live in it. */
   width: number;
   height: number;
   imageLeft: number;
   imageTop: number;
   imageWidth: number;
   imageHeight: number;
-  /** The window, positioned inside the box. */
+  /** The window, inside the box. */
   left: number;
   top: number;
   side: number;
-  /** How far the window can travel on each axis, in CSS px. 0 = no play. */
+  /** Window travel per axis in CSS px; 0 = no play. */
   travelX: number;
   travelY: number;
 }
 
-/** Rounds to quarter CSS pixels — coarse enough to keep the numbers exact in
- * tests, fine enough that a smooth zoom no longer steps the box and the image
- * a whole pixel at a time — and folds `-0` back to `0`, whose sign survives
- * rounding and turns up in comparisons. */
+/** Rounds to quarter pixels and folds `-0` to `0`. */
 function px(value: number): number {
   return Math.round(value * 4) / 4 || 0;
 }
@@ -144,8 +109,7 @@ export function stageLayout(source: SourceSize, frame: CropFrame, maxPx: number)
   const unionHeight = Math.max(height, size);
   const scale = maxPx / Math.max(unionWidth, unionHeight);
 
-  // Signed on purpose: negative once the window is wider than the picture,
-  // which is exactly when the picture is the thing that moves.
+  // Negative once the window is wider than the picture.
   const windowX = clamp01(frame.x) * (width - size);
   const windowY = clamp01(frame.y) * (height - size);
   const originX = Math.min(0, windowX);

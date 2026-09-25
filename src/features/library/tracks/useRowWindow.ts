@@ -3,41 +3,28 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { LibraryTrack } from "@/features/library/api";
 import { useScrollport } from "@/shared/ui/Scrollport";
 
-/** Row height in px, including the table's vertical border-spacing. Rows are
- * uniform: one line of text next to a fixed-size cover. Measured, not guessed —
- * a wrong value here makes the scrollbar lie about the list's length. */
+/** Measured, including border-spacing; a wrong value skews the scrollbar. */
 export const ROW_HEIGHT = 58;
 
-/** The inspection table's own row: no cover, one line of small text, and rows
- * that touch. Set by the edit button rather than by the text — it is the tallest
- * thing in the row. Same rule as above: measured, not guessed. */
+/** Measured: the edit button is the tallest thing in the row. */
 export const INSPECT_ROW_HEIGHT = 32;
 
-/**
- * Below this, every row is mounted as before. A few hundred rows cost nothing,
- * and the plain table keeps what virtualization takes away: the row cascade
- * plays once instead of re-firing whenever a row scrolls back in, and the
- * browser's own find-in-page can still reach every title.
- */
+/** Below this, all rows mount: the cascade plays once and find-in-page works. */
 export const VIRTUALIZE_ABOVE = 150;
 
-/** Rows kept mounted beyond each edge, so a fast scroll meets rendered rows
- * rather than blank space. */
+/** Rows kept beyond each edge for fast scrolling. */
 const OVERSCAN = 12;
 
 export interface RowWindow {
-  /** The tracks to render, each with its position in the full list — the index
-   * is what the row displays, so it must survive the windowing. */
+  /** Each with its index in the full list, which the row displays. */
   rows: { track: LibraryTrack; index: number }[];
-  /** Height of the spacer above and below the window. Zero when not
-   * virtualizing, which is what lets both modes share one render path. */
+  /** Spacer height; zero when not virtualizing. */
   paddingTop: number;
   paddingBottom: number;
   isVirtual: boolean;
 }
 
-/** What the virtualizer tells us about one row on screen. Declared here rather
- * than imported so the pure part can be exercised without one. */
+/** Declared here so the pure part is testable without a virtualizer. */
 export interface Slice {
   index: number;
   start: number;
@@ -53,14 +40,7 @@ export function everyRow(tracks: LibraryTrack[]): RowWindow {
   };
 }
 
-/**
- * Turn the virtualizer's visible slices into rows plus the spacer heights that
- * stand in for everything left out.
- *
- * The two paddings are what keep the scrollbar honest: mounted rows plus
- * spacers must always add up to the full list's height, otherwise the page
- * claims to be shorter than it is and the scroll position drifts.
- */
+/** Visible rows plus spacer heights that always add up to the full list height. */
 export function windowFromSlices(tracks: LibraryTrack[], slices: Slice[], totalSize: number): RowWindow {
   const first = slices[0];
   const last = slices[slices.length - 1];
@@ -73,24 +53,14 @@ export function windowFromSlices(tracks: LibraryTrack[], slices: Slice[], totalS
   };
 }
 
-/**
- * The slice of a tracklist worth putting in the DOM.
- *
- * A library-wide tracklist mounts one row per track, and a row is ~35 elements
- * with a cover: 10 000 tracks meant 350 000 DOM nodes for the ~13 rows that fit
- * on screen. This keeps the mounted count flat no matter how big the library
- * gets.
- *
- * Scrolling happens on <main>, not on a container of ours, so the virtualizer
- * is pointed at the shared scrollport rather than a local ref.
- */
+/** Virtualizes long track lists (10 000 rows were 350 000 DOM nodes) against
+ * the shared scrollport. */
 export function useRowWindow(tracks: LibraryTrack[], rowHeight: number = ROW_HEIGHT): RowWindow {
   const scrollport = useScrollport();
   const isVirtual = tracks.length > VIRTUALIZE_ABOVE;
 
   const virtualizer = useVirtualizer({
-    // Zero disables the measuring work entirely for small libraries; the hook
-    // itself still runs unconditionally, as hooks must.
+    // Zero disables measuring; the hook itself must still run.
     count: isVirtual ? tracks.length : 0,
     getScrollElement: () => scrollport.current,
     estimateSize: () => rowHeight,

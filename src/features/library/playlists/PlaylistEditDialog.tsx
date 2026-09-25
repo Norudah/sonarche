@@ -21,25 +21,22 @@ import { PlaylistImageStep } from "@/features/library/playlists/PlaylistImageSte
 import { PlaylistMarkerPicker } from "@/features/library/playlists/PlaylistMarkerPicker";
 import { playlistCovers, playlistNameTaken } from "@/features/library/playlists/playlists";
 
-/** 448 (form) + 12 + 544 = 1004, inside the 1032 a 1080px window leaves once the
- * container's fence is paid. Widen one and the pair stops fitting. */
+/** 448 (form) + 12 + 544 fits a 1080px window with the container's padding. */
 const IMAGE_PANE_PX = 544;
 
 interface PlaylistEditDialogProps {
   playlist: Playlist;
-  /** Members resolved against the library, for the tile's mosaic. */
+  /** Members, for the tile's mosaic. */
   tracks: LibraryTrack[];
-  /** Every playlist, for the duplicate-name check. */
+  /** For the duplicate-name check. */
   existing: Playlist[];
-  /** Names taken by something that is not a stored row name — see
-   * `playlistNameTaken`. */
+  /** See `playlistNameTaken`. */
   reservedNames: string[];
   isOpen: boolean;
   onClose: () => void;
 }
 
-/** The form proper, mounted per opening: its draft starts from the playlist as
- * it stands, with no effect to re-arm it. */
+/** Mounted per opening, so the draft starts from the current playlist. */
 function EditForm({
   playlist,
   tracks,
@@ -67,9 +64,7 @@ function EditForm({
   const isPending = rename.isPending || setMarker.isPending;
   const canSave = trimmed !== "" && !taken && dirty && !isPending;
 
-  /** The two writes behind one button. Sequential rather than parallel: if the
-   * rename is refused, the marker must not have moved either — a half-applied
-   * "Enregistrer" is the one outcome nobody can reason about. */
+  /** Sequential: a refused rename must not leave the marker changed. */
   const persist = async () => {
     setFailed(false);
     try {
@@ -86,9 +81,7 @@ function EditForm({
     if (await persist()) onClose();
   };
 
-  // The list as the app will draw it once saved — its tile on the shelves, its
-  // row in the sidebar. Both read from the draft, so every control below is
-  // visibly a way of changing this one strip.
+  // The shelf tile and sidebar row as they'll look once saved.
   const preview = (
     <div className="flex items-center gap-4 rounded-xl bg-background p-3 ring-1 ring-separator">
       <button
@@ -152,8 +145,7 @@ function EditForm({
             disabled={isPending}
             className="w-full rounded-xl border border-separator bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
           />
-          {/* Reserved line: the dialog must not grow when the error appears, or
-              everything below jumps under the pointer. */}
+          {/* Reserved height, so the dialog doesn't grow when the error appears. */}
           <p className="min-h-4 text-[0.75rem] text-danger">{taken ? t("playlists.duplicateName") : ""}</p>
         </div>
 
@@ -187,29 +179,13 @@ function EditForm({
 }
 
 /**
- * Everything a playlist is, in one place: its name, the tile it wears on the
- * shelves, and the glyph it wears in the sidebar.
- *
- * They used to be three doors — a rename dialog, an image modal, a marker
- * picker, two of them buried in an overflow menu. Three ways to change one
- * object is three things to find, and none of them said "this is where you
- * edit a playlist". One "Modifier" button now opens all of it, which is the
- * same promise the album and the artist make.
- *
- * Picking an image is the one thing that keeps a panel of its own. It needs a
- * room — browse, drop, paste, reframe, two stages — that a form has no business
- * hosting. That panel unfolds *beside* the form rather than over it or in place
- * of it: a window that leaves and comes back, and a single frame that resizes
- * under the eye, both read as two errands. Side by side, the form never
- * changes shape, stays live (the draft survives the trip, and a fresh image is
- * immediately offerable as the sidebar glyph), and its tile keeps showing what
- * the pane next door is about to replace.
+ * Name, tile and sidebar glyph in one dialog. The image picker unfolds beside
+ * the form (not over it), so the draft survives and the preview stays visible.
  */
 export function PlaylistEditDialog({ isOpen, ...rest }: PlaylistEditDialogProps) {
   const [pickingImage, setPickingImage] = useState(false);
 
-  // Every way out passes here, so the next opening can never come back with the
-  // image pane already unfolded.
+  // Every exit folds the image pane.
   const close = () => {
     setPickingImage(false);
     rest.onClose();
@@ -223,14 +199,12 @@ export function PlaylistEditDialog({ isOpen, ...rest }: PlaylistEditDialogProps)
       }}
     >
       <Modal.Backdrop>
-        {/* The dialog grows sideways, so the padding that fences it has to be
-            thin enough for both panes at the app's 1080px floor. */}
+        {/* Thin padding so both panes fit at 1080px. */}
         <Modal.Container className="sm:px-6!">
           <Modal.Dialog className="w-auto! max-w-full overflow-visible! bg-transparent! p-0! shadow-none!">
             <div
               className="flex items-start"
-              // Escape belongs to the topmost thing that is open. With one modal
-              // holding both panes, that arbitration is ours to make.
+              // Escape closes the topmost pane first.
               onKeyDown={(event) => {
                 if (event.key === "Escape" && pickingImage) {
                   event.stopPropagation();
@@ -251,9 +225,7 @@ export function PlaylistEditDialog({ isOpen, ...rest }: PlaylistEditDialogProps)
 
               <AnimatePresence initial={false}>
                 {isOpen && pickingImage && (
-                  // Width and margin are animated on the pane itself, which also
-                  // carries the card: a box clipping its own children never
-                  // clips its own shadow, so the unfold stays clean-edged.
+                  // Animated on the pane that carries the card, so its shadow isn't clipped.
                   <motion.div
                     initial={{ width: 0, marginLeft: 0, opacity: 0 }}
                     animate={{ width: IMAGE_PANE_PX, marginLeft: 12, opacity: 1 }}

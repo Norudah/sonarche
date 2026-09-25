@@ -21,9 +21,7 @@ import { parseViewMode } from "@/features/library/viewMode";
 import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/** Both axes are offered, and both hide themselves when the discography holds
- * only one value — which is the usual case for the family and the unusual one
- * for the category, since an artist writing for film has two. */
+/** Both axes; each hides itself with a single value. */
 const AXES: readonly TrackAxis[] = ["family", "category"];
 
 export function ArtistDetailView() {
@@ -39,14 +37,7 @@ export function ArtistDetailView() {
   const artist = useMemo(() => findArtist(groupArtists(groupAlbums(library.data ?? [])), name), [library.data, name]);
   const appearances = useMemo(() => appearancesOf(library.data ?? [], name), [library.data, name]);
 
-  /**
-   * The discography by era, then the guest spots.
-   *
-   * The appearances are in: a mode called "Morceaux" that quietly left out a
-   * featuring would be lying by omission, and they are the one thing this page
-   * shows that no other view does. The rows say which is which — see
-   * `guestOwner` on the table.
-   */
+  /** The discography by era, then guest spots (marked via `guestOwner`). */
   const subjectTracks = useMemo(
     () => (artist ? [...artist.albums.flatMap((album) => album.tracks), ...appearances] : []),
     [artist, appearances],
@@ -77,14 +68,10 @@ export function ArtistDetailView() {
     );
   }
 
-  // Same reasoning as the album page: deleting the artist's last track refetches
-  // the library and this page outlives its own subject. `replace` so Back does
-  // not walk straight into the dead route again.
+  // The artist is gone: back to the shelf.
   if (!artist) return <Navigate to={paths.libraryArtists} replace />;
 
-  // The discography as one queue: `albums` is already chronological, so this
-  // plays the artist by era, album by album. In the tracks mode the visible list
-  // is what plays instead — filters and search included.
+  // The discography chronologically, or the visible list in tracks mode.
   const queue = () => (mode === "tracks" ? explorer.visible : artist.albums.flatMap((album) => album.tracks));
   const playAll = () => playOrdered(queue());
   const shuffleAll = () => playShuffled(queue());
@@ -92,9 +79,7 @@ export function ArtistDetailView() {
 
   return (
     <PageContainer
-      // No sticky subject bar in the tracks mode: it and the filter bar both pin
-      // to the top of the scrollport, and the filters are what a long list needs
-      // within reach. The switch back is in the hero, one scroll up.
+      // No sticky subject bar in tracks mode: the filter bar pins there.
       sticky={
         mode === "overview" ? (
           <ArtistStickyHeader artist={artist} imageUrl={imageUrl} isVisible={heroPassed} onPlay={playAll} />
@@ -129,9 +114,7 @@ export function ArtistDetailView() {
             <h2 className="text-lg font-semibold tracking-tight">{t("artists.discography")}</h2>
             <AlbumShelf
               albums={artist.albums}
-              // The whole library, not the discography: renaming an album's
-              // artist moves it off this page, and the panel should follow the
-              // record rather than close on the save.
+              // The whole library, so renaming an album's artist doesn't close the panel.
               pool={groupAlbums(library.data ?? [])}
               animationKey={artist.name}
               onPlay={(album) => playOrdered(album.tracks)}

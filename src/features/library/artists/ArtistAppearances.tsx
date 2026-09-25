@@ -3,14 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { LibraryTrack } from "@/features/library/api";
 import { TrackTable } from "@/features/library/tracks/TrackTable";
 
-/**
- * Tracks credited to this artist on someone else's record — the one thing this
- * page shows that neither the album shelf nor the track table surfaces, since
- * both file a guest spot under whoever owns the album.
- *
- * `TrackTable` rather than the album tracklist: these come from scattered
- * albums, so the Album column is the whole point of the section.
- */
+/** Tracks credited to this artist on others' records (guest spots), with the
+ * Album column since they come from scattered albums. */
 export function ArtistAppearances({ tracks, name }: { tracks: LibraryTrack[]; name: string }) {
   const { t } = useTranslation("library");
 

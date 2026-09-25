@@ -10,16 +10,7 @@ const STROKE = 5;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-/**
- * The record's completion — and the way into what is missing.
- *
- * The ring carries the ratio itself rather than a percentage: "24/29" is the
- * same fact the sentence beside it states, where "85 %" was a second metric
- * nobody could check against it. The arc still does the proportion, which is all
- * a percentage was ever good for here.
- *
- * Every gap is a button. A figure you can only look at has no place in this app.
- */
+/** Completion as "24/29" in a ring, with each gap as a button that filters to it. */
 export function CompletionCard({
   completion,
   filter,

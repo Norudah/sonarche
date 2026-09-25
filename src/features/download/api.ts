@@ -8,8 +8,7 @@ export type JobStatus =
   | "enriching"
   | "done"
   | "failed"
-  /** Stopped by the user. Terminal, but nothing went wrong: resume markers
-   * survive, so the job can be retried and picks up where it stopped. */
+  /** Terminal, but resumable on retry. */
   | "cancelled";
 export type JobStep = "download" | "import" | "enrich";
 export type TrackStatus =
@@ -19,9 +18,7 @@ export type TrackStatus =
   | "imported"
   | "done"
   | "failed"
-  /** The source will never serve this one — deleted, private, blocked or claimed
-   * since the playlist was assembled. Not a failure of ours, and not
-   * retryable: the playlist lists a video that no longer plays. */
+  /** Removed, private or blocked at the source: not retryable. */
   | "unavailable";
 
 export interface MetadataReportFields {
@@ -34,17 +31,15 @@ export interface MetadataReportFields {
 }
 
 export interface MetadataReport {
-  /** beets item id — links the job to its library track (null if unknown). */
+  /** beets item id, or null if unknown. */
   itemId: number | null;
-  /** The tags as filed, so a history row can later recognise its item: beets
-   * recycles deleted rowids, and an id alone cannot say "this is still the
-   * track I filed". Null on reports written before these existed. */
+  /** Tags as filed, so a history row can recognise its item (beets recycles
+   * rowids). Null on older reports. */
   title: string | null;
   artist: string | null;
   album: string | null;
   mbMatched: boolean;
-  /** Tags were written but guessed from the video, not matched — never trust
-   * them without a second pass. See the sidecar's `provisional` module. */
+  /** Tags guessed from the video, not matched. */
   provisional: boolean;
   source: string | null;
   fields: MetadataReportFields;
@@ -52,9 +47,8 @@ export interface MetadataReport {
   coverSource: string | null;
 }
 
-/** One playlist entry of an album job. */
 export interface AlbumTrackJob {
-  /** 1-based playlist position. */
+  /** 1-based. */
   index: number;
   videoId: string;
   url: string;
@@ -64,10 +58,9 @@ export interface AlbumTrackJob {
   error: string | null;
   itemId: number | null;
   report: MetadataReport | null;
-  /** Kept item id when the enrich step dropped this track as a content
-   * duplicate (same AcoustID recording under another video title). */
+  /** Kept item id when enrich dropped this track as a duplicate recording. */
   duplicateOf: number | null;
-  /** Download attempts started, 0 before the first. See DOWNLOAD_ATTEMPTS. */
+  /** Attempts started; see DOWNLOAD_ATTEMPTS. */
   downloadAttempts: number;
 }
 
@@ -83,40 +76,30 @@ export interface DownloadJob {
   thumbnail: string | null;
   duration: number | null;
   report: MetadataReport | null;
-  /** Album jobs only; empty for singles. */
+  /** Empty for singles. */
   tracks: AlbumTrackJob[];
-  /** Download attempts started for a single; album jobs count per track. */
+  /** Singles only; album jobs count per track. */
   downloadAttempts: number;
-  /** The library category the job was queued with (beets' `grouping`), stamped
-   * onto every item it produced. Null on jobs queued before the option existed,
-   * and whenever the user chose to leave the axis alone. */
+  /** beets `grouping` applied to every item; null leaves it untouched. */
   category: string | null;
-  /** The album the user declared this playlist to be, overriding whatever
-   * releases its tracks belong to. Null on every ordinary download. */
+  /** User-assigned album overriding the matched releases; usually null. */
   forcedAlbum: ForcedAlbum | null;
-  /** One record for the whole playlist (auto mode); what a re-download reuses. */
+  /** One record per playlist (auto mode); reused on re-download. */
   singleAlbum: boolean;
-  /** Playlist slots whose video was deleted, private or claimed — skipped
-   * before download (they could only fail), but the set has holes the source
-   * cannot even name, and the user deserves to know. */
+  /** Unavailable playlist slots, skipped but counted. */
   unavailable: number;
-  /** When the job's library output was taken back out (undo), or null. The
-   * row stays in the history; this is what its labels read instead of asking
-   * the library whether the tracks survive. */
+  /** When the job's output was undone; the row stays in history. */
   undoneAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
 
-/** The album the download must land on — a record assembled by hand (a film, a
- * series, a game), or one already on the shelf. The per-track artist survives
- * it: only the filing is forced. */
+/** A forced filing target; per-track artists are kept. */
 export interface ForcedAlbum {
   title: string;
-  /** Left to the sidecar's compilation default ("Various Artists") when empty. */
+  /** Empty falls back to the sidecar's "Various Artists". */
   artist: string | null;
-  /** An existing beets album row to land on. With an id, title/artist above
-   * only describe the target; the backend moves the items onto it post-enrich. */
+  /** An existing album row; title/artist then only describe it. */
   albumId?: number | null;
 }
 
@@ -179,8 +162,7 @@ function mapReport(raw: WireReport | null): MetadataReport | null {
     artist: raw.artist ?? null,
     album: raw.album ?? null,
     mbMatched: raw.mb_matched,
-    // Absent from reports stored before the flag existed: those jobs predate
-    // provisional tagging, so they never guessed anything.
+    // Absent on reports stored before the flag existed.
     provisional: raw.provisional ?? false,
     source: raw.source,
     fields: raw.fields,
@@ -219,18 +201,13 @@ export function mapJob(raw: WireJob): DownloadJob {
   };
 }
 
-/** What the composer sends: the link, what to make of it, and the options the
- * advanced panel collected. Grouped rather than passed as loose positionals
- * because the panel is where the next option will land too. */
 export interface EnqueueRequest {
   url: string;
   kind: JobKind;
-  /** Canonical category value, or null to leave the axis untouched. */
+  /** Canonical category, or null to leave it untouched. */
   category: string | null;
-  /** One album for the whole playlist, or null to let the pipeline decide. */
   forcedAlbum: ForcedAlbum | null;
-  /** The auto pipeline's promise on a playlist: end as one record instead of
-   * scattering across editions and per-track releases. On by default. */
+  /** Auto mode: one record per playlist. On by default. */
   singleAlbum: boolean;
 }
 
@@ -249,13 +226,12 @@ export async function listJobs(): Promise<DownloadJob[]> {
   return raw.map(mapJob);
 }
 
-/** One page of the whole archive, plus the totals the history page counts on.
- * `list_jobs` only carries the live window; this is the way to the rest. */
+/** One archive page and its totals; `list_jobs` only covers the live window. */
 export interface JobsPage {
   jobs: DownloadJob[];
-  /** Every job in the store, live included — what the page count divides. */
+  /** All jobs, live included. */
   total: number;
-  /** Terminal jobs only — what "clear history" would sweep. */
+  /** Finished jobs: what "clear history" removes. */
   terminalTotal: number;
 }
 
@@ -280,8 +256,7 @@ export async function clearJobHistory(): Promise<DownloadJob[]> {
   return raw.map(mapJob);
 }
 
-/** What undoing a download would take away, counted from the library as it is
- * now. The same sentence shapes as the import undo's preview, on purpose. */
+/** Counted from the current library; same shape as the import undo preview. */
 export interface DownloadUndoPreview {
   tracks: number;
   albumsRemoved: number;
@@ -303,8 +278,7 @@ export async function undoDownload(id: string): Promise<DownloadUndoOutcome> {
   return invoke<DownloadUndoOutcome>("undo_download", { id });
 }
 
-/** Re-file what a finished download put in the library onto another record —
- * the composer's destination option, after the fact. */
+/** Re-files a finished download onto another album. */
 export async function changeJobDestination(id: string, forcedAlbum: ForcedAlbum): Promise<DownloadJob> {
   return mapJob(await invoke<WireJob>("change_job_destination", { id, forcedAlbum }));
 }
