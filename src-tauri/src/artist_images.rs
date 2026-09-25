@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, State};
 
 use crate::artwork;
-use crate::commands::{checked_cover_source, CoverCrop};
+use crate::commands::covers::{checked_cover_source, CoverCrop};
 use crate::error::{AppError, AppResult};
 use crate::jobs::JobsState;
 use crate::python_env::AppPaths;
