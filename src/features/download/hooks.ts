@@ -159,9 +159,14 @@ export type EnrichStage = "fingerprint" | "lookup" | "match" | "apply" | "track_
  * one by one. */
 export function useEnrichProgress(active: boolean) {
   const [stages, setStages] = useState<Record<number, EnrichStage>>({});
+  // Cleared on each activation.
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setStages({});
+  }
   useEffect(() => {
     if (!active) return;
-    setStages({});
     const unlisten = listen<{ event: string; data: { stage?: EnrichStage; item_id?: number } }>(
       "sidecar:event",
       (event) => {
@@ -181,9 +186,14 @@ export function useEnrichProgress(active: boolean) {
 /** Download percentage of the active job (the queue is sequential). */
 export function useActiveDownloadProgress(active: boolean) {
   const [percent, setPercent] = useState<number | null>(null);
+  // Cleared on each activation.
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setPercent(null);
+  }
   useEffect(() => {
     if (!active) return;
-    setPercent(null);
     const unlisten = listen<{ event: string; data: { percent?: number | null } }>("sidecar:event", (event) => {
       if (event.payload.event !== "download_progress") return;
       setPercent(event.payload.data.percent ?? null);

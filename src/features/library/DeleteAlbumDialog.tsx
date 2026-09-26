@@ -1,6 +1,6 @@
 import { toast } from "@heroui/react";
 import { Trash2 } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteTracks, useDownloadTargetAlbums } from "@/features/library/hooks";
@@ -38,9 +38,8 @@ export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | n
   const remove = useDeleteTracks();
 
   // Keeps the title during the closing animation.
-  const lastRef = useRef<AlbumDeletion | null>(null);
-  if (album) lastRef.current = album;
-  const shown = album ?? lastRef.current;
+  const [shown, setShown] = useState(album);
+  if (album && album !== shown) setShown(album);
 
   const confirm = () => {
     if (!album) return;

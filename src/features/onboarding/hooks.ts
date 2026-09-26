@@ -69,9 +69,14 @@ export function useSaveAcoustidKey() {
 
 export function useSetupLogs(active: boolean) {
   const [lines, setLines] = useState<string[]>([]);
+  // Cleared on each activation.
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setLines([]);
+  }
   useEffect(() => {
     if (!active) return;
-    setLines([]);
     const unlisten = listen<string>("setup:log", (event) => {
       setLines((prev) => [...prev.slice(-200), event.payload]);
     });

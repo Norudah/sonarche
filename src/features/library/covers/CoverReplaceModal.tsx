@@ -70,7 +70,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const [error, setError] = useState<string | null>(null);
   const [currentBytes, setCurrentBytes] = useState<number | null>(null);
   const [currentSize, setCurrentSize] = useState<SourceSize | null>(null);
-  const [embeddedEstimate, setEmbeddedEstimate] = useState<number | null>(null);
+  const [estimate, setEstimate] = useState<{ url: string; bytes: number | null } | null>(null);
   // The CAA lookup only runs when the user asks.
   const [wantsCandidates, setWantsCandidates] = useState(false);
 
@@ -128,16 +128,14 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
 
   // Re-estimated after the frame settles, not on every keypress.
   const { image, natural, frame } = local;
+  const embeddedEstimate = image && estimate?.url === image.url ? estimate.bytes : null;
   useEffect(() => {
-    if (!image || !natural) {
-      setEmbeddedEstimate(null);
-      return;
-    }
+    if (!image || !natural) return;
     const crop = cropRect(natural, frame) ?? { left: 0, top: 0, size: natural.width };
     let stale = false;
     const timer = window.setTimeout(async () => {
       const bytes = await estimateEmbeddedBytes(image.url, crop, image.path.toLowerCase().endsWith(".png"));
-      if (!stale) setEmbeddedEstimate(bytes);
+      if (!stale) setEstimate({ url: image.url, bytes });
     }, 250);
     return () => {
       stale = true;

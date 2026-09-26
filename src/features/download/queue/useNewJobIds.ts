@@ -1,22 +1,17 @@
-import { useRef } from "react";
+import { useState } from "react";
 
 /** Ids of jobs that appeared after the first render. Append-only so the CSS
  * reveal animation isn't cut off. */
 export function useNewJobIds(ids: string[]): ReadonlySet<string> {
-  const seen = useRef<Set<string> | null>(null);
-  const isNew = useRef(new Set<string>());
+  // First render: existing jobs are history.
+  const [seen, setSeen] = useState(() => new Set(ids));
+  const [isNew, setIsNew] = useState<ReadonlySet<string>>(() => new Set());
 
-  if (seen.current === null) {
-    // First render: existing jobs are history.
-    seen.current = new Set(ids);
-  } else {
-    for (const id of ids) {
-      if (!seen.current.has(id)) {
-        seen.current.add(id);
-        isNew.current.add(id);
-      }
-    }
+  const arrived = ids.filter((id) => !seen.has(id));
+  if (arrived.length > 0) {
+    setSeen(new Set([...seen, ...arrived]));
+    setIsNew(new Set([...isNew, ...arrived]));
   }
 
-  return isNew.current;
+  return isNew;
 }

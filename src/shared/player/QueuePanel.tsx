@@ -62,6 +62,7 @@ function QueueList() {
   const upcoming = ordered.slice(queue.position + 1);
 
   // Always virtualized: a queue can be the whole library.
+  // eslint-disable-next-line react-hooks/incompatible-library -- no React Compiler here; the virtualizer re-renders on its own
   const virtualizer = useVirtualizer({
     count: upcoming.length,
     getScrollElement: () => scrollRef.current,

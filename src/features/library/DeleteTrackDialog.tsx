@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
@@ -20,9 +20,8 @@ export function DeleteTrackDialog({
   const remove = useDeleteTrack();
 
   // Keeps the title during the closing animation.
-  const lastRef = useRef<LibraryTrack | null>(null);
-  if (track) lastRef.current = track;
-  const shown = track ?? lastRef.current;
+  const [shown, setShown] = useState(track);
+  if (track && track !== shown) setShown(track);
 
   const confirm = () => {
     if (!track) return;

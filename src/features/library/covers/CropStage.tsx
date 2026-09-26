@@ -1,6 +1,6 @@
 import { Slider } from "@heroui/react";
 import { ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 import {
   clamp01,
@@ -89,8 +89,7 @@ export function CropStage({
   // Subscribed manually: React's `onWheel` is passive, so `preventDefault`
   // would fail and the modal would scroll too.
   const boxRef = useRef<HTMLDivElement>(null);
-  const wheelRef = useRef<(delta: number) => void>(() => {});
-  wheelRef.current = (delta) => move({ zoom: clampZoom(frame.zoom + delta * 0.0015) });
+  const zoomBy = useEffectEvent((delta: number) => move({ zoom: clampZoom(frame.zoom + delta * 0.0015) }));
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
@@ -105,7 +104,7 @@ export function CropStage({
           raf = 0;
           const delta = pending;
           pending = 0;
-          wheelRef.current(delta);
+          zoomBy(delta);
         });
     };
     box.addEventListener("wheel", onWheel, { passive: false });

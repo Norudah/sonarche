@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import * as engine from "@/shared/player/engine";
@@ -82,19 +82,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Refs keep callbacks stable: new identities would re-render every row.
   const currentIdRef = useRef<PlayableTrack["id"] | null>(null);
-  currentIdRef.current = current?.id ?? null;
   const queueRef = useRef(queue);
-  queueRef.current = queue;
   const positionRef = useRef(0);
-  positionRef.current = currentTime;
+  const durationRef = useRef(0);
+  // Layout phase: synced before any effect or user event reads them.
+  useLayoutEffect(() => {
+    currentIdRef.current = current?.id ?? null;
+    queueRef.current = queue;
+    positionRef.current = currentTime;
+    durationRef.current = duration;
+  });
   /** Load token: ticks arriving before the engine answers describe the previous
    * track and would move the playhead backwards. */
   const loadingRef = useRef(0);
   /** Seek token: the tick in flight describes the old position and would snap
    * the thumb back. */
   const seekingRef = useRef(0);
-  const durationRef = useRef(0);
-  durationRef.current = duration;
   /** The track handed to the engine as next. Cleared by every load. */
   const preloadedRef = useRef<PlayableTrack | null>(null);
 

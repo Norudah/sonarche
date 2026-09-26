@@ -1,5 +1,5 @@
 import { readImage, readText } from "@tauri-apps/plugin-clipboard-manager";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 
 import { savePastedImage } from "@/features/library/api";
 
@@ -61,8 +61,7 @@ export const PASTE_CHORD = navigator.platform.toLowerCase().includes("mac") ? "â
 
 /** âŒ˜V / Ctrl+V in the open modal, except over editable fields. */
 export function usePasteShortcut(active: boolean, onPaste: () => void) {
-  const pasteRef = useRef(onPaste);
-  pasteRef.current = onPaste;
+  const paste = useEffectEvent(onPaste);
   useEffect(() => {
     if (!active) return;
     const handler = (event: KeyboardEvent) => {
@@ -71,7 +70,7 @@ export function usePasteShortcut(active: boolean, onPaste: () => void) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       event.preventDefault();
-      pasteRef.current();
+      paste();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

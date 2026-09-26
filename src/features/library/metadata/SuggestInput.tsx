@@ -59,10 +59,7 @@ export function SuggestInput({
 
   // Re-read on scroll (capture: the scrolling ancestor isn't the window) and resize.
   useLayoutEffect(() => {
-    if (!isShown) {
-      setPlacement(null);
-      return;
-    }
+    if (!isShown) return;
     const update = () => {
       const anchor = inputRef.current;
       if (!anchor) return;

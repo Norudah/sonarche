@@ -59,6 +59,7 @@ export function useRowWindow(tracks: LibraryTrack[], rowHeight: number = ROW_HEI
   const scrollport = useScrollport();
   const isVirtual = tracks.length > VIRTUALIZE_ABOVE;
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- no React Compiler here; the virtualizer re-renders on its own
   const virtualizer = useVirtualizer({
     // Zero disables measuring; the hook itself must still run.
     count: isVirtual ? tracks.length : 0,

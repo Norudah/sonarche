@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { allowCoverPreview } from "@/features/library/api";
 import { WHOLE_FRAME, type CropFrame, type SourceSize } from "@/features/library/covers/coverCrop";
@@ -62,13 +62,11 @@ export function useLocalImageSource({
     setIsDropTarget(false);
   };
 
-  // Keeps the drop handler current without re-subscribing.
-  const dropRef = useRef<(paths: string[]) => void>(() => {});
-  dropRef.current = (paths) => {
+  const onDrop = useEffectEvent((paths: string[]) => {
     const dropped = paths.find((path) => IMAGE_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(`.${ext}`)));
     if (dropped) void adopt(dropped);
     else onUnreadable();
-  };
+  });
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
@@ -80,7 +78,7 @@ export function useLocalImageSource({
           if (event.payload.type === "leave") setIsDropTarget(false);
           if (event.payload.type === "drop") {
             setIsDropTarget(false);
-            dropRef.current(event.payload.paths);
+            onDrop(event.payload.paths);
           }
         }),
       )
