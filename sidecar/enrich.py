@@ -493,28 +493,59 @@ def enrich_one(
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
 
-    recordings: list[str] = []
-    fingerprinted = False
-    api_key = params.get("acoustid_key")
     if known_recordings is not None:
-        recordings = known_recordings
-        fingerprinted = True
-    elif api_key:
-        protocol.send_event(
-            request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id}
-        )
-        duration, fingerprint = _fingerprint(params["fpcalc"], path)
-        fingerprinted = True
-        protocol.send_event(request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id})
-        recordings = _lookup_recordings(api_key, fingerprint, duration)
-        protocol.log(f"enrich: acoustid returned {len(recordings)} recording(s)")
+        recordings, fingerprinted = known_recordings, True
     else:
-        protocol.log("enrich: no AcoustID key configured, text fallback only")
+        recordings, fingerprinted = _lookup_item(request_id, item, path, params)
 
-    # A fingerprint links to several recordings (album version, best-ofs...),
-    # so score every candidate's canonical release instead of taking the first.
-    # See `candidate_key` for the ordering.
-    title_hint = params.get("title")
+    album_info, track_info = _best_candidate(recordings, params.get("title"))
+    source = "acoustid" if track_info is not None else None
+    if track_info is None:
+        rec_id = _text_fallback(item, params.get("artist"), params.get("title"))
+        if rec_id:
+            try:
+                album_info, track_info, _ = _album_for_recording(rec_id)
+                source = "text" if track_info is not None else None
+            except Exception as exc:
+                protocol.log(f"enrich: fallback recording {rec_id} failed: {exc}")
+
+    matched = bool(album_info and track_info)
+    if matched:
+        protocol.send_event(request_id, "enrich_progress", {"stage": "apply", "item_id": item.id})
+        # Read before _apply rewrites it.
+        previous_release = str(item.mb_albumid or "")
+        _apply(lib, item, album_info, track_info)
+        if fetch_cover:
+            _refresh_cover(item, album_info, previous_release)
+    elif provisional_fallback:
+        apply_provisional(lib, item, params)
+
+    # _text_fallback may have mutated the in-memory item without storing.
+    fresh = lib.get_item(item.id)
+    if fresh is not None and (fingerprinted or matched):
+        _record_outcome(fresh, fingerprinted, source if matched else None, params.get("title"))
+    return {"matched": matched, "report": build_report(fresh) if fresh else None}
+
+
+def _lookup_item(request_id: str, item, path: str, params: dict) -> tuple[list[str], bool]:
+    """AcoustID recordings for the file, and whether it was fingerprinted."""
+    api_key = params.get("acoustid_key")
+    if not api_key:
+        protocol.log("enrich: no AcoustID key configured, text fallback only")
+        return [], False
+    protocol.send_event(request_id, "enrich_progress", {"stage": "fingerprint", "item_id": item.id})
+    duration, fingerprint = _fingerprint(params["fpcalc"], path)
+    protocol.send_event(request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id})
+    recordings = _lookup_recordings(api_key, fingerprint, duration)
+    protocol.log(f"enrich: acoustid returned {len(recordings)} recording(s)")
+    return recordings, True
+
+
+def _best_candidate(recordings: list[str], title_hint: str | None):
+    """(album_info, track_info) of the best-ranked recording, or (None, None).
+
+    A fingerprint links to several recordings (album version, best-ofs...), so
+    every candidate's canonical release is scored; see `candidate_sort_key`."""
     album_info = track_info = None
     best_key = None
     for rec_id in recordings:
@@ -535,59 +566,40 @@ def enrich_one(
             f"enrich: no candidate matched the video title « {title_hint} », "
             f"keeping best-ranked « {track_info.title} »"
         )
+    return album_info, track_info
 
-    source = "acoustid" if track_info is not None else None
-    if track_info is None:
-        rec_id = _text_fallback(item, params.get("artist"), params.get("title"))
-        if rec_id:
-            try:
-                album_info, track_info, _ = _album_for_recording(rec_id)
-                source = "text" if track_info is not None else None
-            except Exception as exc:
-                protocol.log(f"enrich: fallback recording {rec_id} failed: {exc}")
 
-    matched = bool(album_info and track_info)
-    if matched:
-        protocol.send_event(request_id, "enrich_progress", {"stage": "apply", "item_id": item.id})
-        # Read before _apply rewrites it.
-        previous_release = str(item.mb_albumid or "")
-        _apply(lib, item, album_info, track_info)
-        if fetch_cover:
-            # Same release: keep the existing (possibly user-chosen) cover.
-            album = item.get_album()
-            same_release = bool(previous_release) and previous_release == str(
-                album_info.album_id or ""
+def _refresh_cover(item, album_info, previous_release: str) -> None:
+    album = item.get_album()
+    # Same release: keep the existing (possibly user-chosen) cover.
+    same_release = bool(previous_release) and previous_release == str(album_info.album_id or "")
+    # Another edition's named row keeps its own cover too.
+    foreign_row = (
+        album is not None
+        and bool(album.mb_albumid)
+        and str(album.mb_albumid) != str(album_info.album_id or "")
+    )
+    if (same_release or foreign_row) and album is not None and album.artpath:
+        protocol.log("enrich: cover already on the record, keeping it")
+        return
+    try:
+        _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
+    except Exception as exc:  # metadata landed; a missing cover is not a failure
+        protocol.log(f"enrich: cover fetch failed: {exc}")
+
+
+def _record_outcome(item, fingerprinted: bool, match_source: str | None, title_hint) -> None:
+    """Provenance flags on the stored item. `match_source` is None without a match."""
+    if fingerprinted:
+        provenance.mark_fingerprinted(item)
+    if match_source:
+        # A real match lifts the provisional flag.
+        if provisional.clear(item):
+            protocol.log(f"enrich: item {item.id} no longer provisional")
+        provenance.mark_match(item, match_source)
+        if suspect.mark(item, title_hint):
+            protocol.log(
+                f"enrich: item {item.id} flagged {suspect.TITLE_MISMATCH}: "
+                f"« {title_hint} » matched « {item.title} »"
             )
-            # Another edition's named row keeps its own cover too.
-            foreign_row = (
-                album is not None
-                and bool(album.mb_albumid)
-                and str(album.mb_albumid) != str(album_info.album_id or "")
-            )
-            if (same_release or foreign_row) and album is not None and album.artpath:
-                protocol.log("enrich: cover already on the record, keeping it")
-            else:
-                try:
-                    _fetch_cover(item, album_info.album_id, album_info.releasegroup_id)
-                except Exception as exc:  # metadata landed; a missing cover is not a failure
-                    protocol.log(f"enrich: cover fetch failed: {exc}")
-    elif provisional_fallback:
-        apply_provisional(lib, item, params)
-
-    # _text_fallback may have mutated the in-memory item without storing.
-    fresh = lib.get_item(item.id)
-    if fresh is not None and (fingerprinted or matched):
-        if fingerprinted:
-            provenance.mark_fingerprinted(fresh)
-        if matched and source:
-            # A real match lifts the provisional flag.
-            if provisional.clear(fresh):
-                protocol.log(f"enrich: item {item.id} no longer provisional")
-            provenance.mark_match(fresh, source)
-            if suspect.mark(fresh, params.get("title")):
-                protocol.log(
-                    f"enrich: item {item.id} flagged {suspect.TITLE_MISMATCH}: "
-                    f"« {params.get('title')} » matched « {fresh.title} »"
-                )
-        fresh.store()
-    return {"matched": matched, "report": build_report(fresh) if fresh else None}
+    item.store()

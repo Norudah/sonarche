@@ -120,38 +120,10 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
     # the target folder when a source shares its name.
     sources: dict[int, None] = {}
     for index, item in enumerate(incoming):
-        changed: set[str] = set()
-        old_album_title = (item.album or "").strip()
         origin = origins.get(item.id)
         if origin is not None and origin != album.id:
             sources.setdefault(origin, None)
-
-        for key in ("album", "albumartist"):
-            wanted = getattr(album, key) or ""
-            if (getattr(item, key, "") or "") != wanted:
-                setattr(item, key, wanted)
-                changed.add(key)
-        # `comp` selects the path template, so it must follow the record.
-        if bool(item.comp) != bool(album.comp):
-            item.comp = album.comp
-            changed.add("comp")
-        if renumber:
-            if (item.track or 0) != numbers[index]:
-                item.track = numbers[index]
-                changed.add("track")
-            # The old record's total no longer applies; 0 is beets' "unset".
-            if (item.tracktotal or 0) != 0:
-                item.tracktotal = 0
-                changed.add("tracktotal")
-
-        item.album_id = album.id
-        if old_album_title and old_album_title != (album.album or ""):
-            item[MOVED_FROM_KEY] = old_album_title
-        if changed:
-            # Treated like a manual edit, so bulk passes spare it.
-            provenance.mark_edited(item, changed)
-
-        item.store()
+        _retag(item, album, numbers[index] if renumber else None)
 
     # Drop emptied rows before computing destinations, but keep their covers on
     # disk until the audio has moved, in case the move fails midway.
@@ -177,20 +149,7 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
     # Re-file residents only when the album folder may have changed, so a
     # single-track move stays O(1).
     if sources_removed or owner_healed:
-        resident_art = {
-            item.id: item.get(library.ITEM_ART_KEY)
-            for item in album.items()
-            if item.get(library.ITEM_ART_KEY)
-        }
-        try:
-            album.move()
-        except Exception as exc:
-            protocol.log(f"move_tracks: album re-file failed: {exc}")
-        # Album.move doesn't carry a resident's singleton art.
-        for item_id, old_art in resident_art.items():
-            fresh = lib.get_item(item_id)
-            if fresh is not None:
-                _follow_item_art(lib, fresh, old_art)
+        _refile_album(lib, album)
 
     # Last, once every path has settled.
     covered = _adopt_album_art(lib, album, incoming)
@@ -205,6 +164,55 @@ def _move(lib, item_ids, target_album_id, new_album, kind, renumber) -> dict:
         "target_album_id": album.id,
         "sources_removed": sources_removed,
     }
+
+
+def _retag(item, album, track_number: int | None) -> None:
+    """Points the item at `album` in the DB only; files move later.
+    `track_number` is None when the move keeps the numbering."""
+    changed: set[str] = set()
+    old_album_title = (item.album or "").strip()
+    for key in ("album", "albumartist"):
+        wanted = getattr(album, key) or ""
+        if (getattr(item, key, "") or "") != wanted:
+            setattr(item, key, wanted)
+            changed.add(key)
+    # `comp` selects the path template, so it must follow the record.
+    if bool(item.comp) != bool(album.comp):
+        item.comp = album.comp
+        changed.add("comp")
+    if track_number is not None:
+        if (item.track or 0) != track_number:
+            item.track = track_number
+            changed.add("track")
+        # The old record's total no longer applies; 0 is beets' "unset".
+        if (item.tracktotal or 0) != 0:
+            item.tracktotal = 0
+            changed.add("tracktotal")
+
+    item.album_id = album.id
+    if old_album_title and old_album_title != (album.album or ""):
+        item[MOVED_FROM_KEY] = old_album_title
+    if changed:
+        # Treated like a manual edit, so bulk passes spare it.
+        provenance.mark_edited(item, changed)
+    item.store()
+
+
+def _refile_album(lib, album) -> None:
+    resident_art = {
+        item.id: item.get(library.ITEM_ART_KEY)
+        for item in album.items()
+        if item.get(library.ITEM_ART_KEY)
+    }
+    try:
+        album.move()
+    except Exception as exc:
+        protocol.log(f"move_tracks: album re-file failed: {exc}")
+    # Album.move doesn't carry a resident's singleton art.
+    for item_id, old_art in resident_art.items():
+        fresh = lib.get_item(item_id)
+        if fresh is not None:
+            _follow_item_art(lib, fresh, old_art)
 
 
 def _adopt_album_art(lib, album, incoming) -> int:

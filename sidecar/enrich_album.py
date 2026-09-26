@@ -360,13 +360,10 @@ def _handle_forced(
     }
 
 
-def handle(request_id: str, params: dict) -> dict:
-    from beets.library import Library
-
-    lib = Library(params["beets_db"], directory=params["library_dir"])
+def _load_items(lib, item_ids) -> list:
     items = []
     seen: set[int] = set()
-    for item_id in params["item_ids"]:
+    for item_id in item_ids:
         if item_id in seen:  # defensive: a duplicated id would wreck the mapping
             continue
         seen.add(item_id)
@@ -376,41 +373,26 @@ def handle(request_id: str, params: dict) -> dict:
         items.append(item)
     if not items:
         raise RuntimeError("no items to enrich")
+    return items
 
-    metadata.ensure_plugins()
-    pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
-    forced = forced_album.requested(params)
 
-    duplicate_reports: list[dict] = []
-    recordings: dict[int, list[str]] = {}
-    if params.get("acoustid_key"):
-        recordings = _fingerprint_all(request_id, items, params)
-        items, duplicates = _remove_duplicates(request_id, lib, items, recordings)
-        # A forced album may legitimately contain tracks already owned elsewhere.
-        if not forced:
-            items, library_duplicates = _remove_library_duplicates(
-                request_id, lib, items, recordings
-            )
-            duplicates.update(library_duplicates)
-        duplicate_reports = [
-            {"item_id": item_id, "duplicate_of": kept_id, "report": None}
-            for item_id, kept_id in sorted(duplicates.items())
-        ]
-        if not items:
-            return {"matched": False, "mode": "none", "reports": duplicate_reports}
-    else:
-        protocol.log("enrich_album: no AcoustID key configured, text search only")
+def _drop_duplicates(request_id: str, lib, items, recordings: dict, forced) -> tuple[list, list]:
+    """Removes same-recording items; returns the survivors and their reports."""
+    items, duplicates = _remove_duplicates(request_id, lib, items, recordings)
+    # A forced album may legitimately contain tracks already owned elsewhere.
+    if not forced:
+        items, library_duplicates = _remove_library_duplicates(request_id, lib, items, recordings)
+        duplicates.update(library_duplicates)
+    reports = [
+        {"item_id": item_id, "duplicate_of": kept_id, "report": None}
+        for item_id, kept_id in sorted(duplicates.items())
+    ]
+    return items, reports
 
-    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
-    _apply_hints(items, hints, params.get("artist"))
 
-    if forced:
-        return _handle_forced(
-            request_id, lib, items, params, pause, forced, duplicate_reports, recordings
-        )
-
-    match, leftovers = None, []
-    source = None
+def _find_release(request_id: str, items, params: dict, recordings: dict, pause: float, hints):
+    """Fingerprint vote first, text search second. Returns (match, leftovers, source)."""
+    match, leftovers, source = None, [], None
     if recordings:
         protocol.send_event(request_id, "enrich_progress", {"stage": "match"})
         release_id = vote_release_id(request_id, items, recordings, pause)
@@ -425,37 +407,105 @@ def handle(request_id: str, params: dict) -> dict:
     if match is None:
         match, leftovers = text_album_match(request_id, items, params), []
         source = "text" if match is not None else None
+    return match, leftovers, source
 
-    single_album = bool(params.get("single_album"))
-    if match is not None:
-        album, mapped, foreign = _apply_album(request_id, lib, match, pause, source, hints)
-        adopted = (
-            _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause, hints)
-            if leftovers
-            else []
+
+def _handle_album_match(
+    request_id: str,
+    lib,
+    match,
+    leftovers: list,
+    source: str,
+    params: dict,
+    pause: float,
+    recordings: dict,
+    hints: dict,
+    duplicate_reports: list,
+) -> dict:
+    album, mapped, foreign = _apply_album(request_id, lib, match, pause, source, hints)
+    adopted = (
+        _adopt_bonus_tracks(request_id, lib, album, match, leftovers, recordings, pause, hints)
+        if leftovers
+        else []
+    )
+    artpath = enrich._decode(album.artpath) if album.artpath else None
+    if foreign and artpath and os.path.exists(artpath):
+        # Borrow the existing cover rather than fetching over it.
+        for item in mapped + adopted:
+            embed_album_cover(album, item)
+    else:
+        fetch_album_cover(album, mapped + adopted, match.info.album_id, match.info.releasegroup_id)
+    rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
+    if rest:
+        protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
+        enrich_per_track(request_id, lib, rest, params, pause, recordings)
+        if params.get("single_album"):
+            absorb_strays(request_id, lib, album, rest)
+    finalize_fallback(lib, mapped + adopted + rest)
+    if rest:
+        tag_unidentified(lib, album, rest, params)
+    reports = _build_reports(lib, mapped + adopted + rest) + duplicate_reports
+    return {"matched": True, "mode": "album", "reports": reports}
+
+
+def _handle_per_track(
+    request_id: str, lib, items, params: dict, pause: float, recordings: dict, duplicate_reports
+) -> dict:
+    protocol.log("enrich_album: no album-level match, falling back per track")
+    any_matched = enrich_per_track(request_id, lib, items, params, pause, recordings)
+    finalize_fallback(lib, items)
+    tag_unidentified(lib, None, items, params)
+    return {
+        "matched": any_matched,
+        "mode": "per_track" if any_matched else "none",
+        "reports": _build_reports(lib, items) + duplicate_reports,
+    }
+
+
+def handle(request_id: str, params: dict) -> dict:
+    from beets.library import Library
+
+    lib = Library(params["beets_db"], directory=params["library_dir"])
+    items = _load_items(lib, params["item_ids"])
+
+    metadata.ensure_plugins()
+    pause = max(0.0, float(params.get("fetch_pause_seconds", _DEFAULT_FETCH_PAUSE_SECONDS)))
+    forced = forced_album.requested(params)
+
+    duplicate_reports: list[dict] = []
+    recordings: dict[int, list[str]] = {}
+    if params.get("acoustid_key"):
+        recordings = _fingerprint_all(request_id, items, params)
+        items, duplicate_reports = _drop_duplicates(request_id, lib, items, recordings, forced)
+        if not items:
+            return {"matched": False, "mode": "none", "reports": duplicate_reports}
+    else:
+        protocol.log("enrich_album: no AcoustID key configured, text search only")
+
+    hints = {h["item_id"]: h for h in params.get("track_hints") or []}
+    _apply_hints(items, hints, params.get("artist"))
+
+    if forced:
+        return _handle_forced(
+            request_id, lib, items, params, pause, forced, duplicate_reports, recordings
         )
-        artpath = enrich._decode(album.artpath) if album.artpath else None
-        if foreign and artpath and os.path.exists(artpath):
-            # Borrow the existing cover rather than fetching over it.
-            for item in mapped + adopted:
-                embed_album_cover(album, item)
-        else:
-            fetch_album_cover(
-                album, mapped + adopted, match.info.album_id, match.info.releasegroup_id
-            )
-        rest = [i for i in leftovers if i.id not in {a.id for a in adopted}]
-        if rest:
-            protocol.log(f"enrich_album: {len(rest)} leftover track(s), per-track fallback")
-            enrich_per_track(request_id, lib, rest, params, pause, recordings)
-            if single_album:
-                absorb_strays(request_id, lib, album, rest)
-        finalize_fallback(lib, mapped + adopted + rest)
-        if rest:
-            tag_unidentified(lib, album, rest, params)
-        reports = _build_reports(lib, mapped + adopted + rest) + duplicate_reports
-        return {"matched": True, "mode": "album", "reports": reports}
 
-    if single_album:
+    match, leftovers, source = _find_release(request_id, items, params, recordings, pause, hints)
+    if match is not None:
+        return _handle_album_match(
+            request_id,
+            lib,
+            match,
+            leftovers,
+            source,
+            params,
+            pause,
+            recordings,
+            hints,
+            duplicate_reports,
+        )
+
+    if params.get("single_album"):
         # No coherent release: treat the playlist as a forced album.
         fallback = single_album_fallback(params)
         if fallback is not None:
@@ -467,12 +517,4 @@ def handle(request_id: str, params: dict) -> dict:
                 request_id, lib, items, params, pause, fallback, duplicate_reports, recordings
             )
 
-    protocol.log("enrich_album: no album-level match, falling back per track")
-    any_matched = enrich_per_track(request_id, lib, items, params, pause, recordings)
-    finalize_fallback(lib, items)
-    tag_unidentified(lib, None, items, params)
-    return {
-        "matched": any_matched,
-        "mode": "per_track" if any_matched else "none",
-        "reports": _build_reports(lib, items) + duplicate_reports,
-    }
+    return _handle_per_track(request_id, lib, items, params, pause, recordings, duplicate_reports)

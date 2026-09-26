@@ -33,7 +33,6 @@ DEFAULT_GROUPING = "folder"
 
 def handle(request_id: str, params: dict) -> dict:
     folder = params["folder"]
-    config_path = params["beets_config"]
     # Stamped on every imported item: beets keeps no record of a run.
     batch = params["import_id"]
     if not os.path.isdir(folder):
@@ -42,13 +41,40 @@ def handle(request_id: str, params: dict) -> dict:
     grouping = params.get("grouping") or DEFAULT_GROUPING
     if grouping not in GROUPINGS:
         raise RuntimeError(f"unknown grouping: {grouping}")
+    protocol.log(f"library_import: grouping={grouping}")
 
-    category = (params.get("category") or "").strip()
+    cmd = _import_command(params["beets_config"], folder, grouping, batch, params.get("category"))
+    folders, cancelled = _run_import(request_id, cmd, folder, params.get("cancel_file"))
+
+    # Also runs after a cancel, on what was imported.
+    _write_repaired_tags(params, batch)
+    _stage_singleton_covers(params, batch)
+
+    # Before the recap, so collections aren't counted as gapped albums.
+    collections = auto_collection.mark(params["beets_db"], params["library_dir"], batch)
+
+    # Before the recap, which counts what the cover pass may repair.
+    renditions = _shrink_covers(request_id, params, batch)
+    recap = import_recap.build(params["beets_db"], batch)
+    if recap is not None:
+        recap["collections"] = collections
+
+    return {
+        "folders": folders,
+        "renditions": renditions,
+        "recap": recap,
+        "cancelled": cancelled,
+    }
+
+
+def _import_command(
+    config_path: str, folder: str, grouping: str, batch: str, category: str | None
+) -> list[str]:
     marks = [f"--set={import_recap.BATCH_FIELD}={batch}"]
+    category = (category or "").strip()
     if category:
         marks.append(f"--set=grouping={category}")
-
-    cmd = [
+    return [
         beet_bin(),
         "--config",
         config_path,
@@ -62,8 +88,10 @@ def handle(request_id: str, params: dict) -> dict:
         *marks,
         folder,
     ]
-    protocol.log(f"library_import: grouping={grouping}")
 
+
+def _run_import(request_id: str, cmd: list[str], folder: str, cancel_file: str | None):
+    """Runs `beet import`, reporting each folder. Returns (folders, cancelled)."""
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
 
     # Streamed so progress is reported per folder. stdout and stderr are merged:
@@ -85,7 +113,6 @@ def handle(request_id: str, params: dict) -> dict:
     # polled by a watcher thread. beets commits per album, so SIGTERM leaves a
     # consistent library.
     cancelled = threading.Event()
-    cancel_file = params.get("cancel_file")
     if cancel_file:
         _forget_cancel(cancel_file)
         threading.Thread(
@@ -117,26 +144,7 @@ def handle(request_id: str, params: dict) -> dict:
         _forget_cancel(cancel_file)
     if code != 0 and not cancelled.is_set():
         raise RuntimeError(f"beet import failed (exit {code}): {' / '.join(tail)[:500]}")
-
-    # Also runs after a cancel, on what was imported.
-    _write_repaired_tags(params, batch)
-    _stage_singleton_covers(params, batch)
-
-    # Before the recap, so collections aren't counted as gapped albums.
-    collections = auto_collection.mark(params["beets_db"], params["library_dir"], batch)
-
-    # Before the recap, which counts what the cover pass may repair.
-    renditions = _shrink_covers(request_id, params, batch)
-    recap = import_recap.build(params["beets_db"], batch)
-    if recap is not None:
-        recap["collections"] = collections
-
-    return {
-        "folders": folders,
-        "renditions": renditions,
-        "recap": recap,
-        "cancelled": cancelled.is_set(),
-    }
+    return folders, cancelled.is_set()
 
 
 def _watch_cancel(proc, cancel_file: str, cancelled: threading.Event) -> None:
