@@ -1,9 +1,9 @@
-"""Regression tests for enrich_album's pure functions
-(run: python -m unittest enrich_album_test)."""
+"""Tests for the album enrichment: release matching, row consolidation and
+the per-track fallback (run: python -m unittest enrich_album_test)."""
 
 import unittest
 
-from enrich_album import (
+from album_match import (
     find_content_duplicates,
     match_by_recordings,
     rescue_candidates,
@@ -322,7 +322,7 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
     def test_two_editions_of_one_album_end_as_one_row_and_one_folder(self):
         import os
 
-        import enrich_album
+        import album_rows
 
         lib = self._lib()
         standard = self._album(
@@ -335,7 +335,7 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
         )
         items = list(standard.items()) + list(japan.items())
 
-        kept = enrich_album._consolidate_album_rows(lib, items)
+        kept = album_rows.consolidate_album_rows(lib, items)
 
         self.assertEqual(len(kept), 1)
         self.assertEqual(kept[0].id, standard.id)
@@ -347,7 +347,7 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
         lib._close()
 
     def test_a_collection_sharing_the_name_is_spared(self):
-        import enrich_album
+        import album_rows
         import library
 
         lib = self._lib()
@@ -362,20 +362,20 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
         gathering[library.ALBUM_KIND_KEY] = library.COLLECTION
         gathering.store(inherit=False)
 
-        enrich_album._consolidate_album_rows(lib, list(release.items()))
+        album_rows.consolidate_album_rows(lib, list(release.items()))
 
         self.assertIsNotNone(lib.get_album(gathering.id))
         self.assertEqual(len(list(lib.get_album(gathering.id).items())), 1)
         lib._close()
 
     def test_blank_named_rows_are_never_merged_together(self):
-        import enrich_album
+        import album_rows
 
         lib = self._lib()
         a = self._album(lib, "one", ["A"], albumartist="LIVinglife")
         b = self._album(lib, "two", ["B"], albumartist="LIVinglife")
 
-        enrich_album._consolidate_album_rows(lib, list(a.items()) + list(b.items()))
+        album_rows.consolidate_album_rows(lib, list(a.items()) + list(b.items()))
 
         self.assertIsNotNone(lib.get_album(a.id))
         self.assertIsNotNone(lib.get_album(b.id))
@@ -393,7 +393,7 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
         }
 
     def test_the_album_artist_outranks_the_uploader(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
@@ -401,7 +401,7 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
             album="American Idiot", albumartist="Green Day",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
-        enrich_album._tag_unidentified(lib, album, [orphan], self._params(orphan, "Letterbomb"))
+        album_fallback.tag_unidentified(lib, album, [orphan], self._params(orphan, "Letterbomb"))
 
         fresh = lib.get_item(orphan.id)
         self.assertEqual(fresh.artist, "Green Day")
@@ -409,7 +409,7 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
         lib._close()
 
     def test_various_artists_hands_back_to_the_uploader(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
@@ -417,7 +417,7 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
             album="Encanto OST", albumartist="Various Artists",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
-        enrich_album._tag_unidentified(lib, album, [orphan], self._params(orphan, "Surface Pressure"))
+        album_fallback.tag_unidentified(lib, album, [orphan], self._params(orphan, "Surface Pressure"))
 
         self.assertEqual(lib.get_item(orphan.id).artist, "LIVinglife")
         lib._close()
@@ -427,9 +427,9 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
 
 class SingleAlbumFallbackTest(unittest.TestCase):
     def test_names_the_record_after_the_playlist(self):
-        import enrich_album
+        import album_fallback
 
-        spec = enrich_album._single_album_fallback(
+        spec = album_fallback.single_album_fallback(
             {"album_title": " Epic Mix ", "category": "Films", "thumbnail": "http://thumb"}
         )
         self.assertEqual(
@@ -438,9 +438,9 @@ class SingleAlbumFallbackTest(unittest.TestCase):
         )
 
     def test_without_a_title_the_old_scatter_stands(self):
-        import enrich_album
+        import album_fallback
 
-        self.assertIsNone(enrich_album._single_album_fallback({"album_title": "  "}))
+        self.assertIsNone(album_fallback.single_album_fallback({"album_title": "  "}))
 
 
 class AbsorbStraysTest(ConsolidationHarness):
@@ -450,7 +450,7 @@ class AbsorbStraysTest(ConsolidationHarness):
     def test_a_stray_keeps_its_identity_but_files_with_the_batch(self):
         import os
 
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
@@ -467,7 +467,7 @@ class AbsorbStraysTest(ConsolidationHarness):
         stray.year = 2009
         stray.store()
 
-        absorbed = enrich_album._absorb_strays("req", lib, album, [stray])
+        absorbed = album_fallback.absorb_strays("req", lib, album, [stray])
 
         self.assertEqual([item.id for item in absorbed], [stray.id])
         fresh = lib.get_item(stray.id)
@@ -487,7 +487,7 @@ class AbsorbStraysTest(ConsolidationHarness):
         lib._close()
 
     def test_an_unidentified_leftover_is_left_for_the_borrow_pass(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
@@ -497,7 +497,7 @@ class AbsorbStraysTest(ConsolidationHarness):
         orphan_row = self._album(lib, "staging", ["orphan"])
         orphan = next(iter(orphan_row.items()))
 
-        absorbed = enrich_album._absorb_strays("req", lib, album, [orphan])
+        absorbed = album_fallback.absorb_strays("req", lib, album, [orphan])
 
         self.assertEqual(absorbed, [])
         self.assertEqual(lib.get_item(orphan.id).album_id, orphan_row.id)
