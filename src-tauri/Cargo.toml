@@ -91,3 +91,8 @@ windows-sys = { version = "0.61", features = [
 [dev-dependencies]
 # Real temp directories for the layout/migration tests.
 tempfile = "3"
+
+# CLAUDE.md: no unwrap/expect outside tests and startup (see clippy.toml).
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"

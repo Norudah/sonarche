@@ -36,6 +36,10 @@ mod window_chrome;
 
 use tauri::Manager;
 
+#[allow(
+    clippy::expect_used,
+    reason = "startup: no app to report to without it"
+)]
 fn main() {
     tauri::Builder::default()
         // For sending the user to acoustid.org; scoped in `capabilities/default.json`.
