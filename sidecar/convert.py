@@ -104,7 +104,9 @@ def _run_ffmpeg(ffmpeg: str, source: str, dest: str, target: str) -> bool:
         protocol.log(f"convert: ffmpeg failed to run on {os.path.basename(source)}: {exc}")
         return False
     if result.returncode != 0:
-        protocol.log(f"convert: ffmpeg failed on {os.path.basename(source)}: {result.stderr.strip()}")
+        protocol.log(
+            f"convert: ffmpeg failed on {os.path.basename(source)}: {result.stderr.strip()}"
+        )
         return False
     # ffmpeg can exit 0 without writing anything.
     return os.path.exists(dest) and os.path.getsize(dest) > 0
@@ -175,9 +177,7 @@ def handle(request_id: str, params: dict) -> dict:
         items = list(lib.items())
         pending = [item for item in items if needs_conversion(_decode(item.path), target)]
         total = len(pending)
-        protocol.log(
-            f"convert: {total} of {len(items)} track(s) to re-encode to {target}"
-        )
+        protocol.log(f"convert: {total} of {len(items)} track(s) to re-encode to {target}")
         counts = {"converted": 0, "failed": 0, "missing": 0}
         # Sent upfront so an empty pass can close its progress bar.
         protocol.send_event(

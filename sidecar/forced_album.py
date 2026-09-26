@@ -176,8 +176,7 @@ def apply(lib, items, spec: dict):
     lib._memotable = {}
     album.try_sync(write=True, move=True)
     protocol.log(
-        f"forced_album: « {spec['title']} » by {spec['artist']} "
-        f"holds {len(items)} track(s)"
+        f"forced_album: « {spec['title']} » by {spec['artist']} holds {len(items)} track(s)"
     )
     return album
 

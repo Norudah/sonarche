@@ -148,7 +148,10 @@ class ForgetFolderTest(unittest.TestCase):
         mine = os.path.join(self.dir, "Music")
         other = os.path.join(self.dir, "Other")
         self._write(
-            [(os.fsencode(os.path.join(mine, "Album")),), (os.fsencode(os.path.join(other, "Album")),)],
+            [
+                (os.fsencode(os.path.join(mine, "Album")),),
+                (os.fsencode(os.path.join(other, "Album")),),
+            ],
             {os.fsencode(mine): [b"x"], os.fsencode(other): [b"y"]},
         )
 

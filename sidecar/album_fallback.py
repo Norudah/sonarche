@@ -54,9 +54,7 @@ def finalize_fallback(lib, items) -> None:
         artpath = enrich._decode(album.artpath) if album.artpath else None
         if artpath and os.path.exists(artpath):
             continue
-        fetch_album_cover(
-            album, list(album.items()), album.mb_albumid, album.mb_releasegroupid
-        )
+        fetch_album_cover(album, list(album.items()), album.mb_albumid, album.mb_releasegroupid)
 
 
 def absorb_strays(request_id: str, lib, album, items) -> list:
@@ -74,8 +72,7 @@ def absorb_strays(request_id: str, lib, album, items) -> list:
         origin_title = (str(fresh.album) or "").strip()
         next_track += 1
         protocol.log(
-            f"enrich_album: absorbing item {fresh.id} from « {origin_title} » "
-            f"as track {next_track}"
+            f"enrich_album: absorbing item {fresh.id} from « {origin_title} » as track {next_track}"
         )
         fresh.album = album.album
         fresh.albumartist = album.albumartist

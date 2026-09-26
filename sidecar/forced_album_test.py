@@ -27,7 +27,9 @@ class RequestedTest(unittest.TestCase):
         self.assertIsNone(forced_album.requested({}))
 
     def test_trims_what_the_user_typed(self):
-        spec = forced_album.requested({"forced_album": {"title": "  Tron  ", "artist": " Daft Punk "}})
+        spec = forced_album.requested(
+            {"forced_album": {"title": "  Tron  ", "artist": " Daft Punk "}}
+        )
         self.assertEqual(spec["title"], "Tron")
         self.assertEqual(spec["artist"], "Daft Punk")
 
@@ -46,7 +48,9 @@ class MediaCategoryTest(unittest.TestCase):
 class TitleMatchTest(unittest.TestCase):
     def test_matches_a_soundtrack_release_group_to_its_media(self):
         self.assertTrue(
-            forced_album.title_matches("Inception (Original Motion Picture Soundtrack)", "Inception")
+            forced_album.title_matches(
+                "Inception (Original Motion Picture Soundtrack)", "Inception"
+            )
         )
         self.assertTrue(
             forced_album.title_matches("Arcane: Music From the Animated Series", "Arcane")
@@ -118,9 +122,12 @@ class ApplyTest(unittest.TestCase):
         rate = 8000
         data = b"\x00\x00" * rate
         header = (
-            b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt "
+            b"RIFF"
+            + struct.pack("<I", 36 + len(data))
+            + b"WAVEfmt "
             + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
-            + b"data" + struct.pack("<I", len(data))
+            + b"data"
+            + struct.pack("<I", len(data))
         )
         with open(path, "wb") as handle:
             handle.write(header + data)

@@ -15,8 +15,21 @@ import protocol
 import provenance
 import provisional
 import suspect
-from album_fallback import absorb_strays, enrich_per_track, finalize_fallback, single_album_fallback, tag_unidentified
-from album_match import build_match, find_content_duplicates, rescue_coverage, rescue_slots, text_album_match, vote_release_id
+from album_fallback import (
+    absorb_strays,
+    enrich_per_track,
+    finalize_fallback,
+    single_album_fallback,
+    tag_unidentified,
+)
+from album_match import (
+    build_match,
+    find_content_duplicates,
+    rescue_coverage,
+    rescue_slots,
+    text_album_match,
+    vote_release_id,
+)
 from album_rows import embed_album_cover, fetch_album_cover
 from report import build_report
 
@@ -53,9 +66,7 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
         if not os.path.exists(path):
             recordings[item.id] = []
             continue
-        protocol.log(
-            f"enrich_album: fingerprint {done + 1}/{total}: {os.path.basename(path)}"
-        )
+        protocol.log(f"enrich_album: fingerprint {done + 1}/{total}: {os.path.basename(path)}")
         protocol.send_event(
             request_id,
             "enrich_progress",
@@ -74,9 +85,7 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
             recordings[item.id] = enrich._lookup_recordings(
                 params["acoustid_key"], fingerprint, duration
             )
-            protocol.log(
-                f"enrich_album: fingerprint ok ({len(recordings[item.id])} recording(s))"
-            )
+            protocol.log(f"enrich_album: fingerprint ok ({len(recordings[item.id])} recording(s))")
         except Exception as exc:
             protocol.log(f"enrich_album: item {item.id} fingerprint failed: {exc}")
             recordings[item.id] = []
@@ -85,7 +94,9 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
     return recordings
 
 
-def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[list, dict[int, int]]:
+def _remove_duplicates(
+    request_id: str, lib, items, recordings: dict
+) -> tuple[list, dict[int, int]]:
     """Delete items duplicating an earlier item's recording, before matching.
     Returns (kept items, {removed id: kept id})."""
     duplicates = find_content_duplicates(
@@ -108,7 +119,9 @@ def _remove_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[l
     return kept, duplicates
 
 
-def _remove_library_duplicates(request_id: str, lib, items, recordings: dict) -> tuple[list, dict[int, int]]:
+def _remove_library_duplicates(
+    request_id: str, lib, items, recordings: dict
+) -> tuple[list, dict[int, int]]:
     """Delete new items whose primary recording the library already holds
     (keyed on `mb_trackid`). Returns (kept items, {removed id: library item id})."""
     from beets.dbcore.query import MatchQuery
@@ -178,9 +191,7 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
     lastgenre = metadata.lastgenre_plugin()
     total = len(mapped)
     for done, item in enumerate(mapped, start=1):
-        protocol.send_event(
-            request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
-        )
+        protocol.send_event(request_id, "enrich_progress", {"stage": "apply", "item_id": item.id})
         # Only genre-less items reach Last.fm, so only those are paced.
         had_genre = bool(item.get("genres", with_album=False))
         genres, label = lastgenre._get_genre(item)
@@ -215,7 +226,9 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
     return album, mapped, foreign
 
 
-def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict) -> list:
+def _adopt_bonus_tracks(
+    request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict
+) -> list:
     """Adopt leftovers found on a sibling edition of the release-group (deluxe,
     regional): track metadata from their edition, album identity from the main
     one, numbered after the last slot. Returns the adopted items."""
@@ -224,7 +237,9 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
         return []
     plugin = metadata.mb_plugin()
 
-    candidates: dict[int, dict[str, tuple[dict, str]]] = {}  # item_id -> {release_id: (release, rec_id)}
+    candidates: dict[
+        int, dict[str, tuple[dict, str]]
+    ] = {}  # item_id -> {release_id: (release, rec_id)}
     by_item = {item.id: item for item in leftovers}
     for item in leftovers:
         found: dict[str, tuple[dict, str]] = {}
@@ -251,7 +266,8 @@ def _adopt_bonus_tracks(request_id: str, lib, album, match, leftovers, recording
                 counts.setdefault(release_id, {"n": 0, "release": release})
                 counts[release_id]["n"] += 1
         best = sorted(
-            counts, key=lambda rid: (-counts[rid]["n"], metadata.release_rank(counts[rid]["release"]))
+            counts,
+            key=lambda rid: (-counts[rid]["n"], metadata.release_rank(counts[rid]["release"])),
         )[0]
         for item_id in sorted(pending):
             if best in candidates[item_id]:

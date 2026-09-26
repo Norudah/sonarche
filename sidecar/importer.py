@@ -45,8 +45,16 @@ def handle(request_id: str, params: dict) -> dict:
         raise RuntimeError(f"file not found: {path}")
 
     marker = uuid.uuid4().hex
-    cmd = [beet_bin(), "--config", config_path, "import", "--quiet", "-A",
-           f"--set={_MARKER_FIELD}={marker}", path]
+    cmd = [
+        beet_bin(),
+        "--config",
+        config_path,
+        "import",
+        "--quiet",
+        "-A",
+        f"--set={_MARKER_FIELD}={marker}",
+        path,
+    ]
     if params.get("singleton"):
         # -s avoids a junk one-item album row per file; enrich_album creates the real one.
         cmd.insert(-1, "-s")
@@ -67,7 +75,9 @@ def handle(request_id: str, params: dict) -> dict:
         if line.strip():
             protocol.log(f"beet: {line}")
     if proc.returncode != 0:
-        raise RuntimeError(f"beet import failed (exit {proc.returncode}): {proc.stderr.strip()[:500]}")
+        raise RuntimeError(
+            f"beet import failed (exit {proc.returncode}): {proc.stderr.strip()[:500]}"
+        )
 
     report = None
     try:

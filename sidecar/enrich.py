@@ -37,7 +37,11 @@ def _decode_path(item) -> str:
 
 
 # Prevents a console window flashing on Windows for each subprocess.
-_NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
+_NO_WINDOW = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if hasattr(subprocess, "CREATE_NO_WINDOW")
+    else {}
+)
 
 
 def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
@@ -52,9 +56,7 @@ def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
         **_NO_WINDOW,
     )
     if proc.returncode != 0:
-        raise RuntimeError(
-            f"fpcalc failed (exit {proc.returncode}): {proc.stderr.strip()[:200]}"
-        )
+        raise RuntimeError(f"fpcalc failed (exit {proc.returncode}): {proc.stderr.strip()[:200]}")
     data = json.loads(proc.stdout)
     return int(data["duration"]), data["fingerprint"]
 
@@ -80,9 +82,7 @@ def _lookup_recordings(api_key: str, fingerprint: str, duration: int) -> list[st
         raise RuntimeError(f"AcoustID: {message}")
 
     recordings: list[str] = []
-    results = sorted(
-        payload.get("results", []), key=lambda r: r.get("score", 0), reverse=True
-    )
+    results = sorted(payload.get("results", []), key=lambda r: r.get("score", 0), reverse=True)
     for result in results:
         if result.get("score", 0) < _MIN_SCORE:
             continue
@@ -121,9 +121,7 @@ _TITLE_NEUTRAL = 1  # no evidence either way (junk or empty titles)
 _TITLE_CONTRADICTS = 2  # both carry words, none shared
 
 
-def candidate_sort_key(
-    title_hint: str | None, candidate_title: str | None, release: dict
-) -> tuple:
+def candidate_sort_key(title_hint: str | None, candidate_title: str | None, release: dict) -> tuple:
     """Sort key for a candidate recording; lower is better.
 
     The video title outranks the release type, since AcoustID often mislinks
@@ -369,7 +367,9 @@ def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
     import net
 
     for variant in ("front-500", "front"):
-        resp = requests.get(f"https://coverartarchive.org/{entity_path}/{variant}", timeout=30, stream=True)
+        resp = requests.get(
+            f"https://coverartarchive.org/{entity_path}/{variant}", timeout=30, stream=True
+        )
         if resp.status_code != 200:
             continue
         try:
@@ -382,7 +382,9 @@ def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
     return None
 
 
-def download_cover(release_id: str, release_group_id: str | None = None) -> tuple[bytes, bool] | None:
+def download_cover(
+    release_id: str, release_group_id: str | None = None
+) -> tuple[bytes, bool] | None:
     """The 500px display cover from the Cover Art Archive, or None.
 
     Falls back to the release-group cover: many regional or streaming releases
@@ -502,9 +504,7 @@ def enrich_one(
         )
         duration, fingerprint = _fingerprint(params["fpcalc"], path)
         fingerprinted = True
-        protocol.send_event(
-            request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id}
-        )
+        protocol.send_event(request_id, "enrich_progress", {"stage": "lookup", "item_id": item.id})
         recordings = _lookup_recordings(api_key, fingerprint, duration)
         protocol.log(f"enrich: acoustid returned {len(recordings)} recording(s)")
     else:
@@ -547,9 +547,7 @@ def enrich_one(
 
     matched = bool(album_info and track_info)
     if matched:
-        protocol.send_event(
-            request_id, "enrich_progress", {"stage": "apply", "item_id": item.id}
-        )
+        protocol.send_event(request_id, "enrich_progress", {"stage": "apply", "item_id": item.id})
         # Read before _apply rewrites it.
         previous_release = str(item.mb_albumid or "")
         _apply(lib, item, album_info, track_info)

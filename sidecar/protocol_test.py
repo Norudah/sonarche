@@ -47,8 +47,7 @@ class WireEncodingTest(unittest.TestCase):
     def test_a_lone_surrogate_costs_a_character_not_the_job(self):
         """Lone surrogates from invalid Windows filenames must not fail the job."""
         proc = self._run(
-            "import protocol\n"
-            "protocol.send_event('req-1', 'e', {'title': 'bad \\udce9 name'})\n"
+            "import protocol\nprotocol.send_event('req-1', 'e', {'title': 'bad \\udce9 name'})\n"
         )
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -58,8 +57,11 @@ class WireEncodingTest(unittest.TestCase):
         """The mirror bug: stdin decodes with the same locale encoding, so a
         request with an accent in it would have died on the way in."""
         proc = subprocess.run(
-            [sys.executable, "-c", "import sys, json, protocol\n"
-             "print(json.load(sys.stdin)['q'], file=sys.stderr)\n"],
+            [
+                sys.executable,
+                "-c",
+                "import sys, json, protocol\nprint(json.load(sys.stdin)['q'], file=sys.stderr)\n",
+            ],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env={**os.environ, "PYTHONIOENCODING": "cp1252"},
             input=json.dumps({"q": HOSTILE}, ensure_ascii=False),
@@ -98,11 +100,14 @@ class WireShapeTest(unittest.TestCase):
     def test_an_error_says_which_request_it_belongs_to(self):
         protocol.send_error("req-7", "download_failed", HOSTILE)
 
-        self.assertEqual(self.sent(), {
-            "id": "req-7",
-            "ok": False,
-            "error": {"code": "download_failed", "message": HOSTILE},
-        })
+        self.assertEqual(
+            self.sent(),
+            {
+                "id": "req-7",
+                "ok": False,
+                "error": {"code": "download_failed", "message": HOSTILE},
+            },
+        )
 
 
 if __name__ == "__main__":

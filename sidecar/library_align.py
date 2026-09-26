@@ -149,9 +149,7 @@ def scan(request_id: str, params: dict) -> dict:
     from beets.library import Library
 
     metadata.ensure_plugins()
-    pause = max(
-        0.0, float(params.get("search_pause_seconds", _DEFAULT_SEARCH_PAUSE_SECONDS))
-    )
+    pause = max(0.0, float(params.get("search_pause_seconds", _DEFAULT_SEARCH_PAUSE_SECONDS)))
     lib = Library(params["beets_db"], directory=params["library_dir"])
 
     # Collections have no release to match.

@@ -24,8 +24,13 @@ class BucketForTest(unittest.TestCase):
         self.assertEqual(bucket_for("industrial rock"), "Rock")
 
     def test_genuine_electronic_industrial_stays_electronic(self):
-        for g in ("electronic body music", "death industrial", "power noise",
-                  "electro-industrial", "power electronics"):
+        for g in (
+            "electronic body music",
+            "death industrial",
+            "power noise",
+            "electro-industrial",
+            "power electronics",
+        ):
             self.assertEqual(bucket_for(g), "Electronic", g)
 
     def test_curated_boundaries_survive_the_default_tree(self):
@@ -86,9 +91,7 @@ class TreeConsistencyTest(unittest.TestCase):
         fabricated = {"folk & country"}
         with open(WHITELIST_PATH, encoding="utf-8") as f:
             whitelist = {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
+                line.strip().lower() for line in f if line.strip() and not line.startswith("#")
             }
         nodes = set(_genre_to_root())
         self.assertEqual(nodes - whitelist, fabricated)

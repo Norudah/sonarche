@@ -81,7 +81,9 @@ def prepare_cover(source_path: str, crop: dict | None) -> tuple[bytes, bool, int
         oriented = ImageOps.exif_transpose(opened)
         width, height = oriented.size
         if max(width, height) > MAX_SOURCE_PX:
-            raise RuntimeError(f"image too large: {width}x{height} (max {MAX_SOURCE_PX} px per side)")
+            raise RuntimeError(
+                f"image too large: {width}x{height} (max {MAX_SOURCE_PX} px per side)"
+            )
 
         left, top, size = square_crop_box(width, height, crop)
         square = oriented.crop((left, top, left + size, top + size))
@@ -110,7 +112,9 @@ def _clear_stale_art(album, old_art: str | None, decode) -> None:
 def _caa_index(entity_path: str) -> list[dict] | None:
     import requests
 
-    resp = requests.get(f"{CAA_ROOT}/{entity_path}", timeout=30, headers={"Accept": "application/json"})
+    resp = requests.get(
+        f"{CAA_ROOT}/{entity_path}", timeout=30, headers={"Accept": "application/json"}
+    )
     if resp.status_code != 200:
         return None
     try:

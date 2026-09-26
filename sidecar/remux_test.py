@@ -26,13 +26,21 @@ class BoxScanTest(unittest.TestCase):
         return handle.name
 
     def test_classic_file_is_not_fragmented(self):
-        path = self._write(_box(b"ftyp", b"M4A \x00\x00\x00\x00") + _box(b"moov", b"x" * 40) + _box(b"mdat", b"y" * 100))
+        path = self._write(
+            _box(b"ftyp", b"M4A \x00\x00\x00\x00")
+            + _box(b"moov", b"x" * 40)
+            + _box(b"mdat", b"y" * 100)
+        )
         self.assertEqual(top_level_boxes(path), [b"ftyp", b"moov", b"mdat"])
         self.assertFalse(is_fragmented(path))
 
     def test_dash_file_is_fragmented(self):
         path = self._write(
-            _box(b"ftyp") + _box(b"moov", b"x" * 40) + _box(b"sidx", b"s" * 24) + _box(b"moof", b"f" * 32) + _box(b"mdat")
+            _box(b"ftyp")
+            + _box(b"moov", b"x" * 40)
+            + _box(b"sidx", b"s" * 24)
+            + _box(b"moof", b"f" * 32)
+            + _box(b"mdat")
         )
         self.assertTrue(is_fragmented(path))
 

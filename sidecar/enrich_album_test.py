@@ -12,7 +12,9 @@ from album_match import (
 )
 
 
-def _rel(release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"):
+def _rel(
+    release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"
+):
     rel = {
         "id": release_id,
         "date": date,
@@ -128,9 +130,7 @@ class FindContentDuplicatesTest(unittest.TestCase):
         self.assertEqual(dups, {})
 
     def test_disjoint_primaries_keep_everything(self):
-        self.assertEqual(
-            find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {}
-        )
+        self.assertEqual(find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {})
 
     def test_unidentified_items_never_match(self):
         # AcoustID silence (empty list) must not mark two unknowns as duplicates.
@@ -278,8 +278,6 @@ class SlotRescuesTest(unittest.TestCase):
         self.assertEqual(slot_rescues([first, second], [slot], hints), {first: slot})
 
 
-
-
 class ConsolidationHarness(unittest.TestCase):
     """Against a real beets library: the merge's whole job is what beets does
     with rows, %aunique and destinations."""
@@ -326,12 +324,20 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
 
         lib = self._lib()
         standard = self._album(
-            lib, "American Idiot", ["Holiday", "Letterbomb"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday", "Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         japan = self._album(
-            lib, "American Idiot [WBCD 2075]", ["Homecoming"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-japan",
+            lib,
+            "American Idiot [WBCD 2075]",
+            ["Homecoming"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-japan",
         )
         items = list(standard.items()) + list(japan.items())
 
@@ -352,12 +358,19 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
 
         lib = self._lib()
         release = self._album(
-            lib, "AI", ["Holiday"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "AI",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         gathering = self._album(
-            lib, "AI mine", ["Letterbomb"],
-            album="American Idiot", albumartist="Green Day",
+            lib,
+            "AI mine",
+            ["Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
         )
         gathering[library.ALBUM_KIND_KEY] = library.COLLECTION
         gathering.store(inherit=False)
@@ -397,8 +410,11 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday"],
-            album="American Idiot", albumartist="Green Day",
+            lib,
+            "American Idiot",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
         album_fallback.tag_unidentified(lib, album, [orphan], self._params(orphan, "Letterbomb"))
@@ -413,16 +429,19 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
 
         lib = self._lib()
         album = self._album(
-            lib, "OST", ["Java"],
-            album="Encanto OST", albumartist="Various Artists",
+            lib,
+            "OST",
+            ["Java"],
+            album="Encanto OST",
+            albumartist="Various Artists",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
-        album_fallback.tag_unidentified(lib, album, [orphan], self._params(orphan, "Surface Pressure"))
+        album_fallback.tag_unidentified(
+            lib, album, [orphan], self._params(orphan, "Surface Pressure")
+        )
 
         self.assertEqual(lib.get_item(orphan.id).artist, "LIVinglife")
         lib._close()
-
-
 
 
 class SingleAlbumFallbackTest(unittest.TestCase):
@@ -434,7 +453,12 @@ class SingleAlbumFallbackTest(unittest.TestCase):
         )
         self.assertEqual(
             spec,
-            {"title": "Epic Mix", "artist": "Various Artists", "category": "Films", "thumbnail": "http://thumb"},
+            {
+                "title": "Epic Mix",
+                "artist": "Various Artists",
+                "category": "Films",
+                "thumbnail": "http://thumb",
+            },
         )
 
     def test_without_a_title_the_old_scatter_stands(self):
@@ -454,13 +478,21 @@ class AbsorbStraysTest(ConsolidationHarness):
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday", "Letterbomb"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday", "Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         stray_row = self._album(
-            lib, "Greatest Hits", ["Boulevard"],
-            album="Greatest Hits", albumartist="Green Day",
-            artist="Green Day", mb_albumid="mb-hits",
+            lib,
+            "Greatest Hits",
+            ["Boulevard"],
+            album="Greatest Hits",
+            albumartist="Green Day",
+            artist="Green Day",
+            mb_albumid="mb-hits",
         )
         stray = next(iter(stray_row.items()))
         stray.mb_trackid = "rec-blvd"
@@ -491,8 +523,12 @@ class AbsorbStraysTest(ConsolidationHarness):
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         orphan_row = self._album(lib, "staging", ["orphan"])
         orphan = next(iter(orphan_row.items()))

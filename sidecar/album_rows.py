@@ -34,9 +34,7 @@ def _adopt_art(keep, dying) -> None:
         return
     src_dir = os.path.dirname(art)
     covers = [art] + [
-        os.path.join(src_dir, name)
-        for name in os.listdir(src_dir)
-        if name.startswith("cover-hq.")
+        os.path.join(src_dir, name) for name in os.listdir(src_dir) if name.startswith("cover-hq.")
     ]
     keep_art = enrich._decode(keep.artpath) if keep.artpath else None
     if keep_art and os.path.exists(keep_art):
@@ -79,9 +77,7 @@ def _merge_rows(lib, rows, label: str):
         row.remove(delete=False, with_items=False)
     # %aunique memoizes per Library; reset it now the dead rows are gone.
     lib._memotable = {}
-    art_dir_before = (
-        os.path.dirname(enrich._decode(keep.artpath)) if keep.artpath else None
-    )
+    art_dir_before = os.path.dirname(enrich._decode(keep.artpath)) if keep.artpath else None
     for item in members[keep.id]:
         try:
             item.move()
@@ -119,9 +115,7 @@ def consolidate_album_rows(lib, items) -> list:
         return list(rows.values())
 
     albums: dict[int, object] = {}
-    touched_releases = {
-        str(row.mb_albumid) for row in _fresh_rows() if row.mb_albumid
-    }
+    touched_releases = {str(row.mb_albumid) for row in _fresh_rows() if row.mb_albumid}
     for release_id in touched_releases:
         rows = list(lib.albums(MatchQuery("mb_albumid", release_id)))
         if rows:
@@ -140,9 +134,7 @@ def consolidate_album_rows(lib, items) -> list:
         rows = [
             row
             for row in lib.albums(
-                AndQuery(
-                    [MatchQuery("albumartist", albumartist), MatchQuery("album", album_title)]
-                )
+                AndQuery([MatchQuery("albumartist", albumartist), MatchQuery("album", album_title)])
             )
             if row.get(library_mod.ALBUM_KIND_KEY) != library_mod.COLLECTION
         ]

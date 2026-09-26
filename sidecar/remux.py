@@ -114,7 +114,9 @@ def _remux_file(ffmpeg: str, path: str) -> None:
             os.remove(tmp)
 
 
-def _library_paths(db_path: str, library_dir: str, since_id: int) -> tuple[list[tuple[int, str]], int]:
+def _library_paths(
+    db_path: str, library_dir: str, since_id: int
+) -> tuple[list[tuple[int, str]], int]:
     """`(item id, path)` pairs newer than `since_id`, and the newest id seen.
 
     `since_id` is the watermark of the last completed pass. Non-m4a or missing
@@ -125,12 +127,18 @@ def _library_paths(db_path: str, library_dir: str, since_id: int) -> tuple[list[
         return [], since_id
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=20.0)
     try:
-        rows = conn.execute("SELECT id, path FROM items WHERE id > ? ORDER BY id", (since_id,)).fetchall()
+        rows = conn.execute(
+            "SELECT id, path FROM items WHERE id > ? ORDER BY id", (since_id,)
+        ).fetchall()
     finally:
         conn.close()
     newest = rows[-1][0] if rows else since_id
     expanded = ((item_id, expand_db_path(stored, library_dir)) for item_id, stored in rows)
-    targets = [(i, p) for i, p in expanded if p and p.lower().endswith((".m4a", ".mp4")) and os.path.exists(p)]
+    targets = [
+        (i, p)
+        for i, p in expanded
+        if p and p.lower().endswith((".m4a", ".mp4")) and os.path.exists(p)
+    ]
     return targets, newest
 
 

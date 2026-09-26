@@ -173,7 +173,14 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         row = lib.add_album(
-            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI/1 Holiday.mp3",
+                    title="Holiday",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         found = enrich.find_named_row(lib, "Green Day", "American Idiot")
         self.assertIsNotNone(found)
@@ -187,7 +194,14 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         row = lib.add_album(
-            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI/1 Holiday.mp3",
+                    title="Holiday",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         row[library.ALBUM_KIND_KEY] = library.COLLECTION
         row.store(inherit=False)
@@ -208,11 +222,23 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         lib.add_album(
-            [self._item("AI dup/1 Letterbomb.mp3", title="Letterbomb", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI dup/1 Letterbomb.mp3",
+                    title="Letterbomb",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         full = lib.add_album(
             [
-                self._item(f"AI/{n} T{n}.mp3", title=f"T{n}", album="American Idiot", albumartist="Green Day")
+                self._item(
+                    f"AI/{n} T{n}.mp3",
+                    title=f"T{n}",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
                 for n in (1, 2)
             ]
         )

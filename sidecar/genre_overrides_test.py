@@ -48,11 +48,7 @@ class OverridesTestCase(unittest.TestCase):
 
     def _derived_whitelist(self):
         with open(os.path.join(self._dir.name, DERIVED_WHITELIST_NAME), encoding="utf-8") as f:
-            return {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            }
+            return {line.strip().lower() for line in f if line.strip() and not line.startswith("#")}
 
     def _roots_of(self, tree, genre):
         """Every top-level root the genre appears under, in the derived tree."""
@@ -223,11 +219,7 @@ class DerivedFilesTest(OverridesTestCase):
     def test_pristine_derived_whitelist_matches_the_base(self):
         genre_overrides.ensure_derived()
         with open(genre_tree.WHITELIST_PATH, encoding="utf-8") as f:
-            base = {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            }
+            base = {line.strip().lower() for line in f if line.strip() and not line.startswith("#")}
         self.assertEqual(self._derived_whitelist(), base)
 
 

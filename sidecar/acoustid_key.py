@@ -33,13 +33,9 @@ def handle(request_id: str, params: dict) -> dict:
         return {"valid": False, "reason": "empty"}
 
     protocol.log("acoustid_key: checking the key against the lookup endpoint")
-    resp = requests.post(
-        _LOOKUP, data={"client": key, "format": "json"}, timeout=_TIMEOUT
-    )
+    resp = requests.post(_LOOKUP, data={"client": key, "format": "json"}, timeout=_TIMEOUT)
     try:
         payload = resp.json()
     except ValueError:
-        raise RuntimeError(
-            f"AcoustID answered {resp.status_code} with no JSON body"
-        ) from None
+        raise RuntimeError(f"AcoustID answered {resp.status_code} with no JSON body") from None
     return classify(payload)

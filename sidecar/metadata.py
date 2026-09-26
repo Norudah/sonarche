@@ -13,11 +13,22 @@ _MAX_CANDIDATES = 4
 # Best first.
 _PRIMARY_RANK = {"Album": 0, "EP": 1, "Single": 2, "Broadcast": 3, "Other": 4}
 # Secondary types that push a release below clean studio releases.
-_UNWANTED_SECONDARY = frozenset({
-    "Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo",
-    "Soundtrack", "Interview", "Audiobook", "Audio drama", "Spokenword",
-    "Field recording",
-})
+_UNWANTED_SECONDARY = frozenset(
+    {
+        "Compilation",
+        "Live",
+        "Remix",
+        "DJ-mix",
+        "Mixtape/Street",
+        "Demo",
+        "Soundtrack",
+        "Interview",
+        "Audiobook",
+        "Audio drama",
+        "Spokenword",
+        "Field recording",
+    }
+)
 
 
 def ensure_plugins():

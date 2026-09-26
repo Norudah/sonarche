@@ -47,9 +47,20 @@ def handle(request_id: str, params: dict) -> dict:
     if category:
         marks.append(f"--set=grouping={category}")
 
-    cmd = [beet_bin(), "--config", config_path, "import",
-           "--quiet", "--quiet-fallback=asis", "-A", "-M", "-c",
-           *GROUPINGS[grouping], *marks, folder]
+    cmd = [
+        beet_bin(),
+        "--config",
+        config_path,
+        "import",
+        "--quiet",
+        "--quiet-fallback=asis",
+        "-A",
+        "-M",
+        "-c",
+        *GROUPINGS[grouping],
+        *marks,
+        folder,
+    ]
     protocol.log(f"library_import: grouping={grouping}")
 
     protocol.send_event(request_id, "library_import_progress", {"folders": 0, "folder": None})
@@ -96,7 +107,9 @@ def handle(request_id: str, params: dict) -> dict:
         if not line.startswith(folder):
             continue
         folders += 1
-        protocol.send_event(request_id, "library_import_progress", {"folders": folders, "folder": line})
+        protocol.send_event(
+            request_id, "library_import_progress", {"folders": folders, "folder": line}
+        )
 
     code = proc.wait()
     if cancel_file:
@@ -247,7 +260,9 @@ def _shrink_covers(request_id: str, params: dict, batch: str) -> int:
             for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}")
             if item.album_id
         }
-        albums = [album for album in (lib.get_album(album_id) for album_id in sorted(touched)) if album]
+        albums = [
+            album for album in (lib.get_album(album_id) for album_id in sorted(touched)) if album
+        ]
         total = len(albums)
         made = 0
         adopted = 0

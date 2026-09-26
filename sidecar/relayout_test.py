@@ -93,8 +93,6 @@ class RelayoutTest(unittest.TestCase):
         self.assertEqual(lib.get_item(item.id).path, before)
         lib._close()
 
-
-
     def test_no_database_means_no_pass_and_no_database(self):
         """First run or post-erase: opening the Library would create an empty
         beets db every "does the user have a library" check then believes in."""

@@ -47,7 +47,9 @@ def handle(_request_id: str, params: dict) -> dict:
         lib._close()
 
     forgotten = forget_folder(params.get("state_file"), params.get("folder"))
-    protocol.log(f"import_undo: {result['removed']} track(s) removed, {forgotten} folder(s) forgotten")
+    protocol.log(
+        f"import_undo: {result['removed']} track(s) removed, {forgotten} folder(s) forgotten"
+    )
     result["forgotten"] = forgotten
     return result
 
@@ -70,7 +72,9 @@ def forget_folder(state_file: str | None, folder: str | None) -> int:
         paths for paths in state.taghistory if not any(_under_any(path, roots) for path in paths)
     }
     state.tagprogress = {
-        toppath: paths for toppath, paths in state.tagprogress.items() if not _under_any(toppath, roots)
+        toppath: paths
+        for toppath, paths in state.tagprogress.items()
+        if not _under_any(toppath, roots)
     }
     with state:
         pass  # the context manager's exit is what writes the file back

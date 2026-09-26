@@ -216,9 +216,7 @@ def build_match(items, recordings: dict, release_id: str):
         f"« {album_info.album} » by recording id"
     )
     if leftovers:
-        protocol.log(
-            f"enrich_album: {len(leftovers)} track(s) off the voted release"
-        )
+        protocol.log(f"enrich_album: {len(leftovers)} track(s) off the voted release")
     match = AlbumMatch(
         distance=Distance(),
         info=album_info,
@@ -255,7 +253,9 @@ def rescue_coverage(request_id: str, items, recordings: dict, match, leftovers):
         if releases:
             release_sets.append(releases)
 
-    for release_id in rescue_candidates(release_sets, exclude=match.info.album_id)[:_MAX_RESCUE_RELEASES]:
+    for release_id in rescue_candidates(release_sets, exclude=match.info.album_id)[
+        :_MAX_RESCUE_RELEASES
+    ]:
         candidate, candidate_leftovers = build_match(items, recordings, release_id)
         if candidate is None:
             continue

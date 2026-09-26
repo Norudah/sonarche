@@ -22,7 +22,9 @@ class HandleTest(unittest.TestCase):
 
     def test_writes_a_display_rendition_at_most_500px(self):
         dest = self._dest()
-        result = handle("req", {"source_path": self._source(1200, 800), "dest_dir": dest, "stem": "abc"})
+        result = handle(
+            "req", {"source_path": self._source(1200, 800), "dest_dir": dest, "stem": "abc"}
+        )
 
         self.assertEqual(result["filename"], "abc.jpg")
         self.assertEqual(result["side"], 800)
@@ -45,7 +47,12 @@ class HandleTest(unittest.TestCase):
     def test_png_stays_png(self):
         dest = self._dest()
         result = handle(
-            "req", {"source_path": self._source(600, 600, fmt="PNG", suffix=".png"), "dest_dir": dest, "stem": "abc"}
+            "req",
+            {
+                "source_path": self._source(600, 600, fmt="PNG", suffix=".png"),
+                "dest_dir": dest,
+                "stem": "abc",
+            },
         )
         self.assertEqual(result["filename"], "abc.png")
         with Image.open(os.path.join(dest, "abc.png")) as written:
@@ -59,7 +66,9 @@ class HandleTest(unittest.TestCase):
 
     def test_a_missing_source_is_refused(self):
         with self.assertRaises(RuntimeError):
-            handle("req", {"source_path": "/nowhere/img.jpg", "dest_dir": self._dest(), "stem": "abc"})
+            handle(
+                "req", {"source_path": "/nowhere/img.jpg", "dest_dir": self._dest(), "stem": "abc"}
+            )
 
 
 class SniffSuffixTest(unittest.TestCase):

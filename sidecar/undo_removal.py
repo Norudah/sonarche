@@ -14,7 +14,9 @@ import protocol
 def under(path: str, root: str) -> bool:
     """Whether `path` is inside `root`, both resolved (symlinked libraries)."""
     try:
-        return os.path.commonpath([os.path.realpath(path), os.path.realpath(root)]) == os.path.realpath(root)
+        return os.path.commonpath(
+            [os.path.realpath(path), os.path.realpath(root)]
+        ) == os.path.realpath(root)
     except ValueError:  # different drives on Windows: not under, and not an error
         return False
 

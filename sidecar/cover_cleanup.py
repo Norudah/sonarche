@@ -36,5 +36,7 @@ def handle(_request_id: str, params: dict) -> dict:
         removed += covers.remove_legacy_archives(art_dir)
 
     if removed:
-        protocol.log(f"cover_cleanup: {removed} legacy archive(s) removed across {len(seen)} folder(s)")
+        protocol.log(
+            f"cover_cleanup: {removed} legacy archive(s) removed across {len(seen)} folder(s)"
+        )
     return {"removed": removed, "folders": len(seen)}

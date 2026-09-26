@@ -48,22 +48,35 @@ def render(template: str, **values) -> str:
 class DefaultPathTest(unittest.TestCase):
     def test_a_tagged_track_files_where_it_always_did(self):
         self.assertEqual(
-            render(DEFAULT, albumartist="Sigrid", album="Sucker Punch", track="03", title="Strangers"),
+            render(
+                DEFAULT, albumartist="Sigrid", album="Sucker Punch", track="03", title="Strangers"
+            ),
             "Library/Sigrid/Sucker Punch/03 Strangers",
         )
 
     def test_an_untagged_rip_gets_named_folders_instead_of_empty_ones(self):
         """beets' stock template renders `//Title` here."""
-        self.assertEqual(render(DEFAULT, title="Airplane"), "Library/Unknown Artist/Unknown Album/Airplane")
+        self.assertEqual(
+            render(DEFAULT, title="Airplane"), "Library/Unknown Artist/Unknown Album/Airplane"
+        )
 
     def test_an_unnumbered_track_drops_the_prefix_rather_than_wearing_a_zero(self):
         """beets reads an unset track as falsy, so `%if` covers both "no tag"
         and "tagged 0" — which is what a yt-dlp rip carries."""
-        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", title="Rosetta"), "Library/Mili/Mili/Rosetta")
-        self.assertEqual(render(DEFAULT, albumartist="Mili", album="Mili", track="00", title="Rosetta"), "Library/Mili/Mili/Rosetta")
+        self.assertEqual(
+            render(DEFAULT, albumartist="Mili", album="Mili", title="Rosetta"),
+            "Library/Mili/Mili/Rosetta",
+        )
+        self.assertEqual(
+            render(DEFAULT, albumartist="Mili", album="Mili", track="00", title="Rosetta"),
+            "Library/Mili/Mili/Rosetta",
+        )
 
     def test_only_the_missing_half_falls_back(self):
-        self.assertEqual(render(DEFAULT, albumartist="Sigrid", title="Fort Knox"), "Library/Sigrid/Unknown Album/Fort Knox")
+        self.assertEqual(
+            render(DEFAULT, albumartist="Sigrid", title="Fort Knox"),
+            "Library/Sigrid/Unknown Album/Fort Knox",
+        )
 
 
 class AppPathsTest(unittest.TestCase):
@@ -72,16 +85,29 @@ class AppPathsTest(unittest.TestCase):
 
     def test_a_tagged_track_files_on_the_library_shelf(self):
         self.assertEqual(
-            render(APP_DEFAULT, albumartist="Green Day", album="American Idiot", track="03", title="Holiday"),
+            render(
+                APP_DEFAULT,
+                albumartist="Green Day",
+                album="American Idiot",
+                track="03",
+                title="Holiday",
+            ),
             "Library/Green Day/American Idiot/03 Holiday",
         )
 
     def test_a_zero_track_drops_the_prefix_rather_than_wearing_00(self):
         # The `00 Mamma Mia - I Do.m4a` regression: provisional parks a 0.
         self.assertEqual(
-            render(APP_DEFAULT, albumartist="Green Day", album="American Idiot", track="00", title="Holiday"),
+            render(
+                APP_DEFAULT,
+                albumartist="Green Day",
+                album="American Idiot",
+                track="00",
+                title="Holiday",
+            ),
             "Library/Green Day/American Idiot/Holiday",
         )
+
 
 class CompilationShelfTest(unittest.TestCase):
     """A compilation files under its album artist, not `Compilations/$album`.
@@ -162,13 +188,17 @@ class SingletonZoneTest(unittest.TestCase):
             lib.add(flagged)
             flagged["sonarche_provisional"] = 1
             flagged.store()
-            self.assertIn("Unidentified/LIVinglife", lib.get_item(flagged.id).destination().decode())
+            self.assertIn(
+                "Unidentified/LIVinglife", lib.get_item(flagged.id).destination().decode()
+            )
 
             # A later real match deletes the flag: back on the shelf.
             fresh = lib.get_item(flagged.id)
             del fresh["sonarche_provisional"]
             fresh.store()
-            self.assertIn("Library/Singles/LIVinglife", lib.get_item(flagged.id).destination().decode())
+            self.assertIn(
+                "Library/Singles/LIVinglife", lib.get_item(flagged.id).destination().decode()
+            )
             lib._close()
         finally:
             beets.config["paths"]["singleton"] = old

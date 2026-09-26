@@ -55,9 +55,7 @@ def expand_db_path(stored, library_dir: str) -> str | None:
 def split_multi(stored: str | None) -> list[str]:
     if not stored:
         return []
-    delimiter = (
-        _GENRE_DB_DELIMITER if _GENRE_DB_DELIMITER in stored else _GENRE_FMT_DELIMITER
-    )
+    delimiter = _GENRE_DB_DELIMITER if _GENRE_DB_DELIMITER in stored else _GENRE_FMT_DELIMITER
     return [part.strip() for part in stored.split(delimiter) if part.strip()]
 
 
@@ -197,9 +195,7 @@ def handle(_request_id: str, params: dict) -> dict:
         accepted_by_item = flex_attrs_by_item(conn, accepted.KEY)
         accepted_by_album = flex_attrs_by_album(conn, accepted.KEY)
         # COALESCE keeps rows without `added` at the bottom.
-        rows = conn.execute(
-            f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC"
-        )
+        rows = conn.execute(f"SELECT {_ITEM_COLUMNS} FROM items ORDER BY COALESCE(added, 0) DESC")
         lookups = Lookups(
             art_by_album=art_by_album,
             art_mtime_by_album=art_mtime_by_album,

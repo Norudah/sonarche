@@ -24,9 +24,7 @@ class ClassifyTest(unittest.TestCase):
             classify(None, "ReadTimeout"),
             {"state": "unreachable", "detail": "ReadTimeout"},
         )
-        self.assertEqual(
-            classify(None, None), {"state": "unreachable", "detail": None}
-        )
+        self.assertEqual(classify(None, None), {"state": "unreachable", "detail": None})
 
     def test_a_failure_wins_over_a_status(self):
         # Both can be present when a response arrives and then the body dies.

@@ -13,8 +13,7 @@ class UnavailableErrorTest(unittest.TestCase):
         # Captured verbatim from yt-dlp on the user's own playlist.
         self.assertTrue(
             is_unavailable_error(
-                "ERROR: [youtube] DwGCOMGwq34: Video unavailable. "
-                "This video is not available"
+                "ERROR: [youtube] DwGCOMGwq34: Video unavailable. This video is not available"
             )
         )
 

@@ -123,7 +123,9 @@ class RemoveLegacyArchivesTest(unittest.TestCase):
 
         self.assertEqual(covers.remove_legacy_archives(self.dir), 2)
 
-        self.assertEqual(sorted(os.listdir(self.dir)), sorted([os.path.basename(kept), os.path.basename(audio)]))
+        self.assertEqual(
+            sorted(os.listdir(self.dir)), sorted([os.path.basename(kept), os.path.basename(audio)])
+        )
 
     def test_a_folder_without_archives_is_a_quiet_zero(self):
         self._touch("cover.jpg")

@@ -228,9 +228,7 @@ def _adopt_album_art(lib, album, incoming) -> int:
     # The thumbnail-cover badge is per item; arrivals copy the residents' state.
     arriving = {item.id for item in incoming}
     provisional = any(
-        item.get(library.PROVISIONAL_COVER_KEY)
-        for item in album.items()
-        if item.id not in arriving
+        item.get(library.PROVISIONAL_COVER_KEY) for item in album.items() if item.id not in arriving
     )
 
     covered = 0
@@ -282,7 +280,9 @@ def _ensure_filed_owner(album, arriving) -> bool:
     if not counts:
         return False
     owner = min(counts.items(), key=lambda pair: (-pair[1], pair[0]))[0]
-    protocol.log(f"move_tracks: target row {album.id} had no album artist, filing under « {owner} »")
+    protocol.log(
+        f"move_tracks: target row {album.id} had no album artist, filing under « {owner} »"
+    )
     album.albumartist = owner
     album.store(inherit=False)
     for item in residents:

@@ -1,5 +1,6 @@
 """Resolve a URL to its playlist entries in one flat extraction (no download)."""
 
+
 def summarize(info: dict, max_entries: int) -> dict:
     """Reduce a yt-dlp flat info dict to the wire shape.
 

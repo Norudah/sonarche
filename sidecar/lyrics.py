@@ -23,6 +23,7 @@ _TIMEOUT = 8
 class ServiceUnavailable(Exception):
     """A lyrics service did not answer (distinct from a connection problem)."""
 
+
 # No tag format holds LRC, so timed lyrics live only in the DB.
 SYNCED_KEY = "sonarche_lyrics_synced"
 # Which service answered: a plain lyrics.ovh result is worth retrying.
@@ -68,17 +69,26 @@ def pick_candidate(candidates: list[dict], duration: float | None) -> dict | Non
     worse than none); among the rest, timed beats plain."""
     usable = [c for c in candidates if c.get("plainLyrics") or c.get("syncedLyrics")]
     if duration:
-        usable = [c for c in usable if abs((c.get("duration") or 0) - duration) <= _DURATION_TOLERANCE]
+        usable = [
+            c for c in usable if abs((c.get("duration") or 0) - duration) <= _DURATION_TOLERANCE
+        ]
     if not usable:
         return None
     return min(
         usable,
-        key=lambda c: (0 if c.get("syncedLyrics") else 1, abs((c.get("duration") or 0) - (duration or 0))),
+        key=lambda c: (
+            0 if c.get("syncedLyrics") else 1,
+            abs((c.get("duration") or 0) - (duration or 0)),
+        ),
     )
 
 
 def _payload(
-    source: str | None, plain: str, synced: str, instrumental: bool = False, unreachable: bool = False
+    source: str | None,
+    plain: str,
+    synced: str,
+    instrumental: bool = False,
+    unreachable: bool = False,
 ) -> dict:
     return {
         "source": source,
@@ -107,7 +117,11 @@ def _lookup_ovh(item, user_agent: str) -> str | None:
     if not title or not artist:
         return None
 
-    response = _get(f"{_OVH_API}/{quote(artist, safe='')}/{quote(title, safe='')}", None, {"User-Agent": user_agent})
+    response = _get(
+        f"{_OVH_API}/{quote(artist, safe='')}/{quote(title, safe='')}",
+        None,
+        {"User-Agent": user_agent},
+    )
     if response.status_code == 404:
         return None
     if response.status_code != 200:
@@ -196,7 +210,11 @@ def fetch(_request_id: str, params: dict) -> dict:
         # A fruitless retry keeps what was stored.
         kept = str(item.get("lyrics") or "").strip()
         if kept:
-            return _payload(str(item.get(SOURCE_KEY) or "") or "library", kept, str(item.get(SYNCED_KEY) or "").strip())
+            return _payload(
+                str(item.get(SOURCE_KEY) or "") or "library",
+                kept,
+                str(item.get(SYNCED_KEY) or "").strip(),
+            )
         return _payload(None, "", "", unreachable=unreachable)
 
     item.lyrics = plain or strip_stamps(synced)
@@ -207,5 +225,7 @@ def fetch(_request_id: str, params: dict) -> dict:
         item.write()
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"lyrics: tag write failed: {exc}")
-    protocol.log(f"lyrics: {item.artist} - {item.title} <- {source} ({'timed' if synced else 'plain'})")
+    protocol.log(
+        f"lyrics: {item.artist} - {item.title} <- {source} ({'timed' if synced else 'plain'})"
+    )
     return _payload(source, item.lyrics, synced)

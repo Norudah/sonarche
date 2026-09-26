@@ -81,17 +81,12 @@ def build(db_path: str, batch: str) -> dict | None:
             if row["album_id"]:
                 album_ids.add(row["album_id"])
 
-        art = {
-            r["id"]: r["artpath"]
-            for r in conn.execute("SELECT id, artpath FROM albums")
-        }
+        art = {r["id"]: r["artpath"] for r in conn.execute("SELECT id, artpath FROM albums")}
         shapes = _album_shapes(conn)
         # Collections have no tracklist, as in the albums view.
         collections = {
             album_id
-            for album_id, kind in library.flex_attrs_by_album(
-                conn, library.ALBUM_KIND_KEY
-            ).items()
+            for album_id, kind in library.flex_attrs_by_album(conn, library.ALBUM_KIND_KEY).items()
             if kind == library.COLLECTION
         }
 

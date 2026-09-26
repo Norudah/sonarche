@@ -5,9 +5,7 @@ from acoustid_key import classify
 
 class ClassifyTest(unittest.TestCase):
     def test_an_accepted_lookup_is_a_good_key(self):
-        self.assertEqual(
-            classify({"status": "ok", "results": []}), {"valid": True, "reason": None}
-        )
+        self.assertEqual(classify({"status": "ok", "results": []}), {"valid": True, "reason": None})
 
     def test_code_four_is_the_key_itself(self):
         self.assertEqual(
