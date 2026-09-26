@@ -3,7 +3,7 @@ import { COMPLETENESS_KEYS, toFieldValues, type FieldValues } from "@/features/l
 
 /** Completion in whole tracks, with the missing fields and where they are. */
 
-export interface FieldGap {
+interface FieldGap {
   field: keyof FieldValues;
   /** Tracks missing this field. */
   missing: number;

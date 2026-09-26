@@ -1,6 +1,6 @@
 import type { PlayableTrack } from "@/shared/player/types";
 
-export type RepeatMode = "off" | "all" | "one";
+type RepeatMode = "off" | "all" | "one";
 
 /** The queue as pure data. `tracks` keeps the context's order; shuffle only
  * permutes `order`, so turning it off restores the original sequence. */

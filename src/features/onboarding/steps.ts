@@ -3,11 +3,11 @@
 import type { EnvStatus } from "@/features/onboarding/api";
 
 /** Ordered by dependency: interpreter, then engine, then the key. */
-export const SETUP_STEP_IDS = ["python", "engine", "acoustid"] as const;
+const SETUP_STEP_IDS = ["python", "engine", "acoustid"] as const;
 
 export type SetupStepId = (typeof SETUP_STEP_IDS)[number];
 
-export type SetupStepState =
+type SetupStepState =
   | "satisfied"
   /** The current step. */
   | "actionRequired"

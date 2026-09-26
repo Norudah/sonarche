@@ -11,7 +11,7 @@ export type JobStatus =
   /** Terminal, but resumable on retry. */
   | "cancelled";
 export type JobStep = "download" | "import" | "enrich";
-export type TrackStatus =
+type TrackStatus =
   | "pending"
   | "downloading"
   | "downloaded"

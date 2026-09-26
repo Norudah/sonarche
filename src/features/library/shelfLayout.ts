@@ -3,8 +3,7 @@ import { useState } from "react";
 /** Grid or list, in localStorage: a personal display preference, one key for
  * every shelf. */
 
-export const SHELF_LAYOUTS = ["grid", "list"] as const;
-export type ShelfLayout = (typeof SHELF_LAYOUTS)[number];
+export type ShelfLayout = "grid" | "list";
 
 const STORAGE_KEY = "sonarche.shelfLayout";
 

@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Album } from "@/features/library/albums/albums";
 
 /** Kept in wire casing: the plan goes back to the sidecar verbatim on apply. */
-export interface AlignPlanAlbum {
+interface AlignPlanAlbum {
   album_id: number;
   album: string;
   albumartist: string;

@@ -3,7 +3,7 @@
 
 export type SectionKind = "breaking" | "features" | "fixes" | "perf";
 
-export interface NotesSection {
+interface NotesSection {
   /** Known headings; `null` keeps the original title. */
   kind: SectionKind | null;
   title: string;

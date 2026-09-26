@@ -5,10 +5,10 @@ import { isFetched } from "@/features/download/queue/pipeline";
  * vocabulary lives in `queue/pipeline.ts`. */
 
 /** `queued` and terminal phases have no working segment. */
-export type JobPhase = "queued" | "download" | "import" | "enrich" | "done" | "failed" | "cancelled";
+type JobPhase = "queued" | "download" | "import" | "enrich" | "done" | "failed" | "cancelled";
 
 /** Track count for playlists, bytes for single files. Unformatted (no i18n here). */
-export type ProgressDetail = { kind: "count"; done: number; total: number } | { kind: "percent"; value: number };
+type ProgressDetail = { kind: "count"; done: number; total: number } | { kind: "percent"; value: number };
 
 export interface JobProgress {
   phase: JobPhase;

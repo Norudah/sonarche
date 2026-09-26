@@ -1,8 +1,7 @@
 import type { LibraryTrack } from "@/features/library/api";
 
 /** `#` numbers the current order, so it isn't sortable. */
-export const TRACK_SORT_KEYS = ["title", "artist", "album", "genre", "length"] as const;
-export type TrackSortKey = (typeof TRACK_SORT_KEYS)[number];
+export type TrackSortKey = "title" | "artist" | "album" | "genre" | "length";
 
 export interface TrackSort {
   key: TrackSortKey;

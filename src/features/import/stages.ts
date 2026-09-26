@@ -5,7 +5,7 @@ import type { ImportPhase } from "@/features/import/phase";
 import type { RailTone } from "@/shared/ui/PipelineRail";
 
 export const IMPORT_STAGES = ["scan", "copy", "covers"] as const;
-export type ImportStage = (typeof IMPORT_STAGES)[number];
+type ImportStage = (typeof IMPORT_STAGES)[number];
 
 /** Relative widths: the copy is most of the work. */
 export const STAGE_WEIGHTS = [2, 5, 2] as const;

@@ -12,7 +12,7 @@ import {
 } from "@/features/library/tracks/triage";
 
 /** A clickable count leading to the filtered explorer. */
-export interface TriageDoor {
+interface TriageDoor {
   key: DoorKey;
   count: number;
   /** Per door, since the genre line fuses "no genre" and "off tree". */

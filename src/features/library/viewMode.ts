@@ -2,8 +2,7 @@ import { withParam } from "@/features/library/queryParams";
 
 /** A query param (a route segment would remount the page), not remembered
  * across subjects. */
-export const VIEW_MODES = ["overview", "tracks"] as const;
-export type ViewMode = (typeof VIEW_MODES)[number];
+export type ViewMode = "overview" | "tracks";
 
 /** Unknown values mean overview. */
 export function parseViewMode(params: URLSearchParams): ViewMode {

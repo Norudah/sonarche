@@ -66,7 +66,7 @@ interface LibraryLocation {
 }
 
 /** Mirrors `library_move::Refusal`. */
-export type MoveRefusal = "sameLocation" | "intoItself" | "insideAppData" | "occupied" | "notWritable" | "busy";
+type MoveRefusal = "sameLocation" | "intoItself" | "insideAppData" | "occupied" | "notWritable" | "busy";
 
 export interface MoveCheck {
   target: string;

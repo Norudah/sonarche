@@ -37,7 +37,7 @@ export function setOnboardingCompleted(completed: boolean): Promise<OnboardingSt
 }
 
 /** `null` when accepted. */
-export type KeyRejection = "invalidKey" | "empty";
+type KeyRejection = "invalidKey" | "empty";
 
 export interface KeyCheck {
   valid: boolean;
