@@ -29,11 +29,14 @@ export function useAlbumDraft(tracks: LibraryTrack[]) {
 
   const summary = changeSummary(tracks, baseline, draft);
 
-  // Re-seed from a refetch only when nothing is pending.
-  const [syncedTracks, setSyncedTracks] = useState(tracks);
-  if (tracks !== syncedTracks) {
-    setSyncedTracks(tracks);
-    if (summary.fields === 0) setDraft(toAlbumDraft(tracks, baseline));
+  // Re-seed from a refetch only when nothing is pending. "Pending" is judged
+  // against the tracks the draft came from: against the refetched ones, a
+  // re-match's new values would read as edits and saving would revert them.
+  const [synced, setSynced] = useState({ tracks, baseline });
+  if (tracks !== synced.tracks) {
+    const wasClean = changeSummary(synced.tracks, synced.baseline, draft).fields === 0;
+    setSynced({ tracks, baseline });
+    if (wasClean) setDraft(toAlbumDraft(tracks, baseline));
   }
 
   const offers = useMemo(() => {

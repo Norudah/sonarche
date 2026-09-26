@@ -64,11 +64,13 @@ function MetadataForm({
   const patch = diffFields(live, draft);
   const changed = Object.keys(patch).length;
 
-  // Adopt a refreshed track unless an edit is pending.
+  // Adopt a refreshed track unless an edit is pending, judged against the track
+  // the draft came from: the refreshed values aren't edits.
   const [synced, setSynced] = useState(track);
   if (track !== synced) {
+    const wasClean = Object.keys(diffFields(toFieldValues(synced), draft)).length === 0;
     setSynced(track);
-    if (changed === 0) setDraft(toFieldValues(track));
+    if (wasClean) setDraft(toFieldValues(track));
   }
 
   const setField = (key: keyof FieldValues) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));

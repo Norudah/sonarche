@@ -57,6 +57,23 @@ describe("useAlbumDraft", () => {
     expect(result.current.summary.fields).toBe(0);
   });
 
+  it("re-seeds from refetched tracks while nothing is pending", () => {
+    const { result, rerender } = renderHook(({ tracks }) => useAlbumDraft(tracks), {
+      initialProps: { tracks: album },
+    });
+    rerender({ tracks: [track({ id: 1, track: 1, year: 2011 }), album[1]] });
+    expect(result.current.draft.rows[1].year).toBe("2011");
+  });
+
+  it("does not mistake a refetch's new values for edits", () => {
+    const { result, rerender } = renderHook(({ tracks }) => useAlbumDraft(tracks), {
+      initialProps: { tracks: album },
+    });
+    // e.g. a re-match rewrote the tags while the inspector was open.
+    rerender({ tracks: [track({ id: 1, track: 1, title: "Monster (Remastered)" }), album[1]] });
+    expect(result.current.summary.fields).toBe(0);
+  });
+
   it("keeps a pending draft over a refetch", () => {
     const { result, rerender } = renderHook(({ tracks }) => useAlbumDraft(tracks), {
       initialProps: { tracks: album },
