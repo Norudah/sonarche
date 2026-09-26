@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 
 import { MOVE_PROGRESS_EVENT, type MoveCheck, type MoveProgress } from "@/features/settings/api";
-import { formatBytes } from "@/features/settings/libraryLocation";
+import { formatBytes } from "@/shared/lib/format";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 function Fact({ label, value }: { label: string; value: string }) {
@@ -31,6 +31,7 @@ export function MoveLibraryDialog({
 }) {
   const { t, i18n } = useTranslation("settings");
   const locale = i18n.resolvedLanguage ?? "fr";
+  const units = t("units", { returnObjects: true }) as unknown as string[];
   const [progress, setProgress] = useState<MoveProgress | null>(null);
 
   // Subscribed only while a move runs.
@@ -71,7 +72,7 @@ export function MoveLibraryDialog({
               label={t("files.move.factContents")}
               value={t("files.move.contents", {
                 count: check?.fileCount ?? 0,
-                size: formatBytes(check?.sizeBytes ?? 0, locale),
+                size: formatBytes(check?.sizeBytes ?? 0, locale, units),
               })}
             />
             <Fact

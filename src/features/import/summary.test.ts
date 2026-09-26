@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ScanReport } from "@/features/import/api";
-import { formatBytes, hasAudio, shortenPath, unplayableFormats } from "@/features/import/summary";
+import { hasAudio, shortenPath, unplayableFormats } from "@/features/import/summary";
 
 function report(overrides: Partial<ScanReport> = {}): ScanReport {
   return {
@@ -16,38 +16,6 @@ function report(overrides: Partial<ScanReport> = {}): ScanReport {
     ...overrides,
   };
 }
-
-describe("formatBytes", () => {
-  it("climbs the units until the number is readable", () => {
-    expect(formatBytes(512, "en")).toBe("512 B");
-    expect(formatBytes(4_200, "en")).toBe("4 kB");
-    expect(formatBytes(31_400_000_000, "en")).toBe("31.4 GB");
-  });
-
-  it("keeps a decimal only where it means something", () => {
-    // Half a kilobyte of difference in a 4 kB file is noise.
-    expect(formatBytes(4_500, "en")).toBe("5 kB");
-    // Half a gigabyte is not.
-    expect(formatBytes(4_500_000_000, "en")).toBe("4.5 GB");
-    // Past a hundred, the decimal stops earning its place again.
-    expect(formatBytes(450_000_000_000, "en")).toBe("450 GB");
-  });
-
-  it("follows the interface language, number and unit both", () => {
-    // The decimal comma is Intl's; the "Go" is the caller's, because a French
-    // gigabyte is not spelled the English way.
-    expect(formatBytes(31_400_000_000, "fr", ["o", "ko", "Mo", "Go", "To"])).toBe("31,4 Go");
-  });
-
-  it("falls back to SI symbols when no unit names are given", () => {
-    expect(formatBytes(31_400_000_000, "fr")).toBe("31,4 GB");
-  });
-
-  it("does not go below zero", () => {
-    expect(formatBytes(0, "en")).toBe("0 B");
-    expect(formatBytes(-1, "en")).toBe("0 B");
-  });
-});
 
 describe("unplayableFormats", () => {
   it("puts the most common format first", () => {

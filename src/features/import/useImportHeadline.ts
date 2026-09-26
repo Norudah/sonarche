@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { ImportRecap, ImportScanCounts } from "@/features/import/api";
-import { formatBytes } from "@/features/import/summary";
+import { formatBytes } from "@/shared/lib/format";
 
 /** The imported count in one line ("312 tracks · 14 albums · 2.1 GB"), shared
  * by the archive row and the import page. Falls back to beets' folder count. */

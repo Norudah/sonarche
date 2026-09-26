@@ -2,7 +2,8 @@ import { HardDrive, History, Music } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { PreviousImport, ScanReport } from "@/features/import/api";
-import { formatBytes, hasAudio, unplayableFormats } from "@/features/import/summary";
+import { hasAudio, unplayableFormats } from "@/features/import/summary";
+import { formatBytes } from "@/shared/lib/format";
 
 interface ScanSummaryProps {
   report: ScanReport;
