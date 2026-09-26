@@ -9,18 +9,14 @@ import { findAlbum, groupAlbums } from "@/features/library/albums/albums";
 import { findArtist, groupArtists } from "@/features/library/artists/artists";
 import { ArtistImageButton } from "@/features/library/artists/ArtistImageButton";
 import { ArtistImageModal } from "@/features/library/artists/ArtistImageModal";
-import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { CoverReplaceModal } from "@/features/library/covers/CoverReplaceModal";
 import { useArtistImages, useLibrary, useUpdateTracks } from "@/features/library/hooks";
-import { DerivedField } from "@/features/library/metadata/DerivedField";
-import { EditableField } from "@/features/library/metadata/EditableField";
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
 import { diffFields, fieldEdit, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
-import { MetadataCompleteness } from "@/features/library/metadata/MetadataCompleteness";
+import { MetadataFields } from "@/features/library/metadata/MetadataFields";
 import { MetadataFooter, type SaveFeedback } from "@/features/library/metadata/MetadataFooter";
 import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
-import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
 /** One track's metadata in a drawer. Editing the album artist renames the
  * whole record (the write fans out to the album row). */
@@ -73,8 +69,6 @@ function MetadataForm({
     if (wasClean) setDraft(toFieldValues(track));
   }
 
-  const setField = (key: keyof FieldValues) => (value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
-  const revert = (key: keyof FieldValues) => () => setDraft((prev) => ({ ...prev, [key]: live[key] }));
   // Same rule as the save, so "modified" marks match what gets written.
   const originOf = (key: keyof FieldValues) => (fieldEdit(key, live, draft) != null ? live[key] : undefined);
 
@@ -150,142 +144,15 @@ function MetadataForm({
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-7 py-5">
-        <MetadataCompleteness values={live} onOpenAlbum={track.album ? openAlbum : undefined} />
-
-        <div className="flex gap-2.5">
-          <EditableField
-            label={t("metadata.fields.track")}
-            value={draft.track}
-            origin={originOf("track")}
-            isMissing={live.track.trim() === ""}
-            help={
-              <FieldHelp
-                label={t("metadata.help.open", { field: t("metadata.fields.track") })}
-                text={t("metadata.help.track")}
-              />
-            }
-            onChange={setField("track")}
-            onRevert={revert("track")}
-            className="w-24 shrink-0"
-          />
-          <EditableField
-            label={t("metadata.fields.title")}
-            value={draft.title}
-            origin={originOf("title")}
-            isMissing={live.title.trim() === ""}
-            onChange={setField("title")}
-            onRevert={revert("title")}
-            className="flex-1"
-          />
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          <EditableField
-            label={t("metadata.fields.artist")}
-            value={draft.artist}
-            origin={originOf("artist")}
-            isMissing={live.artist.trim() === ""}
-            suggest="artist"
-            help={
-              <FieldHelpPopover
-                label={t("metadata.help.open", { field: t("metadata.fields.artist") })}
-                title={t("metadata.help.artistPair.title")}
-              >
-                <p className="text-[0.75rem] leading-relaxed text-muted">
-                  <span className="font-semibold text-foreground">{t("metadata.fields.albumArtist")}</span> —{" "}
-                  {t("metadata.help.artistPair.albumArtist")}
-                </p>
-                <p className="text-[0.75rem] leading-relaxed text-muted">
-                  <span className="font-semibold text-foreground">{t("metadata.fields.artist")}</span> —{" "}
-                  {t("metadata.help.artistPair.artist")}
-                </p>
-              </FieldHelpPopover>
-            }
-            onChange={setField("artist")}
-            onRevert={revert("artist")}
-          />
-          <EditableField
-            label={t("metadata.fields.albumArtist")}
-            value={draft.albumArtist}
-            origin={originOf("albumArtist")}
-            isMissing={live.albumArtist.trim() === ""}
-            suggest="artist"
-            onChange={setField("albumArtist")}
-            onRevert={revert("albumArtist")}
-          />
-        </div>
-
-        <EditableField
-          label={t("metadata.fields.album")}
-          value={draft.album}
-          origin={originOf("album")}
-          isMissing={live.album.trim() === ""}
-          suggest="album"
-          onChange={setField("album")}
-          onRevert={revert("album")}
-        />
-
-        {track.bonusSource && (
-          // Adopted bonus track: show its real origin.
-          <p className="rounded-xl bg-default/40 px-3.5 py-2.5 text-[0.75rem] text-muted">
-            {t("metadata.bonusFrom", { source: track.bonusSource })}
-          </p>
-        )}
-
-        <div className="flex gap-2.5">
-          <EditableField
-            label={t("metadata.fields.year")}
-            value={draft.year}
-            origin={originOf("year")}
-            isMissing={live.year.trim() === ""}
-            onChange={setField("year")}
-            onRevert={revert("year")}
-            className="flex-1"
-          />
-          <EditableField
-            label={t("metadata.fields.genre")}
-            value={draft.genre}
-            origin={originOf("genre")}
-            isMissing={live.genre.trim() === ""}
-            suggest="genre"
-            help={
-              <FieldHelp
-                label={t("metadata.help.open", { field: t("metadata.fields.genre") })}
-                text={t("metadata.help.genre")}
-              />
-            }
-            onChange={setField("genre")}
-            onRevert={revert("genre")}
-            className="flex-[1.2]"
-          />
-        </div>
-
-        <DerivedField
-          label={t("metadata.fields.genreBucket")}
-          value={track.genreBucket ?? ""}
-          help={
-            <FieldHelp
-              label={t("metadata.help.open", { field: t("metadata.fields.genreBucket") })}
-              text={t("metadata.help.genreBucket")}
-            />
-          }
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[0.75rem] font-medium text-muted">
-              {t("metadata.fields.category")}
-              <span className="ml-1.5 font-normal opacity-70">· {t("metadata.optional")}</span>
-            </span>
-            <FieldHelp
-              label={t("metadata.help.open", { field: t("metadata.fields.category") })}
-              text={t("metadata.help.category")}
-            />
-          </div>
-          <CategoryTaxonomyChips value={draft.category} soundtrack={track.soundtrack} onSelect={setField("category")} />
-        </div>
-      </div>
+      <MetadataFields
+        track={track}
+        live={live}
+        draft={draft}
+        originOf={originOf}
+        onChange={(key, value) => setDraft((prev) => ({ ...prev, [key]: value }))}
+        onRevert={(key) => setDraft((prev) => ({ ...prev, [key]: live[key] }))}
+        onOpenAlbum={track.album ? openAlbum : undefined}
+      />
 
       <MetadataFooter
         track={track}
