@@ -34,5 +34,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run lint
+      # Unused files, exports and dependencies.
+      - run: npm run knip
       - run: npm run format:check
       - run: npm test

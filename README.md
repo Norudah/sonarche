@@ -205,6 +205,7 @@ npm run tauri dev
 
 ```bash
 npm run lint && npx tsc --noEmit && npm test    # front
+npm run knip                                    # unused files, exports, deps
 cd src-tauri && cargo clippy --all-targets && cargo fmt && cargo test
 cd sidecar && python -m unittest discover -p "*_test.py"
 cd sidecar && ruff check && ruff format --check      # config in sidecar/ruff.toml

@@ -12,6 +12,7 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "knip": "knip",
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri"
@@ -50,6 +51,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "knip": "^6.38.0",
     "prettier": "^3.9.5",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
