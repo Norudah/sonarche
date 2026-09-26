@@ -359,8 +359,9 @@ def _prune_husk(lib, directory: str | None) -> None:
     """Remove legacy `cover-hq.*` files, then let beets prune empty folders."""
     if not directory or not os.path.isdir(directory):
         return
-    import covers
     from beets import util
+
+    import covers
 
     covers.remove_legacy_archives(directory)
     util.prune_dirs(directory, lib.directory)

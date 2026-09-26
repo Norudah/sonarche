@@ -48,6 +48,7 @@ def _fingerprint(fpcalc: str, path: str) -> tuple[int, str]:
     proc = subprocess.run(
         [fpcalc, "-json", path],
         capture_output=True,
+        check=False,
         text=True,
         # fpcalc echoes the (possibly non-ASCII) path; the Windows locale is cp1252.
         encoding="utf-8",
@@ -189,8 +190,9 @@ def find_named_row(lib, albumartist: str | None, album_title: str | None):
     Fallback for `find_album_row`: the UI groups albums by name, so two rows for
     one name only split the folder (%aunique). Collections and blank names are
     never returned; with several matches the fullest row wins."""
-    import library
     from beets.dbcore.query import AndQuery, MatchQuery
+
+    import library
 
     if not albumartist or not album_title:
         return None
@@ -428,7 +430,6 @@ def embed_cover(item, data: bytes, is_png: bool) -> bool:
     path = _decode_path(item)
     if not os.path.exists(path):
         return False
-    mime = "image/png" if is_png else "image/jpeg"
     try:
         media = mediafile.MediaFile(path)
         media.images = [mediafile.Image(data=data, desc="", type=mediafile.ImageType.front)]

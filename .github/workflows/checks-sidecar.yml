@@ -20,6 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Config in sidecar/ruff.toml; keep the pin in step with local runs.
+      - uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.16.9"
+          src: sidecar
+      - run: ruff format --check sidecar
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

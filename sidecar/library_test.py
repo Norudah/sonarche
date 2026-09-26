@@ -4,15 +4,15 @@ import tempfile
 import unittest
 
 from library import (
+    Lookups,
     _apply_fields,
-    update,
     _coerce_int,
     art_paths_by_album,
-    Lookups,
     expand_db_path,
     first_genre,
     flex_attrs_by_item,
     track_row,
+    update,
 )
 
 
@@ -320,16 +320,16 @@ class CoerceIntTest(unittest.TestCase):
 
 class ApplyFieldsTest(unittest.TestCase):
     def _item(self, **overrides):
-        base = dict(
-            title="Old",
-            artist="A",
-            albumartist="A",
-            album="Rec",
-            year=2014,
-            track=3,
-            tracktotal=12,
-            genres=["Pop"],
-        )
+        base = {
+            "title": "Old",
+            "artist": "A",
+            "albumartist": "A",
+            "album": "Rec",
+            "year": 2014,
+            "track": 3,
+            "tracktotal": 12,
+            "genres": ["Pop"],
+        }
         base.update(overrides)
         return _FakeItem(**base)
 

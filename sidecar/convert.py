@@ -7,6 +7,7 @@
 Files already in the target format are skipped, so the pass is safe to re-run.
 """
 
+import contextlib
 import os
 import subprocess
 
@@ -95,6 +96,7 @@ def _run_ffmpeg(ffmpeg: str, source: str, dest: str, target: str) -> bool:
         result = subprocess.run(
             command,
             capture_output=True,
+            check=False,
             text=True,
             errors="replace",
             timeout=_FFMPEG_TIMEOUT,
@@ -124,10 +126,8 @@ def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     working = f"{os.path.splitext(source)[0]}.sonarche-converting.{target}"
     if not _run_ffmpeg(ffmpeg, source, working, target):
         if os.path.exists(working):
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(working)
-            except OSError:
-                pass
         return "failed"
 
     try:
@@ -135,10 +135,8 @@ def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     except OSError as exc:
         # Keeping both files would silently duplicate the track.
         protocol.log(f"convert: cannot replace {source} ({exc}), conversion dropped")
-        try:
+        with contextlib.suppress(OSError):
             os.remove(working)
-        except OSError:
-            pass
         return "failed"
 
     item.path = bytestring_path(working)

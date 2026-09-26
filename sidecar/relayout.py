@@ -26,9 +26,10 @@ def handle(request_id: str, params: dict) -> dict:
     if not os.path.exists(params["beets_db"]):
         return {"albums": 0, "singles": 0, "dissolved": 0}
 
+    from beets.library import Library
+
     import enrich
     import library as library_mod
-    from beets.library import Library
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
     albums = singles = dissolved = 0

@@ -5,6 +5,7 @@ folders go too. Files outside the library directory are never deleted; only
 their rows are.
 """
 
+import contextlib
 import os
 
 import library
@@ -81,7 +82,6 @@ def _drop_staged_art(item, library_dir: str) -> None:
     art = item.get(library.ITEM_ART_KEY)
     if not art or not under(art, library_dir):
         return
-    try:
+    # Already gone, or never written: nothing owed.
+    with contextlib.suppress(OSError):
         os.remove(art)
-    except OSError:  # already gone, or never written: nothing owed
-        pass

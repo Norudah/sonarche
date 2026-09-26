@@ -1,0 +1,14 @@
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "PIE", "RUF", "PLW1510"]
+# E501: the formatter owns line length; what's left are long log strings.
+# RUF001/RUF003: « » guillemets in log strings and comments are intended.
+# SIM905: word lists read better as a split string.
+ignore = ["E501", "RUF001", "RUF003", "SIM905"]
+
+[lint.per-file-ignores]
+# Fixture dicts as class attributes; temp files kept open past the test body
+# and cleaned up by `addCleanup`.
+"*_test.py" = ["RUF012", "SIM115"]

@@ -33,7 +33,6 @@ from album_match import (
 from album_rows import embed_album_cover, fetch_album_cover
 from report import build_report
 
-
 _DEFAULT_FETCH_PAUSE_SECONDS = 1.0
 
 

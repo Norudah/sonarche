@@ -39,13 +39,13 @@ class PrepareCoverTest(unittest.TestCase):
 
     def test_a_square_source_reports_its_full_side(self):
         path = self._write(800, 800, "JPEG", ".jpg")
-        thumb, is_png, side = cover_set.prepare_cover(path, None)
+        _, is_png, side = cover_set.prepare_cover(path, None)
         self.assertFalse(is_png)
         self.assertEqual(side, 800)
 
     def test_a_cropped_source_comes_out_square(self):
         path = self._write(1000, 600, "JPEG", ".jpg")
-        thumb, is_png, side = cover_set.prepare_cover(path, {"left": 0, "top": 0, "size": 600})
+        thumb, _, side = cover_set.prepare_cover(path, {"left": 0, "top": 0, "size": 600})
         self.assertEqual(side, 600)
         with Image.open(io.BytesIO(thumb)) as rendition:
             self.assertEqual(rendition.size, (500, 500))

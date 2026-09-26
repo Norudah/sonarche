@@ -1,5 +1,6 @@
 """Field-level metadata report for a library item (shared by importer and enrich)."""
 
+import contextlib
 import os
 
 import provisional
@@ -8,10 +9,8 @@ import provisional
 def build_report(item) -> dict:
     """Which metadata fields are filled; the front derives a completion score."""
     album = None
-    try:
+    with contextlib.suppress(Exception):
         album = item.get_album()
-    except Exception:
-        pass
 
     art_path = album.artpath if album else None
     if isinstance(art_path, bytes):

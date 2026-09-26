@@ -23,6 +23,7 @@ class WireEncodingTest(unittest.TestCase):
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env={**os.environ, "PYTHONIOENCODING": "cp1252"},
             capture_output=True,
+            check=False,
             encoding="utf-8",
             timeout=30,
         )
@@ -66,6 +67,7 @@ class WireEncodingTest(unittest.TestCase):
             env={**os.environ, "PYTHONIOENCODING": "cp1252"},
             input=json.dumps({"q": HOSTILE}, ensure_ascii=False),
             capture_output=True,
+            check=False,
             encoding="utf-8",
             timeout=30,
         )

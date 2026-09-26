@@ -101,6 +101,7 @@ def _remux_file(ffmpeg: str, path: str) -> None:
                 tmp,
             ],
             capture_output=True,
+            check=False,
             text=True,
             timeout=_FFMPEG_TIMEOUT,
         )
@@ -169,7 +170,7 @@ def handle(request_id: str, params: dict) -> dict:
         try:
             _remux_file(ffmpeg, path)
             remuxed += 1
-        except Exception as exc:  # noqa: BLE001 — one bad file must not stop the pass
+        except Exception as exc:  # one bad file must not stop the pass
             failures.append(os.path.basename(path))
             failed_ids.append(item_id)
             protocol.log(f"remux failed for {os.path.basename(path)}: {exc}")

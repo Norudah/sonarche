@@ -5,11 +5,11 @@ full `Item` per track (~1.7 s vs ~80 ms on 10 000 tracks). All writes still
 go through beets' API.
 """
 
+import contextlib
 import os
 import sqlite3
 
 import accepted
-
 from genre_tree import bucket_for
 
 # beets' DB delimiter for multi-valued tags ("; " when read from file tags).
@@ -79,10 +79,8 @@ def art_mtimes(art_by_album: dict[int, str | None]) -> dict[int, int]:
     for album_id, path in art_by_album.items():
         if not path:
             continue
-        try:
+        with contextlib.suppress(OSError):
             mtimes[album_id] = int(os.stat(path).st_mtime)
-        except OSError:
-            pass
     return mtimes
 
 
@@ -115,15 +113,15 @@ class Lookups:
     item or album id."""
 
     __slots__ = (
+        "accepted_by_album",
+        "accepted_by_item",
         "art_by_album",
+        "art_by_item",
         "art_mtime_by_album",
         "bonus_by_item",
-        "suspect_by_item",
-        "provisional_cover_by_item",
         "kind_by_album",
-        "art_by_item",
-        "accepted_by_item",
-        "accepted_by_album",
+        "provisional_cover_by_item",
+        "suspect_by_item",
     )
 
     def __init__(self, **fields):

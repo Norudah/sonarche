@@ -6,6 +6,7 @@ thumbnail. Versions <= 2.x also archived a full-size `cover-hq.*`, whose
 leftovers are still cleaned up.
 """
 
+import contextlib
 import os
 import shutil
 
@@ -72,10 +73,8 @@ def ensure_display_rendition(art_path: str) -> bool:
     except (OSError, ValueError) as exc:
         protocol.log(f"covers: rendition failed for {art_path}: {exc}")
         if os.path.exists(scratch) and not os.path.exists(art_path):
-            try:
+            with contextlib.suppress(OSError):
                 shutil.move(scratch, art_path)
-            except OSError:
-                pass
         _discard(scratch)
         return False
 

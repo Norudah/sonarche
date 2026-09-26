@@ -5,7 +5,7 @@ fields a human edited (so bulk passes can spare them). Only the in-memory
 item is mutated; callers own `item.store()`.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # 1 once a Chromaprint was computed, whether or not it matched.
 FINGERPRINTED = "sonarche_fingerprinted"
@@ -19,7 +19,7 @@ _FIELDS_DELIMITER = ","
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def mark_fingerprinted(item) -> None:

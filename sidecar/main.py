@@ -20,9 +20,9 @@ def _handlers():
     import enrich
     import enrich_album
     import genre_overrides
+    import import_undo
     import importer
     import library
-    import import_undo
     import library_align
     import library_import
     import lyrics

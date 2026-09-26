@@ -8,6 +8,7 @@ lastgenre only reads a tree file, so every change regenerates a derived tree
 and whitelist (base + overrides) and reloads the plugin.
 """
 
+import contextlib
 import json
 import os
 import tempfile
@@ -93,10 +94,8 @@ def _atomic_write(path: str, content: str) -> None:
             f.write(content)
         os.replace(tmp, path)
     except OSError:
-        try:
+        with contextlib.suppress(OSError):
             os.remove(tmp)
-        except OSError:
-            pass
         raise
 
 
@@ -262,7 +261,7 @@ def ensure_derived() -> None:
         return
     try:
         regenerate()
-    except Exception as exc:  # noqa: BLE001 — startup must survive a bad file
+    except Exception as exc:  # startup must survive a bad file
         protocol.log(f"genre_overrides: derived files not regenerated: {exc}")
 
 
@@ -276,7 +275,7 @@ def _refresh_lastgenre() -> None:
                 plugin.whitelist = plugin._load_whitelist()
                 plugin.c14n_branches, plugin.canonicalize = plugin._load_c14n_tree()
                 protocol.log("genre_overrides: lastgenre reloaded")
-    except Exception as exc:  # noqa: BLE001 — a stale plugin beats a dead op
+    except Exception as exc:  # a stale plugin beats a dead op
         protocol.log(f"genre_overrides: lastgenre not reloaded: {exc}")
 
 

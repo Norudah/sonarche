@@ -51,7 +51,7 @@ def _probe(name: str, url: str, user_agent: str) -> dict:
     try:
         resp = requests.get(url, timeout=_TIMEOUT, headers={"User-Agent": user_agent})
         verdict = classify(resp.status_code, None)
-    except Exception as exc:  # noqa: BLE001 — every failure is the same verdict
+    except Exception as exc:  # every failure is the same verdict
         verdict = classify(None, type(exc).__name__)
     return {"name": name, **verdict}
 

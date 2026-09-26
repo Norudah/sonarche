@@ -66,6 +66,7 @@ def handle(request_id: str, params: dict) -> dict:
         cmd,
         stdin=subprocess.DEVNULL,  # same guard as library_import: beets must never read our protocol pipe
         capture_output=True,
+        check=False,
         text=True,
         encoding="utf-8",
         errors="replace",

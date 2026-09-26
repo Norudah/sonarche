@@ -106,8 +106,8 @@ def _candidate_from_recording(plugin, rec_id: str, match_pct: int) -> dict | Non
 
 
 def handle(request_id: str, params: dict) -> dict:
-    from beets.library import Item
     from beets import autotag
+    from beets.library import Item
 
     ensure_plugins()
     plugin = mb_plugin()

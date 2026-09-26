@@ -7,7 +7,6 @@ import metadata
 import protocol
 import suspect
 
-
 # Each sample costs a few MusicBrainz calls (~1 req/s).
 _MAX_SAMPLES = 3
 
@@ -253,9 +252,8 @@ def rescue_coverage(request_id: str, items, recordings: dict, match, leftovers):
         if releases:
             release_sets.append(releases)
 
-    for release_id in rescue_candidates(release_sets, exclude=match.info.album_id)[
-        :_MAX_RESCUE_RELEASES
-    ]:
+    candidates = rescue_candidates(release_sets, exclude=match.info.album_id)
+    for release_id in candidates[:_MAX_RESCUE_RELEASES]:
         candidate, candidate_leftovers = build_match(items, recordings, release_id)
         if candidate is None:
             continue

@@ -309,14 +309,18 @@ def apply(request_id: str, params: dict) -> dict:
         if touched:
             albums_updated += 1
         release_id = str(entry.get("release_id") or "")
-        if entry.get("cover_missing") and release_id and _cover_missing(album):
-            if _fetch_cover(
+        if (
+            entry.get("cover_missing")
+            and release_id
+            and _cover_missing(album)
+            and _fetch_cover(
                 album,
                 list(album.items()),
                 release_id,
                 str(entry.get("release_group_id") or "") or None,
-            ):
-                covers_fetched += 1
+            )
+        ):
+            covers_fetched += 1
     protocol.log(
         f"library_align: applied {albums_updated} album(s), {items_updated} item(s), "
         f"{covers_fetched} cover(s), {genres_filled} genre(s)"

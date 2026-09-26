@@ -100,8 +100,9 @@ def consolidate_album_rows(lib, items) -> list:
     Sibling rows make %aunique suffix every folder while the UI, which groups by
     name, shows a single album. Collections and blank (provisional) names are
     left out."""
-    import library as library_mod
     from beets.dbcore.query import AndQuery, MatchQuery
+
+    import library as library_mod
 
     def _fresh_rows():
         rows = {}

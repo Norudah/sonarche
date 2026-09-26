@@ -3,7 +3,7 @@
 
 import unittest
 
-from genre_tree import _FAMILIES, _genre_to_root, bucket_for, TREE_PATH, WHITELIST_PATH
+from genre_tree import _FAMILIES, TREE_PATH, WHITELIST_PATH, _genre_to_root, bucket_for
 
 
 class BucketForTest(unittest.TestCase):

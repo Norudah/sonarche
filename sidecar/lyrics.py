@@ -139,7 +139,7 @@ def _lookup(item, user_agent: str) -> dict | None:
 
     query = {"track_name": title, "artist_name": artist, "album_name": item.album or ""}
     if duration:
-        query["duration"] = int(round(duration))
+        query["duration"] = round(duration)
     response = _get(f"{_API}/get", query, headers)
     if response.status_code == 200:
         return response.json()

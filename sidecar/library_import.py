@@ -6,6 +6,7 @@
 - The grouping flag comes from the caller, see `GROUPINGS`.
 """
 
+import contextlib
 import os
 import subprocess
 import threading
@@ -160,10 +161,8 @@ def _watch_cancel(proc, cancel_file: str, cancelled: threading.Event) -> None:
 
 def _forget_cancel(cancel_file: str) -> None:
     """Remove the cancel file so a stale one cannot stop the next run."""
-    try:
+    with contextlib.suppress(OSError):
         os.remove(cancel_file)
-    except OSError:
-        pass
 
 
 def _write_repaired_tags(params: dict, batch: str) -> None:
@@ -313,9 +312,7 @@ def _adopt_embedded_cover(album) -> bool:
             protocol.log(f"import: embedded cover adoption failed for album {album.id}: {exc}")
             return False
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(staged)
-            except OSError:
-                pass
         return True
     return False

@@ -190,7 +190,7 @@ the download history — except the beets index, which travels with the music.
 
 ## Development
 
-Requirements: Node 22 (see `.nvmrc`), a Rust toolchain, and a Python 3.10+ on
+Requirements: Node 22 (see `.nvmrc`), a Rust toolchain, and a Python 3.11+ on
 `PATH` for running the sidecar's tests.
 
 ```bash
@@ -207,6 +207,7 @@ npm run tauri dev
 npm run lint && npx tsc --noEmit && npm test    # front
 cd src-tauri && cargo clippy --all-targets && cargo fmt && cargo test
 cd sidecar && python -m unittest discover -p "*_test.py"
+cd sidecar && ruff check && ruff format --check      # config in sidecar/ruff.toml
 npm run format                                  # prettier, 120 columns
 ```
 
