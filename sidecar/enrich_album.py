@@ -24,6 +24,7 @@ from album_fallback import (
 )
 from album_match import (
     build_match,
+    cover_with_editions,
     find_content_duplicates,
     rescue_coverage,
     rescue_slots,
@@ -225,21 +226,10 @@ def _apply_album(request_id: str, lib, match, pause: float, source: str | None, 
     return album, mapped, foreign
 
 
-def _adopt_bonus_tracks(
-    request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict
-) -> list:
-    """Adopt leftovers found on a sibling edition of the release-group (deluxe,
-    regional): track metadata from their edition, album identity from the main
-    one, numbered after the last slot. Returns the adopted items."""
-    group_id = match.info.releasegroup_id
-    if not group_id:
-        return []
-    plugin = metadata.mb_plugin()
-
-    candidates: dict[
-        int, dict[str, tuple[dict, str]]
-    ] = {}  # item_id -> {release_id: (release, rec_id)}
-    by_item = {item.id: item for item in leftovers}
+def _sibling_editions(plugin, leftovers, recordings: dict, group_id: str) -> dict:
+    """item_id -> {release_id: (release, rec_id)}, over the releases of `group_id`
+    that carry one of the item's recordings."""
+    candidates: dict[int, dict[str, tuple[dict, str]]] = {}
     for item in leftovers:
         found: dict[str, tuple[dict, str]] = {}
         for rec_id in recordings.get(item.id) or []:
@@ -254,25 +244,21 @@ def _adopt_bonus_tracks(
                     found.setdefault(release["id"], (release, rec_id))
         if found:
             candidates[item.id] = found
+    return candidates
 
-    # Greedy: fewest editions covering the most leftovers.
-    assignments: dict[str, list[tuple]] = {}  # release_id -> [(item, rec_id)]
-    pending = set(candidates)
-    while pending:
-        counts: dict[str, dict] = {}
-        for item_id in pending:
-            for release_id, (release, _) in candidates[item_id].items():
-                counts.setdefault(release_id, {"n": 0, "release": release})
-                counts[release_id]["n"] += 1
-        best = sorted(
-            counts,
-            key=lambda rid: (-counts[rid]["n"], metadata.release_rank(counts[rid]["release"])),
-        )[0]
-        for item_id in sorted(pending):
-            if best in candidates[item_id]:
-                _, rec_id = candidates[item_id][best]
-                assignments.setdefault(best, []).append((by_item[item_id], rec_id))
-                pending.discard(item_id)
+
+def _adopt_bonus_tracks(
+    request_id: str, lib, album, match, leftovers, recordings: dict, pause: float, hints: dict
+) -> list:
+    """Adopt leftovers found on a sibling edition of the release-group (deluxe,
+    regional): track metadata from their edition, album identity from the main
+    one, numbered after the last slot. Returns the adopted items."""
+    group_id = match.info.releasegroup_id
+    if not group_id:
+        return []
+    plugin = metadata.mb_plugin()
+    by_item = {item.id: item for item in leftovers}
+    assignments = cover_with_editions(_sibling_editions(plugin, leftovers, recordings, group_id))
 
     adopted: list = []
     lastgenre = metadata.lastgenre_plugin()
@@ -286,39 +272,40 @@ def _adopt_bonus_tracks(
         if info is None:
             continue
         tracks_by_id = {t.track_id: t for t in info.tracks}
-        protocol.log(f"enrich_album: adopting {len(pairs)} bonus track(s) from {info.album}")
-        pairs.sort(key=lambda p: tracks_by_id[p[1]].index or 0)
-        for item, rec_id in pairs:
-            track = tracks_by_id.get(rec_id)
-            if track is None:
-                continue
+        found = [(by_item[i], tracks_by_id[r]) for i, r in pairs if r in tracks_by_id]
+        protocol.log(f"enrich_album: adopting {len(found)} bonus track(s) from {info.album}")
+        for item, track in sorted(found, key=lambda pair: pair[1].index or 0):
             next_track += 1
-            # Track fields from the bonus edition, album fields from the main release.
-            item.update(enrich.work_fields(track.merge_with_album(match.info)))
-            item.track = next_track
-            item.album_id = album.id
-            item["sonarche_bonus_source"] = info.album
-            genres, label = lastgenre._get_genre(item)
-            if genres:
-                item.genres = genres
-                protocol.log(f"enrich_album: genre {genres} ({label})")
-            provenance.mark_match(item, "acoustid")
-            provisional.clear(item)
-            suspect.mark(item, (hints.get(item.id) or {}).get("title"))
-            item.store()
-            try:
-                item.write()
-            except Exception as exc:
-                protocol.log(f"enrich_album: tag write failed: {exc}")
-            try:
-                item.move()
-            except Exception as exc:
-                protocol.log(f"enrich_album: move failed: {exc}")
+            _adopt_bonus(item, track, next_track, match, album, info.album, lastgenre, hints)
             protocol.send_event(
                 request_id, "enrich_progress", {"stage": "track_done", "item_id": item.id}
             )
             adopted.append(item)
     return adopted
+
+
+def _adopt_bonus(item, track, number: int, match, album, edition: str, lastgenre, hints) -> None:
+    """Track fields from the bonus edition, album fields from the main release."""
+    item.update(enrich.work_fields(track.merge_with_album(match.info)))
+    item.track = number
+    item.album_id = album.id
+    item["sonarche_bonus_source"] = edition
+    genres, label = lastgenre._get_genre(item)
+    if genres:
+        item.genres = genres
+        protocol.log(f"enrich_album: genre {genres} ({label})")
+    provenance.mark_match(item, "acoustid")
+    provisional.clear(item)
+    suspect.mark(item, (hints.get(item.id) or {}).get("title"))
+    item.store()
+    try:
+        item.write()
+    except Exception as exc:
+        protocol.log(f"enrich_album: tag write failed: {exc}")
+    try:
+        item.move()
+    except Exception as exc:
+        protocol.log(f"enrich_album: move failed: {exc}")
 
 
 def _build_reports(lib, items) -> list[dict]:

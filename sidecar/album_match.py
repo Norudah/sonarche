@@ -123,6 +123,31 @@ def find_content_duplicates(recording_lists: list[tuple[int, list[str]]]) -> dic
     return duplicates
 
 
+def cover_with_editions(candidates: dict[int, dict[str, tuple[dict, str]]]) -> dict[str, list]:
+    """Greedy cover: the fewest sibling editions holding the most leftovers.
+
+    `candidates` maps item_id -> {release_id: (release, rec_id)}. Returns
+    release_id -> [(item_id, rec_id)]; ties go to the better-ranked release."""
+    assignments: dict[str, list] = {}
+    pending = set(candidates)
+    while pending:
+        counts: dict[str, dict] = {}
+        for item_id in pending:
+            for release_id, (release, _) in candidates[item_id].items():
+                counts.setdefault(release_id, {"n": 0, "release": release})
+                counts[release_id]["n"] += 1
+        best = min(
+            counts,
+            key=lambda rid: (-counts[rid]["n"], metadata.release_rank(counts[rid]["release"])),
+        )
+        for item_id in sorted(pending):
+            if best in candidates[item_id]:
+                _, rec_id = candidates[item_id][best]
+                assignments.setdefault(best, []).append((item_id, rec_id))
+                pending.discard(item_id)
+    return assignments
+
+
 def match_by_recordings(items, tracks, recordings_by_item: dict) -> tuple[dict, list, list]:
     """Map items to release tracks. Returns (mapping, leftover_items, extra_tracks).
 
