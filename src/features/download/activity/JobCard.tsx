@@ -131,6 +131,16 @@ function JobCardImpl({
     .map((track) => track.itemId)
     .filter((itemId): itemId is number => itemId != null && library.has(itemId));
 
+  const artwork = (
+    <JobArtwork
+      coverUrl={coverOf(job, library)}
+      thumbnail={job.thumbnail}
+      isAlbum={isAlbum}
+      isSettled={job.status === "done"}
+      size={isActive ? "lg" : "sm"}
+    />
+  );
+
   return (
     <article
       id={job.id}
@@ -146,22 +156,10 @@ function JobCardImpl({
       <div className="flex items-center gap-3">
         {href ? (
           <Link to={href} aria-label={t("queue.openInLibrary")} className="shrink-0 rounded-xl outline-none">
-            <JobArtwork
-              coverUrl={coverOf(job, library)}
-              thumbnail={job.thumbnail}
-              isAlbum={isAlbum}
-              isSettled={job.status === "done"}
-              size={isActive ? "lg" : "sm"}
-            />
+            {artwork}
           </Link>
         ) : (
-          <JobArtwork
-            coverUrl={coverOf(job, library)}
-            thumbnail={job.thumbnail}
-            isAlbum={isAlbum}
-            isSettled={job.status === "done"}
-            size={isActive ? "lg" : "sm"}
-          />
+          artwork
         )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
