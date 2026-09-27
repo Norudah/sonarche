@@ -33,3 +33,29 @@ fn checked_category(category: Option<String>) -> AppResult<Option<String>> {
         other => Ok(other),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_blank_category_means_none() {
+        assert_eq!(checked_category(None).unwrap(), None);
+        assert_eq!(checked_category(Some("   ".into())).unwrap(), None);
+    }
+
+    #[test]
+    fn a_category_is_trimmed() {
+        assert_eq!(
+            checked_category(Some("  Films ".into())).unwrap(),
+            Some("Films".into())
+        );
+    }
+
+    #[test]
+    fn the_bound_counts_characters_not_bytes() {
+        let accented = "é".repeat(MAX_CATEGORY_CHARS);
+        assert!(checked_category(Some(accented.clone())).is_ok());
+        assert!(checked_category(Some(format!("{accented}é"))).is_err());
+    }
+}

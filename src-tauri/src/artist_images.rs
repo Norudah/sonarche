@@ -245,3 +245,20 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_name_is_trimmed_and_must_not_be_blank() {
+        assert_eq!(checked_name("  Daft Punk ").unwrap(), "Daft Punk");
+        assert!(checked_name("   ").is_err());
+    }
+
+    #[test]
+    fn a_name_past_the_bound_is_refused() {
+        assert!(checked_name(&"a".repeat(MAX_NAME_CHARS)).is_ok());
+        assert!(checked_name(&"a".repeat(MAX_NAME_CHARS + 1)).is_err());
+    }
+}
