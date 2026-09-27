@@ -60,7 +60,7 @@ export function MetadataFooter({
       : feedback?.kind === "failed"
         ? { tone: "danger", message: <SaveFailedMessage /> }
         : rematch.isError
-          ? { tone: "danger", message: <SaveFailedMessage /> }
+          ? { tone: "danger", message: t("metadata.reenrichFailed") }
           : rematch.isSuccess
             ? rematch.data.matched
               ? { tone: "success", message: t("metadata.reenrichMatched") }
