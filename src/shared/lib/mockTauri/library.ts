@@ -208,13 +208,14 @@ const mockBaseBuckets = new Map<string, string | null>();
 export const library = { tracks: isEmpty ? [] : withAlbumIds(inflate(libraryTracks, requestedTracks)) };
 
 export const handlers: Record<string, Handler> = {
-  // Write to the seed so a re-list reflects the edit.
+  // `list_library`'s rows are copies made at load: write to those.
   update_tracks: (payload) => {
     const wireKey: Record<string, string> = { albumartist: "album_artist", tracktotal: "track_total" };
     const numeric = new Set(["year", "track", "tracktotal"]);
+    const rows = library.tracks as Record<string, unknown>[];
     let updated = 0;
     for (const u of (payload?.updates as { id: number; fields: Record<string, string> }[]) ?? []) {
-      const target = libraryTracks.find((track) => track.id === u.id) as Record<string, unknown> | undefined;
+      const target = rows.find((track) => track.id === u.id);
       if (!target) continue;
       for (const [key, value] of Object.entries(u.fields)) {
         target[wireKey[key] ?? key] = numeric.has(key) ? Number(value) || null : value || null;
