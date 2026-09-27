@@ -14,7 +14,8 @@ import { useArtistImages, useLibrary, useUpdateTracks } from "@/features/library
 import { ExitGuardDialog } from "@/features/library/metadata/ExitGuardDialog";
 import { diffFields, fieldEdit, toFieldValues, type FieldValues } from "@/features/library/metadata/fields";
 import { MetadataFields } from "@/features/library/metadata/MetadataFields";
-import { MetadataFooter, type SaveFeedback } from "@/features/library/metadata/MetadataFooter";
+import type { SaveFeedback } from "@/features/library/metadata/EditorFooter";
+import { MetadataFooter } from "@/features/library/metadata/MetadataFooter";
 import { MetadataHeader } from "@/features/library/metadata/MetadataHeader";
 import { MetadataSuggestionsProvider } from "@/features/library/metadata/SuggestionsContext";
 
