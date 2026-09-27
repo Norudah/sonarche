@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { Check, FolderInput, Layers, SearchX } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +14,7 @@ import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -105,20 +105,9 @@ export function GenresView() {
         </ExplorerBar>
       )}
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && families.length === 0 && (
         <EmptyLibrary icon={Layers} title={t("genres.empty.title")} body={t("genres.empty.body")} />

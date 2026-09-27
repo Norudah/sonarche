@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams, useSearchParams } from "react-router";
@@ -19,6 +18,7 @@ import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTra
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { parseViewMode } from "@/features/library/viewMode";
 import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /** Both axes; each hides itself with a single value. */
@@ -48,9 +48,7 @@ export function ArtistDetailView() {
   if (library.isPending) {
     return (
       <PageContainer>
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
+        <LoadingSpinner />
       </PageContainer>
     );
   }
@@ -58,12 +56,7 @@ export function ArtistDetailView() {
   if (library.isError) {
     return (
       <PageContainer>
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <LoadError error={library.error} />
       </PageContainer>
     );
   }

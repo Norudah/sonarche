@@ -1,6 +1,4 @@
-import { Alert, Spinner } from "@heroui/react";
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
 
 import { albumPath, paths } from "@/app/routes";
@@ -19,13 +17,13 @@ import { AddToPlaylistDialog } from "@/features/library/playlists/AddToPlaylistD
 import { TrackFilterBar } from "@/features/library/tracks/TrackFilterBar";
 import { useTrackFilter } from "@/features/library/tracks/useTrackFilter";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
 /** Stable empty array, so memos don't churn. */
 const NO_TRACKS: LibraryTrack[] = [];
 
 export function AlbumDetailView() {
-  const { t } = useTranslation("library");
   const { artist = "", title = "" } = useParams();
   const library = useLibrary();
   const { playOrdered, playShuffled } = usePlayQueue();
@@ -47,9 +45,7 @@ export function AlbumDetailView() {
   if (library.isPending) {
     return (
       <PageContainer>
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
+        <LoadingSpinner />
       </PageContainer>
     );
   }
@@ -57,12 +53,7 @@ export function AlbumDetailView() {
   if (library.isError) {
     return (
       <PageContainer>
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <LoadError error={library.error} />
       </PageContainer>
     );
   }

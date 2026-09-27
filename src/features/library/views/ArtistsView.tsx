@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { ListFilter, Mic2, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +21,7 @@ import { SortSelect } from "@/features/library/SortSelect";
 import { useArtistImages, useLibrary } from "@/features/library/hooks";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -81,20 +81,9 @@ export function ArtistsView() {
         <TriageChips chips={chips} />
       </ExplorerBar>
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && artists.length === 0 && (
         <EmptyLibrary icon={Mic2} title={t("artists.empty.title")} body={t("artists.empty.body")} />

@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { Disc } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,6 +31,7 @@ import { useTrackFilter, type TrackAxis } from "@/features/library/tracks/useTra
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { parseViewMode } from "@/features/library/viewMode";
 import { ViewModeSwitch } from "@/features/library/ViewModeSwitch";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -82,9 +82,7 @@ export function GenreDetailView() {
   if (library.isPending) {
     return (
       <PageContainer>
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
+        <LoadingSpinner />
       </PageContainer>
     );
   }
@@ -92,12 +90,7 @@ export function GenreDetailView() {
   if (library.isError) {
     return (
       <PageContainer>
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <LoadError error={library.error} />
       </PageContainer>
     );
   }

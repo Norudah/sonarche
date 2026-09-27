@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { Disc, ListFilter, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +15,7 @@ import { SortSelect } from "@/features/library/SortSelect";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -75,20 +75,9 @@ export function AlbumsView() {
         <TriageChips chips={chips} />
       </ExplorerBar>
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && albums.length === 0 && (
         <EmptyLibrary icon={Disc} title={t("albums.empty.title")} body={t("albums.empty.body")} />
