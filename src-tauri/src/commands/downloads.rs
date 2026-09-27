@@ -7,6 +7,7 @@ use crate::error::{AppError, AppResult};
 use crate::jobs::{ForcedAlbum, Job, JobKind, JobsState};
 use crate::library_import::LibraryImportState;
 use crate::sidecar::SidecarState;
+use crate::undo;
 
 use super::checked_category;
 
@@ -122,7 +123,7 @@ pub async fn preview_download_undo(
     sidecar: State<'_, SidecarState>,
     jobs: State<'_, JobsState>,
     id: String,
-) -> AppResult<download_undo::UndoPreview> {
+) -> AppResult<undo::UndoPreview> {
     download_undo::preview(&app, &sidecar, &jobs, &id).await
 }
 
@@ -135,7 +136,7 @@ pub async fn undo_download(
     jobs: State<'_, JobsState>,
     imports: State<'_, LibraryImportState>,
     id: String,
-) -> AppResult<download_undo::UndoOutcome> {
+) -> AppResult<undo::UndoOutcome> {
     download_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }
 

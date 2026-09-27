@@ -11,6 +11,7 @@ use crate::library_import::{ImportOutcome, ImportRecord, LibraryImportState};
 use crate::library_scan::{self, ScanReport};
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
+use crate::undo;
 
 use super::checked_category;
 
@@ -93,7 +94,7 @@ pub async fn preview_import_undo(
     sidecar: State<'_, SidecarState>,
     jobs: State<'_, JobsState>,
     id: String,
-) -> AppResult<import_undo::UndoPreview> {
+) -> AppResult<undo::UndoPreview> {
     import_undo::preview(&app, &sidecar, &jobs, &id).await
 }
 
@@ -106,6 +107,6 @@ pub async fn undo_import(
     jobs: State<'_, JobsState>,
     imports: State<'_, LibraryImportState>,
     id: String,
-) -> AppResult<import_undo::UndoOutcome> {
+) -> AppResult<undo::UndoOutcome> {
     import_undo::run(&app, &sidecar, &jobs, &imports, &id).await
 }

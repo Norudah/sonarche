@@ -14,12 +14,12 @@ pub use model::{AlbumTrack, ForcedAlbum, Job, JobKind, JobStatus, JobStep, Track
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex as StdMutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::Connection;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
 
+use crate::clock::now_ms;
 use crate::error::{AppError, AppResult};
 use crate::jobs_store;
 use crate::playlists;
@@ -61,13 +61,6 @@ fn take_cancel(inner: &JobsInner, id: &str) -> bool {
 }
 
 pub struct JobsState(Arc<JobsInner>);
-
-fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
-}
 
 /// Runs a blocking DB operation off the async runtime.
 async fn with_conn<T, F>(inner: &JobsInner, f: F) -> AppResult<T>

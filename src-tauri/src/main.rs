@@ -3,6 +3,7 @@
 mod artist_images;
 mod artwork;
 mod audio_formats;
+mod clock;
 mod commands;
 mod convert;
 mod download_undo;
@@ -32,6 +33,7 @@ mod remux;
 mod reset;
 mod settings;
 mod sidecar;
+mod undo;
 mod window_chrome;
 
 use tauri::Manager;

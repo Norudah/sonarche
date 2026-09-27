@@ -483,10 +483,7 @@ fn migrate_artwork(
     }
 
     if legacy_playlists.exists() {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
+        let now = crate::clock::now_ms();
         let mut rows = jobs.with_conn_blocking(crate::playlists::list)?;
         rows.sort_by(|a, b| a.name.cmp(&b.name));
         let entries: Vec<(i64, String, String)> = rows

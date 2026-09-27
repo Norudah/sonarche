@@ -5,7 +5,9 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
+
+use crate::clock::now_ms;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -99,13 +101,6 @@ pub struct LibraryImportState {
     /// The last scan, archived with the import: counts measured here rather than
     /// trusted from the webview.
     last_scan: Mutex<Option<(PathBuf, ScanReport)>>,
-}
-
-fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
 }
 
 impl LibraryImportState {
