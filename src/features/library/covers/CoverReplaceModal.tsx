@@ -15,6 +15,7 @@ import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect, frameFits, type SourceSize } from "@/features/library/covers/coverCrop";
 import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
+import { formatWeight, useEmbeddedEstimate } from "@/features/library/covers/embeddedWeight";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -27,41 +28,6 @@ import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
 /** Replaces an album's cover as a before/after: current cover and its weight
  * on the left; a picked, pasted or dropped image (cropped square) or a CAA
  * upload on the right. Only confirming writes. */
-
-function formatWeight(bytes: number, locale: string, mb: string, kb: string): string {
-  const format = (value: number) =>
-    new Intl.NumberFormat(locale, { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value);
-  return bytes >= 1_048_576 ? `${format(bytes / 1_048_576)} ${mb}` : `${format(Math.max(1, bytes / 1024))} ${kb}`;
-}
-
-/** Estimated weight of the 500px embedded rendition, by encoding in the
- * webview. The canvas may be tainted (CORS), so failure is possible. */
-async function estimateEmbeddedBytes(
-  url: string,
-  crop: { left: number; top: number; size: number },
-  isPng: boolean,
-): Promise<number | null> {
-  try {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = url;
-    await image.decode();
-    const side = Math.min(500, crop.size);
-    const canvas = document.createElement("canvas");
-    canvas.width = side;
-    canvas.height = side;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-    context.drawImage(image, crop.left, crop.top, crop.size, crop.size, 0, 0, side, side);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, isPng ? "image/png" : "image/jpeg", 0.92),
-    );
-    return blob?.size ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; isOpen: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation("library");
   const replace = useSetAlbumCover();
@@ -70,7 +36,6 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const [error, setError] = useState<string | null>(null);
   const [currentBytes, setCurrentBytes] = useState<number | null>(null);
   const [currentSize, setCurrentSize] = useState<SourceSize | null>(null);
-  const [estimate, setEstimate] = useState<{ url: string; bytes: number | null } | null>(null);
   // The CAA lookup only runs when the user asks.
   const [wantsCandidates, setWantsCandidates] = useState(false);
 
@@ -126,22 +91,8 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     };
   }, [isOpen, currentArtPath]);
 
-  // Re-estimated after the frame settles, not on every keypress.
   const { image, natural, frame } = local;
-  const embeddedEstimate = image && estimate?.url === image.url ? estimate.bytes : null;
-  useEffect(() => {
-    if (!image || !natural) return;
-    const crop = cropRect(natural, frame) ?? { left: 0, top: 0, size: natural.width };
-    let stale = false;
-    const timer = window.setTimeout(async () => {
-      const bytes = await estimateEmbeddedBytes(image.url, crop, image.path.toLowerCase().endsWith(".png"));
-      if (!stale) setEstimate({ url: image.url, bytes });
-    }, 250);
-    return () => {
-      stale = true;
-      window.clearTimeout(timer);
-    };
-  }, [image, natural, frame]);
+  const embeddedEstimate = useEmbeddedEstimate(image, natural, frame);
 
   const confirm = () => {
     if (albumIds.length === 0) return;
