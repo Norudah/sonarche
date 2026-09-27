@@ -86,9 +86,13 @@ export function SwitchRow({
   return (
     <SettingRow settingKey={settingKey}>
       <Switch isSelected={isSelected} onChange={onChange} aria-label={t(`${settingKey}.name`)} className="mt-0">
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
+        {/* Content is the clickable part (the label around the input); a bare
+            Control renders an inert switch. */}
+        <Switch.Content>
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+        </Switch.Content>
       </Switch>
     </SettingRow>
   );
