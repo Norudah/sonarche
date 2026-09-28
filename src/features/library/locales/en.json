@@ -307,7 +307,6 @@
       "statusIncomplete": "Track incomplete"
     },
     "bulk": {
-      "heading": "Across the record",
       "renumber": "Renumber 1 → {{count}}",
       "copyArtist": "Copy the album artist",
       "renumberHelp": "Rewrites the track numbers 1 to {{count}}, in the order shown.",
@@ -343,9 +342,7 @@
       }
     },
     "changes": {
-      "modified": "modified",
       "revert": "Restore “{{value}}”",
-      "none": "No changes",
       "fields_one": "{{count}} change",
       "fields_other": "{{count}} changes",
       "tracks_one": "on {{count}} track",

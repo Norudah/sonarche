@@ -97,18 +97,9 @@
     "colTags": "Tags",
     "colLibrary": "Bibliothèque",
     "pipeline": {
-      "download": {
-        "idle": "Téléchargé",
-        "active": "Téléchargé"
-      },
-      "import": {
-        "idle": "Importé",
-        "active": "Import"
-      },
-      "enrich": {
-        "idle": "Identifié",
-        "active": "Identification"
-      }
+      "download": "Téléchargé",
+      "import": "Importé",
+      "enrich": "Identifié"
     },
     "stepState": {
       "pending": "en attente",

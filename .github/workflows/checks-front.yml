@@ -12,6 +12,7 @@ on:
       - "package-lock.json"
       - "tsconfig.json"
       - "vite.config.ts"
+      - "scripts/check-i18n-orphans.mjs"
       - "eslint.config.js"
       - ".prettierignore"
       - ".github/workflows/checks-front.yml"
@@ -36,5 +37,7 @@ jobs:
       - run: npm run lint
       # Unused files, exports and dependencies.
       - run: npm run knip
+      # Translation keys nothing uses (tsc covers the missing ones).
+      - run: npm run i18n:orphans
       - run: npm run format:check
       - run: npm test

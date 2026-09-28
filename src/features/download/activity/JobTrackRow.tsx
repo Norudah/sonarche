@@ -56,7 +56,7 @@ export function JobTrackRow({ track, libraryTrack, isEnriched, onEdit, onDelete 
           <TrackStepMarker
             key={PIPELINE_STEPS[index]}
             state={state}
-            label={`${t(`queue.pipeline.${PIPELINE_STEPS[index]}.idle`)} — ${t(`queue.stepState.${state}`)}`}
+            label={`${t(`queue.pipeline.${PIPELINE_STEPS[index]}`)} — ${t(`queue.stepState.${state}`)}`}
           />
         ))}
       </span>

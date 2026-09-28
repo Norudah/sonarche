@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
+    "i18n:orphans": "node scripts/check-i18n-orphans.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri"
