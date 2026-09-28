@@ -1,6 +1,7 @@
 //! Tauri commands, one module per domain. Keep them thin: validate the
 //! input, then delegate.
 
+pub mod artist_images;
 pub mod covers;
 pub mod downloads;
 pub mod imports;
@@ -8,6 +9,7 @@ pub mod library;
 pub mod maintenance;
 pub mod organize;
 pub mod player;
+pub mod playlists;
 pub mod preferences;
 pub mod setup;
 

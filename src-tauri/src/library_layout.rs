@@ -451,7 +451,7 @@ fn migrate_artwork(
 
     if legacy_artists.exists() {
         // Sorted by name, so collision numbering is deterministic across retries.
-        let rows = jobs.with_conn_blocking(crate::jobs_store::list_artist_images)?;
+        let rows = jobs.with_conn_blocking(crate::db::artist_images::list_artist_images)?;
         let entries: Vec<(usize, String, String)> = rows
             .iter()
             .enumerate()
@@ -465,17 +465,21 @@ fn migrate_artwork(
             crate::artist_images::ARTIST_STEM_FALLBACK,
             |i, filename| {
                 jobs.with_conn_blocking(|c| {
-                    crate::jobs_store::update_artist_image_filename(c, &rows[i].name, filename)
+                    crate::db::artist_images::update_artist_image_filename(
+                        c,
+                        &rows[i].name,
+                        filename,
+                    )
                 })
             },
             |i| {
                 jobs.with_conn_blocking(|c| {
-                    crate::jobs_store::remove_artist_image(c, &rows[i].name).map(|_| ())
+                    crate::db::artist_images::remove_artist_image(c, &rows[i].name).map(|_| ())
                 })
             },
         )?;
         let referenced: Vec<String> = jobs
-            .with_conn_blocking(crate::jobs_store::list_artist_images)?
+            .with_conn_blocking(crate::db::artist_images::list_artist_images)?
             .into_iter()
             .map(|row| row.filename)
             .collect();
@@ -484,7 +488,7 @@ fn migrate_artwork(
 
     if legacy_playlists.exists() {
         let now = crate::clock::now_ms();
-        let mut rows = jobs.with_conn_blocking(crate::playlists::list)?;
+        let mut rows = jobs.with_conn_blocking(crate::db::playlists::list)?;
         rows.sort_by(|a, b| a.name.cmp(&b.name));
         let entries: Vec<(i64, String, String)> = rows
             .iter()
@@ -499,18 +503,20 @@ fn migrate_artwork(
             &entries,
             &legacy_playlists,
             &paths.playlist_covers_dir(),
-            crate::playlists::PLAYLIST_STEM_FALLBACK,
+            crate::db::playlists::PLAYLIST_STEM_FALLBACK,
             |id, filename| {
                 jobs.with_conn_blocking(|c| {
-                    crate::playlists::update_cover_filename(c, id, filename, now)
+                    crate::db::playlists::update_cover_filename(c, id, filename, now)
                 })
             },
             |id| {
-                jobs.with_conn_blocking(|c| crate::playlists::remove_cover(c, id, now).map(|_| ()))
+                jobs.with_conn_blocking(|c| {
+                    crate::db::playlists::remove_cover(c, id, now).map(|_| ())
+                })
             },
         )?;
         let referenced: Vec<String> = jobs
-            .with_conn_blocking(crate::playlists::list)?
+            .with_conn_blocking(crate::db::playlists::list)?
             .into_iter()
             .filter_map(|row| row.cover)
             .collect();

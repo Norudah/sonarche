@@ -10,12 +10,12 @@ mod audio_formats;
 mod clock;
 mod commands;
 mod convert;
+mod db;
 mod download_undo;
 mod error;
 mod identity;
 mod import_undo;
 mod jobs;
-mod jobs_store;
 mod library_align;
 mod library_import;
 mod library_layout;
@@ -26,7 +26,6 @@ mod now_playing;
 mod onboarding;
 mod pasted_image;
 mod player;
-mod playlists;
 mod playlists_mirror;
 mod preferences;
 mod proc;
@@ -133,21 +132,21 @@ fn main() {
             commands::covers::album_recrop_source,
             commands::covers::set_album_cover,
             commands::covers::list_cover_candidates,
-            artist_images::list_artist_images,
-            artist_images::set_artist_image,
-            artist_images::remove_artist_image,
-            artist_images::fetch_artist_image_url,
+            commands::artist_images::list_artist_images,
+            commands::artist_images::set_artist_image,
+            commands::artist_images::remove_artist_image,
+            commands::artist_images::fetch_artist_image_url,
             pasted_image::save_pasted_image,
-            playlists::list_playlists,
-            playlists::create_playlist,
-            playlists::rename_playlist,
-            playlists::delete_playlist,
-            playlists::add_playlist_tracks,
-            playlists::remove_playlist_tracks,
-            playlists::move_playlist_track,
-            playlists::set_playlist_cover,
-            playlists::remove_playlist_cover,
-            playlists::set_playlist_marker,
+            commands::playlists::list_playlists,
+            commands::playlists::create_playlist,
+            commands::playlists::rename_playlist,
+            commands::playlists::delete_playlist,
+            commands::playlists::add_playlist_tracks,
+            commands::playlists::remove_playlist_tracks,
+            commands::playlists::move_playlist_track,
+            commands::playlists::set_playlist_cover,
+            commands::playlists::remove_playlist_cover,
+            commands::playlists::set_playlist_marker,
             commands::imports::scan_import_folder,
             commands::imports::start_library_import,
             commands::imports::cancel_library_import,

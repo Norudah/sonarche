@@ -20,15 +20,15 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
 
 use crate::clock::now_ms;
+use crate::db;
+use crate::db::playlists;
 use crate::error::{AppError, AppResult};
-use crate::jobs_store;
-use crate::playlists;
 
 use album::run_album_job;
 use single::run_single_job;
 
 struct JobsInner {
-    /// History DB (jobs.db). rusqlite is sync, so access goes through `with_conn`.
+    /// `sonarche.db` (see `crate::db`). rusqlite is sync, so access goes through `with_conn`.
     conn: Arc<StdMutex<Connection>>,
     tx: mpsc::UnboundedSender<String>,
     /// Pending cancel requests, consumed by the worker at its next checkpoint.
@@ -100,7 +100,7 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
         }
     }
 
-    let conn = jobs_store::open(&db_path)?;
+    let conn = db::open(&db_path)?;
 
     if let Err(err) = playlists::ensure_favorites(&conn, now_ms()) {
         log_line!("[playlists] favorites seed failed: {err}");
@@ -112,7 +112,7 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
             .ok()
             .and_then(|raw| serde_json::from_str::<Vec<Job>>(&raw).ok())
         {
-            Some(jobs) => match jobs_store::import_jobs(&conn, &jobs) {
+            Some(jobs) => match db::jobs::import_jobs(&conn, &jobs) {
                 Ok(()) => {
                     let _ = std::fs::rename(&legacy_json, data_dir.join("jobs.json.migrated"));
                     log_line!("[jobs] migrated {} job(s) from jobs.json", jobs.len());
@@ -123,7 +123,7 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
         }
     }
 
-    if let Ok(true) = jobs_store::fail_interrupted(&conn, now_ms()) {
+    if let Ok(true) = db::jobs::fail_interrupted(&conn, now_ms()) {
         log_line!("[jobs] marked interrupted job(s) as failed");
     }
 
@@ -148,7 +148,7 @@ fn spawn_worker(app: AppHandle, inner: Arc<JobsInner>, mut rx: mpsc::UnboundedRe
 
 async fn snapshot(inner: &JobsInner, id: &str) -> Option<Job> {
     let id = id.to_string();
-    match with_conn(inner, move |c| jobs_store::get_job(c, &id)).await {
+    match with_conn(inner, move |c| db::jobs::get_job(c, &id)).await {
         Ok(job) => job,
         Err(err) => {
             log_line!("[jobs] snapshot failed: {err}");
@@ -168,7 +168,7 @@ async fn update_job(
     mutate(&mut job);
     job.updated_at = now_ms();
     let to_write = job.clone();
-    if let Err(err) = with_conn(inner, move |c| jobs_store::upsert_job(c, &to_write)).await {
+    if let Err(err) = with_conn(inner, move |c| db::jobs::upsert_job(c, &to_write)).await {
         log_line!("[jobs] persist failed: {err}");
         return None;
     }
@@ -195,7 +195,7 @@ async fn update_track(
     job.updated_at = updated_at;
     let id = id.to_string();
     if let Err(err) = with_conn(inner, move |c| {
-        jobs_store::update_track(c, &id, updated_at, &updated_track)
+        db::jobs::update_track(c, &id, updated_at, &updated_track)
     })
     .await
     {

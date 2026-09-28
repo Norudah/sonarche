@@ -4,8 +4,8 @@ use rusqlite::Connection;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
+use crate::db;
 use crate::error::{AppError, AppResult};
-use crate::jobs_store;
 use crate::library_import;
 use crate::sidecar::SidecarState;
 
@@ -71,7 +71,7 @@ impl JobsState {
         };
 
         let to_write = job.clone();
-        with_conn(&self.0, move |c| jobs_store::upsert_job(c, &to_write)).await?;
+        with_conn(&self.0, move |c| db::jobs::upsert_job(c, &to_write)).await?;
 
         let _ = app.emit("jobs:updated", &job);
         self.0
@@ -151,15 +151,12 @@ impl JobsState {
 
     pub async fn get(&self, id: &str) -> AppResult<Option<Job>> {
         let owned = id.to_string();
-        with_conn(&self.0, move |c| jobs_store::get_job(c, &owned)).await
+        with_conn(&self.0, move |c| db::jobs::get_job(c, &owned)).await
     }
 
     pub async fn mark_undone(&self, app: &AppHandle, id: &str, when: u64) -> AppResult<Job> {
         let owned = id.to_string();
-        with_conn(&self.0, move |c| {
-            jobs_store::mark_job_undone(c, &owned, when)
-        })
-        .await?;
+        with_conn(&self.0, move |c| db::jobs::mark_job_undone(c, &owned, when)).await?;
         let job = self
             .get(id)
             .await?
@@ -201,7 +198,7 @@ impl JobsState {
     /// paged through `page`.
     pub async fn list(&self) -> Vec<Job> {
         match with_conn(&self.0, |conn| {
-            jobs_store::list_live_jobs(conn, jobs_store::LIVE_TERMINAL_WINDOW)
+            db::jobs::list_live_jobs(conn, db::jobs::LIVE_TERMINAL_WINDOW)
         })
         .await
         {
@@ -225,9 +222,9 @@ impl JobsState {
     }
 
     /// One page of the archive, newest first. Unlike `list`, errors surface.
-    pub async fn page(&self, offset: u64, limit: u64) -> AppResult<jobs_store::JobsPage> {
+    pub async fn page(&self, offset: u64, limit: u64) -> AppResult<db::jobs::JobsPage> {
         with_conn(&self.0, move |conn| {
-            jobs_store::list_jobs_page(conn, offset, limit)
+            db::jobs::list_jobs_page(conn, offset, limit)
         })
         .await
     }
@@ -236,7 +233,7 @@ impl JobsState {
     /// itself succeeded.
     pub async fn record_import(&self, record: library_import::ImportRecord) {
         if let Err(err) = with_conn(&self.0, move |conn| {
-            jobs_store::insert_import(conn, &record)
+            db::imports::insert_import(conn, &record)
         })
         .await
         {
@@ -247,14 +244,14 @@ impl JobsState {
     /// One archived import; unlike `list_imports`, errors are returned.
     pub async fn get_import(&self, id: &str) -> AppResult<Option<library_import::ImportRecord>> {
         let id = id.to_string();
-        with_conn(&self.0, move |conn| jobs_store::get_import(conn, &id)).await
+        with_conn(&self.0, move |conn| db::imports::get_import(conn, &id)).await
     }
 
     /// Errors are only logged: the tracks are already removed.
     pub async fn mark_import_undone(&self, id: &str, when: u64) {
         let owned = id.to_string();
         if let Err(err) = with_conn(&self.0, move |conn| {
-            jobs_store::mark_import_undone(conn, &owned, when)
+            db::imports::mark_import_undone(conn, &owned, when)
         })
         .await
         {
@@ -263,7 +260,7 @@ impl JobsState {
     }
 
     pub async fn list_imports(&self) -> Vec<library_import::ImportRecord> {
-        match with_conn(&self.0, jobs_store::list_imports).await {
+        match with_conn(&self.0, db::imports::list_imports).await {
             Ok(records) => records,
             Err(err) => {
                 log_line!("[imports] list failed: {err}");
@@ -274,7 +271,7 @@ impl JobsState {
 
     /// Drops finished jobs and the import archive; running jobs are kept.
     pub async fn clear_history(&self) -> Vec<Job> {
-        if let Err(err) = with_conn(&self.0, jobs_store::clear_history).await {
+        if let Err(err) = with_conn(&self.0, db::clear_history).await {
             log_line!("[jobs] clear history failed: {err}");
         }
         self.list().await

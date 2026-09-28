@@ -86,7 +86,7 @@ pub async fn list_jobs_page(
     state: State<'_, JobsState>,
     offset: u64,
     limit: u64,
-) -> AppResult<crate::jobs_store::JobsPage> {
+) -> AppResult<crate::db::jobs::JobsPage> {
     state.page(offset, limit.clamp(1, 100)).await
 }
 

@@ -1,6 +1,8 @@
 //! Human-readable file names for the `Artwork/` zone, shared by artist
 //! images, playlist covers and the launch migration.
 
+use std::path::Path;
+
 /// Also bounds names arriving over IPC.
 pub const MAX_STEM_CHARS: usize = 120;
 
@@ -51,6 +53,16 @@ pub fn unique_stem(name: &str, fallback: &str, taken: &[String]) -> String {
             return candidate;
         }
         count += 1;
+    }
+}
+
+/// Deletes a file left without a row, for artist images and playlist covers.
+pub fn remove_orphan(dir: &Path, filename: Option<String>) {
+    if let Some(filename) = filename {
+        let path = dir.join(&filename);
+        if let Err(err) = std::fs::remove_file(&path) {
+            log_line!("[artwork] could not remove {}: {err}", path.display());
+        }
     }
 }
 

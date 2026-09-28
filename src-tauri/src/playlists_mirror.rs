@@ -12,10 +12,10 @@ use rusqlite::{Connection, OpenFlags};
 use tauri::{AppHandle, Manager};
 
 use crate::artwork;
+use crate::db::playlists::{PlaylistRow, PLAYLIST_STEM_FALLBACK};
 use crate::error::AppResult;
 use crate::jobs::JobsState;
 use crate::library_layout::MUSIC_DIR;
-use crate::playlists::{PlaylistRow, PLAYLIST_STEM_FALLBACK};
 use crate::python_env::AppPaths;
 
 /// UTF-8, unlike plain `.m3u`.
@@ -200,7 +200,7 @@ pub fn sync_blocking(paths: &AppPaths, rows: &[PlaylistRow]) -> AppResult<()> {
 /// are only logged.
 pub fn sync_at_launch(app: &AppHandle, jobs: &JobsState) {
     let outcome = AppPaths::resolve(app).and_then(|paths| {
-        let rows = jobs.with_conn_blocking(crate::playlists::list)?;
+        let rows = jobs.with_conn_blocking(crate::db::playlists::list)?;
         sync_blocking(&paths, &rows)
     });
     if let Err(err) = outcome {

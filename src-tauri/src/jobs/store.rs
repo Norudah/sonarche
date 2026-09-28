@@ -1,8 +1,8 @@
 //! App-state passthroughs on the shared connection: artist images and playlists.
 
+use crate::db;
+use crate::db::playlists;
 use crate::error::AppResult;
-use crate::jobs_store;
-use crate::playlists;
 
 use super::{now_ms, with_conn, JobsState};
 
@@ -32,8 +32,8 @@ impl JobsState {
     // Artist images and playlists share this store; timestamps are set here so
     // the store functions stay pure.
 
-    pub async fn list_artist_images(&self) -> AppResult<Vec<jobs_store::ArtistImageRow>> {
-        with_conn(&self.0, jobs_store::list_artist_images).await
+    pub async fn list_artist_images(&self) -> AppResult<Vec<db::artist_images::ArtistImageRow>> {
+        with_conn(&self.0, db::artist_images::list_artist_images).await
     }
 
     /// Returns the replaced file's name, if any.
@@ -45,14 +45,17 @@ impl JobsState {
     ) -> AppResult<Option<String>> {
         let now = now_ms();
         with_conn(&self.0, move |c| {
-            jobs_store::upsert_artist_image(c, &name, &filename, &source, now)
+            db::artist_images::upsert_artist_image(c, &name, &filename, &source, now)
         })
         .await
     }
 
     /// Returns the removed row's filename, if any.
     pub async fn remove_artist_image(&self, name: String) -> AppResult<Option<String>> {
-        with_conn(&self.0, move |c| jobs_store::remove_artist_image(c, &name)).await
+        with_conn(&self.0, move |c| {
+            db::artist_images::remove_artist_image(c, &name)
+        })
+        .await
     }
 
     /// Returns the filename left unowned by the rename, if any. `filename` is the
@@ -64,13 +67,13 @@ impl JobsState {
         filename: String,
     ) -> AppResult<Option<String>> {
         with_conn(&self.0, move |c| {
-            jobs_store::rename_artist_image(c, &old, &new, &filename)
+            db::artist_images::rename_artist_image(c, &old, &new, &filename)
         })
         .await
     }
 
     pub async fn clear_artist_images(&self) -> AppResult<()> {
-        with_conn(&self.0, jobs_store::clear_artist_images).await
+        with_conn(&self.0, db::artist_images::clear_artist_images).await
     }
 
     pub async fn list_playlists(&self) -> AppResult<Vec<playlists::PlaylistRow>> {
