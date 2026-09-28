@@ -10,12 +10,19 @@ import {
   ScanSearch,
   UserRoundX,
 } from "lucide-react";
+import type { ParseKeys } from "i18next";
 import type { LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
-import type { TriageLine } from "@/features/library/triage/queue";
+import type { DoorKey, TriageLine } from "@/features/library/triage/queue";
+
+/** Pill labels; only the genre row splits into several doors. */
+const PILL_LABEL: Partial<Record<DoorKey, ParseKeys<"metadata">>> = {
+  genreMissing: "queue.genreMissing",
+  genreOffTree: "queue.genreOffTree",
+};
 
 /* A card background, not just a border: invisible on light, needed on dark. */
 const ROW = "flex items-center gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
@@ -140,17 +147,20 @@ export function QueueLine({
       {label}
       {accept}
       <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {line.doors.map((door) => (
-          <Link
-            key={door.key}
-            to={door.to}
-            // The pill carries the number, so it's amber like the counts.
-            className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent/40"
-          >
-            {t(`queue.${door.key}`, { count: door.count })}
-            <ChevronRight className="size-3.5 transition-transform group-hover/door:translate-x-0.5" />
-          </Link>
-        ))}
+        {line.doors.map((door) => {
+          const pill = PILL_LABEL[door.key];
+          return (
+            <Link
+              key={door.key}
+              to={door.to}
+              // The pill carries the number, so it's amber like the counts.
+              className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              {pill && t(pill, { count: door.count })}
+              <ChevronRight className="size-3.5 transition-transform group-hover/door:translate-x-0.5" />
+            </Link>
+          );
+        })}
       </span>
     </div>
   );

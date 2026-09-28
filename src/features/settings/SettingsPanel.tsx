@@ -1,9 +1,16 @@
 import { cn, Switch } from "@heroui/react";
+import type { ParseKeys } from "i18next";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { clearSettingsHighlight, useSettingsDialog } from "@/shared/lib/settingsDialog";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
+
+type SettingsKey = ParseKeys<"settings">;
+type BaseOf<Key> = Key extends `${infer Base}.name` ? (`${Base}.why` extends SettingsKey ? Base : never) : never;
+
+/** A setting's i18n base key (`appearance.theme`): a `.name` and a `.why` under it. */
+type SettingKey = BaseOf<SettingsKey>;
 
 /** Duration of a search result's highlight ring. */
 const FLASH_MS = 1800;
@@ -38,9 +45,8 @@ export function SettingsPanel({ children }: { children: ReactNode }) {
 }
 
 interface SettingRowProps {
-  /** i18n base key (`appearance.theme`): the row reads `.name` and `.why`,
-   * and search results point back to it. */
-  settingKey: string;
+  /** The row reads `.name` and `.why`; search results point back to it. */
+  settingKey: SettingKey;
   /** For tall controls (the theme tiles). */
   align?: "center" | "start";
   children: ReactNode;
@@ -77,7 +83,7 @@ export function SwitchRow({
   isSelected,
   onChange,
 }: {
-  settingKey: string;
+  settingKey: SettingKey;
   isSelected: boolean;
   onChange: (enabled: boolean) => void;
 }) {

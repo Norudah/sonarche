@@ -1,4 +1,5 @@
 import { Button } from "@heroui/react";
+import type { ParseKeys } from "i18next";
 import { Check, FolderCheck, FolderInput, FolderOpen, FolderSearch, FolderX, Square } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -44,7 +45,7 @@ const FACE: Record<ImportPhase["kind"], { icon: LucideIcon; tile: string }> = {
 };
 
 /* No verdict for `scanned`: the Import button already says it's ready. */
-const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: string }>> = {
+const VERDICT: Partial<Record<ImportPhase["kind"], { tone: VerdictTone; key: ParseKeys<"import"> }>> = {
   imported: { tone: "success", key: "verdict.done" },
   importCancelled: { tone: "warning", key: "verdict.cancelled" },
   scanFailed: { tone: "danger", key: "verdict.failed" },

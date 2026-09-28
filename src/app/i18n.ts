@@ -23,34 +23,45 @@ import playerFr from "@/shared/player/locales/fr.json";
 
 const startingLanguage = initialLanguage();
 
+const resources = {
+  fr: {
+    common: commonFr,
+    onboarding: onboardingFr,
+    download: downloadFr,
+    import: importFr,
+    library: libraryFr,
+    metadata: metadataFr,
+    settings: settingsFr,
+    update: updateFr,
+    player: playerFr,
+  },
+  en: {
+    common: commonEn,
+    onboarding: onboardingEn,
+    download: downloadEn,
+    import: importEn,
+    library: libraryEn,
+    metadata: metadataEn,
+    settings: settingsEn,
+    update: updateEn,
+    player: playerEn,
+  },
+} as const;
+
+// English is the reference catalogue: a key missing from it fails `tsc`.
+declare module "i18next" {
+  interface CustomTypeOptions {
+    defaultNS: "common";
+    resources: (typeof resources)["en"];
+  }
+}
+
 i18n.use(initReactI18next).init({
   lng: startingLanguage,
   fallbackLng: "en",
+  defaultNS: "common",
   interpolation: { escapeValue: false },
-  resources: {
-    fr: {
-      common: commonFr,
-      onboarding: onboardingFr,
-      download: downloadFr,
-      import: importFr,
-      library: libraryFr,
-      metadata: metadataFr,
-      settings: settingsFr,
-      update: updateFr,
-      player: playerFr,
-    },
-    en: {
-      common: commonEn,
-      onboarding: onboardingEn,
-      download: downloadEn,
-      import: importEn,
-      library: libraryEn,
-      metadata: metadataEn,
-      settings: settingsEn,
-      update: updateEn,
-      player: playerEn,
-    },
-  },
+  resources,
 });
 
 applyDocumentLanguage(startingLanguage);

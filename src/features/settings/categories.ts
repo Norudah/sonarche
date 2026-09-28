@@ -9,19 +9,19 @@ import {
   ShieldAlert,
   Wrench,
 } from "lucide-react";
+import type { ParseKeys } from "i18next";
 import type { LucideIcon } from "lucide-react";
 
 import type { SettingsCategoryId } from "@/shared/lib/settingsDialog";
 
 export interface SettingsCategory {
   id: SettingsCategoryId;
-  /** Key in the `settings` namespace. */
-  labelKey: string;
+  labelKey: ParseKeys<"settings">;
   icon: LucideIcon;
 }
 
 interface SettingsGroup {
-  labelKey: string;
+  labelKey: ParseKeys<"settings">;
   categories: SettingsCategory[];
 }
 

@@ -1,6 +1,7 @@
 import { toast } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { checkForUpdate } from "@/features/update/hooks";
@@ -45,7 +46,7 @@ export function UpdatePrompt() {
   return null;
 }
 
-async function install(update: Update, t: (key: string) => string) {
+async function install(update: Update, t: TFunction<"update">) {
   // A progress line: stays until the install relaunches or fails.
   const progress = toast(t("installing"), { timeout: 0, isLoading: true });
   try {

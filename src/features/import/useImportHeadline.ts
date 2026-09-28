@@ -7,7 +7,7 @@ import { formatBytes } from "@/shared/lib/format";
  * by the archive row and the import page. Falls back to beets' folder count. */
 export function useImportHeadline(folders: number, scan: ImportScanCounts | null, recap: ImportRecap | null): string {
   const { t, i18n } = useTranslation("import");
-  const units = t("units", { returnObjects: true }) as unknown as string[];
+  const units = t("units", { returnObjects: true });
 
   return [
     recap != null ? t("found", { count: recap.tracks }) : null,

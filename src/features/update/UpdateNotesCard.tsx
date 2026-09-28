@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { ReleaseNotes, SectionKind } from "@/features/update/notes";
@@ -7,7 +8,7 @@ interface UpdateNotesCardProps {
   notes: ReleaseNotes;
 }
 
-const SECTION_KEYS: Record<SectionKind, string> = {
+const SECTION_KEYS: Record<SectionKind, ParseKeys<"update">> = {
   breaking: "notes.breaking",
   features: "notes.features",
   fixes: "notes.fixes",

@@ -1,5 +1,7 @@
 /** The update pane's status line, ordered: failure > result > nothing. */
 
+import type { ParseKeys } from "i18next";
+
 export type Tone = "muted" | "success" | "danger";
 
 export interface UpdateState {
@@ -12,7 +14,7 @@ export interface UpdateState {
 }
 
 interface Status {
-  key: string;
+  key: ParseKeys<"update">;
   tone: Tone;
   version?: string;
 }

@@ -29,15 +29,20 @@ export async function revealApiKey(name: ApiKeyName): Promise<string | null> {
   return invoke<string | null>("reveal_api_key", { name });
 }
 
+type KeyRejection = "invalidKey" | "empty" | "unknown";
+
 interface KeyCheck {
   valid: boolean;
-  reason: string | null;
+  /** `null` when valid. */
+  reason: KeyRejection | null;
 }
 
 /** Omit `key` to test the stored one (the front never holds it). */
 export async function checkApiKey(name: ApiKeyName, key?: string): Promise<KeyCheck> {
   if (name !== "acoustid") throw new Error(`no check for ${name}`);
-  return invoke<KeyCheck>("check_acoustid_key", { key });
+  const raw = await invoke<{ valid: boolean; reason: string | null }>("check_acoustid_key", { key });
+  if (raw.valid) return { valid: true, reason: null };
+  return { valid: false, reason: raw.reason === "invalidKey" || raw.reason === "empty" ? raw.reason : "unknown" };
 }
 
 /** In display order. */

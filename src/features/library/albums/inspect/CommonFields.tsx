@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { AlbumCommonBaseline, AlbumCommonField, AlbumCommonValues } from "@/features/library/albums/albumFields";
@@ -7,13 +8,12 @@ import type { SuggestKind } from "@/features/library/metadata/suggestions";
 import { CategoryTaxonomyChips } from "@/features/library/categories/CategoryTaxonomyChips";
 import { FieldHelp, FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/** i18n key under `metadata.fields`. */
-const FIELD_LABEL: Record<AlbumCommonField, string> = {
-  album: "album",
-  albumartist: "albumArtist",
-  year: "year",
-  genre: "genre",
-  grouping: "category",
+const FIELD_LABEL: Record<AlbumCommonField, ParseKeys<"library">> = {
+  album: "metadata.fields.album",
+  albumartist: "metadata.fields.albumArtist",
+  year: "metadata.fields.year",
+  genre: "metadata.fields.genre",
+  grouping: "metadata.fields.category",
 };
 
 /** The album artist shares the name pool with track artists. */
@@ -53,7 +53,7 @@ export function CommonFields({
   const { t } = useTranslation("library");
 
   const field = (name: AlbumCommonField, extra?: { help?: React.ReactNode; className?: string }) => {
-    const label = t(`metadata.fields.${FIELD_LABEL[name]}`);
+    const label = t(FIELD_LABEL[name]);
     return (
       <EditableField
         label={label}

@@ -25,7 +25,7 @@ import type { Playlist } from "@/features/library/playlists/api";
  * default, so adding icons needs no migration. */
 
 /** Picker order is part of the design; unknown keys resolve as not shipped. */
-export const MARKER_ICONS: { key: string; icon: LucideIcon }[] = [
+export const MARKER_ICONS = [
   { key: "list-music", icon: ListMusic },
   { key: "disc", icon: Disc3 },
   { key: "headphones", icon: Headphones },
@@ -42,9 +42,9 @@ export const MARKER_ICONS: { key: string; icon: LucideIcon }[] = [
   { key: "moon", icon: Moon },
   { key: "dumbbell", icon: Dumbbell },
   { key: "car", icon: Car },
-];
+] as const satisfies readonly { key: string; icon: LucideIcon }[];
 
-const ICON_BY_KEY = new Map(MARKER_ICONS.map(({ key, icon }) => [key, icon]));
+const ICON_BY_KEY = new Map<string, LucideIcon>(MARKER_ICONS.map(({ key, icon }) => [key, icon]));
 
 /** The theme.css tones, in picker order. */
 export const MARKER_COLORS = ["indigo", "violet", "rose", "amber", "moss", "teal", "sky", "blue"] as const;

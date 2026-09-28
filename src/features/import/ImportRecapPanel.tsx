@@ -58,7 +58,7 @@ function TagState({ recap, alignDoor }: { recap: ImportRecap; alignDoor: boolean
     { key: "offTree", count: recap.offTree },
     { key: "albumsWithoutArt", count: recap.albumsWithoutArt },
     { key: "albumsWithGaps", count: recap.albumsWithGaps },
-  ];
+  ] as const;
   const clean = rows.every((row) => row.count === 0);
 
   return (

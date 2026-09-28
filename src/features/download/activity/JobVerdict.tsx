@@ -1,9 +1,10 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { type JobOutcome, OUTCOME_TONE } from "@/features/download/activity/outcome";
 import { Verdict } from "@/shared/ui/Verdict";
 
-function phrase(outcome: JobOutcome): { key: string; values?: Record<string, number> } {
+function phrase(outcome: JobOutcome): { key: ParseKeys<"download">; values?: Record<string, number> } {
   switch (outcome.kind) {
     case "matched":
       return { key: "activity.verdict.matched" };

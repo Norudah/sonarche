@@ -1,8 +1,9 @@
 import { useCallback } from "react";
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 /** i18n key per canonical value; others are free tags shown as stored. */
-const LABEL_KEYS: Record<string, string> = {
+const LABEL_KEYS: Partial<Record<string, ParseKeys<"library">>> = {
   Music: "categories.values.music",
   "Video Games": "categories.values.videoGames",
   Film: "categories.values.film",

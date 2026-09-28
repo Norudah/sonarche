@@ -18,8 +18,9 @@ export interface RateLimitDef {
   politeThreshold: number;
   /** Batch size for the duration estimate. */
   sampleCount: number;
-  /** Strings live under this base in the `settings` namespace. */
-  labelBase: string;
+  /** Strings live under this base in the `settings` namespace; a union, not
+   * `string`, so the keys built from it are checked. */
+  labelBase: "adding.delay";
 }
 
 const POLITE_FLOOR = 1;

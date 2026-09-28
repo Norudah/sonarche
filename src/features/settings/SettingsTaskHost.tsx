@@ -6,7 +6,7 @@ import type { MoveCheck } from "@/features/settings/api";
 import { parseAudioFormat } from "@/features/settings/audioFormats";
 import { ConvertLibraryDialog } from "@/features/settings/ConvertLibraryDialog";
 import { EraseDialog } from "@/features/settings/EraseDialog";
-import { ERASES, type EraseKey } from "@/features/settings/erases";
+import { ERASES, reloadsAfter, type EraseKey } from "@/features/settings/erases";
 import {
   useConvertLibrary,
   useConvertProgress,
@@ -96,7 +96,7 @@ function EraseTask({ eraseKey, onDone }: { eraseKey: EraseKey; onDone: () => voi
       if (eraseKey === "erase") window.localStorage.clear();
       // A webview reload reboots the front and keeps the setup. `relaunch()` would
       // also kill the dev server in dev.
-      if (def.reloads) {
+      if (reloadsAfter(eraseKey)) {
         window.location.reload();
         return;
       }
@@ -116,7 +116,7 @@ function EraseTask({ eraseKey, onDone }: { eraseKey: EraseKey; onDone: () => voi
       onConfirm={() => void run()}
       title={t(`danger.${eraseKey}.dialogTitle`)}
       intro={t(`danger.${eraseKey}.dialogBody`)}
-      items={def.itemKeys.map((item) => t(`danger.${eraseKey}.${item}`))}
+      items={def.itemKeys.map((item) => t(item))}
       note={t(eraseKey === "erase" ? "danger.erase.keepsEngine" : `danger.${eraseKey}.keeps`)}
       confirmLabel={t(`danger.${eraseKey}.confirm`)}
     />

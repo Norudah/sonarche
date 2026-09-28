@@ -31,7 +31,7 @@ export function MoveLibraryDialog({
 }) {
   const { t, i18n } = useTranslation("settings");
   const locale = i18n.resolvedLanguage ?? "fr";
-  const units = t("units", { returnObjects: true }) as unknown as string[];
+  const units = t("units", { returnObjects: true });
   const [progress, setProgress] = useState<MoveProgress | null>(null);
 
   // Subscribed only while a move runs.

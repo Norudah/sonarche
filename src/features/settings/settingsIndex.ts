@@ -1,3 +1,5 @@
+import type { ParseKeys } from "i18next";
+
 import { settingsGroups } from "@/features/settings/categories";
 import { createTextFilter } from "@/shared/lib/search";
 import type { SettingsCategoryId } from "@/shared/lib/settingsDialog";
@@ -18,7 +20,10 @@ export interface SettingsEntry {
  * can't be forgotten: a setting is an object under a category with a `name`.
  * Only direct children count. Panes are indexed too, by their lede.
  */
-export function buildSettingsIndex(bundle: unknown, translate: (key: string) => string): SettingsEntry[] {
+export function buildSettingsIndex(
+  bundle: unknown,
+  translate: (key: ParseKeys<"settings">) => string,
+): SettingsEntry[] {
   if (typeof bundle !== "object" || bundle === null) return [];
   const root = bundle as Record<string, unknown>;
 

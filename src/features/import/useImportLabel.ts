@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { ImportProgress } from "@/features/import/hooks";
@@ -20,7 +21,7 @@ export function useImportLabel(phase: ImportPhase, progress: ImportProgress | nu
   const { t } = useTranslation("import");
   const { stage } = importRail(phase, progress);
 
-  const still = (key: string): ImportLabel => ({ phase: t(key), counter: null, text: t(key) });
+  const still = (key: ParseKeys<"import">): ImportLabel => ({ phase: t(key), counter: null, text: t(key) });
 
   switch (phase.kind) {
     case "empty":

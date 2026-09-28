@@ -63,7 +63,8 @@ export function SetupWalkthrough({
   /** Per-step status column; steps still out of reach say nothing. */
   const summaryFor = (step: (typeof steps)[number]): React.ReactNode => {
     if (step.state === "pending") return null;
-    if (step.state === "skipped") return <StepSummary tone="muted">{t(`steps.${step.id}.skipped`)}</StepSummary>;
+    // Only the optional key step can be skipped or recommended.
+    if (step.state === "skipped") return <StepSummary tone="muted">{t("steps.acoustid.skipped")}</StepSummary>;
     if (step.state === "satisfied") {
       return (
         <StepSummary tone="success">
@@ -74,7 +75,7 @@ export function SetupWalkthrough({
       );
     }
     // The only nudge: an open optional step.
-    return step.blocking ? null : <StepSummary tone="warning">{t(`steps.${step.id}.recommended`)}</StepSummary>;
+    return step.blocking ? null : <StepSummary tone="warning">{t("steps.acoustid.recommended")}</StepSummary>;
   };
 
   return (

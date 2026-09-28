@@ -13,8 +13,7 @@ interface ScanSummaryProps {
 export function ScanSummary({ report }: ScanSummaryProps) {
   const { t, i18n } = useTranslation("import");
   const total = report.playable + report.unplayable;
-  // `returnObjects` is typed opaquely; this key holds a string array.
-  const units = t("units", { returnObjects: true }) as unknown as string[];
+  const units = t("units", { returnObjects: true });
 
   if (!hasAudio(report)) {
     return (

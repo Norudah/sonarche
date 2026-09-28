@@ -2,7 +2,7 @@ import { Button } from "@heroui/react";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { SERVICE_NAMES, type ServiceState, type ServiceStatus } from "@/features/settings/api";
+import { SERVICE_NAMES, type ServiceName, type ServiceState, type ServiceStatus } from "@/features/settings/api";
 import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useCheckServices } from "@/features/settings/hooks";
 
@@ -13,7 +13,7 @@ const DOT: Record<ServiceState, string> = {
   unreachable: "bg-warning",
 };
 
-function ServiceRow({ name, status }: { name: string; status: ServiceStatus | undefined }) {
+function ServiceRow({ name, status }: { name: ServiceName; status: ServiceStatus | undefined }) {
   const { t } = useTranslation("settings");
 
   return (
