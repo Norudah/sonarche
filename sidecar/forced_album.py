@@ -11,6 +11,7 @@ declared the playlist to be the record.
 import re
 import unicodedata
 
+import covers
 import enrich
 import protocol
 
@@ -119,7 +120,7 @@ def media_cover(title: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | N
     group_id = _release_group_id(title)
     if not group_id:
         return None
-    return enrich._caa_front(f"release-group/{group_id}")
+    return covers.caa_front(f"release-group/{group_id}")
 
 
 def thumbnail_cover(url: str) -> tuple[tuple[bytes, bool], tuple[bytes, bool]] | None:
@@ -197,9 +198,9 @@ def ensure_cover(lib, album, items, spec: dict) -> bool:
     # Shown in the metadata panel: names the kind of picture, not the site.
     source = "Video thumbnail" if provisional else "Cover Art Archive"
     try:
-        enrich.set_album_art(album, *cover, source=source)
+        covers.set_album_art(album, *cover, source=source)
         for item in items:
-            enrich.embed_cover(item, *cover)
+            covers.embed_cover(item, *cover)
     except Exception as exc:  # the album landed; a cover is not worth failing on
         protocol.log(f"forced_album: cover store failed: {exc}")
         return False

@@ -105,6 +105,32 @@ class RenditionTest(unittest.TestCase):
         self.assertEqual(leftovers, [])
 
 
+class DownloadCoverTest(unittest.TestCase):
+    """Which Cover Art Archive entity answers, without the network."""
+
+    def setUp(self):
+        self.asked: list[str] = []
+        self.served: dict[str, tuple[bytes, bool]] = {}
+        original = covers.caa_front
+        covers.caa_front = lambda entity: self.asked.append(entity) or self.served.get(entity)
+        self.addCleanup(setattr, covers, "caa_front", original)
+
+    def test_prefers_the_release_own_cover(self):
+        self.served = {"release/r1": (b"own", False), "release-group/g1": (b"group", False)}
+        self.assertEqual(covers.download_cover("r1", "g1"), (b"own", False))
+        self.assertEqual(self.asked, ["release/r1"])
+
+    def test_falls_back_to_the_release_group(self):
+        """Regional and streaming releases often carry no art of their own."""
+        self.served = {"release-group/g1": (b"group", True)}
+        self.assertEqual(covers.download_cover("r1", "g1"), (b"group", True))
+        self.assertEqual(self.asked, ["release/r1", "release-group/g1"])
+
+    def test_no_group_means_no_second_try(self):
+        self.assertIsNone(covers.download_cover("r1"))
+        self.assertEqual(self.asked, ["release/r1"])
+
+
 class RemoveLegacyArchivesTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()

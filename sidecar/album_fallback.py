@@ -4,6 +4,7 @@ unidentified files."""
 import os
 import time
 
+import beets_paths
 import enrich
 import forced_album
 import protocol
@@ -51,7 +52,7 @@ def enrich_per_track(
 def finalize_fallback(lib, items) -> None:
     """Regroup same-release rows, then fetch still-missing covers."""
     for album in consolidate_album_rows(lib, items):
-        artpath = enrich._decode(album.artpath) if album.artpath else None
+        artpath = beets_paths.decode(album.artpath) if album.artpath else None
         if artpath and os.path.exists(artpath):
             continue
         fetch_album_cover(album, list(album.items()), album.mb_albumid, album.mb_releasegroupid)

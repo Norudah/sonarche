@@ -214,8 +214,6 @@ def _download_candidate(url: str) -> bytes:
 def handle(_request_id: str, params: dict) -> dict:
     from beets.library import Library
 
-    import enrich
-
     source_path = params.get("source_path")
     image_url = params.get("image_url")
     if bool(source_path) == bool(image_url):
@@ -249,12 +247,12 @@ def handle(_request_id: str, params: dict) -> dict:
         art_source = ART_SOURCE
 
     old_art = decode(album.artpath) if album.artpath else None
-    enrich.set_album_art(album, thumb_bytes, is_png, source=art_source)
+    covers.set_album_art(album, thumb_bytes, is_png, source=art_source)
     _clear_stale_art(album, old_art, decode)
 
     embedded = 0
     for item in album.items():
-        if enrich.embed_cover(item, thumb_bytes, is_png):
+        if covers.embed_cover(item, thumb_bytes, is_png):
             embedded += 1
         # A user-chosen cover is real art: lift the placeholder flag.
         if item.get(_PROVISIONAL_COVER_KEY):

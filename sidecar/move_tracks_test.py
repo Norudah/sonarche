@@ -5,6 +5,7 @@ import unittest
 
 from beets.library import Item, Library
 
+import covers
 import library
 import move_tracks
 import provenance
@@ -489,12 +490,10 @@ class MoveTest(unittest.TestCase):
     def _embeds(self):
         """Record what `embed_cover` is handed, without a real audio file to
         write into: the fixtures are five bytes of "audio"."""
-        import enrich
-
         calls: list[tuple[int, bytes]] = []
-        original = enrich.embed_cover
-        enrich.embed_cover = lambda item, data, is_png: calls.append((item.id, data)) or True
-        self.addCleanup(setattr, enrich, "embed_cover", original)
+        original = covers.embed_cover
+        covers.embed_cover = lambda item, data, is_png: calls.append((item.id, data)) or True
+        self.addCleanup(setattr, covers, "embed_cover", original)
         return calls
 
     def test_an_arrival_takes_the_record_s_cover(self):

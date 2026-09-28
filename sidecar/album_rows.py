@@ -2,8 +2,8 @@
 
 import os
 
+import beets_paths
 import covers
-import enrich
 import protocol
 
 
@@ -14,11 +14,11 @@ def fetch_album_cover(
         return
     try:
         protocol.log(f"enrich_album: fetching cover for release {release_id}")
-        cover = enrich.download_cover(release_id, release_group_id)
+        cover = covers.download_cover(release_id, release_group_id)
         if cover is not None:
-            enrich.set_album_art(album, *cover)
+            covers.set_album_art(album, *cover)
             for item in items:
-                enrich.embed_cover(item, *cover)
+                covers.embed_cover(item, *cover)
             protocol.log(f"enrich_album: cover stored (500px embedded in {len(items)} file(s))")
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"enrich_album: cover fetch failed: {exc}")
@@ -29,14 +29,14 @@ def _adopt_art(keep, dying) -> None:
     otherwise delete them so the emptied folder can be pruned."""
     import shutil
 
-    art = enrich._decode(dying.artpath) if dying.artpath else None
+    art = beets_paths.decode(dying.artpath) if dying.artpath else None
     if not art or not os.path.exists(art):
         return
     src_dir = os.path.dirname(art)
     covers = [art] + [
         os.path.join(src_dir, name) for name in os.listdir(src_dir) if name.startswith("cover-hq.")
     ]
-    keep_art = enrich._decode(keep.artpath) if keep.artpath else None
+    keep_art = beets_paths.decode(keep.artpath) if keep.artpath else None
     if keep_art and os.path.exists(keep_art):
         for path in covers:
             try:
@@ -44,7 +44,7 @@ def _adopt_art(keep, dying) -> None:
             except OSError as exc:
                 protocol.log(f"enrich_album: stale cover removal failed: {exc}")
     else:
-        dest_dir = enrich._decode(keep.item_dir())
+        dest_dir = beets_paths.decode(keep.item_dir())
         for path in covers:
             try:
                 shutil.move(path, os.path.join(dest_dir, os.path.basename(path)))
@@ -77,7 +77,7 @@ def _merge_rows(lib, rows, label: str):
         row.remove(delete=False, with_items=False)
     # %aunique memoizes per Library; reset it now the dead rows are gone.
     lib._memotable = {}
-    art_dir_before = os.path.dirname(enrich._decode(keep.artpath)) if keep.artpath else None
+    art_dir_before = os.path.dirname(beets_paths.decode(keep.artpath)) if keep.artpath else None
     for item in members[keep.id]:
         try:
             item.move()
@@ -154,7 +154,7 @@ def consolidate_album_rows(lib, items) -> list:
 def _prune_vacated_art_dir(lib, album, old_dir: str | None) -> None:
     """After a folder rename, sweep legacy covers and drop the emptied folder."""
     fresh = lib.get_album(album.id) if album is not None else None
-    art = enrich._decode(fresh.artpath) if fresh is not None and fresh.artpath else None
+    art = beets_paths.decode(fresh.artpath) if fresh is not None and fresh.artpath else None
     new_dir = os.path.dirname(art) if art else None
     if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
         return
@@ -170,12 +170,12 @@ def embed_album_cover(album, item) -> None:
     """Copy the album's existing cover onto a provisionally-tagged track."""
     if album is None or not album.artpath:
         return
-    path = enrich._decode(album.artpath)
+    path = beets_paths.decode(album.artpath)
     if not os.path.exists(path):
         return
     try:
         with open(path, "rb") as f:
             data = f.read()
-        enrich.embed_cover(item, data, data[:4] == b"\x89PNG")
+        covers.embed_cover(item, data, data[:4] == b"\x89PNG")
     except Exception as exc:
         protocol.log(f"enrich_album: cover embed failed: {exc}")

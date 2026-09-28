@@ -12,6 +12,8 @@ when the new row's release identity is cleared.
 import os
 import shutil
 
+import beets_paths
+import covers
 import library
 import protocol
 import provenance
@@ -35,12 +37,6 @@ def renumbering(existing: list[int], count: int) -> list[int]:
     Gaps are not refilled, so an existing order is never interleaved."""
     start = max((n for n in existing if n > 0), default=0)
     return list(range(start + 1, start + 1 + count))
-
-
-def _decode(value):
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
 
 
 def handle(_request_id: str, params: dict) -> dict:
@@ -221,7 +217,7 @@ def _adopt_album_art(lib, album, incoming) -> int:
 
     A singleton cover (`sonarche_item_art`) becomes redundant and is removed.
     """
-    art = _decode(album.artpath) if album.artpath else None
+    art = beets_paths.decode(album.artpath) if album.artpath else None
     if not art or not os.path.exists(art):
         return 0
     try:
@@ -230,8 +226,6 @@ def _adopt_album_art(lib, album, incoming) -> int:
     except OSError as exc:
         protocol.log(f"move_tracks: album cover unreadable ({exc}), arrivals keep theirs")
         return 0
-
-    import enrich
 
     # The thumbnail-cover badge is per item; arrivals copy the residents' state.
     arriving = {item.id for item in incoming}
@@ -244,7 +238,7 @@ def _adopt_album_art(lib, album, incoming) -> int:
         fresh = lib.get_item(item.id)
         if fresh is None:
             continue
-        if enrich.embed_cover(fresh, data, data[:4] == b"\x89PNG"):
+        if covers.embed_cover(fresh, data, data[:4] == b"\x89PNG"):
             covered += 1
         _drop_item_art(fresh)
         if provisional and not fresh.get(library.PROVISIONAL_COVER_KEY):
@@ -319,7 +313,7 @@ def _create_album(lib, incoming, new_album) -> "object":
 
 def _follow_item_art(lib, item, old_art: str) -> None:
     """Move a singleton's written-out cover along with its audio file."""
-    new_art = os.path.splitext(_decode(item.path))[0] + os.path.splitext(old_art)[1]
+    new_art = os.path.splitext(beets_paths.item_path(item))[0] + os.path.splitext(old_art)[1]
     if old_art == new_art or not os.path.exists(old_art):
         return
     try:
@@ -346,7 +340,7 @@ def _pop_emptied_source(lib, source_id: int, target_id: int):
     if list(source.items()):
         return False
 
-    art = _decode(source.artpath) if source.artpath else None
+    art = beets_paths.decode(source.artpath) if source.artpath else None
     source.remove(delete=False, with_items=False)
     return art
 
@@ -368,8 +362,6 @@ def _prune_husk(lib, directory: str | None) -> None:
     if not directory or not os.path.isdir(directory):
         return
     from beets import util
-
-    import covers
 
     covers.remove_legacy_archives(directory)
     util.prune_dirs(directory, lib.directory)

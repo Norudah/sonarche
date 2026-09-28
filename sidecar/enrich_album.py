@@ -8,6 +8,7 @@ adopted. Per-track enrichment is the fallback when no release emerges."""
 import os
 import time
 
+import beets_paths
 import enrich
 import forced_album
 import metadata
@@ -62,7 +63,7 @@ def _fingerprint_all(request_id: str, items, params: dict) -> dict[int, list[str
     )
     protocol.log(f"enrich_album: fingerprinting {total} file(s)")
     for done, item in enumerate(items):
-        path = enrich._decode_path(item)
+        path = beets_paths.item_path(item)
         if not os.path.exists(path):
             recordings[item.id] = []
             continue
@@ -415,7 +416,7 @@ def _handle_album_match(
         if leftovers
         else []
     )
-    artpath = enrich._decode(album.artpath) if album.artpath else None
+    artpath = beets_paths.decode(album.artpath) if album.artpath else None
     if foreign and artpath and os.path.exists(artpath):
         # Borrow the existing cover rather than fetching over it.
         for item in mapped + adopted:

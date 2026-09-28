@@ -8,6 +8,7 @@ their rows are.
 import contextlib
 import os
 
+import beets_paths
 import library
 import protocol
 
@@ -59,7 +60,7 @@ def remove_items(items, library_dir: str, log_prefix: str) -> dict:
     removed: list[int] = []
     foreign = 0
     for item in items:
-        path = library._decode(item.path)
+        path = beets_paths.item_path(item)
         inside = bool(path) and under(path, library_dir)
         if not inside:
             foreign += 1

@@ -13,6 +13,7 @@ import threading
 import time
 
 import auto_collection
+import beets_paths
 import import_recap
 import protocol
 from importer import beet_bin
@@ -182,13 +183,11 @@ def _write_repaired_tags(params: dict, batch: str) -> None:
     import mediafile
     from beets.library import Library
 
-    import enrich
-
     lib = Library(params["beets_db"], directory=params["library_dir"])
     written = 0
     try:
         for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}"):
-            path = enrich._decode(item.path)
+            path = beets_paths.item_path(item)
             try:
                 current = mediafile.MediaFile(path)
             except Exception:  # an unreadable copy keeps its tags; the DB has the truth
@@ -215,7 +214,6 @@ def _stage_singleton_covers(params: dict, batch: str) -> None:
     import mediafile
     from beets.library import Library
 
-    import enrich
     import library
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
@@ -224,7 +222,7 @@ def _stage_singleton_covers(params: dict, batch: str) -> None:
         for item in lib.items(f"{import_recap.BATCH_FIELD}:{batch}"):
             if item.album_id:
                 continue
-            path = enrich._decode(item.path)
+            path = beets_paths.item_path(item)
             try:
                 images = mediafile.MediaFile(path).images or []
             except Exception:  # an unreadable copy simply keeps no cover
@@ -258,7 +256,6 @@ def _shrink_covers(request_id: str, params: dict, batch: str) -> int:
     from beets.library import Library
 
     import covers
-    import enrich
 
     lib = Library(params["beets_db"], directory=params["library_dir"])
     try:
@@ -274,10 +271,10 @@ def _shrink_covers(request_id: str, params: dict, batch: str) -> int:
         made = 0
         adopted = 0
         for index, album in enumerate(albums, start=1):
-            art = enrich._decode(album.artpath) if album.artpath else None
+            art = beets_paths.decode(album.artpath) if album.artpath else None
             if (art is None or not os.path.exists(art)) and _adopt_embedded_cover(album):
                 adopted += 1
-                art = enrich._decode(album.artpath)
+                art = beets_paths.decode(album.artpath)
             if art is not None and covers.ensure_display_rendition(art):
                 made += 1
             protocol.send_event(
@@ -298,10 +295,8 @@ def _adopt_embedded_cover(album) -> bool:
     """
     import mediafile
 
-    import enrich
-
     for item in album.items():
-        path = enrich._decode(item.path)
+        path = beets_paths.item_path(item)
         try:
             images = mediafile.MediaFile(path).images or []
         except Exception:  # one unreadable file must not cost the album its shot

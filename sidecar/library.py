@@ -10,6 +10,7 @@ import os
 import sqlite3
 
 import accepted
+import beets_paths
 from genre_tree import bucket_for
 
 # beets' DB delimiter for multi-valued tags ("; " when read from file tags).
@@ -34,19 +35,13 @@ _ITEM_COLUMNS = (
 )
 
 
-def _decode(value):
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
-
-
 def expand_db_path(stored, library_dir: str) -> str | None:
     """Absolute path for a path as beets stores it (relative to the library
     directory, POSIX separators). Mirrors `expand_path_from_db`.
     """
     if not stored:
         return None
-    path = _decode(stored)
+    path = beets_paths.decode(stored)
     if os.path.isabs(path):
         return path
     return os.path.normpath(os.path.join(library_dir, path.replace("/", os.sep)))
@@ -351,7 +346,7 @@ def update(_request_id: str, params: dict) -> dict:
     # Sweep legacy `cover-hq.*` files so the vacated folder can be pruned.
     for album_id, old_dir in art_dirs.items():
         album = lib.get_album(album_id)
-        art = _decode(album.artpath) if album is not None and album.artpath else None
+        art = beets_paths.decode(album.artpath) if album is not None and album.artpath else None
         new_dir = os.path.dirname(art) if art else None
         if not old_dir or not new_dir or old_dir == new_dir or not os.path.isdir(old_dir):
             continue
@@ -370,5 +365,5 @@ def update(_request_id: str, params: dict) -> dict:
 
 def _album_art_dir(lib, album_id: int) -> str | None:
     album = lib.get_album(album_id)
-    art = _decode(album.artpath) if album is not None and album.artpath else None
+    art = beets_paths.decode(album.artpath) if album is not None and album.artpath else None
     return os.path.dirname(art) if art else None

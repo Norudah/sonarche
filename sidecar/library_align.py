@@ -11,6 +11,8 @@ are never moved.
 import os
 import time
 
+import beets_paths
+import covers
 import enrich
 import library
 import metadata
@@ -96,7 +98,7 @@ def _search_release(items, album):
 
 
 def _cover_missing(album) -> bool:
-    art = enrich._decode(album.artpath) if album.artpath else None
+    art = beets_paths.decode(album.artpath) if album.artpath else None
     return not art or not os.path.exists(art)
 
 
@@ -196,15 +198,15 @@ def scan(request_id: str, params: dict) -> dict:
 def _fetch_cover(album, items, release_id: str, release_group_id: str | None) -> bool:
     try:
         protocol.log(f"library_align: fetching cover for release {release_id}")
-        cover = enrich.download_cover(release_id, release_group_id)
+        cover = covers.download_cover(release_id, release_group_id)
     except Exception as exc:  # metadata landed; a missing cover is not a failure
         protocol.log(f"library_align: cover fetch failed: {exc}")
         return False
     if cover is None:
         return False
-    enrich.set_album_art(album, *cover)
+    covers.set_album_art(album, *cover)
     for item in items:
-        enrich.embed_cover(item, *cover)
+        covers.embed_cover(item, *cover)
     return True
 
 

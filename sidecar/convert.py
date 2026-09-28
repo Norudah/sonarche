@@ -12,6 +12,8 @@ import os
 import subprocess
 
 import audio_format
+import beets_paths
+import covers
 import protocol
 
 # See `enrich._NO_WINDOW`.
@@ -25,12 +27,6 @@ _NO_WINDOW = (
 _FFMPEG_TIMEOUT = 15 * 60
 
 _PROGRESS_EVERY = 1
-
-
-def _decode(value):
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
 
 
 def extension_of(path: str) -> str:
@@ -52,7 +48,7 @@ def needs_conversion(path: str, target: str) -> bool:
 def _album_cover(lib, item) -> tuple[bytes, bool] | None:
     """The album's cover.jpg, or for a singleton the file's embedded picture."""
     album = item.get_album() if item.album_id is not None else None
-    art = _decode(album.artpath) if album is not None and album.artpath else None
+    art = beets_paths.decode(album.artpath) if album is not None and album.artpath else None
     if art and os.path.exists(art):
         try:
             with open(art, "rb") as handle:
@@ -64,7 +60,7 @@ def _album_cover(lib, item) -> tuple[bytes, bool] | None:
     import mediafile
 
     try:
-        images = mediafile.MediaFile(_decode(item.path)).images or []
+        images = mediafile.MediaFile(beets_paths.item_path(item)).images or []
     except Exception:  # an unreadable picture must not stop a conversion
         return None
     for image in images:
@@ -80,9 +76,9 @@ def _read_audio_properties(item) -> None:
     from beets.library import Item
 
     try:
-        media = mediafile.MediaFile(_decode(item.path))
+        media = mediafile.MediaFile(beets_paths.item_path(item))
     except Exception as exc:
-        protocol.log(f"convert: cannot re-read {_decode(item.path)}: {exc}")
+        protocol.log(f"convert: cannot re-read {beets_paths.item_path(item)}: {exc}")
         return
     for key in Item._media_fields - Item._media_tag_fields:
         value = getattr(media, key, None)
@@ -117,7 +113,7 @@ def _run_ffmpeg(ffmpeg: str, source: str, dest: str, target: str) -> bool:
 def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     from beets.util import bytestring_path
 
-    source = _decode(item.path)
+    source = beets_paths.item_path(item)
     if not os.path.exists(source):
         protocol.log(f"convert: {source} is gone, skipped")
         return "missing"
@@ -154,9 +150,7 @@ def _convert_one(lib, item, ffmpeg: str, target: str) -> str:
     except Exception as exc:  # DB is authoritative; file tags are best-effort
         protocol.log(f"convert: tag write failed: {exc}")
     if cover:
-        import enrich
-
-        enrich.embed_cover(item, *cover)
+        covers.embed_cover(item, *cover)
     return "converted"
 
 
@@ -173,7 +167,7 @@ def handle(request_id: str, params: dict) -> dict:
     lib = Library(params["beets_db"], directory=params["library_dir"])
     try:
         items = list(lib.items())
-        pending = [item for item in items if needs_conversion(_decode(item.path), target)]
+        pending = [item for item in items if needs_conversion(beets_paths.item_path(item), target)]
         total = len(pending)
         protocol.log(f"convert: {total} of {len(items)} track(s) to re-encode to {target}")
         counts = {"converted": 0, "failed": 0, "missing": 0}

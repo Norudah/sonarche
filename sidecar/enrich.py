@@ -8,8 +8,8 @@ cover. Text search is a conservative fallback."""
 import json
 import os
 import subprocess
-import tempfile
 
+import beets_paths
 import covers
 import metadata
 import protocol
@@ -24,16 +24,6 @@ _MIN_SCORE = 0.6
 _MAX_TEXT_DISTANCE = 0.10
 # Five, not three, so a less-submitted sibling edition stays a candidate.
 _MAX_RECORDINGS = 5
-
-
-def _decode(value) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
-
-
-def _decode_path(item) -> str:
-    return _decode(item.path)
 
 
 # Prevents a console window flashing on Windows for each subprocess.
@@ -217,7 +207,7 @@ def drop_emptied_row(lib, row) -> None:
     following sweep can prune the directory."""
     from beets import util
 
-    art_dir = os.path.dirname(_decode(row.artpath)) if row.artpath else None
+    art_dir = os.path.dirname(beets_paths.decode(row.artpath)) if row.artpath else None
     row.remove(delete=True, with_items=False)
     if art_dir and os.path.isdir(art_dir):
         covers.remove_legacy_archives(art_dir)
@@ -359,97 +349,15 @@ def _apply(lib, item, album_info, track_info) -> None:
     store_and_file(lib, item)
 
 
-def _caa_front(entity_path: str) -> tuple[bytes, bool] | None:
-    """The 500px front cover of a CAA entity (`release/<id>` or
-    `release-group/<id>`) as (data, is_png), or None. Falls back to the full
-    upload when no rendition exists; `set_album_art` shrinks it."""
-    import requests
-
-    import cover_set
-    import net
-
-    for variant in ("front-500", "front"):
-        resp = requests.get(
-            f"https://coverartarchive.org/{entity_path}/{variant}", timeout=30, stream=True
-        )
-        if resp.status_code != 200:
-            continue
-        try:
-            data = net.read_bounded(resp, cover_set.MAX_CANDIDATE_BYTES)
-        except RuntimeError:
-            protocol.log(f"enrich: cover on {entity_path}/{variant} over the size cap, skipped")
-            continue
-        if data:
-            return data, data[:4] == b"\x89PNG"
-    return None
-
-
-def download_cover(
-    release_id: str, release_group_id: str | None = None
-) -> tuple[bytes, bool] | None:
-    """The 500px display cover from the Cover Art Archive, or None.
-
-    Falls back to the release-group cover: many regional or streaming releases
-    carry no art of their own."""
-    cover = _caa_front(f"release/{release_id}")
-    if cover is not None:
-        return cover
-    protocol.log(f"enrich: no per-release cover for {release_id}")
-    if release_group_id:
-        cover = _caa_front(f"release-group/{release_group_id}")
-        if cover is not None:
-            protocol.log(f"enrich: cover found on release-group {release_group_id}")
-            return cover
-        protocol.log(f"enrich: no cover on release-group {release_group_id} either")
-    return None
-
-
-def set_album_art(album, data: bytes, is_png: bool, source: str = "Cover Art Archive") -> None:
-    """Set beets' artpath (cover.jpg). `source` records the picture's origin."""
-    with tempfile.NamedTemporaryFile(suffix=".png" if is_png else ".jpg", delete=False) as tmp:
-        tmp.write(data)
-        tmp_path = tmp.name
-    try:
-        album.set_art(tmp_path, copy=True)
-        album["art_source"] = source
-        album.store()
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-    # The CAA fallback may hand over a full-size upload.
-    if album.artpath:
-        covers.ensure_display_rendition(_decode(album.artpath))
-
-
-def embed_cover(item, data: bytes, is_png: bool) -> bool:
-    """Embed the cover into the audio file. Returns whether it worked.
-
-    Uses `mediafile` so every container (m4a, mp3, flac) is supported."""
-    import mediafile
-
-    path = _decode_path(item)
-    if not os.path.exists(path):
-        return False
-    try:
-        media = mediafile.MediaFile(path)
-        media.images = [mediafile.Image(data=data, desc="", type=mediafile.ImageType.front)]
-        media.save()
-    except (mediafile.UnreadableFileError, OSError, ValueError) as exc:
-        # A cover is never worth failing an enrich, move or conversion.
-        protocol.log(f"enrich: cover embed failed for {path}: {exc}")
-        return False
-    return True
-
-
 def _fetch_cover(item, release_id: str, release_group_id: str | None = None) -> None:
     album = item.get_album()
     if album is None:
         return
-    cover = download_cover(release_id, release_group_id)
+    cover = covers.download_cover(release_id, release_group_id)
     if cover is None:
         return
-    set_album_art(album, *cover)
-    embed_cover(item, *cover)
+    covers.set_album_art(album, *cover)
+    covers.embed_cover(item, *cover)
 
 
 def handle(request_id: str, params: dict) -> dict:
@@ -489,7 +397,7 @@ def enrich_one(
     `fetch_cover=False` and `provisional_fallback=False` defer those steps to
     the album batch. `known_recordings` reuses the batch's AcoustID results;
     `[]` means "looked up, nothing found", `None` means "not looked up"."""
-    path = _decode_path(item)
+    path = beets_paths.item_path(item)
     if not os.path.exists(path):
         raise RuntimeError(f"file not found: {path}")
 
