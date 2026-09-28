@@ -199,7 +199,7 @@ pub async fn adopt_library_dir(app: &AppHandle) -> AppResult<()> {
         .allow_directory(&paths.library_root, true)
     {
         // Not fatal: only a moved library is affected, and it still browses.
-        eprintln!("[library] could not widen the asset scope: {err}");
+        log_line!("[library] could not widen the asset scope: {err}");
     }
     Ok(())
 }

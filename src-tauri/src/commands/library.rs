@@ -131,7 +131,7 @@ pub async fn delete_track(
         .await?;
     // Playlists live in another database; prune them here. Best-effort.
     if let Err(err) = jobs.remove_item_from_playlists(id).await {
-        eprintln!("[playlists] prune of item {id} failed: {err}");
+        log_line!("[playlists] prune of item {id} failed: {err}");
     }
     crate::playlists_mirror::sync(&app, &jobs).await;
     Ok(result)

@@ -107,7 +107,7 @@ pub async fn settle_playlists(
     let playlist_entries = match jobs.prune_playlists(doomed).await {
         Ok(count) => count as u64,
         Err(err) => {
-            eprintln!("[undo] playlist prune failed: {err}");
+            log_line!("[undo] playlist prune failed: {err}");
             0
         }
     };

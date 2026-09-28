@@ -39,7 +39,7 @@ pub(crate) fn remove_orphan(dir: &Path, filename: Option<String>) {
     if let Some(filename) = filename {
         let path = dir.join(&filename);
         if let Err(err) = std::fs::remove_file(&path) {
-            eprintln!("[artist-images] could not remove {}: {err}", path.display());
+            log_line!("[artist-images] could not remove {}: {err}", path.display());
         }
     }
 }
@@ -183,7 +183,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
     let dir = match AppPaths::resolve(app) {
         Ok(paths) => paths.artist_images_dir(),
         Err(err) => {
-            eprintln!("[artist-images] rename follow skipped: {err}");
+            log_line!("[artist-images] rename follow skipped: {err}");
             return;
         }
     };
@@ -200,7 +200,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
         let rows = match jobs.list_artist_images().await {
             Ok(rows) => rows,
             Err(err) => {
-                eprintln!("[artist-images] rename follow skipped: {err}");
+                log_line!("[artist-images] rename follow skipped: {err}");
                 return;
             }
         };
@@ -211,7 +211,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
             // The target artist already has an image: it wins.
             match jobs.remove_artist_image(old.to_string()).await {
                 Ok(orphan) => remove_orphan(&dir, orphan),
-                Err(err) => eprintln!("[artist-images] rename {old:?} -> {new:?} failed: {err}"),
+                Err(err) => log_line!("[artist-images] rename {old:?} -> {new:?} failed: {err}"),
             }
             continue;
         }
@@ -233,7 +233,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
             if let Err(err) =
                 tokio::fs::rename(dir.join(&old_row.filename), dir.join(&filename)).await
             {
-                eprintln!("[artist-images] file rename for {new:?} failed, keeping name: {err}");
+                log_line!("[artist-images] file rename for {new:?} failed, keeping name: {err}");
                 filename = old_row.filename.clone();
             }
         }
@@ -241,7 +241,7 @@ pub async fn follow_renames(app: &AppHandle, jobs: &JobsState, update_result: &V
             .rename_artist_image(old.to_string(), new.to_string(), filename)
             .await
         {
-            eprintln!("[artist-images] rename {old:?} -> {new:?} failed: {err}");
+            log_line!("[artist-images] rename {old:?} -> {new:?} failed: {err}");
         }
     }
 }

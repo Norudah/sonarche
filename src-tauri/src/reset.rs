@@ -78,27 +78,27 @@ pub async fn reset_setup(
     // alive on Unix, and would keep answering after the reinstall.
     if targets.venv {
         sidecar.shutdown().await;
-        eprintln!("[dev] setup reset: sidecar stopped");
+        log_line!("[dev] setup reset: sidecar stopped");
     }
 
     for dir in dirs_to_remove(&paths, &targets) {
         if tokio::fs::try_exists(&dir).await.unwrap_or(false) {
             tokio::fs::remove_dir_all(&dir).await?;
-            eprintln!("[dev] setup reset: removed {}", dir.display());
+            log_line!("[dev] setup reset: removed {}", dir.display());
         }
     }
     if targets.api_keys {
         settings::set(app, "acoustid".into(), String::new()).await?;
-        eprintln!("[dev] setup reset: cleared the AcoustID key");
+        log_line!("[dev] setup reset: cleared the AcoustID key");
     }
     if targets.history {
         // Through queries: the worker keeps the DB open.
         jobs.clear_history().await;
-        eprintln!("[dev] setup reset: cleared the job history");
+        log_line!("[dev] setup reset: cleared the job history");
     }
     if targets.onboarding {
         preferences::set_onboarding_completed(app, false).await?;
-        eprintln!("[dev] setup reset: walkthrough will replay");
+        log_line!("[dev] setup reset: walkthrough will replay");
     }
     Ok(())
 }
@@ -117,7 +117,7 @@ pub async fn reset_library(app: &AppHandle) -> AppResult<()> {
     let _ = tokio::fs::remove_file(&paths.beets_import_state).await;
     // Playlist rows survive but their ids no longer resolve.
     crate::playlists_mirror::sync_after_library_change(app).await;
-    eprintln!("[dev] library reset: files and beets DB wiped");
+    log_line!("[dev] library reset: files and beets DB wiped");
     Ok(())
 }
 
@@ -209,10 +209,10 @@ pub async fn erase_data(
 
     jobs.clear_history().await;
     if let Err(err) = jobs.clear_artist_images().await {
-        eprintln!("[reset] artist image index not cleared: {err}");
+        log_line!("[reset] artist image index not cleared: {err}");
     }
     if let Err(err) = jobs.clear_playlists().await {
-        eprintln!("[reset] playlists not cleared: {err}");
+        log_line!("[reset] playlists not cleared: {err}");
     }
 
     // The AcoustID key is a credential, not library data: it's kept. The
@@ -292,7 +292,7 @@ pub async fn erase_library(
 
     // New beets ids restart at 1, so memberships must go.
     if let Err(err) = jobs.clear_playlist_memberships().await {
-        eprintln!("[reset] playlist memberships not cleared: {err}");
+        log_line!("[reset] playlist memberships not cleared: {err}");
     }
     crate::playlists_mirror::sync_after_library_change(app).await;
 

@@ -45,7 +45,15 @@ pub fn init(app: &AppHandle) {
     ));
 }
 
+/// `format!` into the log file and stderr: the only way the core should print.
+macro_rules! log_line {
+    ($($arg:tt)*) => {
+        $crate::logs::write(&format!($($arg)*))
+    };
+}
+
 /// Writes to the log and stderr. Silent on failure.
+#[allow(clippy::print_stderr)]
 pub fn write(line: &str) {
     eprintln!("{line}");
     if let Some(sink) = SINK.get() {

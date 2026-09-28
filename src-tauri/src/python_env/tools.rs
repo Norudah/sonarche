@@ -80,6 +80,6 @@ async fn ensure_tool(name: &str, source: &Path, dest: &Path, tools_dir: &Path) -
         tokio::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o755)).await?;
     }
 
-    eprintln!("[tools] {name} ready at {}", dest.display());
+    log_line!("[tools] {name} ready at {}", dest.display());
     Ok(())
 }

@@ -98,17 +98,17 @@ fn spawn_stdout_reader(app: AppHandle, stdout: tokio::process::ChildStdout, pend
                     Ok(raw) => {
                         let _ = app.emit("sidecar:event", raw);
                     }
-                    Err(err) => eprintln!("[sidecar] undeliverable event: {err}"),
+                    Err(err) => log_line!("[sidecar] undeliverable event: {err}"),
                 },
                 Routed::Reply(id, reply) => {
                     if let Some(tx) = pending.lock().await.remove(&id) {
                         let _ = tx.send(reply);
                     }
                 }
-                Routed::Ignore => eprintln!("[sidecar] unroutable on stdout: {line}"),
+                Routed::Ignore => log_line!("[sidecar] unroutable on stdout: {line}"),
             }
         }
-        eprintln!("[sidecar] stdout closed");
+        log_line!("[sidecar] stdout closed");
         pending.lock().await.clear();
     });
 }
@@ -201,7 +201,7 @@ impl SidecarChannel {
                 Some(Ok(Some(_)))
             );
             if dead {
-                eprintln!("[sidecar] process died, restarting");
+                log_line!("[sidecar] process died, restarting");
                 *guard = None;
             }
             if guard.is_none() {

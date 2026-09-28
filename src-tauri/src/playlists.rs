@@ -594,10 +594,10 @@ pub async fn rename_playlist(
             match tokio::fs::rename(dir.join(&cover), dir.join(&filename)).await {
                 Ok(()) => {
                     if let Err(err) = jobs.update_playlist_cover_filename(id, filename).await {
-                        eprintln!("[playlists] cover row not repointed: {err}");
+                        log_line!("[playlists] cover row not repointed: {err}");
                     }
                 }
-                Err(err) => eprintln!("[playlists] cover rename failed, keeping name: {err}"),
+                Err(err) => log_line!("[playlists] cover rename failed, keeping name: {err}"),
             }
         }
     }

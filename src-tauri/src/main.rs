@@ -1,5 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// First, so `log_line!` is in scope for every module below.
+#[macro_use]
+mod logs;
+
 mod artist_images;
 mod artwork;
 mod audio_formats;
@@ -17,7 +21,6 @@ mod library_import;
 mod library_layout;
 mod library_move;
 mod library_scan;
-mod logs;
 mod lyrics;
 mod now_playing;
 mod onboarding;
@@ -72,7 +75,7 @@ fn main() {
                     Ok(prefs) => handle
                         .state::<python_env::LibraryRoot>()
                         .set(prefs.library_dir.map(Into::into)),
-                    Err(err) => eprintln!("[library] could not read the stored location: {err}"),
+                    Err(err) => log_line!("[library] could not read the stored location: {err}"),
                 }
             });
             // The worker starts only after the launch migration.

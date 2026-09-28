@@ -209,13 +209,13 @@ fn step_rename(from: PathBuf, to: PathBuf) -> StepResult {
         return StepResult::Skipped;
     }
     if to.exists() {
-        eprintln!("[library] migration: {to:?} already exists, leaving {from:?}");
+        log_line!("[library] migration: {to:?} already exists, leaving {from:?}");
         return StepResult::Failed;
     }
     match fs::rename(&from, &to) {
         Ok(()) => StepResult::Done,
         Err(err) => {
-            eprintln!("[library] migration: could not move {from:?}: {err}");
+            log_line!("[library] migration: could not move {from:?}: {err}");
             StepResult::Failed
         }
     }
@@ -231,7 +231,7 @@ fn execute(root: &Path, steps: &[PlanStep]) -> ExecOutcome {
             PlanStep::EnsureMusic => match fs::create_dir_all(root.join(MUSIC_DIR)) {
                 Ok(()) => StepResult::Skipped,
                 Err(err) => {
-                    eprintln!("[library] migration: could not create Music/: {err}");
+                    log_line!("[library] migration: could not create Music/: {err}");
                     StepResult::Failed
                 }
             },
@@ -310,14 +310,14 @@ fn migrate_root(root: &Path) -> AppResult<()> {
 
     let outcome = execute(root, &plan);
     if outcome.moved > 0 {
-        eprintln!(
+        log_line!(
             "[library] migrated {} entr{} into Music/",
             outcome.moved,
             if outcome.moved == 1 { "y" } else { "ies" }
         );
     }
     if outcome.failed > 0 {
-        eprintln!(
+        log_line!(
             "[library] migration incomplete ({} left), will retry next launch",
             outcome.failed
         );
@@ -336,24 +336,24 @@ pub fn run_launch_migration(app: &tauri::AppHandle, jobs: &crate::jobs::JobsStat
     let paths = match crate::python_env::AppPaths::resolve(app) {
         Ok(paths) => paths,
         Err(err) => {
-            eprintln!("[library] migration skipped, paths unresolved: {err}");
+            log_line!("[library] migration skipped, paths unresolved: {err}");
             return;
         }
     };
     if let Err(err) = migrate_root(&paths.library_root) {
-        eprintln!("[library] root migration failed: {err}");
+        log_line!("[library] root migration failed: {err}");
     }
     match app.path().app_data_dir() {
         Ok(app_data) => {
             if let Err(err) = migrate_artwork(&paths, &app_data, jobs) {
-                eprintln!("[library] artwork migration failed: {err}");
+                log_line!("[library] artwork migration failed: {err}");
             }
         }
-        Err(err) => eprintln!("[library] artwork migration skipped: {err}"),
+        Err(err) => log_line!("[library] artwork migration skipped: {err}"),
     }
     // The beets configs and asset scope must match before the worker resumes.
     if let Err(err) = tauri::async_runtime::block_on(crate::python_env::adopt_library_dir(app)) {
-        eprintln!("[library] could not adopt the migrated layout: {err}");
+        log_line!("[library] could not adopt the migrated layout: {err}");
     }
 }
 
@@ -407,7 +407,7 @@ fn migrate_image_rows<K: Copy>(
         if legacy.exists() {
             if let Err(err) = move_file(&legacy, &dest) {
                 // Keep the row for the next launch.
-                eprintln!("[{what}] could not migrate {filename}: {err}");
+                log_line!("[{what}] could not migrate {filename}: {err}");
                 continue;
             }
             repoint(*key, &readable)?;
@@ -417,7 +417,7 @@ fn migrate_image_rows<K: Copy>(
             repoint(*key, &readable)?;
             taken.push(stem);
         } else {
-            eprintln!("[{what}] {name:?} points at a missing file, forgetting it");
+            log_line!("[{what}] {name:?} points at a missing file, forgetting it");
             forget(*key)?;
         }
     }

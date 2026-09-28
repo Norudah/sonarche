@@ -207,7 +207,7 @@ impl JobsState {
         {
             Ok(jobs) => jobs,
             Err(err) => {
-                eprintln!("[jobs] list failed: {err}");
+                log_line!("[jobs] list failed: {err}");
                 Vec::new()
             }
         }
@@ -240,7 +240,7 @@ impl JobsState {
         })
         .await
         {
-            eprintln!("[imports] recording failed: {err}");
+            log_line!("[imports] recording failed: {err}");
         }
     }
 
@@ -258,7 +258,7 @@ impl JobsState {
         })
         .await
         {
-            eprintln!("[imports] marking {id} undone failed: {err}");
+            log_line!("[imports] marking {id} undone failed: {err}");
         }
     }
 
@@ -266,7 +266,7 @@ impl JobsState {
         match with_conn(&self.0, jobs_store::list_imports).await {
             Ok(records) => records,
             Err(err) => {
-                eprintln!("[imports] list failed: {err}");
+                log_line!("[imports] list failed: {err}");
                 Vec::new()
             }
         }
@@ -275,7 +275,7 @@ impl JobsState {
     /// Drops finished jobs and the import archive; running jobs are kept.
     pub async fn clear_history(&self) -> Vec<Job> {
         if let Err(err) = with_conn(&self.0, jobs_store::clear_history).await {
-            eprintln!("[jobs] clear history failed: {err}");
+            log_line!("[jobs] clear history failed: {err}");
         }
         self.list().await
     }

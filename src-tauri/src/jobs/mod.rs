@@ -103,7 +103,7 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
     let conn = jobs_store::open(&db_path)?;
 
     if let Err(err) = playlists::ensure_favorites(&conn, now_ms()) {
-        eprintln!("[playlists] favorites seed failed: {err}");
+        log_line!("[playlists] favorites seed failed: {err}");
     }
 
     // One-time import; INSERT OR REPLACE keeps it idempotent.
@@ -115,16 +115,16 @@ pub fn init(app: &AppHandle) -> AppResult<(JobsState, JobsWorker)> {
             Some(jobs) => match jobs_store::import_jobs(&conn, &jobs) {
                 Ok(()) => {
                     let _ = std::fs::rename(&legacy_json, data_dir.join("jobs.json.migrated"));
-                    eprintln!("[jobs] migrated {} job(s) from jobs.json", jobs.len());
+                    log_line!("[jobs] migrated {} job(s) from jobs.json", jobs.len());
                 }
-                Err(err) => eprintln!("[jobs] legacy import failed, keeping jobs.json: {err}"),
+                Err(err) => log_line!("[jobs] legacy import failed, keeping jobs.json: {err}"),
             },
-            None => eprintln!("[jobs] could not read legacy jobs.json; leaving it in place"),
+            None => log_line!("[jobs] could not read legacy jobs.json; leaving it in place"),
         }
     }
 
     if let Ok(true) = jobs_store::fail_interrupted(&conn, now_ms()) {
-        eprintln!("[jobs] marked interrupted job(s) as failed");
+        log_line!("[jobs] marked interrupted job(s) as failed");
     }
 
     let (tx, rx) = mpsc::unbounded_channel();
@@ -151,7 +151,7 @@ async fn snapshot(inner: &JobsInner, id: &str) -> Option<Job> {
     match with_conn(inner, move |c| jobs_store::get_job(c, &id)).await {
         Ok(job) => job,
         Err(err) => {
-            eprintln!("[jobs] snapshot failed: {err}");
+            log_line!("[jobs] snapshot failed: {err}");
             None
         }
     }
@@ -169,7 +169,7 @@ async fn update_job(
     job.updated_at = now_ms();
     let to_write = job.clone();
     if let Err(err) = with_conn(inner, move |c| jobs_store::upsert_job(c, &to_write)).await {
-        eprintln!("[jobs] persist failed: {err}");
+        log_line!("[jobs] persist failed: {err}");
         return None;
     }
     let _ = app.emit("jobs:updated", &job);
@@ -199,7 +199,7 @@ async fn update_track(
     })
     .await
     {
-        eprintln!("[jobs] track persist failed: {err}");
+        log_line!("[jobs] track persist failed: {err}");
         return None;
     }
     let _ = app.emit("jobs:updated", &job);
@@ -260,5 +260,5 @@ async fn fail(app: &AppHandle, inner: &JobsInner, id: &str, step: JobStep, err: 
 
 /// One trace line per pipeline step, prefixed with the job's short id.
 fn job_log(id: &str, msg: &str) {
-    eprintln!("[job {}] {msg}", &id[..id.len().min(8)]);
+    log_line!("[job {}] {msg}", &id[..id.len().min(8)]);
 }

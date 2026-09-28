@@ -94,5 +94,8 @@ tempfile = "3"
 
 # CLAUDE.md: no unwrap/expect outside tests and startup (see clippy.toml).
 [lints.clippy]
+# Through `log_line!`, which also reaches the log file (no console on Windows).
+print_stderr = "warn"
+print_stdout = "warn"
 unwrap_used = "warn"
 expect_used = "warn"

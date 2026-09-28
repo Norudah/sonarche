@@ -41,7 +41,7 @@ pub fn sweep_stale() {
             .is_some_and(|age| age > SWEEP_MAX_AGE);
         if stale {
             if let Err(err) = std::fs::remove_file(entry.path()) {
-                eprintln!("[pasted-image] sweep failed for {name}: {err}");
+                log_line!("[pasted-image] sweep failed for {name}: {err}");
             }
         }
     }

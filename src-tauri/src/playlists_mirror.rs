@@ -204,7 +204,7 @@ pub fn sync_at_launch(app: &AppHandle, jobs: &JobsState) {
         sync_blocking(&paths, &rows)
     });
     if let Err(err) = outcome {
-        eprintln!("[playlists] mirror not refreshed at launch: {err}");
+        log_line!("[playlists] mirror not refreshed at launch: {err}");
     }
 }
 
@@ -217,14 +217,14 @@ pub async fn sync(app: &AppHandle, jobs: &JobsState) {
     let rows = match jobs.list_playlists().await {
         Ok(rows) => rows,
         Err(err) => {
-            eprintln!("[playlists] mirror skipped, could not list: {err}");
+            log_line!("[playlists] mirror skipped, could not list: {err}");
             return;
         }
     };
     let done = tauri::async_runtime::spawn_blocking(move || sync_blocking(&paths, &rows)).await;
     match done {
-        Ok(Err(err)) => eprintln!("[playlists] mirror not written: {err}"),
-        Err(err) => eprintln!("[playlists] mirror task failed: {err}"),
+        Ok(Err(err)) => log_line!("[playlists] mirror not written: {err}"),
+        Err(err) => log_line!("[playlists] mirror task failed: {err}"),
         Ok(Ok(())) => {}
     }
 }

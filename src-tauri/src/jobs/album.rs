@@ -460,7 +460,7 @@ async fn run_enrich_album(app: &AppHandle, job: &Job, item_ids: &[i64]) -> AppRe
     let acoustid_key = match settings::read("acoustid").await {
         Ok(key) => key,
         Err(err) => {
-            eprintln!("[jobs] keychain read failed, enriching without AcoustID: {err}");
+            log_line!("[jobs] keychain read failed, enriching without AcoustID: {err}");
             None
         }
     };
