@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jobDestination, jobPresence, type PresenceLookup } from "@/features/download/queue/library";
+import { filedTracks, jobDestination, jobPresence, type PresenceLookup } from "@/features/download/queue/library";
 import { albumTrack, job, report } from "@/features/download/testFixtures";
 import type { LibraryTrack } from "@/features/library/api";
 import { track } from "@/features/library/testFixtures";
@@ -172,5 +172,46 @@ describe("jobDestination", () => {
       tracks: [albumTrack({ index: 1, itemId: null, duplicateOf: 7 })],
     });
     expect(jobDestination(album, lookup({ 7: inLibraryTrack({ id: 7 }) }))).toBe("/library/albums/VA/Cars");
+  });
+});
+
+describe("filedTracks", () => {
+  const filed = (index: number, itemId: number) =>
+    albumTrack({
+      index,
+      itemId,
+      status: "done",
+      report: report({ itemId, title: `Song ${index}`, album: "New Model" }),
+    });
+  const ours = (id: number) => track({ id, title: `Song ${id}`, album: "New Model" });
+
+  /** The history bug: an album deleted, its ids reused by the next import. The
+   * card read the newcomer's tags and cover, and its delete targeted them. */
+  it("drops ids beets handed to another record", () => {
+    const album = job({ kind: "album", tracks: [filed(1, 1), filed(2, 2)] });
+    const stranger = track({ id: 1, title: "Turbo Killer", album: "Trilogy" });
+    expect(filedTracks(album, lookup({ 1: stranger, 2: ours(2) })).map((t) => t.id)).toEqual([2]);
+  });
+
+  it("keeps a track renamed or moved, as long as one of title or album still matches", () => {
+    const album = job({ kind: "album", tracks: [filed(1, 1)] });
+    const retitled = track({ id: 1, title: "Song 1 (Remastered)", album: "New Model" });
+    expect(filedTracks(album, lookup({ 1: retitled }))).toHaveLength(1);
+  });
+
+  it("leaves out duplicates, which belong to the record enrich kept", () => {
+    const album = job({ kind: "album", tracks: [filed(1, 1), albumTrack({ index: 2, itemId: null, duplicateOf: 9 })] });
+    expect(filedTracks(album, lookup({ 1: ours(1), 9: ours(9) })).map((t) => t.id)).toEqual([1]);
+  });
+
+  it("reads a single through its report", () => {
+    const single = job({ report: report({ itemId: 4, title: "Song 4", album: "New Model" }) });
+    expect(filedTracks(single, lookup({ 4: ours(4) })).map((t) => t.id)).toEqual([4]);
+    expect(filedTracks(single, lookup({ 4: track({ id: 4, title: "Other", album: "Other" }) }))).toEqual([]);
+  });
+
+  it("does not let a missing tag vouch for a recycled id", () => {
+    const single = job({ report: report({ itemId: 4, title: "Song 4", album: null }) });
+    expect(filedTracks(single, lookup({ 4: track({ id: 4, title: "Other", album: "Other" }) }))).toEqual([]);
   });
 });

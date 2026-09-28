@@ -8,7 +8,7 @@ import { JobTrackRow, TRACK_GRID } from "@/features/download/activity/JobTrackRo
 import type { EnrichStage } from "@/features/download/hooks";
 import { AttemptDots } from "@/features/download/activity/StepMarkers";
 import { jobAttempts } from "@/features/download/queue/attempts";
-import { jobPresence } from "@/features/download/queue/library";
+import { filedTrack, jobPresence, type PresenceLookup } from "@/features/download/queue/library";
 import { formatTags, jobTags } from "@/features/download/queue/tags";
 import type { LibraryTrack } from "@/features/library/api";
 // The library's category labels, not a copy.
@@ -25,8 +25,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 interface JobDetailProps {
   job: DownloadJob;
-  libraryTrackFor: (itemId: number | null) => LibraryTrack | undefined;
-  isInLibrary: (itemId: number) => boolean;
+  library: PresenceLookup;
   isLibraryLoaded: boolean;
   enrichStages: Record<number, EnrichStage>;
   onEdit: (track: LibraryTrack) => void;
@@ -34,22 +33,14 @@ interface JobDetailProps {
 }
 
 /** The details behind a card's verdict, plus the playlist for albums. */
-export function JobDetail({
-  job,
-  libraryTrackFor,
-  isInLibrary,
-  isLibraryLoaded,
-  enrichStages,
-  onEdit,
-  onDelete,
-}: JobDetailProps) {
+export function JobDetail({ job, library, isLibraryLoaded, enrichStages, onEdit, onDelete }: JobDetailProps) {
   const { t } = useTranslation("download");
   const categoryLabel = useCategoryLabel();
   const isAlbum = job.kind === "album" && job.tracks.length > 0;
   const isSettled = job.status === "done" || job.status === "failed" || job.status === "cancelled";
   const tags = jobTags(job);
 
-  const presence = isLibraryLoaded ? jobPresence(job, { has: isInLibrary, trackFor: libraryTrackFor }) : null;
+  const presence = isLibraryLoaded ? jobPresence(job, library) : null;
 
   const source = isAlbum
     ? job.tracks.find((track) => track.report?.source)?.report?.source
@@ -124,7 +115,7 @@ export function JobDetail({
             <JobTrackRow
               key={track.index}
               track={track}
-              libraryTrack={libraryTrackFor(track.status === "done" ? track.itemId : null)}
+              libraryTrack={filedTrack(track.status === "done" ? track.itemId : null, track.report, library)}
               isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
               onEdit={onEdit}
               onDelete={onDelete}

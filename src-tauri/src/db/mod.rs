@@ -7,7 +7,7 @@
 
 pub mod artist_images;
 #[cfg(test)]
-mod fixtures;
+pub(crate) mod fixtures;
 pub mod imports;
 pub mod jobs;
 pub mod playlists;

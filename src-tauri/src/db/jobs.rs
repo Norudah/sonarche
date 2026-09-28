@@ -490,24 +490,6 @@ mod tests {
         assert_eq!(past_the_end.total, 7);
     }
 
-    #[test]
-    fn library_item_ids_reads_the_rows_and_skips_duplicates() {
-        let job = single("j", JobStatus::Done);
-        assert_eq!(crate::jobs::library_item_ids(&job), vec![42]);
-
-        let mut album = single("a", JobStatus::Done);
-        album.kind = JobKind::Album;
-        album.item_id = None;
-        album.tracks = vec![
-            track(1, TrackStatus::Done),
-            track(2, TrackStatus::Done),
-            track(3, TrackStatus::Failed),
-        ];
-        album.tracks[1].duplicate_of = Some(7);
-        album.tracks[2].item_id = None;
-        assert_eq!(crate::jobs::library_item_ids(&album), vec![1]);
-    }
-
     /// `upsert_job` writes every column; the undo stamp must survive it.
     #[test]
     fn a_job_marked_undone_stays_undone() {

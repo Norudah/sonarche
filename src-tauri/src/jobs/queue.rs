@@ -9,12 +9,14 @@ use crate::error::{AppError, AppResult};
 use crate::library_import;
 use crate::sidecar::SidecarState;
 
-use super::filing::{library_item_ids, move_to_destination};
+use super::filing::move_to_destination;
 use super::model::{ForcedAlbum, Job, JobKind, JobStatus, TrackStatus};
+use super::owned::owned_item_ids;
 use super::{
     now_ms, request_cancel, snapshot, spawn_worker, take_cancel, update_job, with_conn, JobsState,
     JobsWorker,
 };
+use crate::python_env::AppPaths;
 
 impl JobsState {
     /// Starts the worker, after the launch migration (see [`init`]).
@@ -182,10 +184,10 @@ impl JobsState {
         if job.undone_at.is_some() {
             return Err(AppError::InvalidInput("this download was undone".into()));
         }
-        let item_ids = library_item_ids(&job);
+        let item_ids = owned_item_ids(AppPaths::resolve(app)?.beets_db, &job).await?;
         if item_ids.is_empty() {
             return Err(AppError::InvalidInput(
-                "this download filed nothing in the library".into(),
+                "nothing this download filed is still in the library".into(),
             ));
         }
         move_to_destination(app, &forced, &item_ids, job.artist.as_deref()).await?;

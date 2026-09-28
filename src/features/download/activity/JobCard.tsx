@@ -12,7 +12,7 @@ import { JobVerdict } from "@/features/download/activity/JobVerdict";
 import { jobProgress, STAGE_WEIGHTS } from "@/features/download/activity/progress";
 import { useProgressLabel } from "@/features/download/activity/useProgressLabel";
 import type { EnrichStage } from "@/features/download/hooks";
-import { jobDestination, jobPresence } from "@/features/download/queue/library";
+import { filedTracks, jobDestination, jobPresence } from "@/features/download/queue/library";
 import { canRetry } from "@/features/download/queue/pipeline";
 import { AlbumRowActions, RowActions } from "@/features/download/queue/RowActions";
 import type { LibraryTrack } from "@/features/library/api";
@@ -46,16 +46,6 @@ interface JobCardProps {
   isCancelling: boolean;
 }
 
-/** The enrich cover once available, else the queued thumbnail. */
-function coverOf(job: DownloadJob, library: LibraryLookup): string | null {
-  if (job.kind !== "album") return library.trackFor(job.report?.itemId ?? null)?.artUrl ?? null;
-  for (const track of job.tracks) {
-    const art = library.trackFor(track.itemId)?.artUrl;
-    if (art) return art;
-  }
-  return null;
-}
-
 function JobCardImpl({
   job,
   downloadPercent,
@@ -80,7 +70,9 @@ function JobCardImpl({
   /** Whether the job's output is still in the library (settled jobs, once the
    * library has loaded). Undone jobs say so instead. */
   const presence = job.undoneAt != null ? "undone" : library.isLoaded ? jobPresence(job, library) : null;
-  const landed = isAlbum ? undefined : library.trackFor(job.status === "done" ? (job.report?.itemId ?? null) : null);
+  // What the job filed, as long as the ids still point at it.
+  const own = filedTracks(job, library);
+  const landed = !isAlbum && job.status === "done" ? own[0] : undefined;
 
   const enrichedCount =
     job.status === "enriching"
@@ -97,12 +89,7 @@ function JobCardImpl({
   /** Subtitle: describes the download while it runs, then the filed record
    * (read back from the library). Only rewritten on completion, so it doesn't
    * change with every imported track. */
-  const filed =
-    job.status === "done"
-      ? isAlbum
-        ? job.tracks.map((track) => library.trackFor(track.itemId)).find((track) => track != null)
-        : landed
-      : undefined;
+  const filed = job.status === "done" ? own[0] : undefined;
 
   const subtitle = filed
     ? [
@@ -126,14 +113,12 @@ function JobCardImpl({
         .join(" · ");
 
   const title = job.title ?? job.url;
-  const albumTrackIds = job.tracks
-    .filter((track) => track.duplicateOf == null)
-    .map((track) => track.itemId)
-    .filter((itemId): itemId is number => itemId != null && library.has(itemId));
+  const albumTrackIds = own.map((track) => track.id);
 
   const artwork = (
     <JobArtwork
-      coverUrl={coverOf(job, library)}
+      // The enrich cover once available, else the queued thumbnail.
+      coverUrl={own.find((track) => track.artUrl)?.artUrl ?? null}
       thumbnail={job.thumbnail}
       isAlbum={isAlbum}
       isSettled={job.status === "done"}
@@ -289,8 +274,7 @@ function JobCardImpl({
             <div className="pt-3">
               <JobDetail
                 job={job}
-                libraryTrackFor={library.trackFor}
-                isInLibrary={library.has}
+                library={library}
                 isLibraryLoaded={library.isLoaded}
                 enrichStages={enrichStages}
                 onEdit={onEdit}

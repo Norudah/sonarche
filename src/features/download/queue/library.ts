@@ -22,8 +22,9 @@ const normalize = (value: string) => value.trim().toLocaleLowerCase();
 function isStillOurs(track: LibraryTrack | undefined, report: MetadataReport | null): boolean {
   if (!track) return false;
   if (!report?.title && !report?.album) return true;
-  const titleMatches = !report.title || normalize(track.title) === normalize(report.title);
-  const albumMatches = !report.album || normalize(track.album) === normalize(report.album);
+  // A missing tag proves nothing: a recycled id must match on one it has.
+  const titleMatches = !!report.title && normalize(track.title) === normalize(report.title);
+  const albumMatches = !!report.album && normalize(track.album) === normalize(report.album);
   return titleMatches || albumMatches;
 }
 
@@ -36,9 +37,24 @@ function filedItems(job: DownloadJob): { itemId: number; report: MetadataReport 
   return job.report?.itemId != null ? [{ itemId: job.report.itemId, report: job.report }] : [];
 }
 
-function presentCount(items: { itemId: number; report: MetadataReport | null }[], library: PresenceLookup): number {
-  return items.filter(({ itemId, report }) => library.has(itemId) && isStillOurs(library.trackFor(itemId), report))
-    .length;
+/** The track an id the job filed still points at; undefined once gone or
+ * recycled. Every read of a job's item ids goes through here, or a history
+ * row shows (and acts on) whatever took over the id. */
+export function filedTrack(
+  itemId: number | null,
+  report: MetadataReport | null,
+  library: PresenceLookup,
+): LibraryTrack | undefined {
+  if (itemId == null) return undefined;
+  const track = library.trackFor(itemId);
+  return isStillOurs(track, report) ? track : undefined;
+}
+
+/** The job's own tracks still in the library, duplicates excluded. */
+export function filedTracks(job: DownloadJob, library: PresenceLookup): LibraryTrack[] {
+  return filedItems(job)
+    .map(({ itemId, report }) => filedTrack(itemId, report, library))
+    .filter((track): track is LibraryTrack => track != null);
 }
 
 /**
@@ -55,7 +71,7 @@ export function jobPresence(job: DownloadJob, library: PresenceLookup): LibraryP
     // If the kept originals are gone too, report "none".
     return kept.some((track) => library.has(track.duplicateOf as number)) ? "duplicate" : "none";
   }
-  const present = presentCount(items, library);
+  const present = filedTracks(job, library).length;
   if (present === items.length) return "full";
   return present === 0 ? "none" : "partial";
 }
@@ -72,8 +88,8 @@ export function jobDestination(job: DownloadJob, library: PresenceLookup): strin
           .map((track) => ({ itemId: track.duplicateOf, report: null }))
       : [];
   for (const { itemId, report } of [...filed, ...kept]) {
-    const track = library.trackFor(itemId);
-    if (track && isStillOurs(track, report) && track.album.trim() !== "") {
+    const track = filedTrack(itemId, report, library);
+    if (track && track.album.trim() !== "") {
       return albumPath(track.albumArtist.trim() || track.artist.trim(), track.album);
     }
   }

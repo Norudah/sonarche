@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import type { DownloadJob } from "@/features/download/api";
 import { JobCard, type LibraryLookup } from "@/features/download/activity/JobCard";
 import { type EnrichStage, useCancelJob, useRetryJob } from "@/features/download/hooks";
+import { filedTracks } from "@/features/download/queue/library";
 import { useNewJobIds } from "@/features/download/queue/useNewJobIds";
 import type { LibraryTrack } from "@/features/library/api";
 import { type AlbumDeletion, DeleteAlbumDialog, useAlbumDeleteGuard } from "@/features/library/DeleteAlbumDialog";
@@ -63,18 +64,14 @@ export function JobDeck({ sections, downloadPercent, enrichStages }: JobDeckProp
   const onCancel = useCallback((id: string) => cancel.mutate(id), [cancel]);
   const onDeleteAlbum = useCallback(
     (job: DownloadJob) => {
-      const trackIds = job.tracks
-        .filter((track) => track.duplicateOf == null)
-        .map((track) => track.itemId)
-        .filter((itemId): itemId is number => itemId != null);
-      // Resolve album ids so the delete guard can recognise a download's destination.
-      const albumIds = [
-        ...new Set(trackIds.map((id) => trackById.get(id)?.albumId).filter((id): id is number => id != null)),
-      ];
+      // Only what the job filed: a recycled id now belongs to another record.
+      const tracks = filedTracks(job, library);
+      // Album ids let the delete guard recognise a download's destination.
+      const albumIds = [...new Set(tracks.map((track) => track.albumId).filter((id): id is number => id != null))];
       if (!mayDelete(albumIds)) return;
-      setDeletingAlbum({ title: job.title ?? "", trackIds });
+      setDeletingAlbum({ title: job.title ?? "", trackIds: tracks.map((track) => track.id) });
     },
-    [mayDelete, trackById],
+    [mayDelete, library],
   );
 
   const cardProps = {

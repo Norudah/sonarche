@@ -5,12 +5,14 @@ mod album;
 mod download;
 mod filing;
 mod model;
+mod owned;
 mod queue;
 mod single;
 mod store;
 
-pub use filing::{enrich_item, library_item_ids};
+pub use filing::enrich_item;
 pub use model::{AlbumTrack, ForcedAlbum, Job, JobKind, JobStatus, JobStep, TrackStatus};
+pub use owned::owned_item_ids;
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex as StdMutex};

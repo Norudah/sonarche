@@ -10,7 +10,7 @@ use crate::python_env::{self, AppPaths};
 use crate::settings;
 use crate::sidecar::SidecarState;
 
-use super::model::{ForcedAlbum, Job, JobKind};
+use super::model::ForcedAlbum;
 use super::{job_log, snapshot, JobsInner};
 
 const IMPORT_TIMEOUT: Duration = Duration::from_secs(10 * 60);
@@ -203,17 +203,4 @@ pub(crate) async fn move_to_destination(
             LIBRARY_TIMEOUT,
         )
         .await
-}
-
-/// The beets items a job filed (album tracks minus dropped duplicates).
-pub fn library_item_ids(job: &Job) -> Vec<i64> {
-    match job.kind {
-        JobKind::Album => job
-            .tracks
-            .iter()
-            .filter(|track| track.duplicate_of.is_none())
-            .filter_map(|track| track.item_id)
-            .collect(),
-        JobKind::Single => job.item_id.into_iter().collect(),
-    }
 }
