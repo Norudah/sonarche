@@ -3,7 +3,10 @@
 The lock is installed with `--no-deps` and omits `numba`, `llvmlite` and
 `scipy` (declared by beets, never imported). This script:
 
-1. Re-resolves `requirements.in` and reports any drift from the lock.
+1. Re-resolves `requirements.in`. A package added or dropped fails (the lock
+   is installed `--no-deps`, so a missing one is a broken install). A newer
+   transitive version only warns: PyPI moves every week, and a PR shouldn't go
+   red for a release nobody asked for.
 2. Fails if beets or its plugins import one of the dropped packages.
 
 Run after installing the lock:
@@ -79,17 +82,19 @@ def resolve(path: pathlib.Path) -> dict[str, str]:
     return {normalize(i["metadata"]["name"]): i["metadata"]["version"] for i in installs}
 
 
-def compare(locked: dict[str, str], resolved: dict[str, str]) -> list[str]:
+def compare(locked: dict[str, str], resolved: dict[str, str]) -> tuple[list[str], list[str]]:
+    """(problems, drift): a changed package set breaks installs, a version gap doesn't."""
     resolved = {name: version for name, version in resolved.items() if name not in EXCLUDED}
     problems = []
+    drift = []
     for name in sorted(resolved.keys() - locked.keys()):
         problems.append(f"missing from the lock: {name}=={resolved[name]}")
     for name in sorted(locked.keys() - resolved.keys()):
         problems.append(f"in the lock, no longer resolved: {name}=={locked[name]}")
     for name in sorted(locked.keys() & resolved.keys()):
         if locked[name] != resolved[name]:
-            problems.append(f"{name}: lock has {locked[name]}, resolution wants {resolved[name]}")
-    return problems
+            drift.append(f"{name}: lock has {locked[name]}, resolution wants {resolved[name]}")
+    return problems, drift
 
 
 def check_imports() -> list[str]:
@@ -107,11 +112,15 @@ def check_imports() -> list[str]:
 
 
 def main() -> int:
-    problems = compare(read_lock(LOCK), resolve(DIRECT)) + check_imports()
+    problems, drift = compare(read_lock(LOCK), resolve(DIRECT))
+    problems += check_imports()
+    for line in drift:
+        # GitHub turns this into a warning annotation; harmless elsewhere.
+        print(f"::warning title=python lock drift::{line}")
     if not problems:
-        print("python lock: up to date, and beets still imports none of " + ", ".join(sorted(EXCLUDED)))
+        print("python lock: no package added or dropped, and beets still imports none of " + ", ".join(sorted(EXCLUDED)))
         return 0
-    print("python lock is out of date:\n", file=sys.stderr)
+    print("python lock is broken:\n", file=sys.stderr)
     for problem in problems:
         print(f"  - {problem}", file=sys.stderr)
     print(f"\nRegenerate it — see the header of {DIRECT.relative_to(ROOT)}.", file=sys.stderr)
