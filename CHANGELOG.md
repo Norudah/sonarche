@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.1](https://github.com/Norudah/sonarche/compare/sonarche-v2.5.0...sonarche-v2.5.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **library:** never read a recycled beets id as a download's own track ([6bb0c94](https://github.com/Norudah/sonarche/commit/6bb0c944e8d9b3becfaedcf5f2dd1a93bf61fe98))
+* **library:** report a failed track re-match as a failed match ([b03f64d](https://github.com/Norudah/sonarche/commit/b03f64dae2a96cf776a281bb642a6d00b4ff3591))
+* **library:** stop a refetch from reading as pending edits ([bbc8b6f](https://github.com/Norudah/sonarche/commit/bbc8b6f82315a39b89b9d5b6b079f097c58cf1d2))
+* **shell:** route core logs to the log file ([fe406a7](https://github.com/Norudah/sonarche/commit/fe406a790c5c016a22dedb28c92eee14088d431f))
+* **sidecar:** bump the drifted lock pins and stop failing CI on version drift ([aa7bc20](https://github.com/Norudah/sonarche/commit/aa7bc20e098e895ce6b54a7c969db98b3531b89b))
+* **ui:** make the settings switches switch again ([17991bd](https://github.com/Norudah/sonarche/commit/17991bd29c2567d320e585c9b822319b6efed7fc))
+* **ui:** show the library size in the interface language's units ([de8c644](https://github.com/Norudah/sonarche/commit/de8c644149134a634cde0b8c42a7ffd3a82c18c4))
+
 ## [2.5.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.4.0...sonarche-v2.5.0) (2026-09-10)
 
 
