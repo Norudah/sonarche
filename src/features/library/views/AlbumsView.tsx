@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { Disc, ListFilter, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +15,7 @@ import { SortSelect } from "@/features/library/SortSelect";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -29,14 +29,12 @@ export function AlbumsView() {
   const [layout, setLayout] = useShelfLayout();
 
   const triage = useMemo(() => parseAlbumTriage(params), [params]);
-  // No `useMemo`: `groupAlbums` caches on the array's identity, which every
-  // surface shares — a memo here would only add a second cache.
+  // `groupAlbums` caches by array identity; no memo needed.
   const albums = groupAlbums(library.data ?? []);
   const triaged = useMemo(() => applyAlbumTriage(albums, triage), [albums, triage]);
   const visible = useMemo(() => sortAlbums(filterAlbums(triaged, query), sort), [triaged, query, sort]);
 
-  // Removing a filter refines the entry we are on, it is not a new place —
-  // same reasoning as the genre chips' `replace`.
+  // `replace`: removing a filter refines the current entry.
   const clearParam = (name: string) => {
     const next = new URLSearchParams(params);
     next.delete(name);
@@ -77,20 +75,9 @@ export function AlbumsView() {
         <TriageChips chips={chips} />
       </ExplorerBar>
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && albums.length === 0 && (
         <EmptyLibrary icon={Disc} title={t("albums.empty.title")} body={t("albums.empty.body")} />
@@ -107,8 +94,7 @@ export function AlbumsView() {
         <AlbumShelf
           albums={visible}
           layout={layout}
-          // The unfiltered list: the drawer must keep hold of a record whose
-          // edit drops it out of the current filter or sort.
+          // Unfiltered, so the drawer keeps a record its edit filters out.
           pool={albums}
           animationKey={`${params.toString()}:${query}:${sort}`}
           onPlay={(album) => playOrdered(album.tracks)}

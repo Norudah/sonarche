@@ -16,32 +16,19 @@ import {
 } from "@/features/import/api";
 import { libraryKey } from "@/features/library/hooks";
 
-/**
- * How far the import has got. Two stages, because they count different things
- * and a single bar pretending otherwise would stall at 100% for the second.
- */
+/** Two stages counting different things. */
 export type ImportProgress =
-  /** beets copying, counted in album folders. */
+  /** Album folders copied by beets. */
   | { stage: "copying"; folders: number; folder: string | null }
-  /** The cover pass that follows, counted in albums looked at. */
+  /** Albums checked by the cover pass. */
   | { stage: "covers"; done: number; total: number };
 
-/**
- * Follow the import while it runs.
- *
- * The sidecar's events are already forwarded to the webview wholesale, so this
- * listens to them directly rather than having Rust relay the same numbers a
- * second time. Subscribed only while `active`: the import is the one thing on
- * the page, and a listener outliving it would collect the next one's ticks.
- */
+/** Follows the sidecar's forwarded progress events while `active`. */
 export function useImportProgress(active: boolean): ImportProgress | null {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [lastActive, setLastActive] = useState(active);
 
-  // Cleared during render rather than from the effect: an import starting has
-  // to forget the last one's ticks *before* anything is drawn, and resetting
-  // inside the effect paints one frame of the old numbers first — the previous
-  // import's last folder, under the new one's path.
+  // Reset during render, so the previous import's numbers never paint.
   if (lastActive !== active) {
     setLastActive(active);
     setProgress(null);
@@ -71,21 +58,15 @@ export function useImportProgress(active: boolean): ImportProgress | null {
 
 export const importsKey = ["imports"] as const;
 
-/** The archive of finished imports. Never refetched on its own: the only thing
- * that adds a row is an import ending, and that invalidates this key itself. */
+/** Only invalidated when an import ends. */
 export function useImports() {
   return useQuery<ImportRecord[]>({ queryKey: importsKey, queryFn: listImports });
 }
 
-/** Names the running import in the mutation cache, so the shell can see it
- * from any page (the global progress toast) without the page lifting a thing. */
+/** Lets the shell find the running import in the mutation cache (for the toast). */
 export const importRunKey = ["library-import-run"] as const;
 
-/**
- * Run the import. Two caches go stale the moment it ends, and one of them on a
- * failure too: the library gained tracks, and the archive gained a row either
- * way — a failed import is a thing that happened.
- */
+/** Invalidates the library and the archive; a failed import is archived too. */
 export function useLibraryImport() {
   const queryClient = useQueryClient();
 
@@ -97,16 +78,7 @@ export function useLibraryImport() {
   });
 }
 
-/**
- * What undoing this run would take away, asked only while the question is on
- * screen.
- *
- * A query rather than a call made before opening the dialog: the count comes
- * from a sidecar round-trip over the whole library, and the confirmation should
- * appear at once and fill in, not wait to be shown. Never cached — between two
- * openings the library can have changed, and a stale count under a destructive
- * button is worse than no count.
- */
+/** Fetched only while the confirmation is open, never cached. */
 export function useImportUndoPreview(id: string, enabled: boolean) {
   return useQuery<ImportUndoPreview>({
     queryKey: ["import-undo-preview", id],
@@ -117,14 +89,7 @@ export function useImportUndoPreview(id: string, enabled: boolean) {
   });
 }
 
-/**
- * Take one import back out.
- *
- * Everything is invalidated, deliberately. The undo removes tracks, albums,
- * covers and playlist entries in one go — naming the caches it touches would
- * mean this feature reaching into three others, and it is rare enough that
- * refetching the app's state costs nothing anyone will feel.
- */
+/** Invalidates everything: tracks, albums, covers and playlists all change. */
 export function useUndoImport() {
   const queryClient = useQueryClient();
 
@@ -134,11 +99,7 @@ export function useUndoImport() {
   });
 }
 
-/**
- * Ask the running import to stop. The signal is the whole call: the import's
- * own mutation is what resolves — with `cancelled` set — once beets has
- * actually stopped, so there is nothing to invalidate here.
- */
+/** Only signals; the import mutation resolves as cancelled. */
 export function useCancelImport() {
   return useMutation<void, unknown, void>({ mutationFn: cancelLibraryImport });
 }

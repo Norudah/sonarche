@@ -8,31 +8,19 @@ import { durations, easings, springs } from "@/shared/motion/tokens";
 
 interface AlbumStickyHeaderProps {
   album: Album;
-  /** False while the hero is still on screen — the bar would only duplicate it. */
+  /** False while the hero is visible. */
   isVisible: boolean;
   onPlay: () => void;
 }
 
-/**
- * The album's identity, kept in reach once the hero has scrolled away.
- *
- * Always mounted, faded in and out rather than added and removed. Mounting it
- * on scroll meant building a blurred, full-width bar in the middle of a scroll
- * gesture — the one moment the main thread has none to spare — and the hitch
- * showed. Opacity and a small slide are compositor work; the element is already
- * there when the moment comes.
- *
- * It carries the primary action so "play this album" never scrolls out of reach
- * on a long tracklist, but not the destructive one, which has no business
- * sitting permanently under the cursor.
- */
+/** Keeps the album and its play button in reach after the hero scrolls away.
+ * Always mounted and faded, since mounting a blurred bar mid-scroll hitched. */
 export function AlbumStickyHeader({ album, isVisible, onPlay }: AlbumStickyHeaderProps) {
   const { t } = useTranslation("library");
 
   return (
     <motion.div
-      // Hidden it must not swallow clicks meant for the tracklist underneath,
-      // nor answer to the keyboard.
+      // When hidden, it must not take clicks or focus.
       aria-hidden={!isVisible}
       inert={!isVisible}
       initial={false}

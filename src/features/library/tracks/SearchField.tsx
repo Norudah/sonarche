@@ -2,9 +2,7 @@ import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/** Long enough to swallow a whole word typed at speed, short enough that the
- * list still feels like it answers the keystroke. 200ms let a pause between two
- * words through and refiltered on a half-typed query; 350ms read as sluggish. */
+/** Swallows a word typed at speed; still feels immediate. */
 const DEBOUNCE_MS = 275;
 
 interface SearchFieldProps {
@@ -13,32 +11,17 @@ interface SearchFieldProps {
 }
 
 /**
- * Hand-rolled rather than HeroUI's InputGroup: its field tokens resolve to a
- * white background with a zero-width border, which disappears on our near-white
- * page, and its component-layer rules won over every override we tried. A
- * filled pill is two elements — not worth fighting the primitive for.
- *
- * The field owns the text; the page is told about it on a delay. Typing
- * "radiohead" used to run nine full filter passes over the library and rebuild
- * the list nine times, eight of them for a prefix nobody was searching for —
- * and that cost grows with the library, which is exactly backwards.
- *
- * The debounce is here and not in the pages because all four of them (tracks,
- * albums, artists, genres) share this field, and a delay applied per page is a
- * delay that will be forgotten on the fifth.
- *
- * Clearing skips the delay: the button is an explicit "show me everything
- * again", and making that wait feels broken.
+ * Hand-rolled: HeroUI's InputGroup is invisible on our near-white page and
+ * resists overrides. The input echoes immediately; the page is told after a
+ * debounce (here, shared by every search). Clearing skips the delay.
  */
 export function SearchField({ value, onChange }: SearchFieldProps) {
   const { t } = useTranslation("library");
-  // The input must echo the keystroke immediately — only the *filtering* is
-  // deferred. A field that lags behind the keyboard reads as a frozen app.
+  // Echo keystrokes immediately; only filtering is deferred.
   const [text, setText] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // A pending keystroke must not fire after the field is gone: the page that
-  // owns the query may already have unmounted with the route.
+  // Don't fire after unmount.
   useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
 
   const push = (next: string, immediate = false) => {
@@ -58,8 +41,7 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
         type="text"
         value={text}
         onChange={(event) => push(event.target.value)}
-        // Enter means "I have finished typing" and Escape means "drop it" —
-        // both are answers to the delay, so neither should have to wait it out.
+        // Enter and Escape skip the delay.
         onKeyDown={(event) => {
           if (event.key === "Enter") push(text, true);
           if (event.key === "Escape") push("", true);

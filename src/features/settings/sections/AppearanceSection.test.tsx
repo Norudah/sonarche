@@ -5,9 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppearanceSection } from "@/features/settings/sections/AppearanceSection";
 import { ThemeProvider } from "@/features/settings/ThemeContext";
 
-/** The state moved to the root provider so the OS subscription outlives this
- * screen; the section is still where it is driven from, so the tests stay
- * here and mount the pair. */
+/** Mounts the section with the root theme provider. */
 function renderSection() {
   return render(
     <ThemeProvider>
@@ -22,10 +20,7 @@ afterEach(() => {
   document.documentElement.removeAttribute("data-theme");
 });
 
-/**
- * jsdom ships no matchMedia. Ours is a stub with a working listener list, so a
- * test can flip the OS underneath the component the way a desktop does.
- */
+/** jsdom has no matchMedia; this stub lets a test flip the OS theme. */
 function stubMatchMedia(prefersDark: boolean) {
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
 
@@ -53,9 +48,7 @@ function pick(radio: HTMLElement) {
   fireEvent.click(radio);
 }
 
-/** i18next is not initialised in this environment, so `t` echoes its key back;
- * the labels below are those keys. What matters here is the wiring, not the
- * copy — the strings are asserted by the locale files being valid JSON. */
+/** i18next isn't initialised, so `t` echoes the keys used below. */
 describe("AppearanceSection", () => {
   beforeEach(() => {
     stubMatchMedia(false);
@@ -87,15 +80,9 @@ describe("AppearanceSection", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  /**
-   * The one case the two-state split exists for: the desktop switching theme
-   * has to repaint the app without rewriting what the user asked for, so
-   * `system` is still the stored answer afterwards.
-   */
+  /** An OS change repaints without changing the stored `system` choice. */
   it("repaints when the OS flips under a system choice", async () => {
-    // Starting from an explicit choice, so picking `system` is a real change:
-    // clicking the segment already selected fires no onChange, and the default
-    // is `system` anyway.
+    // Start from an explicit choice: clicking the selected segment fires nothing.
     window.localStorage.setItem("sonarche.theme", "dark");
     const media = stubMatchMedia(false);
     renderSection();

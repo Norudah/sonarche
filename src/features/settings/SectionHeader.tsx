@@ -1,10 +1,4 @@
-/** The head of every settings pane: a title and a lede, nothing above them.
- *
- * The eyebrow that used to sit here said "Paramètres" — true, and redundant
- * now that the dialog's own menu says it two inches to the left. Smaller than
- * the library heroes too: this is a pane inside a window, not a page filling
- * one, and a 3xl title in a 42rem column reads as a headline for the whole
- * dialog rather than for the section under it. */
+/** Title and lede of a settings pane. */
 export function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <header>

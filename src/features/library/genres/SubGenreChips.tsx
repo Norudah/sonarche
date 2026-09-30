@@ -6,33 +6,15 @@ import { searchWith } from "@/features/library/queryParams";
 
 interface SubGenreChipsProps {
   subs: SubGenre[];
-  /** null = the whole family. Comes from the route, not from local state. */
+  /** null = the whole family; from the route. */
   selected: string | null;
 }
 
-/**
- * The family's genres, as navigation.
- *
- * They started as buttons holding component state, which was wrong twice over.
- * Practically: opening an album from a filtered shelf and coming back lost the
- * filter, because nothing in the history remembered it. And conceptually: a
- * genre is something the user can go *to* and inspect, not a switch on someone
- * else's page — which is the whole reason the route grew a second segment.
- *
- * Selecting the active chip again goes back up to the family, so the pair
- * stays reversible without a separate "clear" control.
- *
- * Every chip *replaces* rather than pushes. Pushing meant trying six genres in
- * a row buried the page you arrived from under six history entries, and getting
- * out took six presses of a Back button that appeared to do nothing each time.
- * Refining which genre you are looking at is one visit to this family, not six
- * places you went.
- */
+/** The family's genres as navigation (`?genre=` in the URL, so filters survive
+ * back navigation). `replace`, not push; the active chip toggles back up. */
 export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
   const { t } = useTranslation("library");
-  // Only `?genre=` is this control's to change. Rebuilding the whole query from
-  // the family and the genre alone dropped `?view=`, so flipping a chip in the
-  // tracks mode threw the page back to its overview.
+  // Only `?genre=` is this control's; other params (`?view=`) are kept.
   const [params] = useSearchParams();
 
   if (subs.length === 0) return null;

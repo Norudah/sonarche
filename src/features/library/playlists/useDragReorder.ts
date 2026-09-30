@@ -5,56 +5,34 @@ import { rowShift, targetIndex } from "@/features/library/playlists/reorder";
 import { edgeScrollSpeed } from "@/shared/lib/edgeScroll";
 import { useScrollport } from "@/shared/ui/Scrollport";
 
-/** Vertical distance between two row tops beyond the row itself: the table's
- * `border-spacing-y-0.5` (2px). The row height is measured from the grabbed
- * row at drag start — a constant would silently lie the day padding changes. */
+/** The table's `border-spacing-y-0.5`; row height is measured at drag start. */
 const ROW_GAP = 2;
 
 interface DragState {
   from: number;
-  /** Where the row would land if released now. */
   to: number;
-  /** How far the dragged row is from its slot, pointer + auto-scroll combined. */
+  /** Pointer plus auto-scroll offset. */
   deltaY: number;
-  /** Row pitch measured at grab time; rowStyle needs it to shift neighbours. */
+  /** Measured at grab time. */
   rowHeight: number;
 }
 
 interface DragReorder {
-  /** Live while a handle is held; null the rest of the time. */
   drag: DragState | null;
-  /** Spread onto each row's drag handle. */
   handleProps: (index: number) => {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   };
-  /** The transform each row wears while a drag is live. */
   rowStyle: (index: number) => CSSProperties | undefined;
 }
 
 /**
- * Pointer-driven row reordering, no drag-and-drop API and no dependency.
+ * Pointer-capture row reordering. HTML5 drag-and-drop was ruled out: no
+ * auto-scroll in WKWebView, an unstyleable ghost, a hijacked cursor. Rows
+ * preview the order with transforms; the gesture's state lives in the
+ * pointerdown closure. Auto-scroll runs on its own frame loop.
  *
- * HTML5 DnD was the obvious reach and the wrong one: its auto-scroll is
- * engine-dependent (WKWebView does nothing), its ghost image is a screenshot
- * we cannot style, and it commandeers the cursor. Pointer capture gives the
- * same gesture with none of that — the handle captures the pointer, the maths
- * lives in `reorder.ts`, and rows preview the final order with transforms
- * (compositor work, no relayout, no DOM reordering until the store answers).
- *
- * The whole gesture lives inside the pointerdown closure: geometry, listeners
- * and the auto-scroll frame are locals that exist exactly as long as the drag,
- * so there is nothing to desynchronise from render and nothing to clean up on
- * unmount — releasing the pointer releases it all.
- *
- * Auto-scroll runs on its own animation frame loop so holding the pointer
- * still inside an edge zone keeps scrolling — pointer events stop firing the
- * moment the hand stops. The loop folds the scrolled distance back into the
- * drag's delta, so the row stays under the pointer while the page moves.
- *
- * One known limit, accepted: on a *windowed* list (150+ rows), a very long
- * auto-scroll can carry the window past the dragged row's own slot, at which
- * point its ghost unmounts until the drop. The order preview and the drop
- * itself stay correct — state is index-based, not DOM-based.
+ * Known limit: on a windowed list, a long auto-scroll can unmount the dragged
+ * row until the drop; the result stays correct (state is index-based).
  */
 export function useDragReorder(count: number, onMove: (from: number, to: number) => void): DragReorder {
   const scrollport = useScrollport();
@@ -75,9 +53,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       const rowHeight = row.getBoundingClientRect().height + ROW_GAP;
       let lastClientY = startY;
       let scrollFrame: number | null = null;
-      // The gesture's own copy of the state. `finish` must read the final
-      // position *outside* setDrag — a side effect inside a state updater runs
-      // twice under StrictMode, and this one is a store write.
+      // Read outside setDrag: a side effect in an updater runs twice under StrictMode.
       let current: DragState = { from: index, to: index, deltaY: 0, rowHeight };
 
       const applyPointer = () => {
@@ -117,8 +93,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       const onUp = () => finish(true);
       const onCancel = () => finish(false);
 
-      // Listeners on the capturing handle, so they follow the pointer wherever
-      // it goes and vanish with the gesture — nothing global to forget.
+      // On the capturing handle, so they end with the gesture.
       handle.addEventListener("pointermove", onPointerMove);
       handle.addEventListener("pointerup", onUp);
       handle.addEventListener("pointercancel", onCancel);

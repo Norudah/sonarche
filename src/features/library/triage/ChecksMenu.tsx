@@ -7,20 +7,7 @@ import { ChecksList } from "@/features/library/triage/ChecksList";
 import type { CheckKey } from "@/features/library/triage/enabledChecks";
 import type { TriageLine } from "@/features/library/triage/queue";
 
-/**
- * Which checks this page is allowed to raise.
- *
- * Every line stays listed here whether it is on or not, with the count it would
- * report — turning one off must not make it vanish from the place you go to
- * turn it back on, and a line reading "0" is itself the answer to "is this
- * still worth watching".
- *
- * A popover rather than only a settings page: the question occurs to someone
- * looking at the queue, and an answer three screens away from the annoyance is
- * an answer nobody finds — the same reasoning that moved the badge switch onto
- * this hero. Settings carries the same switches (see `ChecksList`) for whoever
- * arrives from the other direction; the counts are this surface's alone.
- */
+/** Popover listing every check with its switch and count, including disabled ones. */
 export function ChecksMenu({ queue, disabled }: { queue: TriageLine[]; disabled: CheckKey[] }) {
   const { t } = useTranslation("metadata");
   const counts = useMemo(() => new Map(queue.map((line) => [line.key, line.count])), [queue]);

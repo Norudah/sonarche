@@ -21,9 +21,7 @@ describe("buildSettingsIndex", () => {
     expect(keys).toContain("danger.erase");
   });
 
-  /** One level down live the three audio formats and the two fixed service
-   * delays. They name themselves for other reasons and none of them is a
-   * setting anyone goes looking for. */
+  /** Deeper entries (audio formats, fixed delays) aren't settings to look for. */
   it("stops at the direct children of a category", () => {
     const keys = entries.map((entry) => entry.key);
     expect(keys).not.toContain("files.audioFormat.formats");
@@ -47,9 +45,7 @@ describe("buildSettingsIndex", () => {
     expect(theme?.parentLabel).toBe("Apparence");
   });
 
-  /** Some of what people search for is true of a whole pane and of no row in
-   * it, so each pane is an entry too — named for itself, filed under its
-   * group. */
+  /** Panes are entries too, for what's true of a whole pane. */
   it("indexes the panes on their own lede", () => {
     const services = entries.find((entry) => entry.key === "services");
     expect(services?.name).toBe("Services externes");

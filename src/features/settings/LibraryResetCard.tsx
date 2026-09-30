@@ -6,18 +6,8 @@ import { useTranslation } from "react-i18next";
 import { SettingCard, SettingCardHeader } from "@/features/settings/SettingCard";
 import { useResetLibraryDev } from "@/features/settings/hooks";
 
-/**
- * The destructive one: it deletes the audio files, not just the index.
- *
- * Asks for a second click instead of a dialog — it's a developer tool, friction
- * should stay minimal, but a stray click must not wipe the library. Its
- * neighbour (`SetupResetCard`) touches none of this, which is exactly why the
- * two are separate cards in opposite registers rather than one control.
- *
- * The armed warning is the danger pane's own warning band rather than HeroUI's
- * `Alert`, which arrived at 14px with its own padding and made the card twice
- * the height of the one above it the moment you clicked.
- */
+/** Dev tool that deletes the audio files. A second click instead of a dialog:
+ * low friction, but no accidental wipes. */
 export function LibraryResetCard() {
   const { t } = useTranslation("settings");
   const reset = useResetLibraryDev();

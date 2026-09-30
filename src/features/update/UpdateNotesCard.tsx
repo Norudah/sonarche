@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { ReleaseNotes, SectionKind } from "@/features/update/notes";
@@ -7,21 +8,14 @@ interface UpdateNotesCardProps {
   notes: ReleaseNotes;
 }
 
-const SECTION_KEYS: Record<SectionKind, string> = {
+const SECTION_KEYS: Record<SectionKind, ParseKeys<"update">> = {
   breaking: "notes.breaking",
   features: "notes.features",
   fixes: "notes.fixes",
   perf: "notes.perf",
 };
 
-/**
- * The new version's changelog, cleaned up and grouped by kind. A body that
- * yields no section renders no card at all (`parseReleaseNotes` returns null
- * upstream).
- *
- * A card in the updates pane rather than a modal: the toast already navigates
- * here, and the notes belong next to the Install button they argue for.
- */
+/** The release notes, grouped. Not rendered when parsing yields nothing. */
 export function UpdateNotesCard({ version, notes }: UpdateNotesCardProps) {
   const { t } = useTranslation("update");
 

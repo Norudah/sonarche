@@ -10,18 +10,15 @@ interface PlaylistNameDialogProps {
   onClose: () => void;
   title: string;
   confirmLabel: string;
-  /** Every playlist, for the duplicate check — the same rule the backend
-   * enforces, applied before the round-trip so the dialog can say why. */
+  /** Same duplicate rule as the backend, checked up front to explain it. */
   existing: Playlist[];
-  /** Names taken by something that is not a stored row name — the favorites'
-   * localized label. See `playlistNameTaken`. */
+  /** See `playlistNameTaken`. */
   reservedNames?: string[];
   onSubmit: (name: string) => void;
   isPending: boolean;
 }
 
-/** The form proper, mounted per opening: its state starts fresh each time the
- * dialog appears, with no effect to re-arm it. */
+/** Mounted per opening. */
 function NameForm({
   onClose,
   title,
@@ -34,8 +31,7 @@ function NameForm({
   const { t } = useTranslation("library");
   const [name, setName] = useState("");
 
-  // Select-on-mount, once the modal's own focus pass has settled. A callback
-  // ref rather than an effect: the field exists exactly once per opening.
+  // Select once the modal's focus pass has settled.
   const grabFocus = useCallback((input: HTMLInputElement | null) => {
     if (input) setTimeout(() => input.select(), 50);
   }, []);
@@ -66,8 +62,7 @@ function NameForm({
           disabled={isPending}
           className="w-full rounded-xl border border-separator bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
         />
-        {/* Reserved line: the dialog must not grow when the error appears, or
-            the buttons jump under the pointer. */}
+        {/* Reserved height, so the buttons don't jump. */}
         <p className="min-h-4 text-[0.75rem] text-danger">{taken ? t("playlists.duplicateName") : ""}</p>
       </div>
       <footer className="flex items-center justify-end gap-2 px-6 pb-5">
@@ -91,12 +86,7 @@ function NameForm({
   );
 }
 
-/**
- * The one question asked when a playlist is born: what is it called. Renaming
- * an existing one is not here — it is one field of the edit dialog, beside the
- * tile and the sidebar glyph, so a playlist has exactly one place to be
- * changed.
- */
+/** Names a new playlist; renaming is in the edit dialog. */
 export function PlaylistNameDialog(props: PlaylistNameDialogProps) {
   const { isOpen, onClose, isPending } = props;
 

@@ -8,8 +8,9 @@
 # Intel macOS bundle and kept Windows off ARM. Dropping them costs nothing and
 # gets both back.
 #
-# `scripts/check-python-lock.py` re-resolves this file on every push and fails
-# if the lock has drifted, or if beets has started importing one of the three.
+# `scripts/check-python-lock.py` re-resolves this file on every PR into main. It
+# fails if a package was added or dropped, or if beets has started importing one
+# of the three; a newer transitive version is only a warning.
 #
 # Regenerate the lock:
 #   python -m venv /tmp/lock && /tmp/lock/bin/pip install -r sidecar/requirements.in

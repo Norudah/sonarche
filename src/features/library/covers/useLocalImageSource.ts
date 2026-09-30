@@ -1,39 +1,32 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { allowCoverPreview } from "@/features/library/api";
 import { WHOLE_FRAME, type CropFrame, type SourceSize } from "@/features/library/covers/coverCrop";
 
-/** Image formats a picked replacement may arrive in — mirrors the Rust
- * whitelist (`COVER_SOURCE_EXTENSIONS`). */
-export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+/** Mirrors the Rust whitelist (`COVER_SOURCE_EXTENSIONS`). */
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
-/** A local file admitted into the asset scope, ready to preview. */
+/** A local file admitted to the asset scope. */
 export interface LocalImage {
   path: string;
   url: string;
   bytes: number;
 }
 
-/**
- * Choosing a local image to become a square picture: the file dialog, OS
- * drag-and-drop (Tauri's own events — HTML5 drop never fires under the
- * interceptor), the preview admission, and the crop frame's state.
- *
- * Shared by the cover and artist-image modals; each keeps its own error copy,
- * so failures surface through callbacks rather than state here.
- */
+/** Local image picking for the image modals: file dialog, Tauri drag-and-drop
+ * (HTML5 drop doesn't fire), preview admission and crop state. Errors go
+ * through callbacks. */
 export function useLocalImageSource({
   isOpen,
   filterName,
   onAdopt,
   onUnreadable,
 }: {
-  /** Gates the drag-and-drop subscription to the modal's lifetime. */
+  /** Scopes the drag-and-drop subscription to the modal. */
   isOpen: boolean;
-  /** The file dialog's filter label. */
   filterName: string;
-  /** A new file is about to land — clear errors/competing selections. */
+  /** Clears errors and competing selections. */
   onAdopt?: () => void;
   onUnreadable: () => void;
 }) {
@@ -69,14 +62,11 @@ export function useLocalImageSource({
     setIsDropTarget(false);
   };
 
-  // The ref keeps the drop handler current without re-subscribing on every
-  // render; the subscription itself exists exactly while the modal is up.
-  const dropRef = useRef<(paths: string[]) => void>(() => {});
-  dropRef.current = (paths) => {
+  const onDrop = useEffectEvent((paths: string[]) => {
     const dropped = paths.find((path) => IMAGE_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(`.${ext}`)));
     if (dropped) void adopt(dropped);
     else onUnreadable();
-  };
+  });
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
@@ -88,7 +78,7 @@ export function useLocalImageSource({
           if (event.payload.type === "leave") setIsDropTarget(false);
           if (event.payload.type === "drop") {
             setIsDropTarget(false);
-            dropRef.current(event.payload.paths);
+            onDrop(event.payload.paths);
           }
         }),
       )

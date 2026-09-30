@@ -5,19 +5,9 @@ import { useTranslation } from "react-i18next";
 import { SuggestInput } from "@/features/library/metadata/SuggestInput";
 import type { SuggestKind } from "@/features/library/metadata/suggestions";
 
-/**
- * A labelled field in a metadata panel — the album modal's identity column, and
- * the track drawer.
- *
- * The panel no longer has a read mode, so the old grey/white pair — which said
- * "can you type here" — has nothing left to convey. What matters now is *what
- * you changed*: an edited field grows an accent rule down its left edge, states
- * the value it left, and offers to go back in one press.
- *
- * A field the tracks disagree on is drawn with a dashed border and says how many
- * values are in play. Left alone it writes nothing, so inspecting a half-tagged
- * record can never flatten it.
- */
+/** A labelled metadata field. An edited field gets an accent rule, shows its
+ * previous value and offers a revert. A mixed field (tracks disagree) is
+ * dashed and writes nothing unless changed. */
 export function EditableField({
   label,
   value,
@@ -33,19 +23,17 @@ export function EditableField({
 }: {
   label: string;
   value: string;
-  /** The value this field held before the edit, when it has moved. */
+  /** The value before the edit, when it moved. */
   origin?: string;
-  /** Help affordance rendered beside the label — a `FieldHelp` or its popover. */
+  /** A `FieldHelp` or its popover. */
   help?: ReactNode;
-  /** Muted qualifier appended to the label, e.g. "doesn't count toward completion". */
+  /** Muted qualifier after the label. */
   hint?: string;
-  /** How many distinct values the tracks carry, when they disagree. */
+  /** Distinct values when the tracks disagree. */
   mixedCount?: number;
-  /** Counted by completion and still empty — worth pointing at, in the same
-   * amber the tag dots and the completion ring use. */
+  /** Counted by completion and empty: shown in amber. */
   isMissing?: boolean;
-  /** Pool to suggest from while typing — for the values the library already
-   * knows (artists, albums, genres), where exact spelling is identity. */
+  /** Suggests existing library values, where exact spelling matters. */
   suggest?: SuggestKind;
   onChange: (value: string) => void;
   onRevert?: () => void;
@@ -65,10 +53,7 @@ export function EditableField({
           {hint && <span className="ml-1.5 font-normal opacity-70">· {hint}</span>}
         </label>
         {help}
-        {/* The revert *is* the "modified" mark — one element, on the label's
-            line, where nothing it does can resize the input. The badge and the
-            in-field button it replaces used to appear together the moment a key
-            was pressed, shrinking the field under the cursor. */}
+        {/* The revert is the "modified" mark, on the label line so the input never resizes. */}
         {isModified && onRevert && (
           <button
             type="button"
@@ -94,8 +79,7 @@ export function EditableField({
               ? t("albumMetadata.tracks.missing")
               : undefined
         }
-        // Border width is on every state, modified or not: switching it on
-        // alone would nudge the text sideways as you type.
+        // Constant border width, so the text doesn't shift when modified.
         className={`w-full rounded-xl border border-l-[3px] px-3 py-2 text-[0.875rem] text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25 ${
           isMixed
             ? "border-dashed border-muted/35 bg-surface placeholder:text-muted/60"

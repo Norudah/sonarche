@@ -6,20 +6,13 @@ import { guideUrl } from "@/shared/lib/siteLinks";
 
 import "driver.js/dist/driver.css";
 
-/**
- * The guided tour, on driver.js — the web's standard spotlight engine — rather
- * than a hand-rolled overlay: positioning, the SVG cutout, keyboard travel and
- * step lifecycle are exactly the wheels not worth reinventing. What stays ours
- * is the content (six stops over the app's fixed chrome, anchored on
- * `data-tour` attributes) and the dress (the `sonarche-tour` block in
- * `theme.css`, on the app's own tokens so both themes follow).
- */
+/** Guided tour on driver.js, anchored on `data-tour` attributes and styled by
+ * the `sonarche-tour` block in `theme.css`. */
 
 interface HomeTourInput {
   t: TFunction<"common">;
-  /** For the guide link on the closing step. */
   language: string;
-  /** Fired once, however the tour ends — finish, close, Escape, overlay. */
+  /** Fired once, however the tour ends. */
   onClose: () => void;
 }
 
@@ -29,15 +22,13 @@ const STOPS = [
   { id: "playlists", side: "right" },
   { id: "chrome", side: "bottom", align: "end" },
   { id: "player", side: "top", align: "center" },
-  // No element: driver.js centres the popover over the full overlay — the
-  // closing card, where the guide link lives.
+  // No element: a centred closing card.
   { id: "finale" },
 ] as const;
 
 export function runHomeTour({ t, language, onClose }: HomeTourInput): Driver {
   const tour = driver({
     showProgress: true,
-    // Language-neutral on purpose; the words around it are translated.
     progressText: "{{current}} / {{total}}",
     nextBtnText: t("tour.next"),
     prevBtnText: t("tour.back"),

@@ -18,15 +18,12 @@ const CELL_LINK = "block truncate outline-none hover:text-foreground hover:under
 
 interface PlaylistTrackRowProps {
   track: LibraryTrack;
-  /** 0-based row number as displayed — the playlist's own order, or the sort
-   * laid over it. Mutations address stored positions; the list maps them. */
+  /** 0-based displayed position; the list maps it to the stored one. */
   position: number;
-  /** False while a column sort is active: display and stored order then
-   * disagree, so the handle would move a different row than the one held. */
+  /** False while sorted: the handle would move the wrong row. */
   canReorder: boolean;
   style?: CSSProperties;
-  /** True for the row currently being dragged: it rides over its neighbours,
-   * so it needs a floor under its cells. */
+  /** The dragged row needs a background under its cells. */
   isDragging: boolean;
   dragHandleProps: { onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void };
   onPlay: () => void;
@@ -37,11 +34,7 @@ interface PlaylistTrackRowProps {
   onMoveToAlbum: () => void;
 }
 
-/**
- * One playlist row. Same anatomy as the library-wide `TrackRow` plus the drag
- * handle, and numbered by *position* rather than track tag — a playlist is its
- * own order, not the album's.
- */
+/** `TrackRow` plus a drag handle, numbered by playlist position. */
 export function PlaylistTrackRow({
   track,
   position,
@@ -136,7 +129,7 @@ export function PlaylistTrackRow({
         <span className="block">{track.length != null ? formatDuration(track.length) : t("metadata.emptyValue")}</span>
       </td>
 
-      {/* Same load-bearing wrapper as the other tables — see TrackRow. */}
+      {/* Wrapper for the row cascade, as in TrackRow. */}
       <td className={`${CELL} w-36 pl-6`}>
         <div>
           <RowActions

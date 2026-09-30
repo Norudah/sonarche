@@ -49,9 +49,7 @@ describe("settingsDialog", () => {
     expect(result.current).toEqual({ isOpen: false, category: "danger", highlight: null });
   });
 
-  /** The pane a search result asks for, and the ring on the setting itself.
-   * Picking a category by hand clears it: you are no longer following a
-   * pointer. */
+  /** Picking a pane by hand clears the search highlight. */
   it("reveals a setting, and drops the pointer on the next hand-picked pane", () => {
     const { result } = renderHook(() => useSettingsDialog());
 

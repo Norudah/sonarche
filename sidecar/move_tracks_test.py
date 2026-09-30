@@ -5,6 +5,7 @@ import unittest
 
 from beets.library import Item, Library
 
+import covers
 import library
 import move_tracks
 import provenance
@@ -28,9 +29,7 @@ class RenumberingTest(unittest.TestCase):
 
 
 class MoveTest(unittest.TestCase):
-    """Against a real beets library: the verb's whole job is what beets does
-    around a re-parented item — the destination, the pruning, the album row's
-    inheritance — and a hand-built SQLite file would prove none of it."""
+    """Against a real beets library, since beets' re-parenting is what matters."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -76,7 +75,9 @@ class MoveTest(unittest.TestCase):
     def test_moves_a_track_into_an_existing_album(self):
         lib = self._lib()
         target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
-        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead", artist="Radiohead")
+        source = self._album(
+            lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead", artist="Radiohead"
+        )
         moved_id = next(iter(source.items())).id
         lib._close()
 
@@ -156,7 +157,9 @@ class MoveTest(unittest.TestCase):
     def test_without_renumber_positions_are_kept(self):
         lib = self._lib()
         target = self._album(lib, "Kid A", ["Everything"], album="Kid A", albumartist="Radiohead")
-        source = self._album(lib, "Kid A frag", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        source = self._album(
+            lib, "Kid A frag", ["Idioteque"], album="Kid A", albumartist="Radiohead"
+        )
         item = next(iter(source.items()))
         item.track = 8
         item.tracktotal = 10
@@ -174,8 +177,22 @@ class MoveTest(unittest.TestCase):
 
     def test_gathers_a_selection_into_a_new_collection(self):
         lib = self._lib()
-        a = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead", mb_albumid="mb-kid-a")
-        b = self._album(lib, "Four", ["Fireproof"], album="Four", albumartist="One Direction", mb_albumid="mb-four")
+        a = self._album(
+            lib,
+            "Kid A",
+            ["Idioteque"],
+            album="Kid A",
+            albumartist="Radiohead",
+            mb_albumid="mb-kid-a",
+        )
+        b = self._album(
+            lib,
+            "Four",
+            ["Fireproof"],
+            album="Four",
+            albumartist="One Direction",
+            mb_albumid="mb-four",
+        )
         ids = [next(iter(a.items())).id, next(iter(b.items())).id]
         lib._close()
 
@@ -195,7 +212,9 @@ class MoveTest(unittest.TestCase):
         self.assertEqual(album.get(library.ALBUM_KIND_KEY), library.COLLECTION)
         # The row copied the first item's release identity; it must not keep it.
         self.assertEqual(album.mb_albumid, "")
-        self.assertEqual([item.track for item in sorted(album.items(), key=lambda i: i.track)], [1, 2])
+        self.assertEqual(
+            [item.track for item in sorted(album.items(), key=lambda i: i.track)], [1, 2]
+        )
         lib._close()
 
     def test_a_new_album_needs_a_title_and_an_artist(self):
@@ -204,7 +223,10 @@ class MoveTest(unittest.TestCase):
         moved_id = next(iter(source.items())).id
         lib._close()
 
-        for spec in ({"album": "", "albumartist": "Moi"}, {"album": "Mes préférés", "albumartist": " "}):
+        for spec in (
+            {"album": "", "albumartist": "Moi"},
+            {"album": "Mes préférés", "albumartist": " "},
+        ):
             with self.assertRaises(RuntimeError):
                 self._move(item_ids=[moved_id], new_album=spec)
 
@@ -213,9 +235,13 @@ class MoveTest(unittest.TestCase):
         the exact clobber `inherit=False` exists to prevent."""
         lib = self._lib()
         source = self._album(
-            lib, "Kid A", ["Idioteque"],
-            album="Kid A", albumartist="Radiohead",
-            mb_albumid="mb-kid-a", mb_trackid="mb-idioteque",
+            lib,
+            "Kid A",
+            ["Idioteque"],
+            album="Kid A",
+            albumartist="Radiohead",
+            mb_albumid="mb-kid-a",
+            mb_trackid="mb-idioteque",
         )
         moved_id = next(iter(source.items())).id
         lib._close()
@@ -229,13 +255,12 @@ class MoveTest(unittest.TestCase):
         lib._close()
 
     def test_a_compilation_track_stops_being_one(self):
-        """Found on the real library: `comp` picks the path *template*, so a
-        track arriving from a compilation kept filing itself under
-        `Compilations/` while its twelve new siblings sat under the artist —
-        one record, two folders, and only the disk knew."""
+        """`comp` selects the path template, so it must follow the record."""
         lib = self._lib()
         target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
-        source = self._album(lib, "JPOP", ["Guest"], album="JPOP", albumartist="Various Artists", comp=True)
+        source = self._album(
+            lib, "JPOP", ["Guest"], album="JPOP", albumartist="Various Artists", comp=True
+        )
         moved_id = next(iter(source.items())).id
         lib._close()
 
@@ -274,12 +299,11 @@ class MoveTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.dir, "Kid A")))
 
     def test_gathering_a_whole_record_takes_its_row_and_folder_with_it(self):
-        """Found on the real library: `add_album` re-parents its items inside
-        its own transaction, so reading the source off the item afterwards read
-        the *new* row — no source was ever recorded, and the emptied one and
-        its cover outlived the move."""
+        """`add_album` re-parents items in its own transaction; sources must be read first."""
         lib = self._lib()
-        source = self._album(lib, "Kid A", ["Everything", "Idioteque"], album="Kid A", albumartist="Radiohead")
+        source = self._album(
+            lib, "Kid A", ["Everything", "Idioteque"], album="Kid A", albumartist="Radiohead"
+        )
         art = os.path.join(self.dir, "Kid A", "cover.jpg")
         with open(art, "wb") as fh:
             fh.write(b"art")
@@ -304,7 +328,9 @@ class MoveTest(unittest.TestCase):
     def test_a_source_still_holding_tracks_is_left_alone(self):
         lib = self._lib()
         target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse")
-        source = self._album(lib, "Kid A", ["Everything", "Idioteque"], album="Kid A", albumartist="Radiohead")
+        source = self._album(
+            lib, "Kid A", ["Everything", "Idioteque"], album="Kid A", albumartist="Radiohead"
+        )
         moved_id = sorted(source.items(), key=lambda i: i.track)[0].id
         lib._close()
 
@@ -334,22 +360,26 @@ class MoveTest(unittest.TestCase):
         lib._close()
 
     def test_moving_between_same_named_records_bakes_no_aunique_suffix(self):
-        """Found on a user's library: a one-by-one download matched another
-        edition of the target ("American Idiot" [48777-2] vs [WBCD 2075]), and
-        the move computed the destination while the emptied source row still
-        existed — %aunique saw two records with one name and suffixed the
-        target's folder. The source was removed right after, but nothing
-        re-moved the file, so every add left the album folder split."""
+        """Moving onto another edition with the same name must not leave a %aunique
+        suffix on the target folder."""
         lib = self._lib()
         target = self._album(
-            lib, "American Idiot", ["Holiday"],
-            album="American Idiot", albumartist="Green Day",
-            mb_albumid="mb-standard", catalognum="48777-2",
+            lib,
+            "American Idiot",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
+            catalognum="48777-2",
         )
         source = self._album(
-            lib, "American Idiot dup", ["Letterbomb"],
-            album="American Idiot", albumartist="Green Day",
-            mb_albumid="mb-japan", catalognum="WBCD 2075",
+            lib,
+            "American Idiot dup",
+            ["Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-japan",
+            catalognum="WBCD 2075",
         )
         moved_id = next(iter(source.items())).id
         lib._close()
@@ -363,17 +393,16 @@ class MoveTest(unittest.TestCase):
         lib._close()
 
     def test_arriving_tracks_heal_the_targets_stale_folder(self):
-        """Residents whose paths were baked with a suffix by an earlier
-        incident follow the same move: once the duplicate rows are gone the
-        album re-files itself under its clean name."""
+        """Residents with a stale suffix are re-filed under the clean name."""
         lib = self._lib()
         target = self._album(
-            lib, "American Idiot [48777-2]", ["Holiday"],
-            album="American Idiot", albumartist="Green Day",
+            lib,
+            "American Idiot [48777-2]",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
         )
-        source = self._album(
-            lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead"
-        )
+        source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
         moved_id = next(iter(source.items())).id
         lib._close()
 
@@ -387,14 +416,14 @@ class MoveTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.dir, "American Idiot [48777-2]")))
 
     def test_a_target_without_an_album_artist_gets_one_from_its_tracks(self):
-        """The two-cards regression: a row named track by track in the drawer
-        never gains an album artist, arrivals inherit the blank, and the app —
-        which groups cards by (album artist, title) with a per-track artist
-        fallback — shows the one record as two albums."""
+        """A blank album artist on the target would split the record into cards."""
         lib = self._lib()
         target = self._album(
-            lib, "X", ["One", "Two"],
-            album="X", artist="Real Name",
+            lib,
+            "X",
+            ["One", "Two"],
+            album="X",
+            artist="Real Name",
         )
         self.assertEqual(target.albumartist, "")
         source = self._album(lib, "staging", ["Three"], artist="LIVinglife")
@@ -413,9 +442,7 @@ class MoveTest(unittest.TestCase):
 
     def test_a_target_with_an_owner_keeps_it(self):
         lib = self._lib()
-        target = self._album(
-            lib, "Mine", ["Kept"], album="Mine", albumartist="Muse", artist="Muse"
-        )
+        target = self._album(lib, "Mine", ["Kept"], album="Mine", albumartist="Muse", artist="Muse")
         source = self._album(lib, "staging", ["Guest"], artist="LIVinglife")
         moved_id = next(iter(source.items())).id
         lib._close()
@@ -463,18 +490,14 @@ class MoveTest(unittest.TestCase):
     def _embeds(self):
         """Record what `embed_cover` is handed, without a real audio file to
         write into: the fixtures are five bytes of "audio"."""
-        import enrich
-
         calls: list[tuple[int, bytes]] = []
-        original = enrich.embed_cover
-        enrich.embed_cover = lambda item, data, is_png: calls.append((item.id, data)) or True
-        self.addCleanup(setattr, enrich, "embed_cover", original)
+        original = covers.embed_cover
+        covers.embed_cover = lambda item, data, is_png: calls.append((item.id, data)) or True
+        self.addCleanup(setattr, covers, "embed_cover", original)
         return calls
 
     def test_an_arrival_takes_the_record_s_cover(self):
-        """Filing a track onto a record is saying it belongs there — and it used
-        to keep its own release's picture, so it sat in the right album wearing
-        the wrong cover."""
+        """Arrivals take the record's cover."""
         lib = self._lib()
         target = self._covered_target(lib)
         source = self._album(lib, "Kid A", ["Idioteque"], album="Kid A", albumartist="Radiohead")
@@ -502,9 +525,7 @@ class MoveTest(unittest.TestCase):
         self.assertEqual(calls, [])
 
     def test_the_record_s_cover_replaces_a_singleton_s_own(self):
-        """A written-out singleton cover is the answer for a track with no
-        record. Once it has one, that file is a second answer — and the one the
-        library listing falls back to."""
+        """A singleton cover becomes redundant once the track has a record."""
         lib = self._lib()
         target = self._covered_target(lib)
         single = self._item("Singles/Orphan/Loner.mp3", title="Loner", artist="Orphan")
@@ -567,7 +588,9 @@ class MoveTest(unittest.TestCase):
         target = self._album(lib, "Kid A", ["Everything"], album="Kid A", albumartist="Radiohead")
         target[library.ALBUM_KIND_KEY] = library.COLLECTION
         target.store(inherit=False)
-        source = self._album(lib, "Kid A frag", ["Idioteque"], album="Kid A", albumartist="Radiohead")
+        source = self._album(
+            lib, "Kid A frag", ["Idioteque"], album="Kid A", albumartist="Radiohead"
+        )
         moved_id = next(iter(source.items())).id
         lib._close()
 
@@ -589,7 +612,9 @@ class MoveTest(unittest.TestCase):
 
     def test_both_targets_at_once_is_an_error(self):
         with self.assertRaises(RuntimeError):
-            self._move(item_ids=[1], target_album_id=1, new_album={"album": "X", "albumartist": "Y"})
+            self._move(
+                item_ids=[1], target_album_id=1, new_album={"album": "X", "albumartist": "Y"}
+            )
         with self.assertRaises(RuntimeError):
             self._move(item_ids=[1])
 

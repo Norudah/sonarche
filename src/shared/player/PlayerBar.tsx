@@ -9,15 +9,13 @@ import { Transport } from "@/shared/player/Transport";
 import { VolumeControl } from "@/shared/player/VolumeControl";
 
 interface PlayerBarProps {
-  /** An app-level control for the annex row — the favorites heart. A slot
-   * because this bar lives in `shared` and must not know the features that
-   * want a seat on it; the app shell decides what rides along. */
+  /** A slot for app-level controls (the favorites heart), since `shared`
+   * can't import features. */
   accessory?: ReactNode;
 }
 
 export function PlayerBar({ accessory }: PlayerBarProps) {
-  // Deliberately does not read the playhead, the queue or the volume — those
-  // controls subscribe on their own so this bar is not rebuilt with them.
+  // Playhead, queue and volume are read by their own controls, not here.
   const { current, isPlaying } = usePlayer();
 
   return (
@@ -31,8 +29,6 @@ export function PlayerBar({ accessory }: PlayerBarProps) {
         <SeekBar />
       </div>
 
-      {/* Right side is the annex row — what plays next, and the words to what
-       * plays now — with volume keeping the outer edge. */}
       <div className="flex flex-1 items-center justify-end gap-3">
         {accessory}
         <LyricsPanel />

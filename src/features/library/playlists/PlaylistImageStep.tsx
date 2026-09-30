@@ -23,32 +23,19 @@ import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverM
 import { playlistCovers } from "@/features/library/playlists/playlists";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/** Narrower than the album and artist stages: this pane stands beside the edit
- * form rather than alone, and the pair must still fit the app's 1080px floor. */
+/** Narrower than other stages: this pane sits beside the form. */
 const STAGE_PX = 220;
 
-/**
- * Give a playlist a tile of its own. Left, what the shelf draws today: the
- * user's image, or the mosaic standing in. Right, the replacement, arriving by
- * any road the source bar offers. The image lands in the app's own data, never
- * in the library folder — the library stays 100% beets-clean, and a future
- * playlist export can copy the file out from there.
- *
- * Writing here is immediate and local: replacing an image is not a draft the
- * way a name is, and the confirm button is its own commit. Done either way, the
- * pane folds away and leaves the form it was opened from standing.
- *
- * No "Annuler" in the footer: the form beside it has one, and two of them a
- * hand's width apart would each look like the way out of the whole session.
- * Backing out of this pane is the cross in its header.
- */
+/** Sets a playlist's tile: current image or mosaic on the left, the
+ * replacement on the right. Applies immediately, not as part of the form's
+ * draft. Closed by the header's cross. */
 export function PlaylistImageStep({
   playlist,
   tracks,
   onClose,
 }: {
   playlist: Playlist;
-  /** Members resolved against the library, for the mosaic on the left. */
+  /** Members, for the mosaic. */
   tracks: LibraryTrack[];
   onClose: () => void;
 }) {
@@ -82,8 +69,7 @@ export function PlaylistImageStep({
     remove.mutate(playlist.id, { onSuccess: onClose, onError: () => setError(t("playlists.image.failed")) });
   };
 
-  // A frame wider than the picture would come back letterboxed; the tile is
-  // square wherever the shelf draws it.
+  // The tile is square, so the frame must fit the picture.
   const fits = local.natural == null || frameFits(local.natural, local.frame.zoom);
   const canConfirm = local.image != null && local.natural != null && fits && !isPending;
 

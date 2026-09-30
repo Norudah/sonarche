@@ -4,13 +4,7 @@ import type { TrackRowValues } from "@/features/library/albums/albumFields";
 import { EditableCell } from "@/features/library/albums/inspect/EditableCell";
 import { GRID } from "@/features/library/albums/inspect/tracklistGrid";
 
-/**
- * One editable row of the record.
- *
- * The leading gutter is where an unanswered suggestion waits: the popover can
- * only be anchored to one row at a time, so every other pending offer folds into
- * a dot on its own line rather than queueing somewhere the user will never look.
- */
+/** One editable row. Pending offers not currently shown wait as a gutter dot. */
 export function TracklistRow({
   row,
   origins,

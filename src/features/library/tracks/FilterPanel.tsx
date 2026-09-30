@@ -7,11 +7,7 @@ import { barPill } from "@/features/library/barPill";
 import type { TrackFilterState } from "@/features/library/tracks/useTrackFilter";
 import { GENRE_MISSING, GENRE_OFF_TREE } from "@/features/library/tracks/triage";
 
-/**
- * Amber when on, for the app's one rule about this colour: a correction filter
- * means "something to fix" — the wash the Metadata queue's doors wear — while
- * indigo is the colour of browsing. The decade is browsing; the rest are not.
- */
+/** Amber for correction filters, indigo for browsing (the decade). */
 const TONE = {
   browse: "bg-accent text-accent-foreground",
   fix: "bg-warning-soft font-medium text-warning",
@@ -52,9 +48,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** Active filters that live in here rather than behind a pill of their own. The
- * count is what tints the trigger; the chips beside it spell them out, so the
- * trigger deliberately carries no number of its own. */
+/** Active filters inside the panel; tints the trigger. */
 function panelFilterCount(state: TrackFilterState): number {
   const { triage } = state;
   return [
@@ -67,26 +61,14 @@ function panelFilterCount(state: TrackFilterState): number {
   ].filter(Boolean).length;
 }
 
-/**
- * The bar's overflow: the axes that do not deserve a permanent pill.
- *
- * Two kinds live here, and the colours say which is which. The decade is the one
- * browsing axis no other page in the app covers — a timeline, so chips rather
- * than a menu, since reading 1990 next to 2020 is the point. The rest are the
- * triage deep links the Metadata page already produces, exposed by hand: the
- * explorer could always *arrive* filtered on them and never set one itself.
- *
- * Chips and not checkboxes because the app already speaks in chips — the genre
- * chips, the triage chips — and a form control here would have been the only one
- * of its kind in the library.
- */
+/** Secondary axes: the decade (chips, a timeline) and the triage filters the
+ * Metadata page links to, now settable by hand. */
 export function FilterPanel({ state }: { state: TrackFilterState }) {
   const { t } = useTranslation("library");
   const { triage, facets, axes, setParam } = state;
 
   const active = panelFilterCount(state);
-  // The two sentinels ride the same `?genre=` param as a real genre name, so a
-  // page that does not own that axis cannot offer them.
+  // The genre sentinels share `?genre=`, so only pages owning that axis offer them.
   const ownsGenre = axes.includes("genre");
   const toggleGenre = (sentinel: string) => setParam("genre", triage.genre === sentinel ? null : sentinel);
 
@@ -123,8 +105,7 @@ export function FilterPanel({ state }: { state: TrackFilterState }) {
             >
               {t("triage.missingYear")}
             </ToggleChip>
-            {/* Same `missing` param as the year, so turning one on turns the
-                other off — the toggles say so by construction. */}
+            {/* Shares the `missing` param with the year, so they're exclusive. */}
             <ToggleChip
               tone="fix"
               isActive={triage.missingTrackNumber}

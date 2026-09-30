@@ -4,12 +4,11 @@ import { useTranslation } from "react-i18next";
 interface ArtistsHeaderProps {
   artistCount: number;
   albumCount: number;
-  /** Top right of the title row — see `AlbumsHeader`, same slot. */
+  /** Top right; see `AlbumsHeader`. */
   actions?: ReactNode;
 }
 
-/** Same shape as `AlbumsHeader`, down to the counts line: two shelves that look
- * different at the top read as two unrelated screens. */
+/** Same shape as `AlbumsHeader`. */
 export function ArtistsHeader({ artistCount, albumCount, actions }: ArtistsHeaderProps) {
   const { t } = useTranslation("library");
 

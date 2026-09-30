@@ -9,14 +9,8 @@ import { SplashHandover } from "@/features/onboarding/SplashHandover";
 import { useSplashPhase } from "@/features/onboarding/splashPhase";
 import { buildSetupSteps, gateState } from "@/features/onboarding/steps";
 
-/**
- * Nothing downstream renders until the walkthrough is done with the window.
- * Wraps the whole shell, not just the routed content: see `SplashScreen` for
- * why a half-interactive sidebar was worse than a full-window wait.
- *
- * The gate only decides *which* of three surfaces owns the window; the states
- * themselves are computed in `steps.ts` and drawn in `SetupFlow`.
- */
+/** Holds the whole window until setup is done (see `SplashScreen`). Decides
+ * which surface owns the window; states come from `steps.ts`. */
 export function SetupGate({ children, welcome }: { children: ReactNode; welcome: boolean }) {
   const { t } = useTranslation("onboarding");
   const status = useEnvStatus();
@@ -28,9 +22,8 @@ export function SetupGate({ children, welcome }: { children: ReactNode; welcome:
     acoustidConfigured: onboarding.data?.acoustidConfigured ?? false,
   });
 
-  // Fail open: a walkthrough flag we cannot read must not lock anyone out of
-  // their own library. A genuinely broken environment still holds the window,
-  // because that verdict comes from the steps, not from this flag.
+  // Fail open: an unreadable flag must not lock users out. A broken environment
+  // still holds the gate through the steps.
   const onboardingCompleted = onboardingForcedByDev() ? false : (onboarding.data?.completed ?? true);
 
   const gate = gateState({ steps, envKnown: status.isSuccess && !onboarding.isPending, onboardingCompleted });
@@ -50,20 +43,14 @@ export function SetupGate({ children, welcome }: { children: ReactNode; welcome:
     );
   }
 
-  // The walkthrough stays underneath while the "aboard" beat plays over it.
-  // Swapping to the shell the moment the gate opens would flash it for a frame,
-  // between the walkthrough leaving and the curtain arriving — and the whole
-  // point of that beat is that the setup ends on the ark, not on a glimpse of
-  // the app it was building.
+  // Keep the walkthrough mounted under the "aboard" beat, so the shell doesn't flash.
   const walkthroughHoldsTheGround = gate === "onboarding" || phase === "aboard";
 
   return (
     <SplashHandover phase={phase} revealed={revealed}>
       {walkthroughHoldsTheGround ? (
         <SetupWalkthrough
-          // Past this point the gate has already ruled the environment
-          // unusable, so a completed flag can only mean it came undone after a
-          // setup that once worked.
+          // The gate found the environment unusable: a completed flag means it broke later.
           mode={onboardingCompleted ? "repair" : "firstRun"}
           env={status.data ?? null}
           acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}

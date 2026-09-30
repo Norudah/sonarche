@@ -1,8 +1,5 @@
-/**
- * Reserved space for the crop warnings, held open for the whole cropping
- * session: the messages come and go with the zoom, and a modal that changes
- * height every few notches reads as jitter, not guidance.
- */
+/** Space reserved for crop warnings during the whole session, so the modal
+ * doesn't change height as they come and go. */
 export function CropWarningSlot({ active, warning }: { active: boolean; warning: string | null }) {
   if (!active) return null;
   return (

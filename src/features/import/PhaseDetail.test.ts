@@ -2,12 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { DETAIL_KEY } from "@/features/import/PhaseDetail";
 
-/**
- * `AnimatePresence mode="wait"` plays a key change as collapse-then-expand.
- * That is right when the content really swaps and absurd when it does not:
- * pressing Import used to fold the whole panel shut and reopen it on the same
- * summary. These pairs must keep sharing a key.
- */
+/** Phases showing the same body share a key, so the panel doesn't collapse
+ * and reopen between them. */
 describe("detail keys", () => {
   it("keeps the card open across a phase that shows the same thing", () => {
     expect(DETAIL_KEY.scanned).toBe(DETAIL_KEY.importing);

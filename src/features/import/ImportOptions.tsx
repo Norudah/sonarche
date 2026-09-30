@@ -11,8 +11,7 @@ import { useAutoExpand } from "@/shared/lib/optionPanels";
 interface ImportOptionsProps {
   grouping: Grouping;
   category: string | null;
-  /** Null before a folder has been scanned. The options stay readable — the
-   * suggestion is the only thing that needs a folder. */
+  /** Null before a scan; only the suggestion needs a folder. */
   report: ScanReport | null;
   isDisabled: boolean;
   onGroupingChange: (grouping: Grouping) => void;
@@ -20,28 +19,9 @@ interface ImportOptionsProps {
 }
 
 /**
- * What the import will do, decided on the card that does it.
- *
- * These two questions used to sit loose on the page between the picker and the
- * card, appearing only once a folder had been scanned — so the one moment you
- * could read them was the moment you were being asked to answer them, and the
- * card that carried out the answer never mentioned it. They are the download
- * composer's options strip, which is the shape this app already has for "here
- * is what is about to happen, adjust it".
- *
- * Closed until a folder is in hand, then opened by the scan itself. An import
- * is not the passive act a download is — something *is* being decided here, and
- * a panel that stays shut lets the user press Import without ever learning
- * that. It reopens on each new folder (the key), and closes again by hand —
- * or for good, from Settings, once the answer has stopped being a question.
- *
- * Readable with no folder at all, too: someone wondering what an import even
- * does can open it and find out, which is the other half of what the help mark
- * on the lead does.
- *
- * The trigger summarises both answers, for the same reason the composer's does:
- * a collapsed panel that hides what it is set to is a panel you have to open
- * every time to be sure.
+ * The import options on the card, like the composer's options strip. Opens on
+ * each new scan (unless disabled in Settings); readable without a folder. The
+ * trigger summarises both answers.
  */
 export function ImportOptions({
   grouping,
@@ -57,10 +37,7 @@ export function ImportOptions({
 
   return (
     <Disclosure
-      // Remounted per folder so a new scan re-opens the panel: the decision is
-      // about *this* folder, and the last one's answer was reviewed already.
-      // The preference joins the key so flipping it in Settings shows here at
-      // once rather than after the next scan.
+      // Remounted per folder and preference change, so `defaultExpanded` re-applies.
       key={`${report?.largestFolder ?? "none"}:${autoExpand}`}
       defaultExpanded={autoExpand && report != null}
       className="border-t border-separator/60 bg-panel px-3 py-2"

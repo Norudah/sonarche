@@ -11,13 +11,12 @@ interface PlaylistStickyHeaderProps {
   covers: string[];
   customUrl?: string | null;
   favorites?: boolean;
-  /** False while the hero is still on screen — the bar would only duplicate it. */
+  /** False while the hero is visible. */
   isVisible: boolean;
   onPlay: () => void;
 }
 
-/** The album sticky header's twin — same always-mounted fade, same reason:
- * "play this list" must not scroll out of reach on a long playlist. */
+/** Same always-mounted fade as the album sticky header. */
 export function PlaylistStickyHeader({
   name,
   trackCount,

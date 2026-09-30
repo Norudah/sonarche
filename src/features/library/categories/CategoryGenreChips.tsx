@@ -6,17 +6,15 @@ import { searchWith } from "@/features/library/queryParams";
 
 interface CategoryGenreChipsProps {
   genres: CategoryGenre[];
-  /** null = the whole category. Comes from the route, not local state. */
+  /** null = the whole category; from the route. */
   selected: string | null;
 }
 
-/** SubGenreChips' twin on the category page: the same replace-not-push
- * navigation, the active chip toggling back up, state carried through so the
- * breadcrumb keeps pointing where the page was entered from. */
+/** `SubGenreChips` for the category page (`replace` navigation, toggling off). */
 export function CategoryGenreChips({ genres, selected }: CategoryGenreChipsProps) {
   const { t } = useTranslation("library");
   const { state } = useLocation();
-  // See SubGenreChips: this control owns `?genre=` and nothing else.
+  // Owns `?genre=` only (see SubGenreChips).
   const [params] = useSearchParams();
 
   if (genres.length === 0) return null;

@@ -10,8 +10,7 @@ interface TrackIndexCellProps {
   label: string;
 }
 
-/** Row number by default, equalizer while this track plays, play/pause on row
- * hover. The three states share one box so the column never shifts. */
+/** Row number, equalizer while playing, play/pause on hover; one fixed box. */
 export function TrackIndexCell({ index, isCurrent, isPlaying, onPlay, label }: TrackIndexCellProps) {
   const showPause = isCurrent && isPlaying;
 

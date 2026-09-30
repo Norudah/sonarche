@@ -1,27 +1,17 @@
 import { Heart, ListMusic } from "lucide-react";
 
 interface PlaylistCoverMosaicProps {
-  /** Up to four distinct cover URLs, playing order — see `playlistCovers`. */
+  /** Up to four distinct cover URLs; see `playlistCovers`. */
   covers: string[];
-  /** A user-chosen tile. Wins over the mosaic: the user said so. */
+  /** A user-chosen tile, preferred over the mosaic. */
   customUrl?: string | null;
-  /** Draws the heart tile, over any image — the favorites list is the app's
-   * own and wears the app's own face, which is also why nothing offers to
-   * change it. */
+  /** The heart tile of the built-in favorites list, over any image. */
   favorites?: boolean;
   className: string;
 }
 
-/**
- * The tile a playlist wears — the user's own image first, else a 2×2 mosaic
- * of its first four distinct sleeves.
- *
- * Four or nothing for the grid — a 2×2 with holes reads as broken images, so
- * below four the first cover stands alone, which is what a young playlist
- * honestly looks like. No artwork at all falls back to the same recessed slot
- * as a coverless album, with the playlist glyph instead of the disc so the two
- * shelves stay tellable apart at a glance.
- */
+/** The user's image, else a 2×2 mosaic (or a single cover below four), else
+ * the empty slot with the playlist glyph. */
 export function PlaylistCoverMosaic({ covers, customUrl, favorites, className }: PlaylistCoverMosaicProps) {
   if (favorites) {
     return (

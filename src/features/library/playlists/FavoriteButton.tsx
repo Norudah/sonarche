@@ -5,17 +5,11 @@ import { useFavorites } from "@/features/library/playlists/hooks";
 import { BAR_TRIGGER } from "@/shared/player/barTrigger";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
-/**
- * The one-press way in and out of the favorites list — membership in the
- * seeded playlist, nothing more, so the heart can never disagree with the
- * playlist page about what "favorite" means. Filled accent when in; the
- * optimistic add is what makes the fill answer the click, not the round-trip.
- */
+/** Toggles membership in the favorites playlist, optimistically. */
 export function FavoriteButton({ itemId, className }: { itemId: number; className: string }) {
   const { t } = useTranslation("library");
   const { favorites, ids, toggle } = useFavorites();
-  // Before the store answers (first paint, or a wiped install mid-reseed)
-  // there is nothing to toggle against; a dead heart would read as broken.
+  // Nothing to toggle against until the store answers.
   if (!favorites) return null;
 
   const active = ids.has(itemId);
@@ -32,11 +26,7 @@ export function FavoriteButton({ itemId, className }: { itemId: number; classNam
   );
 }
 
-/**
- * The player bar's heart: favorite what is playing right now, à la Apple. The
- * bar itself lives in `shared` and cannot know about playlists, so this rides
- * in through the `accessory` slot from the app shell.
- */
+/** The player bar's heart, passed through its `accessory` slot by the shell. */
 export function FavoriteCurrentButton() {
   const { current } = usePlayer();
   const itemId = current == null ? null : Number(current.id);

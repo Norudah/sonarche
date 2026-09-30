@@ -1,7 +1,4 @@
-"""Pure tests for the LRC parsing and candidate ranking (run: python -m unittest lyrics_test).
-
-Nothing here touches the network: `fetch` is a thin shell around these two, and
-they are where a wrong answer would show up as the wrong song scrolling past."""
+"""LRC parsing and candidate ranking (no network)."""
 
 import unittest
 
@@ -42,9 +39,7 @@ class StripStampsTest(unittest.TestCase):
 
 
 class PayloadTest(unittest.TestCase):
-    """The wire contract with `shared/player/lyrics.ts`, which declares these
-    five keys by hand. A rename on this side has to fail here rather than reach
-    the panel as an `undefined`."""
+    """Wire contract with `shared/player/lyrics.ts`."""
 
     def test_carries_every_field_the_front_reads(self):
         payload = lyrics._payload("lrclib", "Words", "[00:01.00] Words")

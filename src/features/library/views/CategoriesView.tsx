@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { ArrowRight, Tags } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,19 +8,13 @@ import { groupCategories } from "@/features/library/categories/categories";
 import { CategoryList } from "@/features/library/categories/CategoryList";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 import { useLibrary } from "@/features/library/hooks";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { ActionLink } from "@/shared/ui/ActionLink";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
-/**
- * The category index — the genres page's twin for the user's own axis
- * (context: Video Games, Film…), cutting across genres.
- *
- * No search field and no banner for the untagged: the set is a handful of
- * curated values, and a track without a category is the normal case rather
- * than a problem to fix. The empty state explains the axis instead of
- * apologising, because on a fresh library it is the page's most likely face.
- */
+/** The category index. No search: the set is small. The empty state explains
+ * the axis, the likely face of a fresh library. */
 export function CategoriesView() {
   const { t } = useTranslation("library");
   const library = useLibrary();
@@ -48,20 +41,9 @@ export function CategoriesView() {
         </div>
       </div>
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && categories.length === 0 && (
         <EmptyState

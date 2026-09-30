@@ -1,18 +1,14 @@
-//! Human-readable file names for the `Artwork/` zone.
-//!
-//! Artist images and playlist tiles live in the user's library root, visible
-//! and copyable — so the files are named after what they show, not after a
-//! UUID only the index can decode. Three consumers share these rules: the
-//! artist image commands, the playlist cover commands, and the launch
-//! migration that renames the app-data era's technical names.
+//! Human-readable file names for the `Artwork/` zone, shared by artist
+//! images, playlist covers and the launch migration.
 
-/// Longest stem we will write. Also bounds names arriving over IPC.
+use std::path::Path;
+
+/// Also bounds names arriving over IPC.
 pub const MAX_STEM_CHARS: usize = 120;
 
-/// A name as a file stem every filesystem accepts: Windows-hostile characters
-/// and control bytes become underscores, trailing dots/spaces go (Windows
-/// strips them silently, which would desync the name), and an emptied result
-/// falls back rather than yielding an invisible file.
+/// A file stem every filesystem accepts: Windows-hostile and control
+/// characters become `_`, trailing dots/spaces are removed (Windows strips
+/// them silently), and an empty result uses `fallback`.
 pub fn file_stem(name: &str, fallback: &str) -> String {
     let cleaned: String = name
         .chars()
@@ -31,7 +27,6 @@ pub fn file_stem(name: &str, fallback: &str) -> String {
     }
 }
 
-/// The stem `filename` carries, extension dropped.
 pub fn stem_of(filename: &str) -> &str {
     std::path::Path::new(filename)
         .file_stem()
@@ -39,9 +34,8 @@ pub fn stem_of(filename: &str) -> &str {
         .unwrap_or(filename)
 }
 
-/// A stem no taken name collides with. Case-insensitive and extension-blind:
-/// macOS and Windows filesystems would silently merge "IAM.jpg" and
-/// "iam.png". Collisions get the Finder's own remedy, a numbered suffix.
+/// A stem free of collisions, compared case- and extension-insensitively (as
+/// macOS and Windows filesystems do). Collisions get a numbered suffix.
 pub fn unique_stem(name: &str, fallback: &str, taken: &[String]) -> String {
     let base = file_stem(name, fallback);
     let collides = |candidate: &str| {
@@ -62,6 +56,16 @@ pub fn unique_stem(name: &str, fallback: &str, taken: &[String]) -> String {
     }
 }
 
+/// Deletes a file left without a row, for artist images and playlist covers.
+pub fn remove_orphan(dir: &Path, filename: Option<String>) {
+    if let Some(filename) = filename {
+        let path = dir.join(&filename);
+        if let Err(err) = std::fs::remove_file(&path) {
+            log_line!("[artwork] could not remove {}: {err}", path.display());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,8 +79,6 @@ mod tests {
         );
     }
 
-    /// Windows silently strips trailing dots and spaces, which would desync
-    /// the visible name from what was written.
     #[test]
     fn trailing_dots_and_spaces_are_trimmed() {
         assert_eq!(file_stem("N.W.A.", "Artwork"), "N.W.A");

@@ -14,32 +14,18 @@ import { usePopOnActivate } from "@/shared/motion/usePopOnActivate";
 interface UrlComposerProps {
   onSubmit: (request: EnqueueRequest) => void;
   isPending: boolean;
-  /** Cleared by the page once the job is queued. */
   resetToken: number;
 }
 
-/**
- * The one control this page exists for.
- *
- * Everything that decides what a link becomes lives in this single panel — the
- * URL, whether it is a set or a track, and the tag it will be filed under —
- * because the alternative is a form whose consequences are scattered across the
- * screen. The panel is the hero: the heading above it is deliberately the same
- * size as every other page's, and the weight goes to the machine, not the copy.
- */
+/** The download form: URL, kind and options in one panel. */
 export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProps) {
   const { t } = useTranslation("download");
   const [url, setUrl] = useState("");
-  // The kind choice is bound to the URL it was made for: editing the input
-  // invalidates it, no effect needed.
+  // Bound to the URL it was made for, so editing the input resets it.
   const [choice, setChoice] = useState<{ url: string; kind: JobKind } | null>(null);
   const [category, setCategory] = useState<string | null>(readLastCategory);
-  // Deliberately not remembered across sessions, unlike the category: "this
-  // playlist is the Inception soundtrack" is true of one download, where "I
-  // file game music under Video Games" is a standing habit.
+  // Not remembered across sessions: a destination is about one link.
   const [destination, setDestination] = useState<Destination>(AUTO_DESTINATION);
-  // One record for the whole playlist. Reset with the destination: it is a
-  // statement about this link, not a standing habit.
   const [singleAlbum, setSingleAlbum] = useState(true);
   const [lastReset, setLastReset] = useState(resetToken);
 
@@ -52,25 +38,17 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
   }
 
   const detected = detectUrlKind(url);
-  // A link that can only be read one way decides for itself; anything else
-  // takes the user's answer, and failing that the album — a pasted playlist is
-  // what people come here with, and picking the single loses the other eleven.
+  // Ambiguous links default to the album: picking the single drops the rest.
   const forced: JobKind | null = detected === "album" ? "album" : detected === "single" ? "single" : null;
   const kind: JobKind = forced ?? (choice?.url === url ? choice.kind : "album");
 
   const canSubmit = detected != null && !isPending;
-  // On the wrapper rather than the Button: `usePopOnActivate` writes a
-  // transform on the element it is handed, and HeroUI's Button owns its own.
+  // On the wrapper: HeroUI's Button owns its transform.
   const submitRef = usePopOnActivate<HTMLDivElement>(canSubmit);
 
   return (
     <div className="relative -mx-8 -mt-5 overflow-hidden px-8 pt-10 pb-6">
-      {/* The same accent wash every library hero sits on — `accent-soft` fading
-       * to the page background — so this landing band reads as one family with
-       * the album, artist and genre headers rather than a screen of its own.
-       * Ending on the opaque background (not `transparent`) keeps the ramp in
-       * one colour family and dissolves it with no seam; see the library's
-       * `HeroWash` for the full reasoning. */}
+      {/* Same wash as the library heroes (see `HeroWash`). */}
       <div className="pointer-events-none absolute inset-0 hero-wash" />
 
       <div className="relative flex flex-col gap-5">
@@ -79,14 +57,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{t("title")}</h1>
         </div>
 
-        {/* Lifted by its shadow, never outlined at rest: a hairline ring around
-         * a white card sitting on the accent wash draws the box before it draws
-         * the field.
-         *
-         * Focus was answered with a 4px `accent-soft` halo, which at this size
-         * read as a second, blurrier shadow bleeding out of the card rather than
-         * as "you are typing here". It is now the card itself that reacts — it
-         * lifts one step, under a hairline accent ring. Same signal, no glow. */}
+        {/* Shadow at rest, lifted with an accent ring on focus. */}
         <form
           className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
           onSubmit={(event) => {
@@ -95,16 +66,10 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               onSubmit({ url: url.trim(), kind, category, forcedAlbum: toForcedAlbum(destination), singleAlbum });
           }}
         >
-          {/* `items-stretch`, not `items-center`: the input's height comes from
-           * its own padding and the button's from its size variant, and the two
-           * never matched. Stretching makes the shorter one adopt the taller
-           * one's box instead of sitting centred inside it. */}
+          {/* `items-stretch` aligns the input and button heights. */}
           <div className="flex items-stretch gap-2 p-2">
             <InputGroup.Root fullWidth className="border-none bg-transparent shadow-none">
-              {/* Recognising the link is the composer's first act, and it is
-               * reported where the link is rather than on a badge elsewhere:
-               * the neutral chain-link becomes the accent audio mark the
-               * moment the paste lands. */}
+              {/* The link icon turns into the audio mark once a link is recognised. */}
               <InputGroup.Prefix className="pr-3 pl-4 text-muted">
                 <Swap swapKey={detected != null ? "recognised" : "idle"} mode="cross" className="flex">
                   {detected != null ? (
@@ -123,9 +88,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
               />
             </InputGroup.Root>
 
-            {/* The commit point of the page, so it gets the most feedback: it
-             * swells the moment the form becomes submittable, and gives under
-             * the press. */}
+            {/* Pops when the form becomes submittable. */}
             <div ref={submitRef} className="flex shrink-0">
               <Button
                 type="submit"

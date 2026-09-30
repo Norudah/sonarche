@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
 
-/**
- * Where something stands, in one word and a dot.
- *
- * A dot and a label rather than a filled chip: a feed shows several of these at
- * once, and success is the quiet case — muted text next to a green dot — because
- * a shelf of green badges makes the one amber row harder to find, not easier.
- * The same object closes a download and an import, so it is written once.
- */
+/** Status as a dot and a word: quieter than chips when many are listed. */
 
 export type VerdictTone = "accent" | "success" | "warning" | "danger";
 

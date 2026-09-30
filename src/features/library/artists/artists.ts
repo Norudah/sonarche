@@ -4,26 +4,21 @@ import { FAMILY_NONE, familyKeyOf } from "@/features/library/genres/genres";
 import { createTextFilter } from "@/shared/lib/search";
 
 export interface Artist {
-  /** Album artist. Also the identity and the route segment — beets gives us no
-   * artist id, and adopting the MusicBrainz one would mean persisting a field
-   * `library.py` does not expose yet. */
+  /** The album artist: identity and route segment (beets has no artist id). */
   name: string;
-  /** Chronological, undated albums last: a discography reads by era. */
+  /** Chronological, undated last. */
   albums: Album[];
   trackCount: number;
-  /** Summed playtime in seconds across every album. */
+  /** Total seconds. */
   length: number;
-  /** Earliest and latest dated album, or null when nothing is dated. */
+  /** Earliest and latest dated album, or null. */
   span: { from: number; to: number } | null;
-  /** Distinct genres across the discography, most frequent first. */
+  /** Most frequent first. */
   genres: string[];
-  /** Dominant browse family, by plurality of tracks — the key that picks the
-   * artist's genre avatar. A sentinel (`FAMILY_OTHER`/`FAMILY_NONE`) when the
-   * discography carries no classified genre; the avatar falls back for those. */
+  /** Dominant family by track count, or a sentinel (`FAMILY_OTHER` / `FAMILY_NONE`). */
   family: string;
 }
 
-/** Oldest first: a discography reads by era. Undated albums always sink. */
 function byYearAscending(a: Album, b: Album): number {
   if (a.year == null && b.year == null) return a.title.localeCompare(b.title);
   if (a.year == null) return 1;
@@ -31,8 +26,7 @@ function byYearAscending(a: Album, b: Album): number {
   return a.year - b.year;
 }
 
-/** Plurality of the tracks' browse family. Ties break on the lexically smaller
- * key so the pick is stable across renders, never on Map iteration order. */
+/** Ties break on the smaller key, for a stable pick. */
 function dominantFamily(albums: Album[]): string {
   const counts = new Map<string, number>();
   for (const album of albums) {
@@ -69,11 +63,7 @@ function distinctGenres(albums: Album[]): string[] {
     .map(([genre]) => genre);
 }
 
-/**
- * Derived from the already-grouped albums rather than from the flat track list:
- * an artist *is* a set of albums here, and regrouping the tracks a second time
- * would be the same work twice for the same answer.
- */
+/** Derived from the grouped albums: an artist is a set of albums. */
 export function groupArtists(albums: Album[]): Artist[] {
   const groups = new Map<string, Album[]>();
 
@@ -99,15 +89,8 @@ export function groupArtists(albums: Album[]): Artist[] {
   });
 }
 
-/**
- * Tracks credited to this artist on someone else's album — the one thing the
- * artist page shows that no other view does.
- *
- * Exact match on the track artist, not a substring: "Daft Punk" would otherwise
- * claim every "Daft Punk Remix" in the library. A featuring credit buried in a
- * combined artist string is a tagging question, not a grouping one, and beets
- * gives us no separate credit list to do better.
- */
+/** Tracks credited to this artist on others' albums. Exact match, so "Daft
+ * Punk" doesn't claim "Daft Punk Remix". */
 export function appearancesOf(tracks: LibraryTrack[], name: string): LibraryTrack[] {
   return tracks.filter((track) => {
     const credited = track.artist.trim();
@@ -124,8 +107,7 @@ export function sortArtists(artists: Artist[], sort: ArtistSort): Artist[] {
   switch (sort) {
     case "name":
       return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    // Ties broken by name so the grid has a stable order rather than reshuffling
-    // between renders on a library where most artists have one album.
+    // Ties by name, for a stable order.
     case "albums":
       return sorted.sort((a, b) => b.albums.length - a.albums.length || a.name.localeCompare(b.name));
     case "tracks":
@@ -133,8 +115,7 @@ export function sortArtists(artists: Artist[], sort: ArtistSort): Artist[] {
   }
 }
 
-/** Same contract as `filterAlbums`: every term must match somewhere, so
- * "daft dis" finds Daft Punk through Discovery. */
+/** Every term must match somewhere (as in `filterAlbums`). */
 export const filterArtists = createTextFilter<Artist>((artist) =>
   [artist.name, ...artist.albums.map((album) => album.title), ...artist.genres].join(" "),
 );

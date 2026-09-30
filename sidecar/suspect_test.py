@@ -21,7 +21,9 @@ class IsTitleMismatchTest(unittest.TestCase):
     def test_shared_qualifier_alone_is_no_agreement(self):
         # "(End Title)" on both sides must not hide a cross-language mismatch.
         self.assertTrue(is_title_mismatch("Me voilà (End Title)", "Here I Am (End Title)"))
-        self.assertTrue(is_title_mismatch("Dégage ! (version single)", "Get Off My Back (Single Version)"))
+        self.assertTrue(
+            is_title_mismatch("Dégage ! (version single)", "Get Off My Back (Single Version)")
+        )
 
     def test_diacritics_and_case_fold_together(self):
         self.assertFalse(is_title_mismatch("me voila", "Me Voilà"))

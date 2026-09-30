@@ -19,9 +19,7 @@ class ParseTest(unittest.TestCase):
 
 class VocabularyTest(unittest.TestCase):
     def test_the_two_scopes_answer_different_checks(self):
-        """The front, the Rust command and this module all spell the vocabulary
-        out; a word missing from one of the three is a silent refusal at the
-        far end of the chain."""
+        """The vocabulary is duplicated in the front and in Rust; keep them in step."""
         self.assertEqual(accepted.TRACK_CHECKS, ("year", "track", "genre", "duplicates"))
         self.assertEqual(accepted.ALBUM_CHECKS, ("artwork",))
 

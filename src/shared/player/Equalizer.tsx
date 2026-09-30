@@ -1,5 +1,4 @@
-/** Animated bars for a track that is currently playing. Bars ride `currentColor`
- * so each caller sets the tone (white over artwork, accent in a list row). */
+/** Playing-track bars, coloured by `currentColor`. */
 export function Equalizer({ className = "" }: { className?: string }) {
   return (
     <div className={`flex h-3.5 items-end gap-0.5 ${className}`} aria-hidden>

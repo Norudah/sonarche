@@ -3,19 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { AcceptTarget } from "@/features/library/triage/queue";
 
-/**
- * What has already been answered, and the way back out.
- *
- * Without it, "c'est voulu" would be a one-way door: the line vanishes, and
- * nothing on the page says the objects still exist or that the answer can be
- * revised. A count that can only go down by hiding things is the same
- * dishonesty the page was just cured of, in the other direction.
- *
- * Deliberately below the queue and deliberately plain — no card, no glyph, no
- * colour. It is a footnote about a decision already taken, not a seventh thing
- * to deal with, and someone who has finished with these checks should be able
- * to stop seeing it as content.
- */
+/** Lists accepted checks with a way to undo them. Deliberately plain. */
 export function AcceptedNotice({
   targets,
   isPending,

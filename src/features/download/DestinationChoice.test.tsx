@@ -15,11 +15,7 @@ function renderWithQueries(ui: ReactElement) {
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-/**
- * The mapping decides whether a download rewrites where every one of its
- * tracks is filed, so what it reports has to be exact: null is "leave the
- * pipeline alone", and anything else is a promise to overwrite.
- */
+/** null leaves filing to the pipeline; anything else overwrites it. */
 describe("toForcedAlbum", () => {
   it("leaves the pipeline alone on automatic", () => {
     expect(toForcedAlbum({ mode: "auto" })).toBeNull();

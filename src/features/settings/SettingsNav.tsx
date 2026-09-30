@@ -33,9 +33,7 @@ function CategoryButton({
         className,
       )}
     >
-      {/* One pill for the whole menu, tweened between entries by the shared
-          layoutId — the same device the app's own nav uses, so moving between
-          settings categories feels like moving between pages. */}
+      {/* Shared layoutId, like the app sidebar's pill. */}
       {isActive && (
         <motion.span
           layoutId={layoutIds.settingsNavIndicator}
@@ -49,21 +47,12 @@ function CategoryButton({
   );
 }
 
-/**
- * The dialog's own menu: three titled groups, never a flat list.
- *
- * The flat list is what made the old menu unfindable. Its seven entries were
- * of equal rank but not of equal kind, so nothing told you which axis a
- * setting had been filed on — and the only way to find one was to guess the
- * axis first. A heading over each group answers that before you read a single
- * entry: how the app behaves for you, what it owns on your disk, what it is.
- */
+/** The dialog menu, in three titled groups so each setting's axis is clear. */
 export function SettingsNav({ current }: { current: SettingsCategoryId }) {
   const { t, i18n } = useTranslation("settings");
   const [query, setQuery] = useState("");
 
-  // Rebuilt only when the language changes: the bundle is the translated one,
-  // so a switch to English has to re-read it — nothing else can move it.
+  // Rebuilt on language change: the index holds translated strings.
   const language = i18n.resolvedLanguage ?? "fr";
   const entries = useMemo(
     () => buildSettingsIndex(i18n.getResourceBundle(language, "settings"), (key) => t(key)),
@@ -85,9 +74,7 @@ export function SettingsNav({ current }: { current: SettingsCategoryId }) {
           <SettingsSearchResults
             results={results}
             onPick={(entry) => {
-              // The query goes with the pick: the menu is a menu again, and
-              // the pane it just opened is the answer — leaving the results up
-              // would put the user back in front of the question.
+              // Picking a result clears the query.
               setQuery("");
               revealSetting(entry.category, entry.key);
             }}
@@ -95,8 +82,6 @@ export function SettingsNav({ current }: { current: SettingsCategoryId }) {
         ) : (
           settingsGroups.map((group) => (
             <div key={group.labelKey} className="flex flex-col gap-1">
-              {/* Same register as the app sidebar's section labels: a signpost
-                  to be found when looked for, not read on the way past. */}
               <p className="px-3 text-[10px] font-semibold tracking-widest text-muted/70 uppercase">
                 {t(group.labelKey)}
               </p>
@@ -113,19 +98,7 @@ export function SettingsNav({ current }: { current: SettingsCategoryId }) {
   );
 }
 
-/**
- * What the menu becomes when the window is too narrow to spend 15rem on it: one
- * scrollable row of the same entries, in the same order, groups implied by it.
- * Headings are the first thing to go — they cost a line each and the whole list
- * is visible at once here anyway.
- *
- * The frame around it (border, ground, and the close button beside it) belongs
- * to the caller: this is one scrolling lane in that row, not the row itself.
- *
- * No search down here. It needs a field, a result list and somewhere to put
- * them, and this layout exists precisely because there is no room — the rail
- * comes back with the width.
- */
+/** The menu as one scrollable row for narrow windows: no headings, no search. */
 export function SettingsNavStrip({ current }: { current: SettingsCategoryId }) {
   return (
     <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-3 py-2">

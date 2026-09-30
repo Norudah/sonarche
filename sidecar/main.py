@@ -1,24 +1,10 @@
-"""Music Manager sidecar: NDJSON over stdio, one request per line."""
+"""Sonarche sidecar: NDJSON over stdio, one request per line."""
 
 import json
 import sys
 import traceback
 
 import protocol
-
-
-def _handle_ping(_request_id: str, _params: dict) -> dict:
-    import platform
-
-    import beets
-    import yt_dlp
-
-    return {
-        "pong": True,
-        "python": platform.python_version(),
-        "beets": beets.__version__,
-        "yt_dlp": yt_dlp.version.__version__,
-    }
 
 
 def _handlers():
@@ -34,10 +20,9 @@ def _handlers():
     import enrich
     import enrich_album
     import genre_overrides
-    import genres
+    import import_undo
     import importer
     import library
-    import import_undo
     import library_align
     import library_import
     import lyrics
@@ -48,7 +33,6 @@ def _handlers():
     import services
 
     return {
-        "ping": _handle_ping,
         "probe": probe.handle,
         "download": download.handle,
         "import": importer.handle,
@@ -75,7 +59,6 @@ def _handlers():
         "cover_candidates": cover_set.candidates,
         "artist_image_set": artist_image.handle,
         "artist_image_fetch": artist_image.fetch,
-        "genres_recompute": genres.recompute,
         "genre_family_set": genre_overrides.handle_set,
         "genre_overrides_list": genre_overrides.handle_list,
         "lyrics_fetch": lyrics.fetch,
@@ -86,9 +69,7 @@ def _handlers():
 
 def main() -> None:
     handlers = _handlers()
-    # Before anything loads beets: the config's lastgenre section names the
-    # derived tree/whitelist, and the bundled base may have changed since
-    # they were last written (app update).
+    # Before beets loads: the config points at the derived genre tree.
     import genre_overrides
 
     genre_overrides.ensure_derived()

@@ -43,9 +43,7 @@ class MarkEditedTest(unittest.TestCase):
     def test_default_timestamp_is_utc_iso_seconds(self):
         item = _FakeItem()
         provenance.mark_edited(item, {"year"})
-        self.assertRegex(
-            item.get(provenance.EDITED_AT), r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-        )
+        self.assertRegex(item.get(provenance.EDITED_AT), r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
 class WasHandEditedTest(unittest.TestCase):
@@ -55,7 +53,7 @@ class WasHandEditedTest(unittest.TestCase):
         self.assertTrue(provenance.was_hand_edited(item, "genres"))
 
     def test_a_field_name_never_matches_as_substring(self):
-        """"genre" must not match the recorded "genres" — the trail compares
+        """ "genre" must not match the recorded "genres" — the trail compares
         whole attribute names, not text."""
         item = _FakeItem()
         provenance.mark_edited(item, {"genres"}, now="2026-07-23T10:00:00Z")

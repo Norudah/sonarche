@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack } from "@/features/library/api";
-import {
-  COMPLETENESS_KEYS,
-  countFilled,
-  diffFields,
-  effectiveEdit,
-  formatBitrate,
-  toFieldValues,
-} from "@/features/library/metadata/fields";
+import { diffFields, effectiveEdit, formatBitrate, toFieldValues } from "@/features/library/metadata/fields";
 
 function track(over: Partial<LibraryTrack> = {}): LibraryTrack {
   return {
@@ -61,30 +54,6 @@ describe("toFieldValues", () => {
   it("keeps year 0 as a value rather than dropping it", () => {
     // `!= null` on purpose: a falsy-but-present number is still a value.
     expect(toFieldValues(track({ year: 0 })).year).toBe("0");
-  });
-});
-
-describe("countFilled", () => {
-  it("counts every completeness field on a fully tagged track", () => {
-    expect(countFilled(toFieldValues(track()))).toBe(COMPLETENESS_KEYS.length);
-  });
-
-  it("does not count a whitespace-only value as filled", () => {
-    const values = toFieldValues(track({ album: "   ", genre: "" }));
-    expect(countFilled(values)).toBe(COMPLETENESS_KEYS.length - 2);
-  });
-
-  it("counts nothing on an empty track", () => {
-    const empty = toFieldValues(
-      track({ title: "", artist: "", albumArtist: "", album: "", year: null, track: null, genre: null }),
-    );
-    expect(countFilled(empty)).toBe(0);
-  });
-
-  it("never counts the category — optional by nature, in or out", () => {
-    const bare = countFilled(toFieldValues(track({ category: null })));
-    const tagged = countFilled(toFieldValues(track({ category: "Video Games" })));
-    expect(tagged).toBe(bare);
   });
 });
 

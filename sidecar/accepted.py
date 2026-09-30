@@ -1,60 +1,37 @@
-"""Checks whose verdict the owner has already heard, and answered.
+"""Checks the user has accepted as intended ("c'est voulu").
 
-The metadata page is a list of things Sonarche noticed. Some of them are not
-defects at all: a rip with no release year, a genre the app's tree has never
-heard of, two versions of a track someone keeps on purpose. Until now the only
-way to make such a line go away was to change the file to something it was not,
-so the count never reached zero and a number that can never reach zero reads as
-a reproach rather than an offer.
-
-Accepting is the other answer. It says "I have seen it, it is what I want", and
-it takes the object out of that check for good — the count goes down without a
-single tag being rewritten, which is the whole point.
-
-Stored per object and per check, never as a global "stop checking years": a
-library gains tracks, and a future import's untagged rips must still be
-mentioned. A comma-joined list on beets' own flexible attribute — items for the
-track checks, albums for the cover — because the set is tiny, read on every
-listing, and never queried by value.
+Accepting removes an object from one check without rewriting any tag. Stored
+per object and per check as a comma-joined flexible attribute (on items for
+track checks, on albums for the cover check).
 """
 
 import os
 
 import protocol
 
-# Same word on both tables. Which one is read is decided by the check, not by
-# the key, and a single name keeps the two halves obviously the same idea.
+# Same key on items and albums; the check decides which is read.
 KEY = "sonarche_accepted"
 
-# Only what a person can legitimately mean to leave as it is. `suspect` is
-# absent on purpose — a match flagged as contradicting its own download is a
-# question about what the audio *is*, and the answer is to look, not to accept.
-# `tracklist` is absent too: a record with no tracklist is a collection, which
-# says so once and for the whole record (see `album_kind.py`).
+# `suspect` needs a look, not an acceptance; `tracklist` is handled by the
+# album kind (see `album_kind.py`).
 TRACK_CHECKS = ("year", "track", "genre", "duplicates")
 ALBUM_CHECKS = ("artwork",)
 
 
 def parse(stored) -> set[str]:
-    """The stored list as a set. Pure. Anything unreadable is an empty set —
-    a corrupt value must never make an object look accepted."""
+    """The stored list as a set; anything unreadable is empty."""
     if not stored or not isinstance(stored, str):
         return set()
     return {part.strip() for part in stored.split(",") if part.strip()}
 
 
 def join(checks) -> str:
-    """The canonical stored form: sorted and comma-joined, so the same set is
-    always the same string and an unchanged write is detectably unchanged."""
+    """Canonical form: sorted and comma-joined."""
     return ",".join(sorted(checks))
 
 
 def next_value(stored, check: str, accepted: bool) -> str | None:
-    """The value to store, or None when the attribute should be removed. Pure.
-
-    None rather than an empty string: an object that accepts nothing is the
-    default, and a row saying so is a row that outlives its meaning.
-    """
+    """The value to store, or None to remove the attribute."""
     current = parse(stored)
     if accepted:
         current.add(check)
@@ -64,7 +41,7 @@ def next_value(stored, check: str, accepted: bool) -> str | None:
 
 
 def handle(_request_id: str, params: dict) -> dict:
-    """Accept (or un-accept) one check across a batch of tracks or albums."""
+    """Accept or un-accept one check across a batch of tracks or albums."""
     scope = params["scope"]
     check = params["check"]
     accepted = bool(params["accepted"])
@@ -99,9 +76,7 @@ def handle(_request_id: str, params: dict) -> dict:
                     continue
             else:
                 obj[KEY] = wanted
-            # Database only, like the record's kind: this is Sonarche's memory
-            # of a conversation with its user, not a tag any other player could
-            # read. Writing it would edit N files to say nothing they can carry.
+            # App-only attribute, not written to tags.
             obj.store()
             updated += 1
     finally:

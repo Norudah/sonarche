@@ -3,27 +3,12 @@ import { CircleHelp } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
- * The help affordance that sits on a field's label.
- *
- * Two shapes, one grammar. `FieldHelp` is a tooltip for a notion that fits in a
- * sentence — or in a short list, which is why it takes a node rather than a
- * string; `tooltip-ink` caps it at 18rem, so a tooltip cannot grow into a page.
- * `FieldHelpPopover` is a click-to-open panel for the two or three that need a
- * paragraph and an example. Both hang off the label, never off a block of their
- * own — an explanation placed away from what it explains reads as one more thing
- * to fill in.
- *
- * Deliberately not on every field: an icon carried by all of them stops being
- * seen. A field whose label already says everything ("Année") gets none.
- *
- * Both triggers render HeroUI's focusable `role="button"` div, so the tooltip
- * opens on keyboard focus and the popover on Enter/Space — no `tabIndex` of our
- * own to maintain.
+ * Help attached to a field label: `FieldHelp` is a tooltip, `FieldHelpPopover`
+ * a click-to-open panel for longer explanations. Used sparingly. HeroUI's
+ * triggers are focusable, so both work from the keyboard.
  */
 
-/* `inline-flex` and a baseline nudge so the mark can also close a sentence, not
- * only sit on a label. Every other caller puts it in a flex row, where the two
- * displays are identical and `align-*` is ignored — nothing there changes. */
+/* `inline-flex` + baseline nudge, so it can also end a sentence. */
 const TRIGGER =
   "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
 
@@ -33,8 +18,7 @@ export function FieldHelp({ label, text, delay = 200 }: { label: string; text: R
       <Tooltip.Trigger aria-label={label} className={`${TRIGGER} cursor-pointer text-muted/70 hover:text-muted`}>
         <CircleHelp className="size-3.5" />
       </Tooltip.Trigger>
-      {/* `tooltip-ink` is ours (theme.css): HeroUI's default is white-on-white
-          with `break-all`, which splits words mid-syllable. */}
+      {/* `tooltip-ink` (theme.css): HeroUI's default is white-on-white with `break-all`. */}
       <Tooltip.Content showArrow className="tooltip-ink">
         {text}
       </Tooltip.Content>
@@ -42,13 +26,8 @@ export function FieldHelp({ label, text, delay = 200 }: { label: string; text: R
   );
 }
 
-/** The same dark slab for a control that is not a field — a bulk action whose
- * name cannot say what it does.
- *
- * `role="presentation"` and `tabIndex={-1}` strip HeroUI's trigger of the button
- * role it renders by default: the child here *is* the button, and a button
- * inside a button is both invalid markup and two things to tab through. The
- * control keeps its own `aria-label`, so nothing is lost to a screen reader. */
+/** Tooltip for a control that isn't a field. `role="presentation"` and
+ * `tabIndex={-1}` drop HeroUI's trigger role: the child is the button. */
 export function ActionHelp({ children, text }: { children: ReactNode; text: string }) {
   return (
     <Tooltip delay={300}>

@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
@@ -13,17 +13,15 @@ export function DeleteTrackDialog({
 }: {
   track: LibraryTrack | null;
   onClose: () => void;
-  /** Fired only on a confirmed deletion — lets callers dismiss anything still
-   * showing the now-gone track (the metadata drawer). */
+  /** Only on a confirmed deletion, e.g. to close the metadata drawer. */
   onDeleted?: () => void;
 }) {
   const { t } = useTranslation("library");
   const remove = useDeleteTrack();
 
-  // Keep the last track around so its title doesn't flicker during the closing animation.
-  const lastRef = useRef<LibraryTrack | null>(null);
-  if (track) lastRef.current = track;
-  const shown = track ?? lastRef.current;
+  // Keeps the title during the closing animation.
+  const [shown, setShown] = useState(track);
+  if (track && track !== shown) setShown(track);
 
   const confirm = () => {
     if (!track) return;

@@ -15,6 +15,7 @@ import { CandidateStrip } from "@/features/library/covers/CandidateStrip";
 import { PASTE_CHORD } from "@/features/library/covers/clipboard";
 import { cropRect, frameFits, type SourceSize } from "@/features/library/covers/coverCrop";
 import { CropWarningSlot } from "@/features/library/covers/CropWarningSlot";
+import { formatWeight, useEmbeddedEstimate } from "@/features/library/covers/embeddedWeight";
 import { ImageModalShell } from "@/features/library/covers/ImageModalShell";
 import { ImagePickStage } from "@/features/library/covers/ImagePickStage";
 import { ImageSourceBar } from "@/features/library/covers/ImageSourceBar";
@@ -24,53 +25,9 @@ import { useSetAlbumCover } from "@/features/library/hooks";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/**
- * Replace an album's cover, stated as a before/after.
- *
- * Left, what the album wears today and what it costs (the display file, and
- * its embedded copy across every m4a). Right, the replacement, arriving by any
- * road the source bar offers — a picked or dropped file, a pasted link, the
- * clipboard — cropped square by moving the frame itself, with its resulting
- * weights estimated before anything is written; or one of the Cover Art
- * Archive's own uploads for the release, the way back to an official cover.
- * Confirming is the only step that writes.
- */
-
-function formatWeight(bytes: number, locale: string, mb: string, kb: string): string {
-  const format = (value: number) =>
-    new Intl.NumberFormat(locale, { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value);
-  return bytes >= 1_048_576 ? `${format(bytes / 1_048_576)} ${mb}` : `${format(Math.max(1, bytes / 1024))} ${kb}`;
-}
-
-/** What the 500px embedded rendition of this crop would weigh, measured by
- * actually encoding it in the webview. An asset-protocol image can taint the
- * canvas depending on CORS headers, so failure is an answer too. */
-async function estimateEmbeddedBytes(
-  url: string,
-  crop: { left: number; top: number; size: number },
-  isPng: boolean,
-): Promise<number | null> {
-  try {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = url;
-    await image.decode();
-    const side = Math.min(500, crop.size);
-    const canvas = document.createElement("canvas");
-    canvas.width = side;
-    canvas.height = side;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-    context.drawImage(image, crop.left, crop.top, crop.size, crop.size, 0, 0, side, side);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, isPng ? "image/png" : "image/jpeg", 0.92),
-    );
-    return blob?.size ?? null;
-  } catch {
-    return null;
-  }
-}
-
+/** Replaces an album's cover as a before/after: current cover and its weight
+ * on the left; a picked, pasted or dropped image (cropped square) or a CAA
+ * upload on the right. Only confirming writes. */
 export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; isOpen: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation("library");
   const replace = useSetAlbumCover();
@@ -79,15 +36,13 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
   const [error, setError] = useState<string | null>(null);
   const [currentBytes, setCurrentBytes] = useState<number | null>(null);
   const [currentSize, setCurrentSize] = useState<SourceSize | null>(null);
-  const [embeddedEstimate, setEmbeddedEstimate] = useState<number | null>(null);
-  // The online lookup is the user's move, never the modal's: opening it must
-  // not cost a network round-trip to the Cover Art Archive.
+  // The CAA lookup only runs when the user asks.
   const [wantsCandidates, setWantsCandidates] = useState(false);
 
   const local = useLocalImageSource({
     isOpen,
     filterName: t("albumMetadata.cover.filterName"),
-    // A local pick supersedes a selected candidate, and vice versa below.
+    // A local pick replaces a selected candidate, and vice versa.
     onAdopt: () => {
       setError(null);
       setCandidate(null);
@@ -121,8 +76,7 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     onClose();
   };
 
-  // The current cover's weight, read once per opening — it feeds the "what it
-  // costs today" line the comparison is anchored to.
+  // The current cover's weight, read once per opening.
   const currentArtPath = album.tracks.find((track) => track.artPath)?.artPath ?? null;
   useEffect(() => {
     if (!isOpen || !currentArtPath) return;
@@ -137,25 +91,8 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     };
   }, [isOpen, currentArtPath]);
 
-  // Estimated embedded weight of the crop, re-measured shortly after the frame
-  // settles — an encode per keypress would churn for nothing.
   const { image, natural, frame } = local;
-  useEffect(() => {
-    if (!image || !natural) {
-      setEmbeddedEstimate(null);
-      return;
-    }
-    const crop = cropRect(natural, frame) ?? { left: 0, top: 0, size: natural.width };
-    let stale = false;
-    const timer = window.setTimeout(async () => {
-      const bytes = await estimateEmbeddedBytes(image.url, crop, image.path.toLowerCase().endsWith(".png"));
-      if (!stale) setEmbeddedEstimate(bytes);
-    }, 250);
-    return () => {
-      stale = true;
-      window.clearTimeout(timer);
-    };
-  }, [image, natural, frame]);
+  const embeddedEstimate = useEmbeddedEstimate(image, natural, frame);
 
   const confirm = () => {
     if (albumIds.length === 0) return;
@@ -180,11 +117,9 @@ export function CoverReplaceModal({ album, isOpen, onClose }: { album: Album; is
     );
   };
 
-  // What the crop would actually archive, zoom included — the source's short
-  // side only answers that at full zoom.
+  // The actual cropped side, zoom included.
   const squareSide = candidate == null && image && natural ? (cropRect(natural, frame)?.size ?? natural.width) : null;
-  // A frame wider than the picture would come back letterboxed, and a cover has
-  // to be square: the stage lets you go there, the confirm button does not.
+  // Covers must be square: a frame wider than the picture can't be confirmed.
   const fits = natural == null || frameFits(natural, frame.zoom);
   const canConfirm = (candidate != null || (image != null && natural != null && fits)) && !replace.isPending;
 

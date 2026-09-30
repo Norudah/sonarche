@@ -3,31 +3,20 @@ import { Crop } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * Reframe the image that is already worn.
- *
- * Every other road into these modals brings a *new* file — the picker, a drop,
- * a link, the clipboard, an archive upload. This one brings the image back:
- * a cover whose subject sits too small, a disc cropped a hair off centre had
- * to be found again on disk and re-imported to be nudged, when the app was
- * holding it all along.
- *
- * It ends where a pick would: the image lands in the stage on the right as the
- * chosen source, framed whole, and nothing is written until the modal's own
- * confirm. `source` resolves the file — for a cover that means asking the
- * backend to admit the album's own artpath to the asset scope.
- */
+/** Reopens the current image in the crop stage as the new source. Nothing is
+ * written until confirm. `source` resolves the file (for a cover, admitting
+ * its artpath to the asset scope). */
 export function RecropButton({
   source,
   onAdopt,
   onFailed,
   disabled = false,
 }: {
-  /** The file to reopen, resolved when pressed. */
+  /** Resolved on press. */
   source: () => Promise<string>;
-  /** Take it as the replacement's source, exactly like a picked file. */
+  /** Adopted like a picked file. */
   onAdopt: (path: string) => Promise<void>;
-  /** The file is gone or unreadable — the modal owns the message line. */
+  /** The file is gone or unreadable. */
   onFailed: () => void;
   disabled?: boolean;
 }) {

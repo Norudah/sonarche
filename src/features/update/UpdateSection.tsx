@@ -14,16 +14,8 @@ const TONES: Record<Tone, string> = {
   danger: "text-danger",
 };
 
-/**
- * The manual half of the update story. The app already offers a new version
- * once at launch (`UpdatePrompt`); its toast lands here, and the check result
- * it found is already in the shared cache (`useUpdateCheck`) — so arriving
- * from the toast shows the available version and its notes without asking
- * GitHub twice. The button re-asks on demand for everyone else.
- *
- * It lives in the update feature and is mounted by the router rather than
- * imported by the settings feature — the two share a pane, not a dependency.
- */
+/** Manual update check in Settings. Shares the launch check's cached result
+ * (`useUpdateCheck`). Mounted by the router, not imported by settings. */
 export function UpdateSection() {
   const { t } = useTranslation("update");
   const version = useAppVersion();
@@ -32,11 +24,7 @@ export function UpdateSection() {
 
   const update = check.data ?? null;
   const busy = check.isFetching || install.isPending;
-  // Derived from the check result, never stored: the card is a view of the
-  // update the last check found, not a copy of it.
   const notes = update ? parseReleaseNotes(update.body) : null;
-  // Derived on every render, never mirrored into state: a status line kept in a
-  // `useState` synced by an effect is how it ends up one press behind.
   const status = updateStatus({
     checking: check.isFetching,
     installing: install.isPending,
@@ -75,9 +63,6 @@ export function UpdateSection() {
         </div>
       </SettingCard>
 
-      {/* The offered version's notes, straight from the release body — the
-       * argument for pressing Install, and only ever on screen when there is
-       * something to install. */}
       {update && notes && (
         <SettingCard>
           <UpdateNotesCard version={update.version} notes={notes} />

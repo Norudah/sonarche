@@ -8,12 +8,10 @@ import { JobTrackRow, TRACK_GRID } from "@/features/download/activity/JobTrackRo
 import type { EnrichStage } from "@/features/download/hooks";
 import { AttemptDots } from "@/features/download/activity/StepMarkers";
 import { jobAttempts } from "@/features/download/queue/attempts";
-import { jobPresence } from "@/features/download/queue/library";
+import { filedTrack, jobPresence, type PresenceLookup } from "@/features/download/queue/library";
 import { formatTags, jobTags } from "@/features/download/queue/tags";
 import type { LibraryTrack } from "@/features/library/api";
-// The taxonomy the download composer offers is the library's own axis, and its
-// canonical values must not exist twice — a second list would silently drift
-// out of step with the one the Categories page groups by.
+// The library's category labels, not a copy.
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -27,39 +25,22 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 interface JobDetailProps {
   job: DownloadJob;
-  libraryTrackFor: (itemId: number | null) => LibraryTrack | undefined;
-  isInLibrary: (itemId: number) => boolean;
+  library: PresenceLookup;
   isLibraryLoaded: boolean;
   enrichStages: Record<number, EnrichStage>;
   onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
 }
 
-/**
- * What the card's one-word verdict left out.
- *
- * The history table spreads match, tags, library presence and retries across
- * four permanent columns; here they are the answer to "what actually happened",
- * shown only to whoever asks. An album adds its playlist under them, which is
- * the reason to unfold a card at all — the same set the album page shows, minus
- * everything the download itself has no opinion on.
- */
-export function JobDetail({
-  job,
-  libraryTrackFor,
-  isInLibrary,
-  isLibraryLoaded,
-  enrichStages,
-  onEdit,
-  onDelete,
-}: JobDetailProps) {
+/** The details behind a card's verdict, plus the playlist for albums. */
+export function JobDetail({ job, library, isLibraryLoaded, enrichStages, onEdit, onDelete }: JobDetailProps) {
   const { t } = useTranslation("download");
   const categoryLabel = useCategoryLabel();
   const isAlbum = job.kind === "album" && job.tracks.length > 0;
   const isSettled = job.status === "done" || job.status === "failed" || job.status === "cancelled";
   const tags = jobTags(job);
 
-  const presence = isLibraryLoaded ? jobPresence(job, { has: isInLibrary, trackFor: libraryTrackFor }) : null;
+  const presence = isLibraryLoaded ? jobPresence(job, library) : null;
 
   const source = isAlbum
     ? job.tracks.find((track) => track.report?.source)?.report?.source
@@ -67,10 +48,7 @@ export function JobDetail({
 
   return (
     <div className="flex flex-col gap-4 border-t border-separator/50 pt-3">
-      {/* Auto-fit rather than a column count: a single reports two facts an
-          album cannot (its cover source, its retries), so the same fixed grid
-          would leave an album with holes and wrap a single onto a ragged second
-          row. */}
+      {/* Auto-fit: singles and albums show different facts. */}
       <dl className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-3">
         <Fact label={t("queue.colMatch")}>{source ?? <span className="text-muted">{t("queue.matchNone")}</span>}</Fact>
 
@@ -85,26 +63,21 @@ export function JobDetail({
           )}
         </Fact>
 
-        {/* Per track on an album, where a single cover answers for the set only
-            by accident; the aggregate would be a half-truth. */}
+        {/* Per track for albums. */}
         {!isAlbum && (
           <Fact label={t("activity.detail.cover")}>
             {job.report?.coverSource ?? <span className="text-muted">{t("queue.matchNone")}</span>}
           </Fact>
         )}
 
-        {/* Short label, full meaning on the dots' own aria-label: "Tentatives de
-            téléchargement" wraps to two lines and drags the whole grid down. */}
+        {/* Short label; the full meaning is on the dots' aria-label. */}
         {!isAlbum && (
           <Fact label={t("activity.detail.attempts")}>
             <AttemptDots outcomes={jobAttempts(job)} label={t("queue.attempts")} />
           </Fact>
         )}
 
-        {/* The same words as the card's own label, deliberately: the folded
-            and unfolded readings of one fact must not speak two languages.
-            A settled job with nothing filed states that; only a job still in
-            line is "awaiting". */}
+        {/* Same wording as the card's label. */}
         <Fact label={t("queue.colLibrary")}>
           {job.undoneAt != null ? (
             t("activity.presence.undone")
@@ -115,15 +88,10 @@ export function JobDetail({
           )}
         </Fact>
 
-        {/* Only when the job carried one: an absent category is the ordinary
-            case, not a blank to apologise for. */}
         {job.category && <Fact label={t("activity.detail.category")}>{categoryLabel(job.category)}</Fact>}
       </dl>
 
-      {/* Slots the source kept as dead placeholders (deleted/private/claimed):
-          skipped before download, but the set has holes the listing cannot
-          even name — so the one honest move is to say so and hand the search
-          back to the user. */}
+      {/* Unavailable slots: the set has gaps the listing can't name. */}
       {job.unavailable > 0 && (
         <p className="flex items-start gap-2 rounded-xl border border-dashed border-warning/45 bg-warning-soft px-3 py-2.5 text-[0.75rem] leading-snug text-warning">
           <TriangleAlert className="mt-px size-3.5 shrink-0" />
@@ -147,7 +115,7 @@ export function JobDetail({
             <JobTrackRow
               key={track.index}
               track={track}
-              libraryTrack={libraryTrackFor(track.status === "done" ? track.itemId : null)}
+              libraryTrack={filedTrack(track.status === "done" ? track.itemId : null, track.report, library)}
               isEnriched={track.itemId != null && enrichStages[track.itemId] === "track_done"}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -159,8 +127,7 @@ export function JobDetail({
       {isSettled && (
         <JobActions
           job={job}
-          // The two library verbs need something of the job's still on the
-          // shelf; the re-download inside needs only the row itself.
+          // Library actions need something still in the library.
           canUndo={job.undoneAt == null && (presence === "full" || presence === "partial")}
         />
       )}

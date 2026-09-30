@@ -123,9 +123,7 @@ describe("albumsInCategory", () => {
   });
 });
 
-// The category page's own scope, as the view composes it: `scopeTracks` over the
-// shelf with the category predicate. Kept here rather than in `scope.test.ts`
-// because what is being checked is this axis' rule, not the helper's.
+// The category page's scope: `scopeTracks` with the category predicate.
 describe("a category's own tracks", () => {
   const queueOf = (category: string, genre: string | null) => {
     const found = findCategory(categories, category)!;

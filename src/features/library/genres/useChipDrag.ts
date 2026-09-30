@@ -5,31 +5,26 @@ import { canDropOn } from "@/features/library/genres/arrange";
 import { edgeScrollSpeed } from "@/shared/lib/edgeScroll";
 import { useScrollport } from "@/shared/ui/Scrollport";
 
-/** Cards declare themselves targets with this attribute; the hit test walks up
- * from whatever the pointer is over. The floating chip never intercepts — it
- * is `pointer-events: none`. */
+/** Marks drop targets; hit-testing walks up from the pointer. The floating
+ * chip is `pointer-events: none`. */
 export const DROP_ATTR = "data-drop-family";
 
 interface ChipDrag {
   genre: string;
-  /** Family key of the card the chip came from. */
+  /** The source card's family. */
   from: string;
-  /** Card under the pointer that would take the drop, or null. */
+  /** The card that would take the drop. */
   over: string | null;
-  /** Pointer position as of the last *render-worthy* change. Between renders
-   * the position is written straight to the floating chip — but a re-render
-   * re-applies the style prop, so the state must carry the latest position it
-   * knew, or the chip would snap back to where the gesture began. */
+  /** Last position known at a render. Between renders the chip is moved by
+   * direct style writes; this keeps a re-render from snapping it back. */
   x: number;
   y: number;
 }
 
 interface ChipDragApi {
-  /** Live while a chip is held; null the rest of the time. */
   drag: ChipDrag | null;
-  /** Ref for the floating chip the view renders while a drag is live. */
+  /** The floating chip the view renders during a drag. */
   ghostRef: RefObject<HTMLDivElement | null>;
-  /** Spread onto each draggable chip. */
   chipProps: (
     genre: string,
     from: string,
@@ -44,20 +39,10 @@ function dropKeyAt(x: number, y: number): string | null {
 }
 
 /**
- * Pointer-driven chip-to-card dragging, the `useDragReorder` school: no HTML5
- * DnD (unstylable ghost screenshot, engine-dependent auto-scroll — see that
- * hook for the full case), the chip captures the pointer and the whole gesture
- * lives inside the pointerdown closure, so releasing the pointer releases
- * everything.
- *
- * Two deliberate differences from the reorder hook. The floating chip follows
- * the pointer via direct style writes rather than state — this page re-renders
- * a whole card grid, and a render per pointermove is exactly the jank the
- * compositor was meant to absorb. State only changes when the card under the
- * pointer changes, which is when something actually needs repainting. And the
- * target is found by hit-testing (`elementFromPoint` + the drop attribute),
- * not geometry: the cards are a wrapping two-column grid whose rects auto-
- * scroll moves mid-gesture, so asking the DOM beats mirroring its layout.
+ * Chip-to-card dragging with pointer capture, like `useDragReorder`. The
+ * floating chip moves by direct style writes (no render per pointermove);
+ * state changes only when the target card changes. Targets are found by
+ * hit-testing, since auto-scroll moves the wrapping grid mid-gesture.
  */
 export function useChipDrag(onDrop: (genre: string, family: string, from: string) => void): ChipDragApi {
   const scrollport = useScrollport();
@@ -74,15 +59,11 @@ export function useChipDrag(onDrop: (genre: string, family: string, from: string
       let lastX = event.clientX;
       let lastY = event.clientY;
       let scrollFrame: number | null = null;
-      // The gesture's own copy — the drop must read it outside setDrag (a side
-      // effect inside a state updater runs twice under StrictMode).
+      // Read outside setDrag: updaters run twice under StrictMode.
       let current: ChipDrag = { genre, from, over: null, x: lastX, y: lastY };
       setDrag(current);
 
-      // The chip's own `active:cursor-grabbing` only rules while the pointer
-      // is over the chip — under capture the browser keeps styling the cursor
-      // from whatever is hovered. The gesture owns the cursor for its whole
-      // life, so the hand never flickers back to an arrow mid-drag.
+      // Under pointer capture the cursor follows the hovered element; hold it.
       const previousCursor = document.body.style.cursor;
       document.body.style.cursor = "grabbing";
 
@@ -101,9 +82,7 @@ export function useChipDrag(onDrop: (genre: string, family: string, from: string
         }
       };
 
-      // Same shape as the reorder hook: its own frame loop, because pointer
-      // events stop the moment the hand does, while the page should keep
-      // scrolling as long as the pointer sits in an edge zone.
+      // Its own frame loop: pointer events stop when the hand does.
       const autoScrollTick = () => {
         scrollFrame = null;
         const port = scrollport.current;
@@ -113,7 +92,7 @@ export function useChipDrag(onDrop: (genre: string, family: string, from: string
         if (speed !== 0) {
           const before = port.scrollTop;
           port.scrollTop += speed;
-          // The cards moved under a still pointer; the hit test must rerun.
+          // The cards moved under a still pointer: re-run the hit test.
           if (port.scrollTop !== before) applyPointer();
           scrollFrame = requestAnimationFrame(autoScrollTick);
         }

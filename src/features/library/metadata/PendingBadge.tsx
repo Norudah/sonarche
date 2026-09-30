@@ -3,14 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { springs } from "@/shared/motion/tokens";
 
-/**
- * What is waiting to be written, stated in the title bar.
- *
- * It sits here rather than beside the buttons because its width changes with
- * every edit — "no changes" one moment, "3 changes on 2 tracks" the next — and
- * next to the actions that meant Save and Cancel jumped sideways the instant you
- * typed. Up here it grows into space nothing else is using.
- */
+/** Pending changes, in the title bar where its changing width moves nothing. */
 export function PendingBadge({
   fields,
   tracks,

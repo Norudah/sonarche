@@ -7,26 +7,16 @@ import { toneOf } from "@/features/library/genres/tone";
 import { HERO_BUTTON_SECONDARY } from "@/features/library/heroButton";
 
 interface ClassifyGenreMenuProps {
-  /** Family key of the page the menu sits on — marked as the current shelf. */
+  /** The current page's family, marked in the list. */
   currentKey: string;
-  /** The user's own placement for this genre, when one exists. */
+  /** The user's placement, if any. */
   override: string | null;
   onClassify: (family: string | null) => void;
   isPending: boolean;
 }
 
-/**
- * Where this genre files, as a choice rather than a verdict.
- *
- * Thirteen families and nothing else: the set is closed (see `tone.ts` for
- * why), so the menu can show every destination and colour each with the tone
- * that already identifies it across the app. The current shelf is marked, not
- * hidden — a list with a hole where "here" should be reads as a bug.
- *
- * The way back only appears once there is a placement to take back. It names
- * the base tree's verdict rather than "cancel": nothing is pending, the user
- * is choosing between their reading and the app's.
- */
+/** Files a genre under one of the families (each in its tone, the current one
+ * marked). "Original placement" appears once there's an override to undo. */
 export function ClassifyGenreMenu({ currentKey, override, onClassify, isPending }: ClassifyGenreMenuProps) {
   const { t } = useTranslation("library");
 

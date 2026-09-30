@@ -307,7 +307,6 @@
       "statusIncomplete": "Morceau incomplet"
     },
     "bulk": {
-      "heading": "Sur tout l'album",
       "renumber": "Renuméroter 1 → {{count}}",
       "copyArtist": "Copier l'artiste de l'album",
       "renumberHelp": "Réécrit les numéros de piste de 1 à {{count}}, dans l'ordre affiché.",
@@ -343,9 +342,7 @@
       }
     },
     "changes": {
-      "modified": "modifié",
       "revert": "Rétablir « {{value}} »",
-      "none": "Aucune modification",
       "fields_one": "{{count}} modification",
       "fields_other": "{{count}} modifications",
       "tracks_one": "sur {{count}} morceau",

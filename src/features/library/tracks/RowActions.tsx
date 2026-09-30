@@ -4,36 +4,25 @@ import { useTranslation } from "react-i18next";
 
 import { FavoriteButton } from "@/features/library/playlists/FavoriteButton";
 
-// Round, like every other icon-only control in the app: the hero's play pill,
-// its icon pills, the sidebar. `shrink-0` is what keeps them round — flex
-// children shrink by default, and a too-narrow cell turns both circles to ovals.
+// Round like the app's other icon buttons; `shrink-0` keeps them round.
 const ACTION =
   "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent/40";
 
 interface RowActionsProps {
   onEdit: () => void;
   onDelete: () => void;
-  /** The row's beets item id, when the row should carry the favorites heart. */
+  /** Set when the row should carry the favorites heart. */
   favoriteId?: number;
-  /** Offers "add to a playlist" in the menu. Optional so the tables that
-   * cannot host the picker simply don't grow the item. */
+  /** Omitted by tables that can't host the picker. */
   onAddToPlaylist?: () => void;
-  /** Offers "move to an album" — refiling, not listing: the file follows. */
+  /** Refiling: the file moves too. */
   onMoveToAlbum?: () => void;
-  /** Playlist rows only: take this row out of the list — the file stays. */
+  /** Playlist rows only; the file stays. */
   onRemoveFromPlaylist?: () => void;
 }
 
-/**
- * The end-of-row controls, shared by the album tracklist, the library-wide
- * table and the playlist so all three rows terminate the same way.
- *
- * Two controls, not four. Metadata keeps a button of its own because inspecting
- * tags is what this app is for — burying it in a menu would hide the one action
- * the page exists to offer. Everything else, delete included, goes behind the
- * menu, where a destructive click takes a deliberate second step instead of
- * sitting under the cursor on every row.
- */
+/** End-of-row controls shared by every track table: metadata as its own
+ * button, everything else (delete included) in the menu. */
 export function RowActions({
   onEdit,
   onDelete,
@@ -45,15 +34,8 @@ export function RowActions({
   const { t } = useTranslation("library");
 
   return (
-    // Always on screen, never loud. Actions that appear on hover are actions
-    // nobody knows exist until they sweep the row, and on a touchpad that is a
-    // discovery problem. They idle at a third opacity — present enough to read
-    // as "there is something here", quiet enough not to compete with the
-    // titles — and come up to full on row hover.
-    // `:focus-visible`, not `:focus-within`: closing the metadata drawer hands
-    // focus back to the pencil that opened it, and a plain focus-within kept
-    // the controls lit as if the row were still hovered. A mouse-restored
-    // focus is not focus-visible, while keyboard travel still is.
+    // Always visible at low opacity so they're discoverable, full on row hover.
+    // `:focus-visible`: focus restored by closing the drawer shouldn't light them.
     <div className="flex items-center justify-end gap-1 opacity-35 transition-opacity group-hover/row:opacity-100 has-[:focus-visible]:opacity-100">
       {favoriteId != null && <FavoriteButton itemId={favoriteId} className={ACTION} />}
       <button

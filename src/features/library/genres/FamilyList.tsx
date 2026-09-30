@@ -5,28 +5,17 @@ import { FAMILY_OTHER } from "@/features/library/genres/genres";
 import { FamilyCard, GhostFamilyCard, type ArrangeProps } from "@/features/library/genres/FamilyCard";
 
 interface FamilyListProps {
-  /** Real families plus `Other` — never `None`, which is a gap in the tagging
-   * rather than a shelf, and is only ever reported as a count in the header. */
+  /** Real families plus `Other`; `None` is only a count in the header. */
   families: Family[];
-  /** Same contract as `AlbumGrid`: what this result set is a result *of*.
-   * A change re-keys the list and replays the cascade. */
+  /** See `AlbumGrid`. */
   animationKey?: string;
   labelOf: (key: string) => string;
-  /** Arrange mode: the drag plumbing, plus the empty families to conjure as
-   * ghost drop targets. */
+  /** Arrange mode, plus the empty families to show as drop targets. */
   arrange?: ArrangeProps & { ghostKeys: string[] };
 }
 
-/**
- * Not virtualised, and it never will need to be: the browse families are a
- * closed list of thirteen in the sidecar's genre tree, plus the `Other`
- * sentinel. This is the one shelf in the app whose length does not depend on
- * the library.
- *
- * In arrange mode the ghosts slot in after the real families and before
- * `Other`: they are families-to-be, so they belong with the families — while
- * the sentinel keeps its floor, however the shelf is dressed.
- */
+/** Not virtualised: a closed list of families. Ghosts go after the real
+ * families and before `Other`. */
 export function FamilyList({ families, animationKey = "", labelOf, arrange }: FamilyListProps) {
   const real = arrange ? families.filter((family) => family.key !== FAMILY_OTHER) : families;
   const other = arrange ? families.filter((family) => family.key === FAMILY_OTHER) : [];

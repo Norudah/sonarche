@@ -22,11 +22,7 @@ const report: ScanReport = {
   truncated: false,
 };
 
-/**
- * The stop button's contract: offered exactly while a stop can still stop
- * something. The watchdog only guards beets — once the cover pass starts, a
- * stop would be a no-op, and a button that does nothing is worse than none.
- */
+/** Offered only while a stop can still stop something (not during the cover pass). */
 describe("ImportCard stop button", () => {
   const card = (progress: Parameters<typeof ImportCard>[0]["progress"], onCancel = () => {}) => (
     <ImportCard

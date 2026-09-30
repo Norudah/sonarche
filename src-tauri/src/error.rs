@@ -16,12 +16,8 @@ pub enum AppError {
     Keychain(String),
     #[error("playback error: {0}")]
     Playback(String),
-    /// Its own variant rather than a `Playback` message: the front draws this
-    /// one as a property of the track, not as a failure of the engine.
-    ///
-    /// A command rejects with this string and nothing else, so the prefix is a
-    /// contract with `src/shared/player/playbackError.ts` — changing the wording
-    /// turns an explained format into a generic "unreadable file".
+    /// Its own variant so the front can show it as a track property. The message
+    /// prefix is matched by `src/shared/player/playbackError.ts`.
     #[error("unsupported audio format: {0}")]
     UnsupportedFormat(String),
     #[error(transparent)]
@@ -34,7 +30,7 @@ pub enum AppError {
     Tauri(#[from] tauri::Error),
 }
 
-// Tauri commands need serializable errors; the frontend only gets the message.
+// Commands need serializable errors; the front only gets the message.
 impl Serialize for AppError {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_string())
@@ -47,10 +43,7 @@ pub type AppResult<T> = Result<T, AppError>;
 mod tests {
     use super::*;
 
-    /// The front reads this prefix to tell an undecodable format from any other
-    /// playback failure, and it only ever sees the rendered string. Reword the
-    /// variant and the message the user gets silently degrades — hence the
-    /// literal here rather than a round-trip through `to_string`.
+    /// The front matches this literal prefix.
     #[test]
     fn the_unsupported_format_wording_is_the_prefix_the_front_matches() {
         let rendered = AppError::UnsupportedFormat("/Music/a.opus".into()).to_string();

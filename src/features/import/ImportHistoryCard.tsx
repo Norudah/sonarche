@@ -12,25 +12,11 @@ import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 import { Verdict } from "@/shared/ui/Verdict";
 
-/** The folder's own name — the path is in the panel, and what the row is about
- * is the collection that came in. */
 function nameOf(folder: string): string {
   return folder.split(/[/\\]/).filter(Boolean).at(-1) ?? folder;
 }
 
-/**
- * One finished import in the archive.
- *
- * Deliberately the same object as a filed download: the tile, the name, the one
- * line under it, the verdict on the same vertical line, and a panel that unfolds
- * where the depth lives. The two are the two ways music enters the ark and a
- * row of one must not read as a different kind of thing from a row of the other
- * — which is the mistake the history made when downloads were a table.
- *
- * The columns are reserved to the same widths as a job row even though an
- * archived import offers no action: the two sections sit one above the other,
- * and every row's verdict has to land on the same line down the page.
- */
+/** One archived import, shaped like a filed download card. */
 export function ImportHistoryCard({ record }: { record: ImportRecord }) {
   const { t, i18n } = useTranslation("import");
   const categoryLabel = useCategoryLabel();
@@ -38,8 +24,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
 
   const failed = record.status === "failed";
   const cancelled = record.status === "cancelled";
-  // Taken back out. It outranks the status on the closed row: what a run
-  // brought in stops being the point once none of it is in the library.
+  // Undone outranks the status on the closed row.
   const undone = record.undoneAt != null;
   const headline = useImportHeadline(record.folders, record.scan, record.recap);
   const subtitle = failed ? record.error : undone ? t("undo.subtitle") : headline;
@@ -77,9 +62,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2">
             <p className="min-w-0 truncate text-sm font-semibold">{nameOf(record.folder)}</p>
-            {/* The answer, on the closed row. What an import produced only makes
-                sense next to what it was asked for, and "did I pick the wrong
-                one" should not need a click to answer. */}
+            {/* The chosen grouping, visible without unfolding. */}
             {record.grouping && (
               <span className="shrink-0 rounded-full bg-default/70 px-2 py-0.5 text-[0.625rem] font-medium text-muted">
                 {t(`grouping.${record.grouping}`)}
@@ -91,10 +74,6 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
           </p>
         </div>
 
-        {/* The verdict sits next to the chevron rather than in a fixed column
-            with an empty one beside it: that spacer aligned this row with the
-            download cards it no longer shares a page with, and left a hand's
-            width of nothing between "Importé" and the edge. */}
         <div className="flex shrink-0 items-center gap-3">
           <Verdict tone={undone ? "accent" : failed ? "danger" : cancelled ? "warning" : "success"}>
             {t(undone ? "undo.verdict" : failed ? "verdict.failed" : cancelled ? "verdict.cancelled" : "verdict.done")}
@@ -116,8 +95,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
         </div>
       </div>
 
-      {/* Height, not opacity alone: the rows under this one have to move out of
-          the way, same as a job card's panel. */}
+      {/* Height, so the rows below move. */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
@@ -132,9 +110,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
                 <p className="text-xs break-all text-muted" title={record.folder}>
                   {shortenPath(record.folder)}
                 </p>
-                {/* The app's only rendered date, and it earns its place here:
-                    imports are rare and far apart, so "which one was this" is a
-                    question the archive has to answer. */}
+                {/* Imports are rare, so the date helps tell them apart. */}
                 <p className="text-xs text-muted">
                   {new Intl.DateTimeFormat(i18n.language, { dateStyle: "long", timeStyle: "short" }).format(
                     record.finishedAt,
@@ -142,8 +118,6 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
                 </p>
               </div>
 
-              {/* Spelled out where there is room for it: the short chip above
-                  names the answer, this says which question it answered. */}
               {(record.grouping || record.category) && (
                 <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
                   {record.grouping && (
@@ -165,9 +139,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
                 <ImportRecapPanel renditions={record.renditions} scan={record.scan} recap={record.recap} alignDoor />
               )}
 
-              {/* The way out lives here, where the panel has already said what
-                  the run brought in — and never on the closed row, one click
-                  from a feed of them. */}
+              {/* Only in the unfolded panel, never on the closed row. */}
               {!undone && <ImportUndoAction id={record.id} name={nameOf(record.folder)} />}
             </div>
           </motion.div>

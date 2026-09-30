@@ -19,43 +19,27 @@ import type { TrackFilterState } from "@/features/library/tracks/useTrackFilter"
 import { usePlayQueue } from "@/features/library/usePlayQueue";
 import { fade } from "@/shared/motion/tokens";
 
-// No alignment in the base: `${COLUMN} text-center` looks like it wins, but
-// Tailwind resolves conflicts by stylesheet order, not by class-string order,
-// so a `text-left` baked in here silently beat the "#" column's override.
+// No alignment here: Tailwind resolves conflicts by stylesheet order, so a
+// base `text-left` would beat a column's override.
 const COLUMN = `${PAD} ${HEADER}`;
 
-/**
- * Deliberately not `TrackTable`: an album's tracklist drops the Album column
- * (album-level, already in the header), keeps its own fixed order, and carries
- * a per-track attention dot the library-wide table has no room for. Genre used to
- * be dropped on the same "album-level" reasoning — until a record legitimately
- * mixed genres (the Spirit soundtrack), which is exactly what the album view
- * would then hide. Bending one table to cover both shapes would have meant a
- * variant prop toggling four columns.
- *
- * The inspection table below is the exception that proves it: there, the two
- * surfaces differ by exactly one column, because the whole point of that table
- * is that every field has the same place on every page.
- */
+/** The album's own tracklist rather than `TrackTable`: no Album column, its
+ * own order, and a per-track attention dot. */
 export function AlbumTrackList({ album, state }: { album: Album; state: TrackFilterState }) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
   const [moving, setMoving] = useState<LibraryTrack[] | null>(null);
-  // Sort, search and filters all live in the page's explorer now, so the hero's
-  // play button queues exactly what the list shows. They stay ways of *reading*
-  // the record: the album keeps its own order, and dropping the sort (third
-  // click on a header) returns to it.
+  // Sort and filters come from the page's explorer, so play queues what's shown.
+  // Dropping the sort returns to album order.
   const { visible, sort, toggleSort, query, scopeSize } = state;
   const { playFrom } = usePlayQueue();
   const inspecting = useLensHere();
-  // The Metadata page's verdict, narrowed to this record: a row is dotted here
-  // exactly when that page would still name it. (Under the lens the inspection
-  // table asks for its own, over the same predicates.)
+  // Dotted exactly when the Metadata page would still name the track.
   const attention = useAlbumAttention(album);
 
-  // Derived from the live album, so a re-enrich refetch updates the open drawer.
+  // Derived from the live album, so refetches update the open drawer.
   const inspected = inspectedId != null ? (album.tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
   const column = (key: TrackSortKey, label: string, className: string, align?: "left" | "right") => (
@@ -65,10 +49,7 @@ export function AlbumTrackList({ album, state }: { album: Album; state: TrackFil
   return (
     <>
       {visible.length === 0 && scopeSize > 0 ? (
-        // Filtered or searched down to nothing. Fades in rather than replacing
-        // the table in one frame — the search is live, so this state appears
-        // mid-keystroke. Standing here rather than in an early return so the
-        // dialogs below stay mounted whatever the list is showing.
+        // Kept here (not an early return) so the dialogs below stay mounted.
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -78,9 +59,7 @@ export function AlbumTrackList({ album, state }: { album: Album; state: TrackFil
           {query ? t("search.noResults", { query }) : t("triage.noResults")}
         </motion.p>
       ) : inspecting ? (
-        // The record's own tracklist under the lens. Same table as the
-        // explorer's, minus the Album column: on a page whose header is the
-        // album, that column would repeat one title down the whole list.
+        // The explorer's inspection table without the Album column.
         <InspectTable
           insideAlbum
           tracks={visible}
@@ -102,9 +81,7 @@ export function AlbumTrackList({ album, state }: { album: Album; state: TrackFil
                 {column("title", t("columns.title"), COLUMN)}
                 {column("artist", t("columns.artist"), `${COLUMN} w-[22%]`)}
                 {column("genre", t("columns.genre"), `${COLUMN} w-[16%]`)}
-                {/* No visible label: the column holds a dot, and a header over an
-                  empty cell is a promise of content that settled rows do not
-                  owe. */}
+                {/* No label: the column only holds a dot. */}
                 <th className={`${COLUMN} w-8`}>
                   <span className="sr-only">{t("columns.attention")}</span>
                 </th>
@@ -122,8 +99,7 @@ export function AlbumTrackList({ album, state }: { album: Album; state: TrackFil
                   position={position + 1}
                   flags={attention.get(track.id) ?? []}
                   style={{ "--row-stagger": `${Math.min(position, 10) * 0.025}s` } as CSSProperties}
-                  // The visible order is the playback context, sort included —
-                  // same contract as the library-wide table.
+                  // The visible order, sort included, is the playback context.
                   onPlay={() => playFrom(visible, position)}
                   onEdit={() => setInspectedId(track.id)}
                   onDelete={() => setDeleting(track)}

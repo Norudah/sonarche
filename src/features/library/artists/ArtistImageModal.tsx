@@ -16,17 +16,8 @@ import { useLocalImageSource } from "@/features/library/covers/useLocalImageSour
 import { useArtistImagePath, useRemoveArtistImage, useSetArtistImage } from "@/features/library/hooks";
 import { FieldHelpPopover } from "@/shared/ui/FieldHelp";
 
-/**
- * Give an artist a picture of their own, stated as a before/after like the
- * cover modal it descends from — same frame, same source bar, same footer.
- *
- * Left, the disc as it is worn today — the user's image, or the generated
- * genre motif standing in. Right, the replacement, arriving by any road the
- * source bar offers, cropped square by moving the frame. Everything
- * album-shaped fell away: no embedding (there is no file), no archive, no
- * online proposals (nothing serves artist photos under a licence we would
- * ship). The image lands in the app's own data, never in the library folder.
- */
+/** Sets an artist's picture as a before/after, like the cover modal but
+ * without embedding or online candidates. Stored in app data. */
 export function ArtistImageModal({
   artist,
   imageUrl,
@@ -34,7 +25,7 @@ export function ArtistImageModal({
   onClose,
 }: {
   artist: Artist;
-  /** What the artist wears today, from `useArtistImages`. */
+  /** Current image, from `useArtistImages`. */
   imageUrl: string | null;
   isOpen: boolean;
   onClose: () => void;
@@ -94,8 +85,7 @@ export function ArtistImageModal({
   };
 
   const squareSide = local.image && local.natural ? (cropRect(local.natural, local.frame)?.size ?? null) : null;
-  // Same rule as a cover: a frame wider than the picture comes back
-  // letterboxed, and the disc is drawn from a square.
+  // Like covers: the disc is drawn from a square.
   const fits = local.natural == null || frameFits(local.natural, local.frame.zoom);
   const canConfirm = local.image != null && local.natural != null && fits && !isPending;
 

@@ -1,29 +1,31 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// First, so `log_line!` is in scope for every module below.
+#[macro_use]
+mod logs;
+
 mod artist_images;
 mod artwork;
 mod audio_formats;
+mod clock;
 mod commands;
 mod convert;
+mod db;
 mod download_undo;
 mod error;
-mod genres;
 mod identity;
 mod import_undo;
 mod jobs;
-mod jobs_store;
 mod library_align;
 mod library_import;
 mod library_layout;
 mod library_move;
 mod library_scan;
-mod logs;
 mod lyrics;
 mod now_playing;
 mod onboarding;
 mod pasted_image;
 mod player;
-mod playlists;
 mod playlists_mirror;
 mod preferences;
 mod proc;
@@ -33,155 +35,142 @@ mod remux;
 mod reset;
 mod settings;
 mod sidecar;
+mod undo;
 mod window_chrome;
 
 use tauri::Manager;
 
+#[allow(
+    clippy::expect_used,
+    reason = "startup: no app to report to without it"
+)]
 fn main() {
     tauri::Builder::default()
-        // The walkthrough has to hand the user off to acoustid.org to get a key,
-        // and a webview cannot open a browser on its own. Scoped to that one
-        // host in `capabilities/default.json`.
+        // For sending the user to acoustid.org; scoped in `capabilities/default.json`.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        // Read-only: the paste-an-image path in the cover/artist modals.
+        // Read-only, for pasting images.
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(sidecar::SidecarState::default())
         .manage(reenrich::ReenrichState::default())
         .manage(remux::RemuxState::default())
-        .manage(genres::RecomputeGenresState::default())
         .manage(convert::ConvertLibraryState::default())
         .manage(library_align::LibraryAlignState::default())
         .manage(library_import::LibraryImportState::default())
         .manage(player::PlayerState::default())
         .manage(python_env::LibraryRoot::default())
         .setup(|app| {
-            // First, so anything that fails after this point leaves a trace.
+            // First, so later failures leave a trace.
             logs::init(app.handle());
-            // Image temp files a past session left behind (pastes, fetched
-            // links) — off-thread, launch must not wait on the temp dir.
+            // Stale image temp files, swept off-thread.
             tauri::async_runtime::spawn_blocking(pasted_image::sweep_stale);
-            // Before anything resolves a path: `AppPaths` reads this state, and
-            // an unseeded one resolves to the default library — which would
-            // point a moved install back at an empty folder for the length of
-            // the first render.
+            // Before anything resolves a path, or a moved library would resolve to the
+            // default location.
             let handle = app.handle().clone();
             tauri::async_runtime::block_on(async move {
                 match preferences::load(&handle).await {
                     Ok(prefs) => handle
                         .state::<python_env::LibraryRoot>()
                         .set(prefs.library_dir.map(Into::into)),
-                    Err(err) => eprintln!("[library] could not read the stored location: {err}"),
+                    Err(err) => log_line!("[library] could not read the stored location: {err}"),
                 }
             });
-            // DB open but worker not started: the launch migration must finish
-            // before anything — a queued download resuming, the first render —
-            // can look at the library. Setup is the one moment where nothing
-            // else runs, which is what makes the migration silent and safe.
+            // The worker starts only after the launch migration.
             let (state, worker) = jobs::init(app.handle())?;
             library_layout::run_launch_migration(app.handle(), &state);
-            // The mirror is a rendering, so launch is where it is repaired:
-            // tracks beets moved since last time, files deleted by hand, a
-            // library copied in from elsewhere.
             playlists_mirror::sync_at_launch(app.handle(), &state);
             state.start(app.handle().clone(), worker);
             app.manage(state);
-            // Pushes the playhead and end-of-track to the front; idle until
-            // something actually plays.
             player::spawn_status_loop(app.handle().clone());
-            // After the window exists, before it is shown to anyone.
             window_chrome::quieten(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::get_env_status,
-            commands::setup_env,
-            commands::reveal_log_file,
-            commands::check_acoustid_key,
-            commands::check_services,
-            commands::get_onboarding_state,
-            commands::set_onboarding_completed,
-            commands::enqueue_download,
-            commands::list_jobs,
-            commands::list_jobs_page,
-            commands::download_target_albums,
-            commands::retry_job,
-            commands::cancel_job,
-            commands::clear_job_history,
-            commands::preview_download_undo,
-            commands::undo_download,
-            commands::change_job_destination,
-            commands::list_library,
-            commands::playable_extensions,
-            commands::reenrich_track,
-            commands::remux_library,
-            commands::recompute_genres,
-            commands::set_audio_format,
-            commands::convert_library,
-            commands::fetch_lyrics,
-            commands::library_align_scan,
-            commands::library_align_apply,
-            commands::get_preferences,
-            commands::set_rate_limit_delay,
-            commands::get_home_tour_seen,
-            commands::set_home_tour_seen,
-            commands::get_library_location,
-            commands::check_library_move,
-            commands::move_library,
-            commands::delete_track,
-            commands::update_tracks,
-            commands::move_tracks,
-            commands::set_album_kind,
-            commands::set_genre_family,
-            commands::list_genre_overrides,
-            commands::set_check_accepted,
-            commands::allow_cover_preview,
-            commands::album_recrop_source,
-            commands::set_album_cover,
-            commands::list_cover_candidates,
-            artist_images::list_artist_images,
-            artist_images::set_artist_image,
-            artist_images::remove_artist_image,
-            artist_images::fetch_artist_image_url,
+            commands::setup::get_env_status,
+            commands::setup::setup_env,
+            commands::setup::reveal_log_file,
+            commands::setup::check_acoustid_key,
+            commands::setup::check_services,
+            commands::setup::get_onboarding_state,
+            commands::setup::set_onboarding_completed,
+            commands::downloads::enqueue_download,
+            commands::downloads::list_jobs,
+            commands::downloads::list_jobs_page,
+            commands::downloads::download_target_albums,
+            commands::downloads::retry_job,
+            commands::downloads::cancel_job,
+            commands::downloads::clear_job_history,
+            commands::downloads::preview_download_undo,
+            commands::downloads::undo_download,
+            commands::downloads::change_job_destination,
+            commands::library::list_library,
+            commands::library::playable_extensions,
+            commands::library::reenrich_track,
+            commands::maintenance::remux_library,
+            commands::preferences::set_audio_format,
+            commands::maintenance::convert_library,
+            commands::library::fetch_lyrics,
+            commands::organize::library_align_scan,
+            commands::organize::library_align_apply,
+            commands::preferences::get_preferences,
+            commands::preferences::set_rate_limit_delay,
+            commands::preferences::get_home_tour_seen,
+            commands::preferences::set_home_tour_seen,
+            commands::maintenance::get_library_location,
+            commands::maintenance::check_library_move,
+            commands::maintenance::move_library,
+            commands::library::delete_track,
+            commands::library::update_tracks,
+            commands::organize::move_tracks,
+            commands::organize::set_album_kind,
+            commands::organize::set_genre_family,
+            commands::organize::list_genre_overrides,
+            commands::organize::set_check_accepted,
+            commands::covers::allow_cover_preview,
+            commands::covers::album_recrop_source,
+            commands::covers::set_album_cover,
+            commands::covers::list_cover_candidates,
+            commands::artist_images::list_artist_images,
+            commands::artist_images::set_artist_image,
+            commands::artist_images::remove_artist_image,
+            commands::artist_images::fetch_artist_image_url,
             pasted_image::save_pasted_image,
-            playlists::list_playlists,
-            playlists::create_playlist,
-            playlists::rename_playlist,
-            playlists::delete_playlist,
-            playlists::add_playlist_tracks,
-            playlists::remove_playlist_tracks,
-            playlists::move_playlist_track,
-            playlists::set_playlist_cover,
-            playlists::remove_playlist_cover,
-            playlists::set_playlist_marker,
-            commands::scan_import_folder,
-            commands::start_library_import,
-            commands::cancel_library_import,
-            commands::list_imports,
-            commands::preview_import_undo,
-            commands::undo_import,
-            commands::list_api_keys,
-            commands::reveal_api_key,
-            commands::set_api_key,
-            commands::erase_all_data,
-            commands::erase_library,
-            commands::erase_artist_images,
-            commands::erase_playlists,
-            commands::reinstall_environment,
-            commands::reset_setup_dev,
-            commands::reset_library_dev,
-            commands::player_load,
-            commands::player_enqueue,
-            commands::player_toggle,
-            commands::player_pause,
-            commands::player_seek,
-            commands::player_set_volume,
-            commands::player_stop,
-            commands::player_status,
-            commands::now_playing_set,
-            commands::set_window_theme,
+            commands::playlists::list_playlists,
+            commands::playlists::create_playlist,
+            commands::playlists::rename_playlist,
+            commands::playlists::delete_playlist,
+            commands::playlists::add_playlist_tracks,
+            commands::playlists::remove_playlist_tracks,
+            commands::playlists::move_playlist_track,
+            commands::playlists::set_playlist_cover,
+            commands::playlists::remove_playlist_cover,
+            commands::playlists::set_playlist_marker,
+            commands::imports::scan_import_folder,
+            commands::imports::start_library_import,
+            commands::imports::cancel_library_import,
+            commands::imports::list_imports,
+            commands::imports::preview_import_undo,
+            commands::imports::undo_import,
+            commands::preferences::list_api_keys,
+            commands::preferences::reveal_api_key,
+            commands::preferences::set_api_key,
+            commands::maintenance::erase_all_data,
+            commands::maintenance::erase_library,
+            commands::maintenance::erase_artist_images,
+            commands::maintenance::erase_playlists,
+            commands::maintenance::reinstall_environment,
+            commands::maintenance::reset_setup_dev,
+            commands::maintenance::reset_library_dev,
+            commands::player::player_load,
+            commands::player::player_enqueue,
+            commands::player::player_toggle,
+            commands::player::player_seek,
+            commands::player::player_set_volume,
+            commands::player::player_stop,
+            commands::player::now_playing_set,
+            commands::preferences::set_window_theme,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri application")

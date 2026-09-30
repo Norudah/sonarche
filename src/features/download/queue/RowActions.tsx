@@ -7,20 +7,15 @@ import { albumPath, artistPath } from "@/app/routes";
 import type { LibraryTrack } from "@/features/library/api";
 import { usePlayer } from "@/shared/player/PlayerContext";
 
-/* Track rows carry up to two controls (play + menu). Reserving that width on
- * both keeps the column from resizing — and every row from shifting sideways —
- * when an album is expanded. That reservation is a table concern: outside one
- * (the activity feed's cards) it is dead space, hence `dense`. */
+/* Reserves room for two controls (play + menu) so table rows don't shift;
+ * `dense` drops it outside tables. */
 const ACTIONS_ROW = "flex items-center justify-end gap-1";
 const ACTIONS_COLUMN = `${ACTIONS_ROW} min-w-[4.5rem]`;
 
-/* The exact icon-button of the album tracklist: round, muted, filling on hover.
- * The queue used square `rounded-lg` triggers, which read as a different app's
- * table next to the round controls everywhere else. */
+/* Same round icon button as the album tracklist. */
 const ACTION =
   "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40";
 
-/** The video this row came from, so it can be pasted back into the input. */
 function CopySourceItem({ url }: { url: string }) {
   const { t } = useTranslation("download");
   return (
@@ -31,10 +26,7 @@ function CopySourceItem({ url }: { url: string }) {
   );
 }
 
-/** Re-run what the job still has to offer: its failed step, its failed tracks,
- * or the rest of a run the user stopped. In the menu rather than inline — it is
- * an occasional recourse, and an inline button on some rows pushed every other
- * row's controls out of line. */
+/** Re-runs the failed step, failed tracks, or a stopped run. */
 function RetryItem({ onRetry, isRetrying }: { onRetry: () => void; isRetrying?: boolean }) {
   const { t } = useTranslation("download");
   return (
@@ -46,16 +38,13 @@ function RetryItem({ onRetry, isRetrying }: { onRetry: () => void; isRetrying?: 
 }
 
 interface RowActionsProps {
-  /** The library item this row produced, once it exists. */
   track: LibraryTrack | undefined;
-  /** The video the row was downloaded from. */
   sourceUrl: string;
   onEdit: (track: LibraryTrack) => void;
   onDelete: (track: LibraryTrack) => void;
-  /** Offered in the menu when the job still has something to re-run. */
   onRetry?: () => void;
   isRetrying?: boolean;
-  /** Drop the reserved column width — right outside a table. */
+  /** Drops the reserved width, for use outside a table. */
   dense?: boolean;
 }
 
@@ -73,8 +62,7 @@ export function RowActions({ track, sourceUrl, onEdit, onDelete, onRetry, isRetr
           className={ACTION}
           aria-label={isCurrent && isPlaying ? tPlayer("pause") : tPlayer("play")}
           onClick={() =>
-            // A queue of one, on purpose: a download row is a lone item, not
-            // a browsing context to keep playing through.
+            // A queue of one: a download row isn't a browsing context.
             play([
               {
                 id: track.id,
@@ -95,9 +83,7 @@ export function RowActions({ track, sourceUrl, onEdit, onDelete, onRetry, isRetr
           {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
         </button>
       )}
-      {/* Outside the `track` guard: a row that never reached the library — a
-       * failed download, a dropped duplicate — is precisely the one whose
-       * source URL the user wants back, and whose retry lives here too. */}
+      {/* Outside the `track` guard: failed rows still need their source URL and retry. */}
       <Dropdown.Root>
         <Dropdown.Trigger aria-label={t("queue.moreActions")} className={ACTION}>
           <Ellipsis className="size-4" />
@@ -126,22 +112,18 @@ export function RowActions({ track, sourceUrl, onEdit, onDelete, onRetry, isRetr
 }
 
 interface AlbumRowActionsProps {
-  /** Library items the album produced; empty until its tracks are imported. */
+  /** Empty until tracks are imported. */
   trackIds: number[];
-  /** The playlist the album was downloaded from. */
   sourceUrl: string;
-  /** Where the record lives in the library, once any of it landed. */
   libraryHref?: string | null;
   onDelete: () => void;
   onRetry?: () => void;
   isRetrying?: boolean;
-  /** Drop the reserved column width — right outside a table. */
+  /** Drops the reserved width, for use outside a table. */
   dense?: boolean;
 }
 
-/** An album row has no single library item behind it, so its menu offers the
- * actions that apply to the whole batch: the record's page, the retry, the
- * sweep. */
+/** Batch-level actions for an album row. */
 export function AlbumRowActions({
   trackIds,
   sourceUrl,

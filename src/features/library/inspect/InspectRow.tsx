@@ -16,34 +16,21 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 
 const CELL = `${PAD} py-1.5 text-[0.75rem] leading-4 text-muted`;
 
-/** A field that is *empty* and that the Metadata page is still asking about. The
- * tint is on the cell and not on the text: at this density a coloured word is
- * one word among two hundred, while a lit cell is a position in a grid — which
- * is what makes a column of holes visible without reading any of it.
- *
- * The hairline is what keeps it a *cell*. A track missing both its year and its
- * genre lit two columns that share an edge, and a fill alone fused them into one
- * pavé spanning two headers — one problem where there are two. */
+/** An empty field the Metadata page still asks about. The tint is on the cell
+ * (visible in a dense grid); the inset ring keeps adjacent holes separate. */
 const HOLE = "bg-warning-soft inset-ring inset-ring-warning/20 font-medium text-warning";
 
-/** A field that is *filled* but whose value the app could not place — today only
- * a genre the tree does not know.
- *
- * Deliberately not `HOLE`. Filling a cell amber says "nothing here", and saying
- * that over a genre somebody typed on purpose is simply false: the value is
- * fine, it is our classification that has no room for it. So the value stays
- * plain and legible, and only a hairline underneath says there is something to
- * read about it — the tooltip. A remark, not a verdict. */
+/** A filled field the app couldn't classify (an off-tree genre): a dotted
+ * underline, not a fill, since the value itself is fine. */
 const UNPLACED = "underline decoration-warning/70 decoration-dotted underline-offset-[3px]";
 
 interface InspectRowProps {
   track: LibraryTrack;
-  /** Position in the list, for the zebra. Not shown: the "#" column carries the
-   * track's own number here, which is the field being inspected. */
+  /** For the zebra; "#" shows the track's own number here. */
   index: number;
-  /** The checks still naming this track. */
+  /** Checks still naming this track. */
   flags: DoorKey[];
-  /** Drops the Album cell — see `InspectTable`. */
+  /** See `InspectTable`. */
   insideAlbum?: boolean;
   onPlay: () => void;
   onEdit: () => void;
@@ -56,28 +43,21 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
   const { current } = usePlayer();
   const isCurrent = current?.id === track.id;
 
-  // The zebra keys off the row's own position, not `nth-child`: when the list
-  // is windowed a spacer row takes a slot and flips the parity of everything
-  // below it as you scroll.
+  // Zebra by position, not `nth-child`: windowing spacers would flip the parity.
   const rowTone = isCurrent
     ? "bg-accent/10 text-accent"
     : `${index % 2 === 1 ? "bg-surface-secondary/40 " : ""}group-hover/row:bg-default/50`;
 
   const has = (door: DoorKey) => flags.includes(door);
 
-  // Every background is composed here, on the cell, rather than half of it on
-  // the row with a `[&>td]` variant: that selector is one element more specific
-  // than a plain utility, so the zebra silently beat the amber and a hole on an
-  // odd row simply did not light. One source per cell, no cascade to lose.
+  // Every background set on the cell: a `[&>td]` row variant would out-specify the amber.
   const cell = (broken = false) => `${CELL} ${broken ? HOLE : rowTone}`;
   const label = (door: DoorKey) => {
     const key = ATTENTION_LABEL[door];
     return key ? t(key) : undefined;
   };
 
-  /** A marked cell says why, on hover — an unmarked one is handed back
-   * untouched, so the table renders one tooltip per lit cell and not one per
-   * cell on screen. */
+  /** Wraps only marked cells, so there's one tooltip per lit cell. */
   const noted = (text: string | undefined, content: ReactNode) =>
     text ? <CellNote text={text}>{content}</CellNote> : content;
 
@@ -97,9 +77,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         )}
       </td>
 
-      {/* The colour is conditional rather than a second utility: two `text-`
-       * classes on one cell are settled by stylesheet order, not by which one
-       * was written last, so the playing row would have lost its accent. */}
+      {/* One conditional class: two `text-` utilities resolve by stylesheet order. */}
       <td className={`${cell()} font-medium ${isCurrent ? "" : "text-foreground"}`}>
         <span className="block truncate">{track.title || t("unknownTitle")}</span>
       </td>
@@ -118,10 +96,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         {noted(has("missingYear") ? label("missingYear") : undefined, track.year ?? empty)}
       </td>
 
-      {/* Two very different verdicts share this column, and only one of them is
-          a hole — see `UNPLACED`. The genre is interpolated into the off-tree
-          sentence rather than described in the abstract: "unknown to the tree"
-          over a cell reading "Psycho" is a riddle until it names Psycho. */}
+      {/* Missing (a hole) or off-tree (see `UNPLACED`); the note names the genre. */}
       <td className={`${cell(noGenre)} w-[12%]`}>
         {noted(
           noGenre ? label("genreMissing") : unplacedGenre ? t("inspect.offTree", { genre: track.genre }) : undefined,
@@ -129,17 +104,13 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         )}
       </td>
 
-      {/* Never lit either, and for a different reason from the category's: this
-       * cell holds no stored field at all. It is what the tree made of the genre
-       * to its left, shown so the off-tree remark can be checked rather than
-       * believed. A track with no genre has no family to name — the hole is one
-       * column over, and repeating it here would count one gap as two. */}
+      {/* Never lit: the family derives from the genre, so a missing genre isn't
+          counted twice. */}
       <td className={`${cell()} w-[10%]`}>
         <span className="block truncate">{track.genre ? familyLabelOf(familyKeyOf(track)) : empty}</span>
       </td>
 
-      {/* Never lit: a category is optional by nature — most music has no
-       * context to declare — so an empty one is not a hole. */}
+      {/* Never lit: a category is optional. */}
       <td className={`${cell()} w-[12%]`}>
         <span className="block truncate">{track.category ? categoryLabelOf(track.category) : empty}</span>
       </td>
@@ -148,9 +119,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
         {track.length != null ? formatDuration(track.length) : empty}
       </td>
 
-      {/* The two verdicts that are about the row rather than about a field: no
-       * cell of theirs to light, so they get their own. Both are pictograms,
-       * which is the case where the name has to be one hover away. */}
+      {/* Row-level verdicts (suspect match, duplicate) as pictograms. */}
       <td className={`${cell()} w-10`}>
         <span className="flex items-center gap-1 text-warning">
           {has("suspectMatch") && noted(label("suspectMatch"), <TriangleAlert className="size-3.5" />)}

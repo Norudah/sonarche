@@ -24,9 +24,7 @@ class ClassifyTest(unittest.TestCase):
             classify(None, "ReadTimeout"),
             {"state": "unreachable", "detail": "ReadTimeout"},
         )
-        self.assertEqual(
-            classify(None, None), {"state": "unreachable", "detail": None}
-        )
+        self.assertEqual(classify(None, None), {"state": "unreachable", "detail": None})
 
     def test_a_failure_wins_over_a_status(self):
         # Both can be present when a response arrives and then the body dies.
@@ -47,9 +45,7 @@ class ProbesTest(unittest.TestCase):
 
 
 class UserAgentTest(unittest.TestCase):
-    """MusicBrainz blocks a default client string outright, so the header the
-    probes actually send is the difference between an answer and a 403 — and
-    the version in it has to be the caller's, not one written down here."""
+    """MusicBrainz blocks default User-Agents; the caller's version is sent."""
 
     def _sent_headers(self, params):
         with mock.patch.object(services, "_probe", return_value={"name": "x"}) as probe:

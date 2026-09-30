@@ -6,12 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MoveSpec } from "@/features/library/api";
 import { track } from "@/features/library/testFixtures";
 
-/**
- * The browser cannot hold the toast still long enough to click it, so the one
- * piece of glue no other test covers — the toast's Annuler firing the way back
- * — is pinned here: run a move, press the captured action, assert the inverse
- * calls.
- */
+/** Covers the toast's undo action firing the inverse calls. */
 
 const { moveTracks, updateTracks, toast } = vi.hoisted(() => {
   const toast = Object.assign(vi.fn(), { close: vi.fn() });

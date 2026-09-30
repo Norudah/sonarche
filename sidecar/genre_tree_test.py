@@ -3,7 +3,7 @@
 
 import unittest
 
-from genre_tree import _FAMILIES, _genre_to_root, bucket_for, TREE_PATH, WHITELIST_PATH
+from genre_tree import _FAMILIES, TREE_PATH, WHITELIST_PATH, _genre_to_root, bucket_for
 
 
 class BucketForTest(unittest.TestCase):
@@ -24,8 +24,13 @@ class BucketForTest(unittest.TestCase):
         self.assertEqual(bucket_for("industrial rock"), "Rock")
 
     def test_genuine_electronic_industrial_stays_electronic(self):
-        for g in ("electronic body music", "death industrial", "power noise",
-                  "electro-industrial", "power electronics"):
+        for g in (
+            "electronic body music",
+            "death industrial",
+            "power noise",
+            "electro-industrial",
+            "power electronics",
+        ):
             self.assertEqual(bucket_for(g), "Electronic", g)
 
     def test_curated_boundaries_survive_the_default_tree(self):
@@ -82,15 +87,11 @@ class TreeConsistencyTest(unittest.TestCase):
             self.assertEqual(mapping.get(root), root, root)
 
     def test_whitelist_matches_tree_nodes(self):
-        # The whitelist drives what lastgenre may store; the tree drives the
-        # bucket. They must stay in sync: every tree node is whitelisted
-        # (fabricated family roots excepted) and nothing else is.
+        # Every tree node is whitelisted (fabricated roots excepted), nothing else is.
         fabricated = {"folk & country"}
         with open(WHITELIST_PATH, encoding="utf-8") as f:
             whitelist = {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
+                line.strip().lower() for line in f if line.strip() and not line.startswith("#")
             }
         nodes = set(_genre_to_root())
         self.assertEqual(nodes - whitelist, fabricated)

@@ -6,7 +6,13 @@ from probe import summarize
 
 
 def _playlist(entries, **extra):
-    return {"_type": "playlist", "title": "Mutter", "uploader": "Rammstein", "entries": entries, **extra}
+    return {
+        "_type": "playlist",
+        "title": "Mutter",
+        "uploader": "Rammstein",
+        "entries": entries,
+        **extra,
+    }
 
 
 def _entry(video_id, title, duration=200.0, url=None):
@@ -15,7 +21,9 @@ def _entry(video_id, title, duration=200.0, url=None):
 
 class SummarizeTest(unittest.TestCase):
     def test_playlist(self):
-        info = _playlist([_entry("a1", "Mein Herz brennt", 279.0, "https://youtube.com/watch?v=a1")])
+        info = _playlist(
+            [_entry("a1", "Mein Herz brennt", 279.0, "https://youtube.com/watch?v=a1")]
+        )
         out = summarize(info, max_entries=10)
         self.assertTrue(out["is_playlist"])
         self.assertEqual(out["title"], "Mutter")
@@ -31,7 +39,12 @@ class SummarizeTest(unittest.TestCase):
         self.assertEqual(out["artist"], "Rammstein")
 
     def test_single_prefers_track_and_artist_fields(self):
-        info = {"title": "Sonne (Official Video)", "track": "Sonne", "artist": "Rammstein", "uploader": "RammsteinVEVO"}
+        info = {
+            "title": "Sonne (Official Video)",
+            "track": "Sonne",
+            "artist": "Rammstein",
+            "uploader": "RammsteinVEVO",
+        }
         out = summarize(info, max_entries=10)
         self.assertEqual(out["title"], "Sonne")
         self.assertEqual(out["artist"], "Rammstein")
@@ -81,10 +94,7 @@ class SummarizeTest(unittest.TestCase):
         self.assertEqual(summarize(info, max_entries=10)["artist"], "Rammstein - Topic")
 
     def test_a_blocked_video_is_kept_because_the_listing_cannot_tell(self):
-        # Measured on a real playlist: a video the source has blocked is listed
-        # with a full title, duration, channel and view count, exactly like a
-        # healthy one. Guessing here would drop real music; the truth only
-        # exists at download time (see download.py's unavailable classifier).
+        # Blocked videos are listed exactly like healthy ones in flat mode.
         info = _playlist([_entry("a1", "Route 66"), _entry("a2", "Real Gone")])
         out = summarize(info, max_entries=10)
         self.assertEqual(out["count"], 2)

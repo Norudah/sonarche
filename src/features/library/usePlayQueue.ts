@@ -6,28 +6,20 @@ import { usePlayer } from "@/shared/player/PlayerContext";
 import type { PlayableTrack } from "@/shared/player/types";
 
 interface PlayQueue {
-  /** A row click: play this track within the list, in whatever mode is active. */
+  /** A row click: play within the list, in the active mode. */
   playFrom: (tracks: LibraryTrack[], startIndex: number) => void;
-  /** "Play all": the set from the top, in order. */
   playOrdered: (tracks: LibraryTrack[]) => void;
-  /** "Shuffle": the set shuffled, random opener, fresh draw per press. */
   playShuffled: (tracks: LibraryTrack[]) => void;
 }
 
-/**
- * Maps library items onto the player's shape and launches them as a queue. One
- * place, because the fallback labels and the authoritative duration have to be
- * identical wherever playback starts from — a table row, an album card, an
- * album's tracklist. The list is the clicked track's context: the album, the
- * discography, the explorer's filtered results.
- */
+/** Launches library items as a player queue, so labels and durations are
+ * mapped the same way everywhere. */
 export function usePlayQueue(): PlayQueue {
   const { t } = useTranslation("library");
   const { play, playOrdered, playShuffled } = usePlayer();
 
   const toPlayable = (track: LibraryTrack): PlayableTrack => {
-    // The album route is keyed on the album artist (falling back to the track
-    // artist), exactly as `groupAlbums` files it.
+    // Same keying as `groupAlbums`.
     const albumArtist = track.albumArtist.trim() || track.artist.trim();
     return {
       id: track.id,

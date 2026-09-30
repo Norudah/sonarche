@@ -1,14 +1,8 @@
-"""Download a track with yt-dlp, keeping the native m4a/AAC stream by default.
+"""Download a track with yt-dlp, keeping the native m4a/AAC stream.
 
-The one exception is the audio-format setting (`audio_format.py`): someone who
-listens on a device that only reads mp3 has asked, explicitly, for the
-re-encode the app otherwise refuses to do behind their back. Without that
-setting nothing decodes the stream — the file stored is the file served.
-
-App rule: the file is left untagged on purpose. Video titles and channel names
-are not trustworthy metadata — fields stay empty until an automation process (MusicBrainz,
-AcoustID…) finds a real match. The source's own info is only returned to the caller for
-display and as search hints."""
+Re-encoding only happens when the user picked another audio format
+(`audio_format.py`). Files are left untagged: video titles and channels are
+not trusted metadata, only returned as display and search hints."""
 
 import os
 import re
@@ -16,16 +10,11 @@ import re
 import audio_format
 import protocol
 
-# Prefix the caller matches on to tell "the source will never serve this" apart
-# from "the download failed". A machine-readable marker rather than the raw
-# yt-dlp sentence: the wording is yt-dlp's to change, and only this module
-# should have to know it.
+# Machine-readable marker for "the source will never serve this".
 UNAVAILABLE_PREFIX = "video-unavailable:"
 
-# What yt-dlp says when the video is gone for good — deleted, made private,
-# blocked or claimed. The playlist still lists these with a full title,
-# duration and channel (see probe.py), so this is the first and only moment
-# the truth is knowable. Matched case-insensitively on the error text.
+# yt-dlp errors for videos gone for good (deleted, private, blocked). Playlists
+# still list these with full metadata, so download time is the first signal.
 _UNAVAILABLE_MARKERS = (
     "video unavailable",
     "this video is not available",
@@ -39,43 +28,26 @@ _UNAVAILABLE_MARKERS = (
 
 
 def is_unavailable_error(message: str) -> bool:
-    """Whether a yt-dlp failure means the video itself is gone, rather than the
-    download going wrong. Pure — unit-tested against the real messages."""
+    """Whether a yt-dlp failure means the video itself is gone."""
     low = (message or "").casefold()
     return any(marker in low for marker in _UNAVAILABLE_MARKERS)
 
 
 def scrub(message: str) -> str:
-    """A yt-dlp error with the extractor tag removed.
-
-    Errors reach the download history and are shown on the failing row, and
-    yt-dlp stamps every one with the site it came from (`ERROR: [site] …`).
-    The app never names the site it fetches from, so the tag comes off here —
-    at the one place that reads yt-dlp's output — while the part that says what
-    actually went wrong is kept verbatim. Pure."""
+    """A yt-dlp error without its `[site] id:` prefix; the app never names the
+    site it fetches from."""
     text = (message or "").strip()
     text = re.sub(r"^ERROR:\s*", "", text)
-    # The tag and the video id it carries: "[site] dQw4w9WgXcQ: ".
     text = re.sub(r"^\[[^\]]+\]\s*[\w-]*:?\s*", "", text)
     return text.strip()
 
 
 class _Logger:
-    """Routes yt-dlp's output to stderr instead of swallowing it.
-
-    The one that mattered: without ffmpeg, yt-dlp warns "writing DASH m4a.
-    Only some players support this container" and leaves the file fragmented —
-    0:00 durations in Music.app, broken seeking on iOS. `no_warnings` hid that
-    message for months. Warnings are diagnostics, not noise; they belong in
-    the sidecar log."""
+    """Routes yt-dlp's warnings and errors to the sidecar log (stderr)."""
 
     def debug(self, message):
-        # Everything yt-dlp would have printed to the screen lands here — it
-        # routes `to_screen` to the logger's `debug`, not its `info`. Dropped,
-        # with one exception: the line naming the JavaScript runtime that
-        # solved the challenge. It is the only place the runtime reports
-        # itself, and the difference between having handed yt-dlp a path and
-        # having it actually use one. `[jsc:` is yt-dlp's own tag for it.
+        # yt-dlp routes screen output to `debug`. Keep only the `[jsc:` line, the
+        # only place it reports which JavaScript runtime solved the challenge.
         if "[jsc:" in message:
             protocol.log(f"yt-dlp: {message}")
 
@@ -114,17 +86,10 @@ def _progress_hook(request_id):
 
 
 def js_runtimes(deno: str | None) -> dict:
-    """yt-dlp's `js_runtimes`, for the bundled runtime or for none.
+    """yt-dlp's `js_runtimes`: the bundled Deno, or none.
 
-    YouTube scrambles the signature and the `n` parameter of every stream URL
-    and ships the descrambler as obfuscated JavaScript; the runtime is what
-    reads it. Without one, only the single client that needs no JavaScript
-    answers — a lone point of failure rather than a fallback. The solver
-    scripts themselves come from the `yt-dlp-ejs` package in the venv, so a
-    download reaches for neither npm nor GitHub.
-
-    Stated in both directions on purpose: left unset, yt-dlp falls back to
-    `{"deno": {}}`, which searches PATH — and PATH is never trusted here.
+    YouTube's stream URLs need a JavaScript descrambler; without a runtime only
+    one client works. Always set explicitly: unset, yt-dlp would search PATH.
     """
     return {"deno": {"path": deno}} if deno else {}
 
@@ -140,9 +105,7 @@ def handle(request_id: str, params: dict) -> dict:
     os.makedirs(staging_dir, exist_ok=True)
 
     opts = {
-        # Native AAC stream from the source; fall back to best audio without
-        # re-encoding. A chosen format widens the ask instead — see
-        # `audio_format.source_selector`.
+        # See `audio_format.source_selector`.
         "format": audio_format.source_selector(fmt),
         "outtmpl": os.path.join(staging_dir, "%(title)s [%(id)s].%(ext)s"),
         "noplaylist": True,
@@ -153,16 +116,12 @@ def handle(request_id: str, params: dict) -> dict:
     chain = audio_format.postprocessors(fmt)
     if chain:
         if not ffmpeg:
-            # Refused rather than downloaded native: the user picked a format,
-            # and handing them an m4a while the setting says mp3 is the app
-            # lying about what it stored.
+            # The user picked a format; silently storing m4a would be wrong.
             raise RuntimeError(f"cannot produce {fmt} without ffmpeg")
         opts["postprocessors"] = chain
         protocol.log(f"download: re-encoding to {fmt} (audio format setting)")
     if ffmpeg:
-        # The bundled binary, by absolute path — PATH is never trusted. With it,
-        # yt-dlp's FixupM4a remuxes the DASH m4a into a classic MP4 (`-c copy`,
-        # no re-encode) as part of the download itself.
+        # Bundled ffmpeg lets FixupM4a remux DASH m4a into classic MP4 (no re-encode).
         opts["ffmpeg_location"] = ffmpeg
     else:
         protocol.log("download: no ffmpeg passed — DASH m4a will stay fragmented")
@@ -174,9 +133,7 @@ def handle(request_id: str, params: dict) -> dict:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
     except yt_dlp.utils.DownloadError as exc:
-        # A video removed from the playlist's reach is not a failed download:
-        # retrying can only fail again, and the job should report a hole in the
-        # record rather than an error it could have avoided.
+        # Retrying can't help: report a gap in the record, not an error.
         message = str(exc)
         if is_unavailable_error(message):
             raise RuntimeError(f"{UNAVAILABLE_PREFIX} {scrub(message)}") from exc
@@ -184,10 +141,8 @@ def handle(request_id: str, params: dict) -> dict:
 
     downloads = info.get("requested_downloads") or []
     path = downloads[0]["filepath"] if downloads else None
-    # The extract postprocessor rewrites `filepath` in place, but it is yt-dlp's
-    # bookkeeping and not a contract: if it ever falls behind, the converted
-    # file is the same name wearing the chosen suffix, and finding it there
-    # beats failing a download whose audio is sitting on disk.
+    # `filepath` is yt-dlp bookkeeping, not a contract: fall back to the
+    # converted file's expected name.
     if path and not os.path.exists(path):
         swapped = f"{os.path.splitext(path)[0]}.{fmt}"
         if os.path.exists(swapped):

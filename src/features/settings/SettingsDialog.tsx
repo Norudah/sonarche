@@ -6,9 +6,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsNav, SettingsNavStrip } from "@/features/settings/SettingsNav";
 import { closeSettings, useSettingsDialog } from "@/shared/lib/settingsDialog";
 
-/** The way out, in the two places it has to sit. Rendered twice and shown once
- * — the wide layout floats it over the content gutter, the narrow one parks it
- * beside the scrolling category strip. */
+/** Rendered in both layouts, shown in one. */
 function CloseButton({ label, className }: { label: string; className: string }) {
   return (
     <button
@@ -26,28 +24,8 @@ function CloseButton({ label, className }: { label: string; className: string })
   );
 }
 
-/**
- * Settings, as a dialog over the app.
- *
- * It used to be a mode: a route that swapped the sidebar's entire nav for a
- * category menu, entered and left through one button that changed its own face
- * from a gear to a cross, with a ref remembering which page to return to. You
- * lost your place going in, and there was exactly one way out.
- *
- * A dialog is the right grammar for a detour. The app stays visible and running
- * behind it — this is a music player, and the queue you were looking at is
- * still there — there are three ways out (the cross, Escape, the veil), and
- * nothing has to remember where you came from because you never left.
- *
- * It also earns its own menu: a rail inside the dialog can carry titled groups
- * and, in a moment, a search field, none of which would fit the app's nav
- * without borrowing its grammar for something that is not navigation.
- *
- * The veil is the app's `--backdrop` — calibrated for both themes, and darker
- * in the night than in the day — plus a slight blur. The blur is spent here
- * and nowhere else on purpose: every other modal in the app covers an object
- * on the page it opened from, and this one covers the whole app.
- */
+/** Settings as a dialog over the running app: three ways out, nothing to
+ * return to. The only modal with a backdrop blur, since it covers the whole app. */
 export function SettingsDialog({ children }: { children: ReactNode }) {
   const { t } = useTranslation("settings");
   const { isOpen, category } = useSettingsDialog();
@@ -65,28 +43,17 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
             <SettingsNav current={category} />
 
             <div className="relative flex min-w-0 flex-1 flex-col bg-surface">
-              {/* Below md the cross shares a row with the category strip rather
-                  than floating over it: the strip scrolls, so anything floating
-                  above its right edge would sit on a chip that can still be
-                  scrolled underneath and never clicked. */}
+              {/* Narrow: the close button sits beside the scrolling strip, not over it. */}
               <div className="flex items-center border-b border-separator bg-panel md:hidden">
                 <SettingsNavStrip current={category} />
                 <CloseButton label={t("close")} className="mr-2 ml-1 shrink-0" />
               </div>
 
-              {/* Above md it floats: the content column is a bounded reading
-                  measure inside a wider pane, so the cross sits in the gutter
-                  that leaves and never crosses a line of text. */}
+              {/* Wide: floats in the gutter. */}
               <CloseButton label={t("close")} className="absolute top-4 right-4 z-10 hidden md:flex" />
 
               <div className="min-h-0 flex-1 overflow-y-auto">
-                {/* A bounded reading column, not the full pane width: a settings
-                    control has a natural size, so a card stretched edge to edge
-                    would just be half-empty. The space to its right is
-                    deliberate, the way system-settings panes leave it.
-                    `settings-pane` is what gives every button in here one
-                    height, one type size and one minimum width — see
-                    theme.css. It is a scope, not a look. */}
+                {/* Bounded reading column. `settings-pane` scopes button sizing (theme.css). */}
                 <div className="settings-pane flex w-full max-w-2xl flex-col gap-5 px-8 py-7">{children}</div>
               </div>
             </div>

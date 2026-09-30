@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { ListMusic } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +14,7 @@ import { PlaylistTrackList } from "@/features/library/playlists/PlaylistTrackLis
 import { usePlaylists } from "@/features/library/playlists/hooks";
 import { playlistCovers, resolvePlaylistTracks, tracksById } from "@/features/library/playlists/playlists";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -35,9 +35,7 @@ export function PlaylistDetailView() {
   if (playlists.isPending || library.isPending) {
     return (
       <PageContainer>
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
+        <LoadingSpinner />
       </PageContainer>
     );
   }
@@ -46,18 +44,12 @@ export function PlaylistDetailView() {
   if (error != null) {
     return (
       <PageContainer>
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
+        <LoadError error={error} />
       </PageContainer>
     );
   }
 
-  // Deleted (from this very page, or another window) or a dead id: back to the
-  // shelf rather than a "not found" screen the user cannot act on.
+  // Deleted or unknown id: back to the shelf.
   if (!playlist) return <Navigate to={paths.libraryPlaylists} replace />;
 
   const isFavorites = playlist.kind === "favorites";

@@ -8,9 +8,7 @@ from enrich import work_fields
 
 class WorkFieldsTest(unittest.TestCase):
     def test_drops_the_release_duration(self):
-        # The regression this exists for: MusicBrainz' duration for the
-        # recording replaced the downloaded file's own, and every duration in
-        # the app inherited it.
+        # MusicBrainz' recording duration must not replace the file's own.
         merged = {"title": "Vantablack", "artist": "Perturbator", "length": 304.4}
         self.assertEqual(work_fields(merged), {"title": "Vantablack", "artist": "Perturbator"})
 
@@ -40,9 +38,8 @@ if __name__ == "__main__":
 
 
 class CandidateSortKeyTest(unittest.TestCase):
-    """The Real Gone regression: one fingerprint, two linked recordings, and
-    the wrong one first by AcoustID submission count. The video title is the
-    signal that survives, so it must outrank the release type."""
+    """One fingerprint, two recordings, the wrong one first by submission count:
+    the video title must outrank the release type."""
 
     STUDIO = {"status": "Official", "release_group": {"primary_type": "Album"}, "date": "2005"}
     SOUNDTRACK = {
@@ -99,9 +96,7 @@ class CandidateSortKeyTest(unittest.TestCase):
 
 
 class CollectionGuardTest(unittest.TestCase):
-    """A track filed in a collection must be refused by the per-track chain:
-    a match would re-file it onto its release's album row (`_album_row_for`),
-    ripping it out of the record its owner placed it in."""
+    """A match would move the track out of the collection it was placed in."""
 
     def test_refuses_a_track_sitting_on_a_collection(self):
         import os
@@ -178,7 +173,14 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         row = lib.add_album(
-            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI/1 Holiday.mp3",
+                    title="Holiday",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         found = enrich.find_named_row(lib, "Green Day", "American Idiot")
         self.assertIsNotNone(found)
@@ -192,7 +194,14 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         row = lib.add_album(
-            [self._item("AI/1 Holiday.mp3", title="Holiday", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI/1 Holiday.mp3",
+                    title="Holiday",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         row[library.ALBUM_KIND_KEY] = library.COLLECTION
         row.store(inherit=False)
@@ -213,11 +222,23 @@ class FindNamedRowTest(LibraryHarness):
 
         lib = self._lib()
         lib.add_album(
-            [self._item("AI dup/1 Letterbomb.mp3", title="Letterbomb", album="American Idiot", albumartist="Green Day")]
+            [
+                self._item(
+                    "AI dup/1 Letterbomb.mp3",
+                    title="Letterbomb",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
+            ]
         )
         full = lib.add_album(
             [
-                self._item(f"AI/{n} T{n}.mp3", title=f"T{n}", album="American Idiot", albumartist="Green Day")
+                self._item(
+                    f"AI/{n} T{n}.mp3",
+                    title=f"T{n}",
+                    album="American Idiot",
+                    albumartist="Green Day",
+                )
                 for n in (1, 2)
             ]
         )

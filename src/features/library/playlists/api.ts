@@ -3,22 +3,17 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { withCacheBuster } from "@/features/library/api";
 import type { CoverCrop } from "@/features/library/api";
 
-/** A user-curated playlist. `itemIds` are beets item ids in playing order —
- * titles, covers and durations are joined back from the library listing, so a
- * playlist can never disagree with the library about a track's tags. */
+/** `itemIds` in playing order; tags come from the library listing. */
 export interface Playlist {
   id: number;
   name: string;
-  /** `favorites` for the one built-in list (localized label, locked name);
-   * `user` for everything else. */
+  /** `favorites`: the built-in list (localized label, locked name). */
   kind: "user" | "favorites";
-  /** The user-chosen tile, ready to draw — fresh random filename per write, so
-   * the URL itself is the cache buster. Null draws the cover mosaic. */
+  /** User tile URL; null draws the mosaic. */
   coverUrl: string | null;
-  /** The same tile as a file — what reframing the image in place reopens. */
+  /** The tile's file, for reframing. */
   coverPath: string | null;
-  /** What the list wears in the navigation, as stored (`icon:<key>` / `cover` /
-   * `color:<key>`). Null means the default glyph — see `marker.ts`. */
+  /** `icon:<key>`, `cover` or `color:<key>`; null is the default (see `marker.ts`). */
   marker: string | null;
   createdAt: number;
   updatedAt: number;
@@ -41,8 +36,7 @@ function toPlaylist(wire: WirePlaylist): Playlist {
     id: wire.id,
     name: wire.name,
     kind: wire.kind === "favorites" ? "favorites" : "user",
-    // The file is named after the playlist and keeps its name when the image
-    // is replaced; `updated_at` busts the webview's cache in its place.
+    // The filename is stable, so `updated_at` busts the cache.
     coverUrl: wire.cover_path ? withCacheBuster(convertFileSrc(wire.cover_path), wire.updated_at) : null,
     coverPath: wire.cover_path,
     marker: wire.marker ?? null,
@@ -70,23 +64,22 @@ export async function deletePlaylist(id: number): Promise<void> {
   await invoke("delete_playlist", { id });
 }
 
-/** Appends to the end; the backend skips ids the playlist already holds. */
+/** The backend skips ids already present. */
 export async function addPlaylistTracks(id: number, itemIds: number[]): Promise<{ added: number; skipped: number }> {
   return invoke("add_playlist_tracks", { id, itemIds });
 }
 
-/** Removes the rows at these positions (current display order). */
+/** Positions in display order. */
 export async function removePlaylistTracks(id: number, positions: number[]): Promise<{ removed: number }> {
   return invoke("remove_playlist_tracks", { id, positions });
 }
 
-/** Moves the row at `from` so it lands at `to`, both in display order. */
+/** Positions in display order. */
 export async function movePlaylistTrack(id: number, from: number, to: number): Promise<void> {
   await invoke("move_playlist_track", { id, from, to });
 }
 
-/** Give the playlist a tile of its own — same pipeline as an artist image
- * (500px square rendition in app data, optional crop). */
+/** Same pipeline as artist images (500px square, optional crop). */
 export async function setPlaylistCover(
   id: number,
   sourcePath: string,
@@ -100,8 +93,7 @@ export async function removePlaylistCover(id: number): Promise<{ removed: boolea
   return invoke("remove_playlist_cover", { id });
 }
 
-/** What the playlist wears in the navigation; an empty string restores the
- * default glyph. */
+/** An empty string restores the default glyph. */
 export async function setPlaylistMarker(id: number, marker: string): Promise<void> {
   await invoke("set_playlist_marker", { id, marker });
 }

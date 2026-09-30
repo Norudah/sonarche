@@ -10,16 +10,8 @@ import { hasAudio } from "@/features/import/summary";
 import { useImportHeadline } from "@/features/import/useImportHeadline";
 import { springs } from "@/shared/motion/tokens";
 
-/**
- * Which phases show the *same* thing, so the card stops collapsing between them.
- *
- * `mode="wait"` plays a key change as collapse-then-expand, which is right when
- * the content is genuinely different and absurd when it is not: pressing Import
- * took the card from "scanned" to "importing" — the same summary either side,
- * plus one line — and the whole panel folded shut and reopened for it. Every
- * pair that shares a body now shares a key, so only the phases that really swap
- * their content animate the swap.
- */
+/** Phases sharing a key show the same body, so `mode="wait"` doesn't collapse
+ * and reopen the card between them. */
 export const DETAIL_KEY: Partial<Record<ImportPhase["kind"], string>> = {
   scanned: "summary",
   importing: "summary",
@@ -29,13 +21,7 @@ export const DETAIL_KEY: Partial<Record<ImportPhase["kind"], string>> = {
   importFailed: "failure",
 };
 
-/**
- * What is known about the folder right now, under the card's own rail.
- *
- * Height, not opacity: the card has to grow into its content rather than have a
- * summary appear on top of the page below it — same reasoning as an unfolded job
- * card in the download feed, and the same spring, so the two read as one app.
- */
+/** Details under the rail; animates height like an unfolded job card. */
 export function PhaseDetail({ phase, progress }: { phase: ImportPhase; progress: ImportProgress | null }) {
   const body = <Body phase={phase} progress={progress} />;
 
@@ -68,15 +54,7 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
     case "scanFailed":
       return <Failure title={t("scanFailed")} message={phase.message} />;
 
-    // One body for both. The summary stays up through the copy — it is what the
-    // user agreed to, and a card that shrank to one line the moment work
-    // started would read as having thrown the answer away.
-    //
-    // The copying line is only rendered while there is a copy. Reserving its
-    // height from the ready state did keep the card perfectly still across the
-    // press, at the cost of an empty row sitting under the rail the whole time
-    // somebody reads the summary — a permanent hole to spare a 20px step. The
-    // step is back; the hole is gone.
+    // The summary stays up during the copy; the copying line appears only while copying.
     case "scanned":
       return <ScanSummary report={phase.report} />;
 
@@ -92,34 +70,25 @@ function Body({ phase, progress }: { phase: ImportPhase; progress: ImportProgres
       return (
         <div className="flex flex-col gap-4">
           <Failure title={t("importFailed")} message={phase.message} />
-          {/* Still shown: what was in the folder has not changed, and a retry
-              is about the same contents. */}
+          {/* A retry concerns the same contents. */}
           {hasAudio(phase.report) && <ScanSummary report={phase.report} />}
         </div>
       );
 
     case "imported":
     case "importCancelled":
-      // The same panel the archive shows, not a shorter version of it: what an
-      // import brought in is one set of facts, and the page that just ran it is
-      // exactly where they matter most. A cancelled run shares it — what
-      // landed before the stop is in the library and deserves the same recap.
+      // Same recap as the archive; cancelled runs share it.
       return <Landed phase={phase} />;
   }
 }
 
-/**
- * The import, over. The count of what came in leads, then the panel — its own
- * component because the headline is a hook, and the switch above is a plain
- * function that cannot call one.
- */
+/** A component because the headline is a hook. */
 function Landed({ phase }: { phase: Extract<ImportPhase, { kind: "imported" | "importCancelled" }> }) {
   const { t } = useTranslation("import");
   const headline = useImportHeadline(phase.outcome.folders, phase.report, phase.outcome.recap);
   const cancelled = phase.kind === "importCancelled";
 
-  // Stopped before anything was taken on: there is nothing to recap, and a
-  // panel of zeroes would dress an empty act as a result.
+  // Nothing landed: no recap of zeroes.
   if (cancelled && phase.outcome.folders === 0 && phase.outcome.recap == null) {
     return <p className="text-[0.8125rem] text-muted">{t("cancelledNothing")}</p>;
   }
@@ -132,18 +101,8 @@ function Landed({ phase }: { phase: Extract<ImportPhase, { kind: "imported" | "i
   );
 }
 
-/**
- * The one line that moves while beets works: which album is being copied, or —
- * on the cover pass, which counts something else entirely — why the app is
- * still busy after the copy looked finished.
- *
- * Not animated, and always rendered. A name that is replaced a dozen times in
- * as many seconds is a readout going past, not a state landing: it used to
- * cross-fade, which took the line out of the DOM and put it back on every album
- * and made the whole card breathe. The fixed height is the other half of that —
- * before the first tick there is nothing to say, and an empty line has to hold
- * its place rather than let the card grow into it a beat later.
- */
+/** The album being copied, or why the cover pass is still busy. Not animated
+ * (it changes too often), with a fixed height so the card doesn't grow later. */
 function CopyingLine({ progress }: { progress: ImportProgress | null }) {
   const { t } = useTranslation("import");
 

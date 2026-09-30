@@ -6,24 +6,11 @@ import { ImportHistoryCard } from "@/features/import/ImportHistoryCard";
 import { pageWindow } from "@/shared/lib/pagination";
 import { Pagination } from "@/shared/ui/Pagination";
 
-/** Cards per page. Client-side, unlike the downloads below: you import a few
- * times a year, so the whole archive is a short list — the pager only exists
- * so that years of history can never stack into one endless column. */
+/** Client-side paging: imports are few. */
 const PAGE_SIZE = 10;
 
-/**
- * The imports on the history page.
- *
- * Its own section rather than interleaved with the downloads, for a reason that
- * is about the content and not the layout: you download all week and import
- * three times a year. Merged into one stream, an import would be a row you
- * scroll past once and never find again, and the page's pagination is counted in
- * downloads.
- *
- * Renders nothing at all when there are none. An empty state here would be a
- * second invitation on a page that already has one, on a screen the user reached
- * to look at what they have already done.
- */
+/** Imports on the history page, in their own section (rare, and not counted
+ * in the downloads' pagination). Renders nothing when empty. */
 export function ImportHistorySection() {
   const { t } = useTranslation("import");
   const imports = useImports();

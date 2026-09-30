@@ -6,14 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { ShelfLayout } from "@/features/library/shelfLayout";
 import { springs } from "@/shared/motion/tokens";
 
-/* The view-mode switch's shape, down to the padding and the type size: one pill
- * sliding between two labelled segments already means "throw this switch" in
- * this app, and a second dialect for the same gesture would make the two read as
- * unrelated controls.
- *
- * Labelled, not icon-only. Nothing else in the app asks the user to read an
- * icon on its own, and a grid glyph next to a rows glyph is exactly the pair
- * that gets guessed wrong — the words cost 60px and remove the guess. */
+/* Same shape as the view-mode switch; labelled rather than icon-only. */
 const SEGMENT =
   "relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap " +
   "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
@@ -47,9 +40,7 @@ function Segment({
           className="absolute inset-0 rounded-full bg-surface shadow-xs"
         />
       )}
-      {/* Load-bearing wrapper: the sliding pill is absolutely positioned, so it
-       * paints over in-flow siblings. Positioning the content puts it back on
-       * top — the same reason `ViewModeSwitch` wraps its own label. */}
+      {/* Positioned so the label paints above the absolute pill. */}
       <span className="relative flex items-center gap-1.5">
         <Icon className="size-3.5 shrink-0" />
         {label}
@@ -58,7 +49,6 @@ function Segment({
   );
 }
 
-/** Covers or rows, for a shelf that can be read either way. */
 export function ShelfLayoutSwitch({
   layout,
   onChange,

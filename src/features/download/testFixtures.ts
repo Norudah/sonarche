@@ -1,8 +1,6 @@
 import type { AlbumTrackJob, DownloadJob, MetadataReport, MetadataReportFields } from "@/features/download/api";
 
-/** Fixture factories for the queue's pure modules (pipeline, tags, attempts,
- * library presence). Test-only: nothing in `src/` imports this file, and the
- * `.ts` name keeps it out of the `*.test.ts` run. */
+/** Fixture factories for the queue's pure modules. Test-only. */
 
 export function report(over: Partial<MetadataReport> = {}): MetadataReport {
   const fields: MetadataReportFields = {
@@ -16,8 +14,7 @@ export function report(over: Partial<MetadataReport> = {}): MetadataReport {
   };
   return {
     itemId: 1,
-    // Null like every report written before the anchor tags existed; the
-    // id-recycling guard is opted into by the tests that are about it.
+    // Like pre-anchor reports; tests about recycled ids opt in.
     title: null,
     artist: null,
     album: null,

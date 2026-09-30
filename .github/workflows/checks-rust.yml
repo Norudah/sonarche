@@ -1,14 +1,8 @@
 name: checks (rust)
 
-# On the PR into `main` — see checks-front.yml for why the checks moved off
-# per-push. This job is the reason that measurement was worth taking: a private
-# repository is billed per minute and **macOS counts for ten**, so this one job
-# was ~85% of everything the checks spent, to repeat on the same OS what the
-# laptop had just said.
-#
-# macOS and not Linux: the crate has an entire macOS-only half — the objc2 media
-# session, the keychain's apple-native backend — that no other platform can even
-# compile. Running it elsewhere would prove something about code we do not ship.
+# On pull requests into `main` (see checks-front.yml); macOS runners bill at
+# 10x. macOS because part of the crate (objc2 media session, apple-native
+# keyring) only compiles there.
 on:
   pull_request:
     branches: [main]
@@ -23,9 +17,7 @@ concurrency:
 
 jobs:
   rust:
-    # Not release-please's own PR. It rewrites the version in Cargo.toml and
-    # tauri.conf.json, both under `src-tauri/**` — without this, every release
-    # would wake the priciest runner in the repository for a version bump.
+    # Skip release-please's version-bump PR.
     if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: macos-14
     steps:
@@ -36,10 +28,8 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      # tauri-build checks that the frontend output and every declared resource
-      # exist before it will compile anything. Stubs rather than the real ones:
-      # this job bundles nothing, and fetching the 100 MB runtime to satisfy an
-      # existence check would double its length for no answer.
+      # tauri-build requires the frontend output and resources to exist; stubs
+      # avoid fetching the runtime for a build that bundles nothing.
       - name: Stub what tauri-build insists on finding
         run: |
           mkdir -p dist src-tauri/resources/wheels src-tauri/resources/tools

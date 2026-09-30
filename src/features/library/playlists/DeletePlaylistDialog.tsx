@@ -13,12 +13,11 @@ export interface PlaylistDeletion {
 interface DeletePlaylistDialogProps {
   playlist: PlaylistDeletion | null;
   onClose: () => void;
-  /** After the row is gone — the detail page navigates back to the shelf. */
+  /** The detail page navigates back to the shelf. */
   onDeleted?: () => void;
 }
 
-/** Deleting a playlist deletes a *list*: the dialog says so, because the word
- * "supprimer" next to track counts reads like files are about to go. */
+/** States that only the list goes, not the files. */
 export function DeletePlaylistDialog({ playlist, onClose, onDeleted }: DeletePlaylistDialogProps) {
   const { t } = useTranslation("library");
   const deletion = useDeletePlaylist();

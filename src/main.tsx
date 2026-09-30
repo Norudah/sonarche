@@ -6,9 +6,7 @@ import { applyStoredTheme } from "@/features/settings/theme";
 import "@/app/globals.css";
 import "@/app/i18n";
 
-// Before the render, not inside it: the theme is an attribute on <html>, and
-// letting React get there first means one frame of the light theme on a dark
-// desktop. Reads localStorage synchronously, so there is nothing to wait for.
+// Before the first render, to avoid a frame of the wrong theme.
 applyStoredTheme();
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("mockTauri")) {

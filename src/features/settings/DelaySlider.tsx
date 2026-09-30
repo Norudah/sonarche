@@ -19,12 +19,8 @@ interface DelaySliderProps {
   onCommit: (seconds: number) => void;
 }
 
-/**
- * The printed scale. Positioned from the stops rather than spread evenly,
- * because the track is linear in stops and not in seconds — see `rateLimits.ts`.
- * The two ends are aligned to their edge instead of centred on it, the way a
- * ruler prints its first and last number.
- */
+/** Labels positioned by stop index (the scale is uneven, see `rateLimits.ts`);
+ * the ends align to the edges. */
 function Scale({ max, instantLabel, locale }: { max: number; instantLabel: string; locale: string }) {
   const marks = marksFor(max);
 
@@ -46,15 +42,8 @@ function Scale({ max, instantLabel, locale }: { max: number; instantLabel: strin
   );
 }
 
-/**
- * One politeness delay: what it is, why it exists, the dial, what a batch will
- * cost at that setting, and — under one second — a word about why that is a bad
- * idea. Auto-saves on release; this category has no footer.
- *
- * The slider runs on stop *indexes*, not on seconds: the scale is deliberately
- * uneven, so the only value that can travel evenly along the rail is the
- * position in the list.
- */
+/** One delay with its cost estimate and a warning under one second. Saves on
+ * release. The slider moves over stop indexes, not seconds. */
 export function DelaySlider({ def, seconds, onCommit }: DelaySliderProps) {
   const { t, i18n } = useTranslation("settings");
   const stops = stopsFor(def.max);

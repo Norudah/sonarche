@@ -34,11 +34,6 @@ const record = (over: Partial<ImportRecord> = {}): ImportRecord => ({
   ...over,
 });
 
-/**
- * A run that was taken back out has to *read* as one. It brought tracks in, and
- * the row that says so unchanged would send someone looking for music that is
- * no longer there.
- */
 describe("ImportHistoryCard, once an import has been undone", () => {
   const open = () => fireEvent.click(screen.getByRole("button", { name: "recap.expand" }));
 

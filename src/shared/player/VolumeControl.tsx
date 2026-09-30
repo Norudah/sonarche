@@ -4,11 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { usePlayerVolume } from "@/shared/player/PlayerContext";
 
-/**
- * Subscribes to the volume itself rather than taking it as a prop: a drag moves
- * the value dozens of times a second, and passing it down would re-render the
- * player bar — and everything else it renders — on every one of them.
- */
+/** Reads the volume itself so a drag doesn't re-render the player bar. */
 export function VolumeControl() {
   const { t } = useTranslation("player");
   const { volume, setVolume } = usePlayerVolume();

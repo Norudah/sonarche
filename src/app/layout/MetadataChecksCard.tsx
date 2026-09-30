@@ -10,31 +10,16 @@ import { closeSettings } from "@/shared/lib/settingsDialog";
 import { ActionButton } from "@/shared/ui/ActionLink";
 
 /**
- * The eight checks, switchable from here too.
- *
- * This was a pointer: one row saying "8 sur 8" beside a button to the Metadata
- * page, on the grounds that the switches mean more next to the counts they
- * silence. True, and still not an answer to somebody who opened Settings ›
- * Métadonnées to stop being told about missing years — being sent somewhere
- * else is the thing a settings pane exists to spare you. The switches are the
- * same ones the page's popover shows (`ChecksList`), reading and writing the
- * same store, so the two surfaces cannot drift apart.
- *
- * The counts stay on the page. They are the argument for flipping a switch, not
- * part of the switch, and putting them here would mean walking the whole
- * library every time this pane opens.
- *
- * At app level because it reaches into two features at once: `library/triage`
- * owns the preference, `settings` owns the card, and features do not import
- * each other. The shell composes it into the pane (see `SettingsHost`).
+ * The metadata check switches in Settings, sharing the Metadata page's store
+ * (`ChecksList`). Counts stay on the page to avoid walking the library here.
+ * Lives in the shell because it spans `library/triage` and `settings`.
  */
 export function MetadataChecksCard() {
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
   const disabled = useDisabledChecks();
 
-  // Closes before it navigates: a `Link` would leave the dialog standing over
-  // the page it just opened.
+  // Close first, or the dialog would stay over the new page.
   const open = () => {
     closeSettings();
     navigate(paths.metadata);

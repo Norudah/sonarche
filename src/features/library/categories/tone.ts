@@ -1,18 +1,12 @@
 const FREE_TONE = "color-mix(in oklab, var(--color-muted) 40%, transparent)";
 
-/**
- * Fixed identity tone per taxonomy category, same doctrine as the family
- * tones: the known set is closed and curated, so a pre-decided colour is an
- * identity rather than a rank. The values live in theme.css with the rest of
- * the visual identity. A free value the map does not know falls back to the
- * same grey the `Other` family uses.
- */
+/** Fixed tone per taxonomy category (theme.css); unknown values get the `Other` grey. */
 const CATEGORY_TONES: Record<string, string> = {
   Music: "var(--category-music)",
   "Video Games": "var(--category-video-games)",
   Film: "var(--category-film)",
   Series: "var(--category-series)",
-  /** Retired alias of "Series" — see `useCategoryLabel`. */
+  /** Retired alias of "Series". */
   TV: "var(--category-series)",
   Anime: "var(--category-anime)",
   Cartoon: "var(--category-cartoon)",

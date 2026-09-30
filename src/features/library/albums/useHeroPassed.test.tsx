@@ -7,10 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useHeroPassed } from "@/features/library/albums/useHeroPassed";
 import { ScrollportProvider } from "@/shared/ui/Scrollport";
 
-/**
- * One fake observer, driving intersection by hand. What is under test is when
- * the hook manages to observe anything at all — not the browser's geometry.
- */
+/** A fake observer: what's tested is whether the hook observes at all. */
 let observed: Element[] = [];
 let emit: (isIntersecting: boolean) => void;
 let disconnects = 0;
@@ -45,11 +42,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/**
- * Mirrors the album page: a loading state with no hero, then the hero once the
- * library resolves. The scrollport ref is empty here, which is fine — a null
- * root just means the viewport, and nothing in this test depends on geometry.
- */
+/** Like the album page: no hero while loading, then the hero. */
 function Page({ hasHero }: { hasHero: boolean }) {
   const { ref, passed } = useHeroPassed<HTMLElement>();
 

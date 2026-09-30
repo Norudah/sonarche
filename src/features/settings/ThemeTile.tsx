@@ -4,17 +4,8 @@ import { motion } from "motion/react";
 import type { ThemePreference } from "@/features/settings/theme";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
-/**
- * A 200 px drawing of Sonarche wearing one theme: the sidebar with its accent
- * item, a page title, two cards on the ground, the player bar with its accent
- * transport. Enough structure that the tile is recognisably *this* app and not
- * a generic light/dark swatch, and no more — it has to read at a glance.
- *
- * Its colours come from `.theme-tile[data-tone]` in theme.css, which is the one
- * frozen copy of the palette in the app: the light tile must stay light while
- * the app is dark, so these are the only surfaces that must not follow the
- * theme selector.
- */
+/** A tiny drawing of the app in one theme. Colours come from
+ * `.theme-tile[data-tone]` (theme.css), frozen so they don't follow the theme. */
 function Miniature({ tone }: { tone: "light" | "dark" }) {
   return (
     <div data-tone={tone} className="theme-tile absolute inset-0 flex flex-col bg-[var(--tile-background)]">
@@ -41,13 +32,7 @@ function Miniature({ tone }: { tone: "light" | "dark" }) {
   );
 }
 
-/**
- * One theme, shown rather than named.
- *
- * `system` is the two other tiles cut on the diagonal — both answers in one
- * frame. Any third invented look would be a lie: the app never wears a
- * "system" theme, it wears whichever one the desktop is on.
- */
+/** `system` shows both themes split on the diagonal. */
 export function ThemeTile({
   value,
   selected,
@@ -61,13 +46,9 @@ export function ThemeTile({
 
   return (
     <Radio.Root value={value} className="group relative mt-0">
-      {/* Radio.Content is the actual react-aria RadioButton — the label the
-          click handler lives on — so the drawing sits inside it: a press
-          anywhere on the tile selects the theme, not just on the caption. */}
+      {/* Radio.Content is the clickable element, so the whole tile selects. */}
       <Radio.Content className="flex w-full cursor-pointer flex-col gap-2 text-[0.8125rem] font-medium text-muted transition-colors group-hover:text-foreground data-[selected]:text-accent">
-        {/* `w-full` is load-bearing: HeroUI's `.radio` aligns its children to
-            flex-start, so an aspect-ratio box with only absolute content inside
-            shrinks to 3×2 actual pixels. */}
+        {/* `w-full`: HeroUI's `.radio` would otherwise shrink the box to 3×2 px. */}
         <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl border border-separator shadow-xs">
           {value !== "dark" && <Miniature tone="light" />}
           {value === "dark" && <Miniature tone="dark" />}
@@ -80,9 +61,7 @@ export function ThemeTile({
         <span className="self-center">{label}</span>
       </Radio.Content>
 
-      {/* Outside the clipped frame so the ring is not shaved off by the
-          overflow, and carrying the shared layoutId so it travels between
-          tiles rather than blinking out and in. */}
+      {/* Outside the clipped frame, with a shared layoutId. */}
       {isSelected && (
         <motion.span
           layoutId={layoutIds.themeChoice}

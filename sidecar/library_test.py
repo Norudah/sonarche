@@ -4,15 +4,15 @@ import tempfile
 import unittest
 
 from library import (
+    Lookups,
     _apply_fields,
-    update,
     _coerce_int,
     art_paths_by_album,
-    Lookups,
     expand_db_path,
     first_genre,
     flex_attrs_by_item,
     track_row,
+    update,
 )
 
 
@@ -28,9 +28,7 @@ class ExpandDbPathTest(unittest.TestCase):
 
     def test_absolute_path_is_left_alone(self):
         """Files outside the library dir are stored absolute already."""
-        self.assertEqual(
-            expand_db_path(b"/elsewhere/track.m4a", "/music"), "/elsewhere/track.m4a"
-        )
+        self.assertEqual(expand_db_path(b"/elsewhere/track.m4a", "/music"), "/elsewhere/track.m4a")
 
     def test_posix_separator_is_translated(self):
         expanded = expand_db_path(b"Artist/Album/track.m4a", "/music")
@@ -72,9 +70,7 @@ def _db_with(items=(), albums=(), attributes=()):
         " path BLOB, album_id INTEGER, added REAL, mb_trackid TEXT,"
         " grouping TEXT, albumtypes TEXT)"
     )
-    conn.execute(
-        "CREATE TABLE item_attributes (entity_id INTEGER, key TEXT, value TEXT)"
-    )
+    conn.execute("CREATE TABLE item_attributes (entity_id INTEGER, key TEXT, value TEXT)")
     conn.executemany("INSERT INTO albums (id, artpath) VALUES (?, ?)", albums)
     conn.executemany(
         "INSERT INTO item_attributes (entity_id, key, value) VALUES (?, ?, ?)",
@@ -92,8 +88,15 @@ def _db_with(items=(), albums=(), attributes=()):
 
 
 def _item(
-    item_id=1, album_id=1, genres=None, length=200.05, added=100.0, year=2014,
-    mb_trackid="", grouping="", albumtypes="",
+    item_id=1,
+    album_id=1,
+    genres=None,
+    length=200.05,
+    added=100.0,
+    year=2014,
+    mb_trackid="",
+    grouping="",
+    albumtypes="",
 ):
     return (
         item_id,
@@ -131,9 +134,7 @@ class ArtPathsByAlbumTest(unittest.TestCase):
         self.assertEqual(art_paths_by_album(conn, "/music"), {1: None})
 
     def test_archived_hq_cover_is_not_what_the_ui_gets(self):
-        """The 500px rendition is the display path even when the CAA original
-        sits right next to it: the UI draws covers at 384px at the very most,
-        and a 5000px original costs ~100 MB of bitmap to do it."""
+        """The 500px rendition is used even when a full-size original sits beside it."""
         with tempfile.TemporaryDirectory() as art_dir:
             artpath = os.path.join(art_dir, "cover.jpg")
             open(artpath, "wb").close()
@@ -160,12 +161,8 @@ class FlexAttrsTest(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(
-            flex_attrs_by_item(conn, "sonarche_bonus_source"), {1: "Deluxe Edition"}
-        )
-        self.assertEqual(
-            flex_attrs_by_item(conn, "sonarche_suspect_match"), {2: "title-mismatch"}
-        )
+        self.assertEqual(flex_attrs_by_item(conn, "sonarche_bonus_source"), {1: "Deluxe Edition"})
+        self.assertEqual(flex_attrs_by_item(conn, "sonarche_suspect_match"), {2: "title-mismatch"})
 
     def test_empty_value_is_dropped(self):
         conn = _db_with(attributes=[(1, "sonarche_bonus_source", "")])
@@ -187,9 +184,9 @@ class TrackRowTest(unittest.TestCase):
         self.assertEqual(out["album_artist"], "One Direction")
         self.assertEqual(out["genre"], "Pop")
         self.assertEqual(out["art_path"], "/music/cover.jpg")
-        self.assertEqual(out["path"], os.path.normpath(
-            "/music/One Direction/Four/03 Night Changes.m4a"
-        ))
+        self.assertEqual(
+            out["path"], os.path.normpath("/music/One Direction/Four/03 Night Changes.m4a")
+        )
 
     def test_a_singleton_wears_the_cover_taken_out_of_its_own_tags(self):
         """A track with no album has no `artpath` to read: the import writes its
@@ -204,7 +201,11 @@ class TrackRowTest(unittest.TestCase):
         """The album's one file, never a per-track copy of the same picture."""
         row = self._row(item_id=7, album_id=3)
 
-        out = track_row(row, Lookups(art_by_album={3: "/music/cover.jpg"}, art_by_item={7: "/music/x.jpg"}), "/music")
+        out = track_row(
+            row,
+            Lookups(art_by_album={3: "/music/cover.jpg"}, art_by_item={7: "/music/x.jpg"}),
+            "/music",
+        )
 
         self.assertEqual(out["art_path"], "/music/cover.jpg")
 
@@ -286,7 +287,9 @@ class TrackRowTest(unittest.TestCase):
         self.assertFalse(plain["soundtrack"])
 
     def test_track_without_album_gets_no_art(self):
-        out = track_row(self._row(album_id=None), Lookups(art_by_album={1: "/music/cover.jpg"}), "/music")
+        out = track_row(
+            self._row(album_id=None), Lookups(art_by_album={1: "/music/cover.jpg"}), "/music"
+        )
 
         self.assertIsNone(out["art_path"])
 
@@ -317,10 +320,16 @@ class CoerceIntTest(unittest.TestCase):
 
 class ApplyFieldsTest(unittest.TestCase):
     def _item(self, **overrides):
-        base = dict(
-            title="Old", artist="A", albumartist="A", album="Rec",
-            year=2014, track=3, tracktotal=12, genres=["Pop"],
-        )
+        base = {
+            "title": "Old",
+            "artist": "A",
+            "albumartist": "A",
+            "album": "Rec",
+            "year": 2014,
+            "track": 3,
+            "tracktotal": 12,
+            "genres": ["Pop"],
+        }
         base.update(overrides)
         return _FakeItem(**base)
 
@@ -384,9 +393,7 @@ class ApplyFieldsTest(unittest.TestCase):
 
 
 class UpdateMovesTheFileTest(unittest.TestCase):
-    """Regression: renaming an album or its artist left the file under the old
-    folder. The database said one thing and the disk another, and only a real
-    move on a real file can prove that fixed."""
+    """Renaming an album or its artist must move the file."""
 
     def setUp(self):
         import struct
@@ -400,9 +407,12 @@ class UpdateMovesTheFileTest(unittest.TestCase):
         rate, seconds = 8000, 1
         data = b"\x00\x00" * rate * seconds
         header = (
-            b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt "
+            b"RIFF"
+            + struct.pack("<I", 36 + len(data))
+            + b"WAVEfmt "
             + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
-            + b"data" + struct.pack("<I", len(data))
+            + b"data"
+            + struct.pack("<I", len(data))
         )
         with open(source, "wb") as handle:
             handle.write(header + data)
@@ -463,7 +473,9 @@ class UpdateMovesTheFileTest(unittest.TestCase):
     def test_a_rename_to_the_same_name_reports_no_artist_rename(self):
         """A no-op edit must not surface as a rename: Rust would move the
         artist's image onto itself, or worse, orphan it."""
-        self.assertEqual(self._update({"albumartist": "Old Artist"}), {"updated": 0, "artist_renames": []})
+        self.assertEqual(
+            self._update({"albumartist": "Old Artist"}), {"updated": 0, "artist_renames": []}
+        )
 
     def test_the_emptied_folder_does_not_survive(self):
         self._update({"album": "New Album"})

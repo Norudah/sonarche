@@ -1,32 +1,20 @@
 import type { LibraryTrack } from "@/features/library/api";
 
-/** The sortable columns of the tracks table. `#` is absent on purpose: it
- * numbers the current order, so it has no order of its own to offer. */
-export const TRACK_SORT_KEYS = ["title", "artist", "album", "genre", "length"] as const;
-export type TrackSortKey = (typeof TRACK_SORT_KEYS)[number];
+/** `#` numbers the current order, so it isn't sortable. */
+export type TrackSortKey = "title" | "artist" | "album" | "genre" | "length";
 
 export interface TrackSort {
   key: TrackSortKey;
   dir: "asc" | "desc";
 }
 
-/**
- * What clicking a column header does next.
- *
- * A fresh column starts ascending — text reads A→Z, and a duration list reads
- * shortest first. Clicking the active column flips it, and clicking it a third
- * time drops the sort entirely rather than cycling back to ascending: the
- * library's own order is a state the user must be able to get back to, and the
- * header is the only control that could return them to it.
- */
+/** Ascending, then descending, then no sort (back to library order). */
 export function nextSort(current: TrackSort | null, key: TrackSortKey): TrackSort | null {
   if (current?.key !== key) return { key, dir: "asc" };
   return current.dir === "asc" ? { key, dir: "desc" } : null;
 }
 
-/** Missing values sink in both directions rather than pretending to be an empty
- * string or a zero-second track — the same doctrine as `sortAlbums` on an
- * undated album. Absence is not a value to be ranked among the others. */
+/** Missing values sink in both directions. */
 function compare(a: LibraryTrack, b: LibraryTrack, key: TrackSortKey): number {
   if (key === "length") {
     if (a.length == null || b.length == null) return 0;
@@ -45,17 +33,8 @@ function sinks(track: LibraryTrack, key: TrackSortKey): boolean {
   return !track[key];
 }
 
-/**
- * Ordering happens on the front because the whole library already lives here —
- * a round-trip to the sidecar to reorder an array we hold would be slower than
- * the sort itself.
- *
- * `null` returns the input array *by reference*, which is what keeps "no sort"
- * free: the default state must not allocate a copy of every track on each
- * render. Ties keep the incoming order (`Array.prototype.sort` is stable), so
- * sorting by genre leaves each genre's block in the order the library gave it
- * rather than shuffling it.
- */
+/** Sorted on the front. `null` returns the input by reference; the sort is
+ * stable, so ties keep library order. */
 export function sortTracks(tracks: LibraryTrack[], sort: TrackSort | null): LibraryTrack[] {
   if (sort == null) return tracks;
 

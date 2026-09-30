@@ -9,9 +9,9 @@ import type { TriageLine, TriageTally } from "@/features/library/triage/queue";
 import { storeNotificationBadges, useNotificationBadges } from "@/shared/lib/notificationBadges";
 
 interface TriageHeroProps {
-  /** Null while the library is still loading, or when there is none. */
+  /** Null while loading or when there is no library. */
   tally: TriageTally | null;
-  /** The full queue, disabled lines included — the menu lists them all. */
+  /** Including disabled lines, for the menu. */
   queue: TriageLine[];
   disabled: CheckKey[];
   trackCount: number;
@@ -19,15 +19,7 @@ interface TriageHeroProps {
   artistCount: number;
 }
 
-/**
- * The badge switch, at the top right of the page the badge is about.
- *
- * It already existed in Settings, and that was the wrong place for it: the
- * annoyance is felt here, on the page the number sends you to, and a preference
- * you have to go hunting for is one you resent instead of turning off. Same
- * store as the settings card — one `useSyncExternalStore`, so flipping it here
- * drops the sidebar badge on the spot and the settings page already agrees.
- */
+/** The sidebar badge switch, on the page it's about (same store as Settings). */
 function BadgeSwitch() {
   const { t } = useTranslation("metadata");
   const badges = useNotificationBadges();
@@ -44,23 +36,8 @@ function BadgeSwitch() {
   );
 }
 
-/**
- * The triage post's band.
- *
- * `pt-10`, like the download and import bands and unlike the library heroes'
- * `pt-5`: Metadata sits in the sidebar's Explorer section with those two, so it
- * should open on the same air. It once had a second reason — the page's own drag
- * strip owned the top 2rem and swallowed the switch's clicks until this padding
- * pushed it clear — which died with the strip when the topbar took over dragging.
- *
- * The verdict *is* the headline — but it names what it counts. "64 choses à
- * corriger" was two lies in one line: the lines were summed, so a track missing
- * both a year and a genre was owned twice, and *corriger* framed a missing tag
- * as a mistake the user had made. It now says how many tracks and how many
- * albums Sonarche could still complete, each counted once, and offers rather
- * than scolds. The library's own size stays on the quiet line underneath: it is
- * context, not the message.
- */
+/** The triage band. The headline counts tracks and albums to complete, each
+ * once; the library size is secondary context. */
 export function TriageHero({ tally, queue, disabled, trackCount, albumCount, artistCount }: TriageHeroProps) {
   const { t } = useTranslation(["metadata", "library"]);
 
@@ -89,12 +66,8 @@ export function TriageHero({ tally, queue, disabled, trackCount, albumCount, art
   );
 }
 
-/**
- * Both kinds in one sentence when both are present, and a single sentence when
- * only one is — "2 albums à compléter" beats "0 titre et 2 albums", which reads
- * as a scoreboard. The two counts are borrowed from the library namespace so a
- * track is named the same word here as everywhere else in the app.
- */
+/** One sentence naming only the kinds present ("2 albums to complete", not
+ * "0 tracks and 2 albums"). */
 function headlineOf(tally: TriageTally | null, t: TFunction<["metadata", "library"]>): string {
   if (tally == null) return t("title");
   if (tally.total === 0) return t("allClear");

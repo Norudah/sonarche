@@ -168,9 +168,7 @@ describe("accepting a check", () => {
     expect(lineOf(queue, "artwork").count).toBe(0);
   });
 
-  /** Two lines cannot be answered away: a flagged match is a question about
-   * what the audio is, and a gapped tracklist is answered by declaring the
-   * record a collection. */
+  /** Suspect matches and gapped tracklists can't be accepted. */
   it("offers no answer where accepting would be the wrong verb", () => {
     expect(lineOf(queue, "suspect").accept).toBeNull();
     expect(lineOf(queue, "tracklist").accept).toBeNull();
@@ -185,12 +183,8 @@ describe("accepting a check", () => {
 });
 
 describe("tallyToFix", () => {
-  /**
-   * The regression the headline was built on: track 2 is on the year line *and*
-   * the genre line, track 6 is suspect *and* duplicated, and "Holes" is both
-   * artless and gapped. Summing the lines owned those three twice — 8 for what
-   * is really 4 tracks and 1 album.
-   */
+  /** Track 2 (year and genre), track 6 (suspect and duplicate) and "Holes"
+   * (artwork and gaps) each count once: 4 tracks and 1 album, not 8. */
   it("counts each thing once, however many lines name it", () => {
     expect(queue.reduce((sum, line) => sum + line.count, 0)).toBe(8);
     expect(tallyToFix(queue)).toEqual({ tracks: 4, albums: 1, total: 5 });

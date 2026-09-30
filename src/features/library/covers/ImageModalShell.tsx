@@ -3,12 +3,8 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The frame the cover and artist-image modals share: header with title,
- * subject line and close, a scrollable body, and a footer whose confirm is the
- * only writing step. Structured props rather than free slots on purpose — the
- * two modals should not be able to drift apart again.
- */
+/** The frame shared by the cover and artist-image modals. Structured props so
+ * the two can't drift apart. */
 export function ImageModalShell({
   isOpen,
   onClose,
@@ -20,12 +16,12 @@ export function ImageModalShell({
   children,
 }: {
   isOpen: boolean;
-  /** Already guarded by the caller against closing mid-write. */
+  /** The caller already guards against closing mid-write. */
   onClose: () => void;
   title: string;
   subtitle: string;
   confirm: { label: string; onConfirm: () => void; disabled: boolean; isPending: boolean };
-  /** The footer's left edge — the artist modal's remove button lives here. */
+  /** Footer's left edge (the artist modal's remove button). */
   footerStart?: ReactNode;
   error?: string | null;
   children: ReactNode;

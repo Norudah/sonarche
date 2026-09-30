@@ -12,28 +12,14 @@ import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 
 interface TrackFilterBarProps {
   state: TrackFilterState;
-  /** Rendered first, before the filters — the view-mode switch on a scoped page.
-   * A slot and not a prop because what goes there is a whole control. */
+  /** Before the filters: the view-mode switch on scoped pages. */
   leading?: ReactNode;
-  /** Forwarded to `ExplorerBar` — see its own `pinned`. */
+  /** See `ExplorerBar`. */
   pinned?: boolean;
 }
 
-/**
- * What the shared `ExplorerBar` holds on a track list: the browsing axes, the
- * panel, and the chips for whatever the panel is hiding.
- *
- * Kept to four controls however many axes exist. Two of them are pill menus,
- * because families and categories are short enumerable sets; everything else
- * lives in the panel. That ceiling is the point — the giants that offer more
- * (iTunes' column browser, foobar's facets, Roon's Focus) all move the facets to
- * a surface of their own rather than growing the header, and three combo boxes
- * in a title row is where that starts going wrong.
- *
- * An active filter states itself in its own pill, so those two axes get no chip.
- * The chips are for the panel's filters, which are otherwise invisible with the
- * panel closed.
- */
+/** A track list's filter bar: at most four controls (two facet menus, the
+ * panel, search). Chips spell out the panel's active filters. */
 export function TrackFilterBar({ state, leading, pinned }: TrackFilterBarProps) {
   const { t } = useTranslation("library");
   const familyLabelOf = useFamilyLabel();
@@ -47,9 +33,7 @@ export function TrackFilterBar({ state, leading, pinned }: TrackFilterBarProps) 
       label: t("filters.decadeValue", { decade: triage.decade }),
       onRemove: () => setParam("decade", null),
     });
-  // Amber from here down. Each of these arrives from the Metadata page and the
-  // list it opens is a set of holes, so the chip says so in the colour the rest
-  // of the app uses for one.
+  // Amber from here: correction filters from the Metadata page.
   if (triage.missingYear)
     chips.push({
       key: "missingYear",
@@ -71,8 +55,7 @@ export function TrackFilterBar({ state, leading, pinned }: TrackFilterBarProps) 
       tone: "correction",
       onRemove: () => setParam("genre", null),
     });
-  // A plain genre name is browsing, not a correction — the same param, the
-  // other tone.
+  // A plain genre name is browsing.
   else if (triage.genre != null)
     chips.push({ key: "genre", label: triage.genre, onRemove: () => setParam("genre", null) });
   if (triage.suspectMatch)

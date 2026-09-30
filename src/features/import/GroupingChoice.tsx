@@ -11,8 +11,7 @@ import { layoutIds, springs } from "@/shared/motion/tokens";
 
 const GROUPINGS: Grouping[] = ["folder", "tags", "tracks"];
 
-/* Not decoration: each glyph *is* the answer — a folder, a tag, a note. The
- * label beside it names the same thing in one word. */
+/* Each glyph is the answer itself: folder, tag, note. */
 const ICONS: Record<Grouping, typeof Folder> = { folder: Folder, tags: Tags, tracks: Music };
 
 const SEGMENT = "relative mt-0 rounded-full";
@@ -41,27 +40,9 @@ function Segment({ value, selected, children }: { value: Grouping; selected: Gro
 }
 
 /**
- * What counts as an album in the folder about to be imported.
- *
- * The question nobody was asked, and the one that decided the most: beets makes
- * one album per *directory* with no opinion about whether that directory is a
- * release, so a folder of one-shot rips arrived as a single record named after
- * the folder with fourteen unrelated artists filed under it.
- *
- * It used to be three switches with a paragraph under the selected one, and
- * nobody — including the person who asked for it — could tell them apart. The
- * paragraphs described the *mechanism* without ever naming the *question*, so
- * they read as three ways of saying "it imports the music".
- *
- * So the question leads, in the heading, and each answer is one word on the
- * switch: the folder, the tags, nothing.
- *
- * Under it, *one* panel showing what the selected answer does. Listing all
- * three at once was the first fix and it went too far the other way — three
- * blocks of prose under one control read as three things the import was about
- * to do, and the highlight on the live one was not enough to say otherwise. The
- * switch already shows the alternatives; this says what the chosen one means,
- * in concrete terms, and who it is for.
+ * What counts as an album in the imported folder. beets makes one album per
+ * directory, which turns a folder of unrelated rips into one bogus album.
+ * The heading asks the question; one panel explains the selected answer.
  */
 export function GroupingChoice({
   value,
@@ -70,8 +51,7 @@ export function GroupingChoice({
   onChange,
 }: {
   value: Grouping;
-  /** Null before a folder is scanned: the options are readable then, they just
-   * have nothing to be suggested about. */
+  /** Null before a scan; the options stay readable without a suggestion. */
   report: ScanReport | null;
   isDisabled: boolean;
   onChange: (grouping: Grouping) => void;
@@ -101,9 +81,7 @@ export function GroupingChoice({
         ))}
       </RadioGroup>
 
-      {/* One panel, keyed on the answer so it swaps rather than mutates: the
-          text changing under a still cursor is easy to miss, and this is the
-          consequence of the click that just happened. */}
+      {/* Keyed on the answer so the text swaps visibly. */}
       <Swap swapKey={value} mode="cross" className="flex flex-col gap-0.5 rounded-xl bg-default/40 px-3 py-2.5">
         <p className="text-[0.8125rem] font-medium text-accent">{t(`grouping.${value}Answer`)}</p>
         <p className="max-w-prose text-[0.8125rem] leading-relaxed">{t(`grouping.${value}Why`)}</p>

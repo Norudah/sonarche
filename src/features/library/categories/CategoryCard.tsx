@@ -17,20 +17,8 @@ interface CategoryCardProps {
   style?: CSSProperties;
 }
 
-/**
- * One category as a door: its name, its size, and the way in.
- *
- * It used to carry chips for the genres the category cuts across, borrowing the
- * family card's whole grammar. That was the mistake — with the same tone rule,
- * the same washed chips and the same arrow, an OST card was indistinguishable
- * from a genre family whose sub-genres you could click, and a category has no
- * sub-level to offer. Losing the chips is what makes the two shelves tell
- * themselves apart: a family card opens onto a tree, a category card onto a set.
- *
- * The tone rule and the wash stay, because the two shelves are still one app.
- * The genres a category spans are on its page, where they are a filter and read
- * as one.
- */
+/** A category as a door: name, size, link. No genre chips, so it doesn't look
+ * like a family card (a category has no sub-level). */
 export function CategoryCard({ category, label, style }: CategoryCardProps) {
   const { t } = useTranslation("library");
   const tone = toneOf(category.name);

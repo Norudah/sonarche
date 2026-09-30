@@ -11,25 +11,15 @@ import { CARD_ACTION_PLAY, CARD_ACTION_SECONDARY } from "@/features/library/card
 interface AlbumCardProps {
   album: Album;
   style?: CSSProperties;
-  /** Whether this card takes part in the grid's entrance cascade. The grid
-   * turns it off past the first rows: a thousand cards animating below the
-   * fold is a thousand compositor layers nobody sees. */
+  /** Only the first rows animate in; the rest are below the fold. */
   cascade?: boolean;
   onPlay: () => void;
-  /** Opens the album's metadata drawer. Optional: grids that don't host the
-   * drawer simply don't grow the button. */
+  /** Opens the metadata drawer; omitted where no drawer is hosted. */
   onEdit?: () => void;
 }
 
-/**
- * The card is a link and the play button is its *sibling*, not its child: a
- * <button> inside an <a> is invalid HTML and swallows the outer activation.
- * They only look nested because the wrapper is the positioning context.
- *
- * Plain buttons with CSS transforms, not motion components: a grid mounts
- * hundreds of these at once, and two Motion instances per card was the single
- * biggest render cost of the Albums page on older machines.
- */
+/** The play button is the link's sibling (a button inside an <a> is invalid).
+ * CSS transforms rather than Motion: hundreds of cards mount at once. */
 export function AlbumCard({ album, style, cascade = true, onPlay, onEdit }: AlbumCardProps) {
   const { t } = useTranslation("library");
   const { t: tPlayer } = useTranslation("player");
@@ -50,14 +40,7 @@ export function AlbumCard({ album, style, cascade = true, onPlay, onEdit }: Albu
         </p>
       </Link>
 
-      {/* Rises into place on hover, and stays put once focused so it stays
-       * reachable by keyboard — an opacity-only reveal would be a focus trap
-       * for anyone not using a mouse.
-       *
-       * Nothing is stamped on the cover any more. A "62 %" badge sat here on
-       * every incomplete record, which on a shelf of two hundred is two hundred
-       * grades read at once, none of them saying what is missing. The album's
-       * own page carries the verdict; the wall is a wall of covers. */}
+      {/* Revealed on hover, kept visible on focus for keyboard users. */}
       <div className="absolute right-2.5 bottom-14 flex translate-y-1 items-center gap-1.5 opacity-0 transition-[opacity,translate] group-hover/card:translate-y-0 group-hover/card:opacity-100 has-[:focus-visible]:translate-y-0 has-[:focus-visible]:opacity-100">
         {onEdit && (
           <button

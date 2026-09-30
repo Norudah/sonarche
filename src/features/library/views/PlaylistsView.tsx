@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { ListMusic, Plus } from "lucide-react";
 import { useState } from "react";
 import type { CSSProperties } from "react";
@@ -15,15 +14,12 @@ import {
   tracksById,
 } from "@/features/library/playlists/playlists";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 import { PrimaryButton } from "@/shared/ui/PrimaryButton";
 
-/**
- * The playlists shelf. No search bar and no sort: this shelf holds what the
- * user curated by hand — dozens at the very most, not the thousands the other
- * explorers are built to narrow down.
- */
+/** The playlists shelf. No search or sort: dozens at most. */
 export function PlaylistsView() {
   const { t } = useTranslation("library");
   const playlists = usePlaylists();
@@ -54,20 +50,9 @@ export function PlaylistsView() {
         {rows.length > 0 && createButton}
       </div>
 
-      {isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {isPending && <LoadingSpinner />}
 
-      {error != null && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {error != null && <LoadError error={error} />}
 
       {!isPending && error == null && rows.length === 0 && (
         <EmptyState

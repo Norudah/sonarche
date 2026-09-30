@@ -1,9 +1,9 @@
-"""Regression tests for enrich_album's pure functions
-(run: python -m unittest enrich_album_test)."""
+"""Tests for the album enrichment: release matching, row consolidation and
+the per-track fallback (run: python -m unittest enrich_album_test)."""
 
 import unittest
 
-from enrich_album import (
+from album_match import (
     find_content_duplicates,
     match_by_recordings,
     rescue_candidates,
@@ -12,7 +12,9 @@ from enrich_album import (
 )
 
 
-def _rel(release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"):
+def _rel(
+    release_id, primary="Album", secondary=None, date="2001", track_count=None, status="Official"
+):
     rel = {
         "id": release_id,
         "date": date,
@@ -118,24 +120,17 @@ class RescueCandidatesTest(unittest.TestCase):
 
 class FindContentDuplicatesTest(unittest.TestCase):
     def test_same_primary_marks_later_item(self):
-        # Regression: a playlist carrying the same song under two different
-        # video titles produced "02 Ready to Run.1.m4a" and a %aunique folder.
-        # The same audio shares its primary (top-confidence) recording.
+        # The same audio under two video titles shares its primary recording.
         dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"]), (3, ["rec-a", "rec-c"])])
         self.assertEqual(dups, {3: 1})
 
     def test_shared_secondary_only_is_not_a_duplicate(self):
-        # Regression (Hail to the King): two distinct album tracks whose only
-        # overlap is a low-confidence *secondary* recording must NOT be deleted.
-        # Item 2's primary is rec-b; it merely carries rec-a as a noisy second
-        # candidate. Different primaries -> different audio -> both kept.
+        # Overlap on a low-confidence secondary recording is not a duplicate.
         dups = find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b", "rec-a"])])
         self.assertEqual(dups, {})
 
     def test_disjoint_primaries_keep_everything(self):
-        self.assertEqual(
-            find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {}
-        )
+        self.assertEqual(find_content_duplicates([(1, ["rec-a"]), (2, ["rec-b"])]), {})
 
     def test_unidentified_items_never_match(self):
         # AcoustID silence (empty list) must not mark two unknowns as duplicates.
@@ -185,11 +180,8 @@ class MatchByRecordingsTest(unittest.TestCase):
         self.assertEqual(extra, [slot])
 
     def test_lone_leftover_takes_the_lone_free_slot(self):
-        # Regression (Apocalyptic Love): the "You're a Lie [HD]" video rip ran
-        # 259s against the album master's 231s and AcoustID resolved it to the
-        # single's recording, so it matched neither by id nor by duration —
-        # and landed untagged outside the album folder. With every other track
-        # placed, the one empty slot is the only thing it can be.
+        # A video rip that runs long and resolves to the single's recording matches
+        # neither by id nor duration; it takes the one empty slot.
         placed = [_Item(i, 200.0) for i in range(1, 4)]
         odd = _Item(4, 259.0)
         slots = [_Track(f"rec-{i}", 200.0) for i in range(1, 4)]
@@ -244,9 +236,8 @@ class MatchByRecordingsTest(unittest.TestCase):
 
 class SlotRescuesTest(unittest.TestCase):
     def test_title_and_duration_seat_cross_language_leftovers(self):
-        # The Spirit regression: two French files identified as their English
-        # siblings' recordings ("Here I Am", "Sound the Bugle"), while the
-        # voted French release kept exactly their two slots open.
+        # Two French files identified as their English siblings' recordings, with
+        # exactly their two slots open on the French release.
         me_voila, clairon = _Item(71, 271.6), _Item(72, 234.8)
         slot6 = _Track("rec-me-voila", 272.0, title="Me voilà")
         slot7 = _Track("rec-clairon", 235.0, title="Sonne le clairon")
@@ -287,8 +278,6 @@ class SlotRescuesTest(unittest.TestCase):
         self.assertEqual(slot_rescues([first, second], [slot], hints), {first: slot})
 
 
-
-
 class ConsolidationHarness(unittest.TestCase):
     """Against a real beets library: the merge's whole job is what beets does
     with rows, %aunique and destinations."""
@@ -326,27 +315,33 @@ class ConsolidationHarness(unittest.TestCase):
 
 
 class ConsolidateNamedSiblingsTest(ConsolidationHarness):
-    """The American Idiot regression: two *editions* never share a release id,
-    so the release-keyed merge left them side by side — one album in the app
-    (which groups by name), three %aunique-suffixed folders on disk."""
+    """Two editions never share a release id, but must end as one row and folder."""
 
     def test_two_editions_of_one_album_end_as_one_row_and_one_folder(self):
         import os
 
-        import enrich_album
+        import album_rows
 
         lib = self._lib()
         standard = self._album(
-            lib, "American Idiot", ["Holiday", "Letterbomb"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday", "Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         japan = self._album(
-            lib, "American Idiot [WBCD 2075]", ["Homecoming"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-japan",
+            lib,
+            "American Idiot [WBCD 2075]",
+            ["Homecoming"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-japan",
         )
         items = list(standard.items()) + list(japan.items())
 
-        kept = enrich_album._consolidate_album_rows(lib, items)
+        kept = album_rows.consolidate_album_rows(lib, items)
 
         self.assertEqual(len(kept), 1)
         self.assertEqual(kept[0].id, standard.id)
@@ -358,35 +353,42 @@ class ConsolidateNamedSiblingsTest(ConsolidationHarness):
         lib._close()
 
     def test_a_collection_sharing_the_name_is_spared(self):
-        import enrich_album
+        import album_rows
         import library
 
         lib = self._lib()
         release = self._album(
-            lib, "AI", ["Holiday"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "AI",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         gathering = self._album(
-            lib, "AI mine", ["Letterbomb"],
-            album="American Idiot", albumartist="Green Day",
+            lib,
+            "AI mine",
+            ["Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
         )
         gathering[library.ALBUM_KIND_KEY] = library.COLLECTION
         gathering.store(inherit=False)
 
-        enrich_album._consolidate_album_rows(lib, list(release.items()))
+        album_rows.consolidate_album_rows(lib, list(release.items()))
 
         self.assertIsNotNone(lib.get_album(gathering.id))
         self.assertEqual(len(list(lib.get_album(gathering.id).items())), 1)
         lib._close()
 
     def test_blank_named_rows_are_never_merged_together(self):
-        import enrich_album
+        import album_rows
 
         lib = self._lib()
         a = self._album(lib, "one", ["A"], albumartist="LIVinglife")
         b = self._album(lib, "two", ["B"], albumartist="LIVinglife")
 
-        enrich_album._consolidate_album_rows(lib, list(a.items()) + list(b.items()))
+        album_rows.consolidate_album_rows(lib, list(a.items()) + list(b.items()))
 
         self.assertIsNotNone(lib.get_album(a.id))
         self.assertIsNotNone(lib.get_album(b.id))
@@ -404,15 +406,18 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
         }
 
     def test_the_album_artist_outranks_the_uploader(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday"],
-            album="American Idiot", albumartist="Green Day",
+            lib,
+            "American Idiot",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
-        enrich_album._tag_unidentified(lib, album, [orphan], self._params(orphan, "Letterbomb"))
+        album_fallback.tag_unidentified(lib, album, [orphan], self._params(orphan, "Letterbomb"))
 
         fresh = lib.get_item(orphan.id)
         self.assertEqual(fresh.artist, "Green Day")
@@ -420,38 +425,46 @@ class TagUnidentifiedArtistTest(ConsolidationHarness):
         lib._close()
 
     def test_various_artists_hands_back_to_the_uploader(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
-            lib, "OST", ["Java"],
-            album="Encanto OST", albumartist="Various Artists",
+            lib,
+            "OST",
+            ["Java"],
+            album="Encanto OST",
+            albumartist="Various Artists",
         )
         orphan = self._album(lib, "staging", ["orphan"]).items().get()
-        enrich_album._tag_unidentified(lib, album, [orphan], self._params(orphan, "Surface Pressure"))
+        album_fallback.tag_unidentified(
+            lib, album, [orphan], self._params(orphan, "Surface Pressure")
+        )
 
         self.assertEqual(lib.get_item(orphan.id).artist, "LIVinglife")
         lib._close()
 
 
-
-
 class SingleAlbumFallbackTest(unittest.TestCase):
     def test_names_the_record_after_the_playlist(self):
-        import enrich_album
+        import album_fallback
 
-        spec = enrich_album._single_album_fallback(
+        spec = album_fallback.single_album_fallback(
             {"album_title": " Epic Mix ", "category": "Films", "thumbnail": "http://thumb"}
         )
         self.assertEqual(
             spec,
-            {"title": "Epic Mix", "artist": "Various Artists", "category": "Films", "thumbnail": "http://thumb"},
+            {
+                "title": "Epic Mix",
+                "artist": "Various Artists",
+                "category": "Films",
+                "thumbnail": "http://thumb",
+            },
         )
 
     def test_without_a_title_the_old_scatter_stands(self):
-        import enrich_album
+        import album_fallback
 
-        self.assertIsNone(enrich_album._single_album_fallback({"album_title": "  "}))
+        self.assertIsNone(album_fallback.single_album_fallback({"album_title": "  "}))
 
 
 class AbsorbStraysTest(ConsolidationHarness):
@@ -461,24 +474,32 @@ class AbsorbStraysTest(ConsolidationHarness):
     def test_a_stray_keeps_its_identity_but_files_with_the_batch(self):
         import os
 
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday", "Letterbomb"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday", "Letterbomb"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         stray_row = self._album(
-            lib, "Greatest Hits", ["Boulevard"],
-            album="Greatest Hits", albumartist="Green Day",
-            artist="Green Day", mb_albumid="mb-hits",
+            lib,
+            "Greatest Hits",
+            ["Boulevard"],
+            album="Greatest Hits",
+            albumartist="Green Day",
+            artist="Green Day",
+            mb_albumid="mb-hits",
         )
         stray = next(iter(stray_row.items()))
         stray.mb_trackid = "rec-blvd"
         stray.year = 2009
         stray.store()
 
-        absorbed = enrich_album._absorb_strays("req", lib, album, [stray])
+        absorbed = album_fallback.absorb_strays("req", lib, album, [stray])
 
         self.assertEqual([item.id for item in absorbed], [stray.id])
         fresh = lib.get_item(stray.id)
@@ -498,17 +519,21 @@ class AbsorbStraysTest(ConsolidationHarness):
         lib._close()
 
     def test_an_unidentified_leftover_is_left_for_the_borrow_pass(self):
-        import enrich_album
+        import album_fallback
 
         lib = self._lib()
         album = self._album(
-            lib, "American Idiot", ["Holiday"],
-            album="American Idiot", albumartist="Green Day", mb_albumid="mb-standard",
+            lib,
+            "American Idiot",
+            ["Holiday"],
+            album="American Idiot",
+            albumartist="Green Day",
+            mb_albumid="mb-standard",
         )
         orphan_row = self._album(lib, "staging", ["orphan"])
         orphan = next(iter(orphan_row.items()))
 
-        absorbed = enrich_album._absorb_strays("req", lib, album, [orphan])
+        absorbed = album_fallback.absorb_strays("req", lib, album, [orphan])
 
         self.assertEqual(absorbed, [])
         self.assertEqual(lib.get_item(orphan.id).album_id, orphan_row.id)

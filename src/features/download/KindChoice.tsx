@@ -8,17 +8,10 @@ import type { JobKind } from "@/features/download/api";
 import type { DetectedUrlKind } from "@/features/download/urlKind";
 import { layoutIds, springs } from "@/shared/motion/tokens";
 
-/* HeroUI's `.radio` is a column whose `.radio__content` row is the only
- * clickable area — so the pill shape goes on the root while the padding that
- * makes it a real target lives on Content. */
-/* `.radio` carries a 16px top margin for HeroUI's stacked layout — useless
- * here, and it is what pads the pill open at the top. */
-/* The selected background is no longer a `data-[selected]` style: one shared
- * pill slides between the two segments instead, so the choice reads as a
- * switch being thrown rather than two independent buttons lighting up. */
+/* The pill shape goes on the root, the hit-area padding on Content (HeroUI's
+ * `.radio__content` is the clickable row); `mt-0` drops its stacked margin. */
 const SEGMENT = "relative mt-0 rounded-full";
-/* HeroUI's `.radio__content` sets its own color, so the text state has to be
- * declared here rather than inherited from the root. */
+/* `.radio__content` sets its own colour, so the text state is declared here. */
 const SEGMENT_CONTENT =
   "relative gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
   "text-muted hover:text-foreground data-[selected]:text-accent";
@@ -49,17 +42,8 @@ function Segment({
   );
 }
 
-/**
- * What to make of the pasted link: the whole set, or the one track.
- *
- * Always on screen once the composer is, rather than surfacing only for the
- * ambiguous links it used to serve. Three reasons, all the same reason: a
- * control that appears out of nowhere pushes the form open under the cursor; a
- * control that is sometimes absent is a control the user does not know exists;
- * and a link the URL can only read one way still deserves to *say* which way,
- * rather than deciding in silence. So the switch stays put and the segment the
- * link cannot honour goes flat.
- */
+/** Album or single. Always shown; a segment the link can't support is
+ * disabled rather than hidden. */
 export function KindChoice({
   value,
   detected,
@@ -70,9 +54,7 @@ export function KindChoice({
   onChange: (kind: JobKind) => void;
 }) {
   const { t } = useTranslation("download");
-  // A plain video has no set to fetch; a playlist URL has no one track to pick.
-  // Both stay visible and inert; only a mixed link (a video opened from inside
-  // a playlist) is a real question, and there the user's answer decides.
+  // Only a video opened from a playlist is a real choice.
   const canAlbum = detected !== "single";
   const canSingle = detected !== "album";
 

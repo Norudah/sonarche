@@ -48,11 +48,7 @@ class OverridesTestCase(unittest.TestCase):
 
     def _derived_whitelist(self):
         with open(os.path.join(self._dir.name, DERIVED_WHITELIST_NAME), encoding="utf-8") as f:
-            return {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            }
+            return {line.strip().lower() for line in f if line.strip() and not line.startswith("#")}
 
     def _roots_of(self, tree, genre):
         """Every top-level root the genre appears under, in the derived tree."""
@@ -165,10 +161,7 @@ class RobustnessTest(OverridesTestCase):
         self.assertEqual(bucket_for("hyperpop"), "Electronic")
 
     def test_a_write_from_another_process_is_seen_without_invalidation(self):
-        # The sidecar runs as two processes: the write lands on the work
-        # channel, the listing is served by the read channel. This is the read
-        # process: its cache is warm, nothing ever pokes it — only the file's
-        # stamp can tell it the placements moved.
+        # Simulates the read process: only the file's stamp can invalidate its cache.
         self.assertIsNone(bucket_for("hyperpop"))  # warm the cache
         payload = {"version": 1, "families": {"hyperpop": "electronic"}}
         with open(os.path.join(self._dir.name, OVERRIDES_NAME), "w", encoding="utf-8") as f:
@@ -226,11 +219,7 @@ class DerivedFilesTest(OverridesTestCase):
     def test_pristine_derived_whitelist_matches_the_base(self):
         genre_overrides.ensure_derived()
         with open(genre_tree.WHITELIST_PATH, encoding="utf-8") as f:
-            base = {
-                line.strip().lower()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            }
+            base = {line.strip().lower() for line in f if line.strip() and not line.startswith("#")}
         self.assertEqual(self._derived_whitelist(), base)
 
 

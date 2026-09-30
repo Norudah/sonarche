@@ -39,13 +39,13 @@ class PrepareCoverTest(unittest.TestCase):
 
     def test_a_square_source_reports_its_full_side(self):
         path = self._write(800, 800, "JPEG", ".jpg")
-        thumb, is_png, side = cover_set.prepare_cover(path, None)
+        _, is_png, side = cover_set.prepare_cover(path, None)
         self.assertFalse(is_png)
         self.assertEqual(side, 800)
 
     def test_a_cropped_source_comes_out_square(self):
         path = self._write(1000, 600, "JPEG", ".jpg")
-        thumb, is_png, side = cover_set.prepare_cover(path, {"left": 0, "top": 0, "size": 600})
+        thumb, _, side = cover_set.prepare_cover(path, {"left": 0, "top": 0, "size": 600})
         self.assertEqual(side, 600)
         with Image.open(io.BytesIO(thumb)) as rendition:
             self.assertEqual(rendition.size, (500, 500))
@@ -94,7 +94,9 @@ class HandleParamsTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             cover_set.handle("r1", {})
         with self.assertRaises(RuntimeError):
-            cover_set.handle("r1", {"source_path": "/a.jpg", "image_url": "https://coverartarchive.org/x"})
+            cover_set.handle(
+                "r1", {"source_path": "/a.jpg", "image_url": "https://coverartarchive.org/x"}
+            )
 
 
 class DownloadCandidateTest(unittest.TestCase):
@@ -104,17 +106,23 @@ class DownloadCandidateTest(unittest.TestCase):
 
 
 class ShapeCandidatesTest(unittest.TestCase):
-    def _image(self, image_id, front=False, image="https://coverartarchive.org/full.jpg", thumbs=None):
+    def _image(
+        self, image_id, front=False, image="https://coverartarchive.org/full.jpg", thumbs=None
+    ):
         return {
             "id": image_id,
             "front": front,
             "image": image,
-            "thumbnails": {"250": f"https://coverartarchive.org/{image_id}-250.jpg"} if thumbs is None else thumbs,
+            "thumbnails": {"250": f"https://coverartarchive.org/{image_id}-250.jpg"}
+            if thumbs is None
+            else thumbs,
             "types": ["Front"] if front else ["Back"],
         }
 
     def test_fronts_come_first_and_the_list_is_capped(self):
-        images = [self._image(i) for i in range(cover_set.MAX_CANDIDATES + 3)] + [self._image("front", front=True)]
+        images = [self._image(i) for i in range(cover_set.MAX_CANDIDATES + 3)] + [
+            self._image("front", front=True)
+        ]
         out = cover_set.shape_candidates(images, lambda url: "data:image/jpeg;base64,x")
         self.assertEqual(len(out), cover_set.MAX_CANDIDATES)
         self.assertEqual(out[0]["id"], "front")
@@ -126,13 +134,13 @@ class ShapeCandidatesTest(unittest.TestCase):
             self._image("no-urls", image=None, thumbs={}),
             self._image("dead-thumb"),
         ]
-        out = cover_set.shape_candidates(images, lambda url: None if "dead-thumb" in url else "data:image/jpeg;base64,x")
+        out = cover_set.shape_candidates(
+            images, lambda url: None if "dead-thumb" in url else "data:image/jpeg;base64,x"
+        )
         self.assertEqual([c["id"] for c in out], ["ok"])
 
     def test_http_urls_from_the_index_are_upgraded_to_https(self):
-        # The live CAA index returns http:// URLs; left as-is they fail the
-        # https-pinned validation on both sides of the IPC and the replacement
-        # dies before any work.
+        # The live CAA index returns http:// URLs; the IPC validators require https.
         fetched = []
 
         def fetch(url):

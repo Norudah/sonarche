@@ -15,30 +15,18 @@ import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 interface TrackTableProps {
   tracks: LibraryTrack[];
-  /**
-   * What the current result set is a result *of* — the search query, the
-   * selected genre. A change re-keys the body, which replays the row cascade:
-   * filtered results flow in instead of snapping into place. Same CSS-animation
-   * approach as the download queue (see `row-cascade` in theme.css).
-   */
+  /** What the result set is a result of; a change replays the row cascade
+   * (`row-cascade` in theme.css). */
   animationKey?: string;
-  /** Active ordering, or null for the library's own. Absent on the tables that
-   * are not a queryable list — an artist's guest spots, a genre's fallback. */
+  /** Null for the library's own order; absent on non-queryable tables. */
   sort?: TrackSort | null;
-  /** A column header was clicked. Absent means the headers are plain labels. */
+  /** Absent: headers are plain labels. */
   onSort?: (key: TrackSortKey) => void;
-  /** Album artist of the surrounding page, when it has one. */
   guestOwner?: string;
 }
 
-/**
- * One list, two ways of looking at it — and everything a row can open.
- *
- * The dialogs, the play queue and the inspected track live here rather than in
- * either table: they are the same whichever lens is on, and switching lens must
- * not close a drawer or forget which track it was showing. The tables below own
- * only their columns.
- */
+/** Reading or inspection table, plus the dialogs and drawer shared by both, so
+ * switching lens keeps them open. */
 export function TrackTable({ tracks, animationKey = "", sort = null, onSort, guestOwner }: TrackTableProps) {
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
@@ -48,8 +36,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
   const inspecting = useLensHere();
   useTopOnFilterChange(animationKey);
 
-  // Derive from the live list, not a snapshot: re-enrich mutates the track and
-  // the drawer must show the new album/artwork after the query refetches.
+  // Derived from the live list, so a re-enrich updates the drawer.
   const inspected = inspectedId != null ? (tracks.find((track) => track.id === inspectedId) ?? null) : null;
 
   const listing: TrackListingProps = {
@@ -58,8 +45,7 @@ export function TrackTable({ tracks, animationKey = "", sort = null, onSort, gue
     sort,
     onSort,
     guestOwner,
-    // The visible list is the row's playback context: what plays next is what
-    // the user is looking at, filters included.
+    // The visible list, filters included, is the playback context.
     onPlay: (index) => playFrom(tracks, index),
     onEdit: (track) => setInspectedId(track.id),
     onDelete: setDeleting,

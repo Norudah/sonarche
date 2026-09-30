@@ -28,9 +28,7 @@ describe("updateStatus", () => {
   });
 
   it("shows the install failure over the update that is still on offer", () => {
-    // The mutation keeps its data after a failed install, so without the
-    // ordering the pane would go back to announcing the version as if the
-    // press had never happened.
+    // The mutation keeps its data after a failed install.
     expect(updateStatus({ ...idle, available: "0.10.0", installFailed: true })).toEqual({
       key: "failedHint",
       tone: "danger",

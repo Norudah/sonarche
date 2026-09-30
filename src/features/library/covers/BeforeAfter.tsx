@@ -1,15 +1,11 @@
 import { MoveRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** One stage side, square. Shared so both modals draw the same geometry. */
+/** One square stage side, shared by both modals. */
 export const STAGE_PX = 280;
 
-/**
- * The comparison at the heart of both replacement modals: what is worn today
- * on the left, the replacement on the right, an arrow in between. The slots
- * carry what differs (a cover, a disc, their info lines); the geometry and
- * labels' dress never do.
- */
+/** Current image on the left, replacement on the right, shared by the cover
+ * and artist-image modals. */
 export function BeforeAfter({
   currentTitle,
   current,
@@ -23,12 +19,10 @@ export function BeforeAfter({
   currentTitle: string;
   current: ReactNode;
   currentInfo: ReactNode;
-  /** What can still be done with the image already worn — reframing it. Under
-   * its own pane rather than in the source bar: the bar is where a *new*
-   * image comes from, and this one is already here. */
+  /** Actions on the current image (reframing), apart from the source bar. */
   currentAction?: ReactNode;
   nextTitle: string;
-  /** The help popover beside the "next" label. */
+  /** Help popover beside the "next" label. */
   help?: ReactNode;
   next: ReactNode;
   nextInfo: ReactNode;

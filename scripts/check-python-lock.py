@@ -1,18 +1,13 @@
-"""Guards the two assumptions `sidecar/requirements.txt` rests on.
+"""Guards the assumptions `sidecar/requirements.txt` rests on.
 
-The lock is installed with `--no-deps`, and it deliberately omits `numba`,
-`llvmlite` and `scipy` — beets declares them and imports none of them. Both
-halves of that are silent when they break: a beets release adding a real
-dependency would leave the app importing a package nobody installed, and a
-beets release that starts *using* numba would fail on Intel macOS only, where
-no wheel exists, on a machine no one here builds on.
+The lock is installed with `--no-deps` and omits `numba`, `llvmlite` and
+`scipy` (declared by beets, never imported). This script:
 
-So, on every push:
-
-1. Re-resolve `requirements.in` and diff it against the lock. Anything new,
-   gone, or at a different version is reported.
-2. Read the installed beets and its plugins, and fail on an import of one of
-   the three dropped packages.
+1. Re-resolves `requirements.in`. A package added or dropped fails (the lock
+   is installed `--no-deps`, so a missing one is a broken install). A newer
+   transitive version only warns: PyPI moves every week, and a PR shouldn't go
+   red for a release nobody asked for.
+2. Fails if beets or its plugins import one of the dropped packages.
 
 Run after installing the lock:
 
@@ -29,8 +24,7 @@ import sys
 
 from packaging.requirements import Requirement
 
-# Declared by beets, imported by nothing. `llvmlite` is here as numba's own
-# dependency: it is what has no Intel macOS wheel past 0.45.
+# `llvmlite` (numba's dependency) has no Intel macOS wheel past 0.45.
 EXCLUDED = {"numba", "llvmlite", "scipy"}
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -44,14 +38,12 @@ IMPORT_RE = re.compile(
 
 
 def normalize(name: str) -> str:
-    """PEP 503 name folding, so `typing_extensions` and `Typing-Extensions`
-    compare equal."""
+    """PEP 503 name normalization."""
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def read_lock(path: pathlib.Path) -> dict[str, str]:
-    """The lock as {name: version}, markers evaluated for this platform — the
-    colorama line is Windows-only and must not read as missing elsewhere."""
+    """The lock as {name: version}, with markers evaluated for this platform."""
     pins: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
@@ -90,17 +82,19 @@ def resolve(path: pathlib.Path) -> dict[str, str]:
     return {normalize(i["metadata"]["name"]): i["metadata"]["version"] for i in installs}
 
 
-def compare(locked: dict[str, str], resolved: dict[str, str]) -> list[str]:
+def compare(locked: dict[str, str], resolved: dict[str, str]) -> tuple[list[str], list[str]]:
+    """(problems, drift): a changed package set breaks installs, a version gap doesn't."""
     resolved = {name: version for name, version in resolved.items() if name not in EXCLUDED}
     problems = []
+    drift = []
     for name in sorted(resolved.keys() - locked.keys()):
         problems.append(f"missing from the lock: {name}=={resolved[name]}")
     for name in sorted(locked.keys() - resolved.keys()):
         problems.append(f"in the lock, no longer resolved: {name}=={locked[name]}")
     for name in sorted(locked.keys() & resolved.keys()):
         if locked[name] != resolved[name]:
-            problems.append(f"{name}: lock has {locked[name]}, resolution wants {resolved[name]}")
-    return problems
+            drift.append(f"{name}: lock has {locked[name]}, resolution wants {resolved[name]}")
+    return problems, drift
 
 
 def check_imports() -> list[str]:
@@ -118,11 +112,15 @@ def check_imports() -> list[str]:
 
 
 def main() -> int:
-    problems = compare(read_lock(LOCK), resolve(DIRECT)) + check_imports()
+    problems, drift = compare(read_lock(LOCK), resolve(DIRECT))
+    problems += check_imports()
+    for line in drift:
+        # GitHub turns this into a warning annotation; harmless elsewhere.
+        print(f"::warning title=python lock drift::{line}")
     if not problems:
-        print("python lock: up to date, and beets still imports none of " + ", ".join(sorted(EXCLUDED)))
+        print("python lock: no package added or dropped, and beets still imports none of " + ", ".join(sorted(EXCLUDED)))
         return 0
-    print("python lock is out of date:\n", file=sys.stderr)
+    print("python lock is broken:\n", file=sys.stderr)
     for problem in problems:
         print(f"  - {problem}", file=sys.stderr)
     print(f"\nRegenerate it — see the header of {DIRECT.relative_to(ROOT)}.", file=sys.stderr)

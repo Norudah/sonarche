@@ -8,18 +8,13 @@ import { durations, easings, springs } from "@/shared/motion/tokens";
 
 interface ArtistStickyHeaderProps {
   artist: Artist;
-  /** The artist's own picture, when they have one. */
   imageUrl: string | null;
-  /** False while the hero is still on screen — the bar would only duplicate it. */
+  /** False while the hero is visible. */
   isVisible: boolean;
   onPlay: () => void;
 }
 
-/**
- * The album sticky bar's twin. Always mounted and cross-faded rather than added
- * and removed: building a blurred full-width bar mid-scroll gesture is the one
- * moment the main thread has nothing to spare, and the hitch showed.
- */
+/** Like the album sticky header: always mounted and faded, to avoid a mid-scroll hitch. */
 export function ArtistStickyHeader({ artist, imageUrl, isVisible, onPlay }: ArtistStickyHeaderProps) {
   const { t } = useTranslation("library");
 

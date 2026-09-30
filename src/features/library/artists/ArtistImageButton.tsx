@@ -2,12 +2,7 @@ import { ImagePlus } from "lucide-react";
 
 import { ArtistAvatar } from "@/features/library/artists/ArtistAvatar";
 
-/**
- * The artist's disc as a way to their image — the compact affordance the
- * editors wear (track drawer, album panel), same hover grammar as the cover
- * buttons beside it. The full-size disc on the artist hero keeps its own
- * wiring; this is for the places where the artist is context, not subject.
- */
+/** A compact artist disc opening the image modal, used in the editors. */
 export function ArtistImageButton({
   imageUrl,
   label,
@@ -15,7 +10,6 @@ export function ArtistImageButton({
   className = "size-8",
 }: {
   imageUrl: string | null;
-  /** Accessible name — the artist image modal's own title reads well. */
   label: string;
   onClick: () => void;
   className?: string;

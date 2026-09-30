@@ -11,9 +11,7 @@ describe("restrictTriage", () => {
   });
 
   it("drops the axes a scoped page answers itself", () => {
-    // A genre page *is* a family and a genre, and stores the genre in the very
-    // param the explorer would read: without this, the page would filter its own
-    // scope a second time and grow a chip that undoes it.
+    // A genre page's own `?genre=` must not be read again as a filter.
     expect(restrictTriage(active, ["category"])).toEqual({ ...active, family: null, genre: null });
     expect(restrictTriage(active, ["family"])).toEqual({ ...active, genre: null, category: null });
   });

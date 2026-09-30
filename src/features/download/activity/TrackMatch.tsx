@@ -3,14 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import type { AlbumTrackJob } from "@/features/download/api";
 
-/**
- * What identified one track of an unfolded album, or why nothing did.
- *
- * The dot stands in for a stage that has nothing to report yet. An em-dash was
- * the obvious choice and the wrong one: the row's pipeline glyphs sit right
- * beside it, and a dash read as one of them having gone flat. The fixed height
- * matches the chip that replaces it, so a row does not resize as it lands.
- */
+/** Placeholder dot sized like the chip that replaces it (a dash would read as
+ * a flat pipeline glyph). */
 function Awaiting() {
   const { t } = useTranslation("download");
   return (
@@ -30,8 +24,7 @@ export function TrackMatch({ track }: { track: AlbumTrackJob }) {
       </Chip>
     );
   }
-  // Nothing was ever identified because nothing was ever fetched — and the
-  // neutral dot would read as "still working" on a row that is finished.
+  // Never fetched, so the neutral "working" dot would be wrong.
   if (track.status === "unavailable") {
     return (
       <Chip variant="soft" size="sm" color="warning">

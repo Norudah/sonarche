@@ -21,34 +21,25 @@ import { usePlayQueue } from "@/features/library/usePlayQueue";
 
 const COLUMN = `${PAD} ${HEADER}`;
 
-/** Handed to the windowing hook while the inspection table is the one on screen:
- * this table is not rendered then, so it has nothing to window. Same idiom as
- * `useDragReorder(0, …)` below — a disabled hook is told so with its own
- * argument rather than skipped, which hooks forbid. */
+/** Passed to the windowing hook while the inspection table shows (hooks can't
+ * be skipped, so the hook is told there's nothing to window). */
 const NOT_RENDERED: LibraryTrack[] = [];
 
 interface PlaylistTrackListProps {
   playlistId: number;
-  /** Members resolved against the library, in playlist order. */
+  /** Members in playlist order. */
   tracks: LibraryTrack[];
 }
 
-/**
- * The playlist's body. Windowed like the library-wide table (a playlist has no
- * size ceiling), with the one thing no other table has: rows that can be
- * picked up and reordered — the order *is* the data here, where every other
- * list's order is a view.
- */
+/** The playlist body: windowed, with drag reordering (here the order is the data). */
 export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps) {
   const { t } = useTranslation("library");
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null);
   const [addingToPlaylist, setAddingToPlaylist] = useState<LibraryTrack[] | null>(null);
-  // Refiling, from here too: the playlist points at item ids, so a member can
-  // change records without falling out of the list.
+  // Playlists point at item ids, so moved tracks stay in the list.
   const [movingToAlbum, setMovingToAlbum] = useState<LibraryTrack[] | null>(null);
-  // A way of *reading* the list; the stored order is untouched, and every
-  // mutation below addresses the row's original position through the view.
+  // A view only; mutations address stored positions.
   const [sort, setSort] = useState<TrackSort | null>(null);
   const { playFrom } = usePlayQueue();
   const move = useMovePlaylistTrack();
@@ -59,8 +50,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
   const view = playlistView(tracks, sort);
   const visibleTracks = sort == null ? tracks : view.map((row) => row.track);
   const rowWindow = useRowWindow(inspecting ? NOT_RENDERED : visibleTracks);
-  // Sorted, the display order and the stored order disagree, so a drag would
-  // lie about what it moves: reordering exists only in the list's own order.
+  // Reordering only in the stored order.
   const canReorder = sort == null;
   const { drag, handleProps, rowStyle } = useDragReorder(canReorder ? tracks.length : 0, (from, to) =>
     move.mutate({ id: playlistId, from, to }),
@@ -82,9 +72,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
   return (
     <>
       {inspecting ? (
-        // No drag handle and no remove: under the lens this is a list of tags
-        // to check, and reordering a playlist is not something you do while
-        // looking for a missing year. Both come back with the switch.
+        // No drag handle or remove under the lens.
         <InspectTable
           tracks={visibleTracks}
           animationKey={String(playlistId)}
@@ -119,8 +107,7 @@ export function PlaylistTrackList({ playlistId, tracks }: PlaylistTrackListProps
 
               {rowWindow.rows.map(({ track, index }) => (
                 <PlaylistTrackRow
-                  // The id is unique here by construction: additions dedup, so a
-                  // track can never sit in one playlist twice.
+                  // Unique: additions are deduplicated.
                   key={track.id}
                   track={track}
                   position={index}

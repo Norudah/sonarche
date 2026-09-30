@@ -12,17 +12,8 @@ import { HeroBreadcrumb } from "@/features/library/HeroBreadcrumb";
 import { HeroWash } from "@/features/library/HeroWash";
 import { formatDuration } from "@/shared/lib/format";
 
-/**
- * The way *out* of an album and into everything else by the same artist — the
- * one link that turns the library from a list of records into something you can
- * wander through.
- *
- * The underline is a pseudo-element growing from the left rather than
- * `hover:underline`, which has no in-between state: a text-decoration is either
- * there or not, so it snapped on and made a headline look like it had just gone
- * wrong. Scaling a 1px bar is compositor work, and it lets the colour shift to
- * accent over the same 200ms so the two read as one gesture.
- */
+/** Links to the artist. The underline is a growing pseudo-element, since
+ * `hover:underline` can't transition. */
 function ArtistLink({ artist }: { artist: string }) {
   return (
     <Link
@@ -46,18 +37,8 @@ interface AlbumHeroProps {
   ref?: Ref<HTMLElement>;
 }
 
-/**
- * Full-bleed band — see `HeroWash` for why it is no longer the artwork, and why
- * this header no longer clips its children.
- *
- * `items-end` is what aligns the tag cards with the bottom of the action row:
- * both are last in their column, so bottom-aligning the row aligns them by
- * construction rather than by a hand-tuned offset that would drift the moment a
- * title wraps to two lines.
- *
- * `-mx-8 -mt-5` cancels the scroll area's padding. The page owns that padding,
- * so a full-bleed child has to reach back through it.
- */
+/** Full-bleed band (see `HeroWash`); `-mx-8 -mt-5` cancels the page padding.
+ * `items-end` bottom-aligns the tag cards with the action row. */
 export function AlbumHero({
   album,
   onPlay,
@@ -95,8 +76,7 @@ export function AlbumHero({
 
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <div className="min-w-0">
-              {/* The record says what it is: a declared collection stops
-               * announcing itself as an album the moment its owner said so. */}
+              {/* "Collection" once the owner declared it. */}
               <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
                 {t(album.kind === "collection" ? "albums.eyebrowCollection" : "albums.eyebrow")}
               </p>

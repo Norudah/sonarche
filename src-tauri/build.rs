@@ -1,7 +1,5 @@
 fn main() {
-    // tauri_build copies the resources (../sidecar) into target/ from this
-    // build script; without this hint, editing a Python file never re-runs it
-    // and `tauri dev` keeps launching a stale sidecar copy.
+    // Re-run the build script (which copies ../sidecar) when Python files change.
     println!("cargo:rerun-if-changed=../sidecar");
     tauri_build::build()
 }

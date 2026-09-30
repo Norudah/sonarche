@@ -1,6 +1,6 @@
 import { toast } from "@heroui/react";
 import { Trash2 } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteTracks, useDownloadTargetAlbums } from "@/features/library/hooks";
@@ -9,27 +9,15 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 export interface AlbumDeletion {
   title: string;
-  /** Library items the album produced; the dialog deletes exactly these. */
+  /** The dialog deletes exactly these items. */
   trackIds: number[];
 }
 
-/**
- * Says no to deleting a record a download is still filing into.
- *
- * A download bound for an existing album moves its tracks onto that row once
- * the enrich step is done, and the move's only reaction to a missing target is
- * a log line — the job still comes out green while the tracks sit on whatever
- * release the pipeline guessed. So the refusal has to happen before the dialog
- * opens, and it has to say why: a delete that quietly does nothing reads as a
- * broken button.
- *
- * Returns whether the caller may proceed, and raises the toast when it may not.
- */
+/** Refuses (with a toast) to delete an album a running download will file
+ * into: the later move would fail silently. Returns whether to proceed. */
 export function useAlbumDeleteGuard(): (albumIds: number[]) => boolean {
   const { t } = useTranslation("library");
-  // Stable across renders while the set is: the download deck re-renders
-  // several times a second during an album, and hands this straight to memoed
-  // cards.
+  // Stable while the set is, for memoised download cards.
   const locked = useDownloadTargetAlbums().data;
 
   return useCallback(
@@ -49,10 +37,9 @@ export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | n
   const { t } = useTranslation("library");
   const remove = useDeleteTracks();
 
-  // Keep the last album around so its title doesn't flicker during the closing animation.
-  const lastRef = useRef<AlbumDeletion | null>(null);
-  if (album) lastRef.current = album;
-  const shown = album ?? lastRef.current;
+  // Keeps the title during the closing animation.
+  const [shown, setShown] = useState(album);
+  if (album && album !== shown) setShown(album);
 
   const confirm = () => {
     if (!album) return;

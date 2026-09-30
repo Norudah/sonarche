@@ -4,42 +4,22 @@ import { useTranslation } from "react-i18next";
 import { SearchField } from "@/features/library/tracks/SearchField";
 
 interface ExplorerBarProps {
-  /** The page's own controls, left to right — sort, facet menus, a filter
-   * panel. A slot rather than props: what goes here differs per shelf, and the
-   * bar has no business knowing which. */
+  /** The page's controls (sort, facets, filters). */
   children?: ReactNode;
   query: string;
   onQueryChange: (value: string) => void;
-  /** How many items the filters and the search leave. */
+  /** Items left after filters and search. */
   shown: number;
-  /** How many there are without them. The count only shows when the two differ:
-   * unfiltered, it repeats the number the title block already carries. */
+  /** The count only shows when it differs from `shown`. */
   total: number;
-  /** Pinned to the top of the scrollport. Off on a page that already pins a bar
-   * of its own — the album's sticky header sits exactly here, and the two would
-   * cover each other. */
+  /** Off on pages with their own sticky bar (the album header). */
   pinned?: boolean;
 }
 
 /**
- * The work bar every explorer wears: what to narrow by, and what to look for.
- *
- * Search used to sit at the top right of each title row, which is the standard
- * place for it — on a page of a few dozen cards. It stops working on a list of
- * thousands: the title row scrolls away and takes the search field with it,
- * while the thing being searched stays. So the controls move down into a bar of
- * their own that sticks to the top of the scrollport, and the title row goes
- * back to being a title.
- *
- * Sticky and in the flow rather than in `PageContainer`'s overlay slot: it has
- * to scroll with the page until it reaches the top, and the negative margins
- * give it the full bleed the slot exists to provide. `z-10` keeps it under the
- * detail pages' own sticky bars (`z-20`), which are never on screen with it.
- *
- * The fade below is a gradient, not a rule: pinned, the rows have to read as
- * sliding *under* the bar, and a hairline would draw a permanent line across the
- * page even at the top where there is nothing to separate. Over the page
- * background it is invisible until something scrolls into it.
+ * Explorer controls and search, sticky to the top of the scrollport so search
+ * stays reachable on long lists. `z-10` stays under the detail pages' sticky
+ * bars (`z-20`). A gradient, not a rule, marks rows sliding under it.
  */
 export function ExplorerBar({ children, query, onQueryChange, shown, total, pinned = true }: ExplorerBarProps) {
   const { t } = useTranslation("library");

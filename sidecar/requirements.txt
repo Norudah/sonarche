@@ -11,13 +11,13 @@ requests==2.32.4
 pylast==7.1.0
 
 # beets' own runtime dependencies, minus numba/llvmlite/scipy.
-confuse==2.2.1
+confuse==2.3.0
 jellyfish==1.2.1
 lap==0.5.13
 mediafile==0.17.0
 numpy==2.5.3
 packaging==26.3
-platformdirs==4.11.8
+platformdirs==4.12.2
 PyYAML==6.0.3
 requests-ratelimiter==0.10.0
 typing_extensions==4.16.0
@@ -29,12 +29,12 @@ colorama==0.4.6 ; sys_platform == "win32"
 # Transitive.
 anyio==4.15.1
 certifi==2026.7.22
-charset-normalizer==3.5.1
+charset-normalizer==3.5.2
 filetype==1.2.0
 h11==0.16.0
-httpcore2==2.12.0
-httpx2==2.12.0
-idna==3.19
+httpcore2==2.13.1
+httpx2==2.13.1
+idna==3.20
 pyrate-limiter==4.5.0
 truststore==0.10.4
-urllib3==2.7.0
+urllib3==2.8.0

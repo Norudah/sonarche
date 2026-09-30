@@ -1,21 +1,22 @@
 import { cn, Switch } from "@heroui/react";
+import type { ParseKeys } from "i18next";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { clearSettingsHighlight, useSettingsDialog } from "@/shared/lib/settingsDialog";
 import { FieldHelp } from "@/shared/ui/FieldHelp";
 
-/** How long the ring a search result leaves stays on. Long enough to be seen
- * after the scroll settles, short enough not to become a selection. */
+type SettingsKey = ParseKeys<"settings">;
+type BaseOf<Key> = Key extends `${infer Base}.name` ? (`${Base}.why` extends SettingsKey ? Base : never) : never;
+
+/** A setting's i18n base key (`appearance.theme`): a `.name` and a `.why` under it. */
+type SettingKey = BaseOf<SettingsKey>;
+
+/** Duration of a search result's highlight ring. */
 const FLASH_MS = 1800;
 
-/**
- * Scrolls a setting into view and rings it when a search result named it.
- *
- * Returns the ref to hang on the element and whether it is lit. The clear runs
- * on a timer rather than on the next interaction: the highlight is an answer to
- * "here it is", and an answer that waits to be dismissed is a state.
- */
+/** Scrolls a setting into view and highlights it when search targets it;
+ * clears on a timer. */
 export function useSettingHighlight(settingKey: string | undefined) {
   const { highlight } = useSettingsDialog();
   const ref = useRef<HTMLDivElement>(null);
@@ -31,22 +32,10 @@ export function useSettingHighlight(settingKey: string | undefined) {
   return { ref, isLit };
 }
 
-/** The ring a revealed setting wears, on a row or on a card. */
 export const FLASH = "ring-2 ring-accent/60 ring-offset-2 ring-offset-surface";
 
-/**
- * Several settings on one plane, ruled apart.
- *
- * The page used to be a stack of one-setting cards, each with its name and two
- * to four lines of prose at the same weight. Beautifully written and completely
- * unscannable: every item had the same silhouette and the same mass, so there
- * was nothing to skim — you read the page or you found nothing. Four cards took
- * about 520 px; the same four rows take about 180.
- *
- * The rule for what goes in here: a control that fits to the right of a name is
- * a row; a control that needs a surface of its own (the format chooser, the API
- * key field, the service list, the delay dial) stays a card.
- */
+/** Several settings as ruled rows. A control that fits beside a name is a
+ * row; one that needs its own surface is a `SettingCard`. */
 export function SettingsPanel({ children }: { children: ReactNode }) {
   return (
     <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-surface">
@@ -56,15 +45,9 @@ export function SettingsPanel({ children }: { children: ReactNode }) {
 }
 
 interface SettingRowProps {
-  /**
-   * The setting's i18n base key — `appearance.theme`. The row reads
-   * `<key>.name` and `<key>.why` off it rather than taking two strings, which
-   * is what lets the search index (built from the same shape) point a result
-   * back at this exact row.
-   */
-  settingKey: string;
-  /** Set when the control is tall enough that a vertically centred label reads
-   * as floating beside it — the theme tiles, mainly. */
+  /** The row reads `.name` and `.why`; search results point back to it. */
+  settingKey: SettingKey;
+  /** For tall controls (the theme tiles). */
   align?: "center" | "start";
   children: ReactNode;
 }
@@ -86,13 +69,7 @@ export function SettingRow({ settingKey, align = "center", children }: SettingRo
     >
       <div className={cn("flex min-w-0 flex-1 items-center gap-1.5", align === "start" && "pt-1")}>
         <span className="min-w-0 text-[0.8125rem] font-medium">{name}</span>
-        {/* The full reason, on hover rather than behind a click. It is not
-            help the reader has to ask for — it is the setting's own sentence,
-            moved out of the way so the panel can be skimmed; making it cost a
-            click would put it further away than it was on the old cards.
-            Longer than the app's usual 200 ms: eleven marks down a panel, a
-            quick delay would fire them one after another as the pointer
-            crosses the rows. */}
+        {/* The explanation on hover. Longer delay so crossing rows doesn't fire each one. */}
         <FieldHelp label={t("explain")} delay={450} text={t(`${settingKey}.why`)} />
       </div>
       <div className="shrink-0">{children}</div>
@@ -100,15 +77,13 @@ export function SettingRow({ settingKey, align = "center", children }: SettingRo
   );
 }
 
-/** The commonest row of all: a setting whose answer is yes or no. The switch
- * carries the name as its label rather than repeating it — the visible text is
- * to its left, and a second copy inside the control would be read twice. */
+/** A yes/no setting; the switch is labelled by the visible name. */
 export function SwitchRow({
   settingKey,
   isSelected,
   onChange,
 }: {
-  settingKey: string;
+  settingKey: SettingKey;
   isSelected: boolean;
   onChange: (enabled: boolean) => void;
 }) {
@@ -117,9 +92,13 @@ export function SwitchRow({
   return (
     <SettingRow settingKey={settingKey}>
       <Switch isSelected={isSelected} onChange={onChange} aria-label={t(`${settingKey}.name`)} className="mt-0">
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
+        {/* Content is the clickable part (the label around the input); a bare
+            Control renders an inert switch. */}
+        <Switch.Content>
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+        </Switch.Content>
       </Switch>
     </SettingRow>
   );

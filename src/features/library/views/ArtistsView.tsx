@@ -1,4 +1,3 @@
-import { Alert, Spinner } from "@heroui/react";
 import { ListFilter, Mic2, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +21,7 @@ import { SortSelect } from "@/features/library/SortSelect";
 import { useArtistImages, useLibrary } from "@/features/library/hooks";
 import { TriageChips, type TriageChip } from "@/features/library/TriageChips";
 import { usePlayQueue } from "@/features/library/usePlayQueue";
+import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
 
@@ -34,14 +34,11 @@ export function ArtistsView() {
   const [params, setParams] = useSearchParams();
   const [layout, setLayout] = useShelfLayout();
 
-  // The metadata page's door: only the artists still wearing the generated
-  // motif. No filter while the image map is loading — a half-loaded map would
-  // read as "everyone is missing one".
+  // Metadata's door: artists without an image. No filter while the map loads.
   const missingImage = params.get("missing") === "image";
   const artistImages = useArtistImages();
 
-  // Two memos rather than one: the album grouping is the expensive half and it
-  // does not depend on the query or the sort, so it must not rerun on a keystroke.
+  // Album grouping memoised apart, so a keystroke doesn't rerun it.
   const artists = useMemo(() => groupArtists(groupAlbums(library.data ?? [])), [library.data]);
   const triaged = useMemo(
     () =>
@@ -59,7 +56,7 @@ export function ArtistsView() {
       label: t("triage.artistImageMissing"),
       tone: "correction",
       onRemove: () => {
-        // Removing a filter refines the entry we are on, it is not a new place.
+        // `replace`: removing a filter refines the current entry.
         const next = new URLSearchParams(params);
         next.delete("missing");
         setParams(next, { replace: true });
@@ -84,20 +81,9 @@ export function ArtistsView() {
         <TriageChips chips={chips} />
       </ExplorerBar>
 
-      {library.isPending && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
-        </div>
-      )}
+      {library.isPending && <LoadingSpinner />}
 
-      {library.isError && (
-        <Alert status="danger">
-          <Alert.Content>
-            <Alert.Title>{t("loadFailed")}</Alert.Title>
-            <Alert.Description>{String(library.error)}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {library.isError && <LoadError error={library.error} />}
 
       {library.data && artists.length === 0 && (
         <EmptyLibrary icon={Mic2} title={t("artists.empty.title")} body={t("artists.empty.body")} />
@@ -115,9 +101,7 @@ export function ArtistsView() {
           artists={visible}
           layout={layout}
           animationKey={`${params.toString()}:${query}:${sort}`}
-          // The first track of the earliest album: an artist's "play" has to
-          // start *somewhere*, and the discography's opening is the only choice
-          // that is not arbitrary. Shuffle belongs to a queue we do not have yet.
+          // From the start of the discography.
           onPlay={(artist) => playOrdered(artist.albums.flatMap((album) => album.tracks))}
         />
       )}

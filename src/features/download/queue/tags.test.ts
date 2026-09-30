@@ -58,9 +58,7 @@ describe("jobTags", () => {
       kind: "album",
       tracks: [
         albumTrack({ index: 1, report: report() }), // 6/7
-        // Dropped as a content duplicate. It normally has no report at all, but
-        // one left over from before the drop must not drag the album down: the
-        // exclusion is on `duplicateOf`, not on the absence of a report.
+        // Excluded by `duplicateOf`, even if a stale report remains.
         albumTrack({ index: 2, report: report({ mbMatched: false }), duplicateOf: 4 }),
       ],
     });

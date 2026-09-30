@@ -7,10 +7,8 @@ import unittest
 import import_recap
 import library
 
-# The three columns of beets' schema this module reads, and nothing else. Built
-# by hand rather than by running beets: the interesting cases (a delimited genre
-# column, an album with a hole in it) are shapes of stored data, and a real
-# import cannot be asked to produce them on demand.
+# Only the columns this module reads, built by hand to produce specific
+# stored shapes.
 _SCHEMA = """
 CREATE TABLE items (
     id INTEGER PRIMARY KEY, year INTEGER, genres TEXT,

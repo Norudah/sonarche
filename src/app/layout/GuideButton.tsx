@@ -6,12 +6,7 @@ import { guideUrl } from "@/shared/lib/siteLinks";
 import { chromeButton } from "@/shared/ui/chromeButton";
 import { ActionHelp } from "@/shared/ui/FieldHelp";
 
-/**
- * The way out to the guide on the website, from anywhere: whatever screen is
- * puzzling, help is behind the same corner of the window. It opens the user's
- * browser — the guide is a read, not a mode of the app, and a webview panel
- * would have to be chrome we then maintain.
- */
+/** Opens the online guide in the user's browser. */
 export function GuideButton() {
   const { t, i18n } = useTranslation("common");
   const label = t("guide.open");

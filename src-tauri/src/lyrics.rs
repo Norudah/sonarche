@@ -1,10 +1,5 @@
-//! One track's lyrics, on demand.
-//!
-//! No state and no throttle, unlike the enrich paths: this is a single lookup
-//! for a single track, and `allow_network` is false unless the user has pressed
-//! the button — opening the panel reads what the library already holds and
-//! reaches nothing. There is no shape here that a second click could make
-//! expensive.
+//! One track's lyrics, on demand. No throttle: the network is only reached
+//! when the user asks.
 
 use std::time::Duration;
 
@@ -16,7 +11,7 @@ use crate::identity::user_agent;
 use crate::python_env::AppPaths;
 use crate::sidecar::SidecarState;
 
-/// One HTTP round-trip, plus the search fallback when the exact match misses.
+/// Covers the exact lookup plus the search fallback.
 const TIMEOUT: Duration = Duration::from_secs(30);
 
 pub async fn fetch(

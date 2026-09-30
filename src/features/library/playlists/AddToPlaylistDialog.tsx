@@ -18,7 +18,7 @@ import {
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 
 interface AddToPlaylistDialogProps {
-  /** What is being filed — one row's track, or a whole album. Null = closed. */
+  /** A track or a whole album; null = closed. */
   tracks: LibraryTrack[] | null;
   onClose: () => void;
 }
@@ -75,8 +75,7 @@ function PlaylistRow({
   );
 }
 
-/** The picker's live half, mounted per opening so its draft and pending state
- * start clean each time without an effect to reset them. */
+/** Mounted per opening so its state starts clean. */
 function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () => void }) {
   const { t } = useTranslation("library");
   const library = useLibrary();
@@ -169,7 +168,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             {t("playlists.createConfirm")}
           </button>
         </form>
-        {/* Reserved so the list below never jumps when it appears. */}
+        {/* Reserved height so the list doesn't jump. */}
         <p className="mt-1 min-h-4 text-[0.75rem] text-danger">{draftTaken ? t("playlists.duplicateName") : ""}</p>
       </div>
 
@@ -199,11 +198,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   );
 }
 
-/**
- * "Ajouter à une playlist" — a picker, not a form: click a playlist and it is
- * done, with the create path inline at the top so a first playlist costs no
- * detour through another page.
- */
+/** A picker: one click files the tracks. Creating a playlist is inline at the top. */
 export function AddToPlaylistDialog({ tracks, onClose }: AddToPlaylistDialogProps) {
   return (
     <Modal
