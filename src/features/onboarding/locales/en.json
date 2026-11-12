@@ -11,82 +11,235 @@
       "subtitle": "Bring your music aboard."
     }
   },
-  "walkthrough": {
-    "language": "Language",
-    "firstRun": {
-      "eyebrow": "Welcome",
-      "title": "Before the first play",
-      "lead": "Long enough to put the engine in place, and to give you real tags instead of guessed ones.",
-      "enter": "Enter {{app}}",
-      "libraryHint": "Your music will be filed in {{path}}"
+  "nav": {
+    "stepOf": "Step {{n}} of {{total}}",
+    "back": "Back",
+    "language": "Language"
+  },
+  "eyebrow": {
+    "welcome": "Welcome",
+    "repair": "Maintenance",
+    "optional": "Optional"
+  },
+  "continue": "Continue",
+  "enter": {
+    "firstRun": "Enter {{app}}",
+    "repair": "Back to listening"
+  },
+  "python": {
+    "title": "This machine needs Python",
+    "lead": "Sonarche runs on two Python tools, yt-dlp and beets, so it needs Python 3.10 or newer. Nothing gets installed into it: the app builds its own environment alongside.",
+    "stage": "Install Python 3.10 or newer",
+    "hint": "Run the command in a terminal, then come back here.",
+    "found": "Found on the machine: Python {{version}}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "recheck": "Check again"
+  },
+  "engine": {
+    "idle": {
+      "title": {
+        "firstRun": "Let's set up Sonarche's engine",
+        "repair": "The engine needs reinstalling"
+      },
+      "lead": {
+        "firstRun": "Two tools power the app: yt-dlp fetches the audio, beets files and tags it. They're installed once.",
+        "repair": "After an update or a reset, the tools that download and file your music need to be put back in place."
+      }
     },
-    "repair": {
-      "eyebrow": "Maintenance",
-      "title": "The engine needs reinstalling",
-      "lead": "The tools that fetch and file your music have to be put back in place — after an update, or because the environment was reset. Your library itself stays where it is.",
-      "enter": "Back to the music",
-      "libraryHint": "Your music is filed in {{path}}"
+    "facts": {
+      "time": {
+        "bundled": {
+          "title": "A few seconds",
+          "text": "Everything ships with the app: nothing to download."
+        },
+        "online": {
+          "title": "A few minutes",
+          "text": "Long enough to download the packages, depending on your connection."
+        }
+      },
+      "library": {
+        "firstRun": {
+          "title": "Your music will live in {{path}}",
+          "text": "Plain files, yours, sorted by artist and album."
+        },
+        "repair": {
+          "title": "Your library stays put",
+          "text": "Your tracks, tags and playlists stay where they are."
+        }
+      },
+      "isolated": {
+        "title": "Nothing installed elsewhere",
+        "text": "A separate folder, just for Sonarche."
+      }
+    },
+    "action": {
+      "firstRun": "Install the engine",
+      "repair": "Reinstall the engine"
+    },
+    "installing": {
+      "title": "Installing",
+      "lead": {
+        "bundled": "Keep this window open. Everything ships with the app, nothing goes over the network.",
+        "online": "Keep this window open. The packages are downloading, this can take a few minutes."
+      },
+      "button": "Installing…"
+    },
+    "stages": {
+      "venv": {
+        "title": "Create an isolated environment",
+        "text": "A Python just for Sonarche"
+      },
+      "packages": {
+        "title": "Install yt-dlp and beets",
+        "text": "Fetch the audio, then file and tag it"
+      },
+      "finalize": {
+        "title": "Finish the setup",
+        "text": "Prepare how your library is filed"
+      },
+      "failed": "Interrupted",
+      "failedBecause": "Interrupted: {{reason}}"
+    },
+    "live": {
+      "venv": "Creating the isolated environment…",
+      "package": "Installing {{pkg}}…",
+      "packages": "Installing packages…",
+      "finalizing": "Finishing up…"
+    },
+    "log": {
+      "show": "Show the detail",
+      "hide": "Hide the detail",
+      "full": "Show the installation log"
+    },
+    "done": {
+      "title": {
+        "firstRun": "The engine is installed",
+        "repair": "The engine is reinstalled"
+      },
+      "lead": {
+        "firstRun": "One optional step left: letting Sonarche recognise your tracks.",
+        "repair": "Your library is waiting, exactly as you left it."
+      }
+    },
+    "error": {
+      "title": "The installation failed",
+      "lead": {
+        "firstRun": "Nothing on your machine was changed. Fix the issue below, then try again.",
+        "repair": "Your library wasn't touched. Fix the issue below, then try again."
+      },
+      "unknown": "The installation stopped",
+      "retry": "Try again",
+      "copyLog": "Copy the log",
+      "copied": "Log copied"
+    },
+    "errors": {
+      "diskFull": {
+        "title": "Not enough disk space",
+        "hint": "Free up some room on this disk, then run the installation again.",
+        "reason": "not enough disk space"
+      },
+      "permission": {
+        "title": "Access to a folder was denied",
+        "hint": "Sonarche couldn't write to its own folder. Check your account's permissions on this disk, then run the installation again.",
+        "reason": "access denied"
+      },
+      "network": {
+        "title": "No connection",
+        "hint": "The installation downloads its packages. Check your connection, then run the installation again.",
+        "reason": "no connection"
+      }
     }
   },
-  "steps": {
-    "python": {
-      "title": "The Python base",
-      "done": "Python {{version}}",
-      "body": "Sonarche runs on two Python tools, yt-dlp and beets. That means it needs Python 3.10 or newer on the machine. Nothing gets installed into it: the app builds its own environment alongside.",
-      "copy": "Copy",
-      "copied": "Copied",
-      "recheck": "Check again",
-      "recheckHint": "Run the command in a terminal, then come back here.",
-      "found": "Found on the machine — Python {{version}}"
+  "key": {
+    "intro": {
+      "title": "A key to identify your tracks",
+      "lead": "With an AcoustID key, Sonarche listens to each file and finds the real track. Without one, it guesses from the title.",
+      "action": "Get my key",
+      "haveKey": "I already have a key"
     },
-    "engine": {
-      "title": "The download engine",
-      "done": "Installed",
-      "body": "yt-dlp to fetch the audio, beets to file and tag it. Both are installed into an environment that belongs to Sonarche alone — your system Python is left untouched.",
-      "action": "Install the engine",
-      "reinstall": "Reinstall the engine",
-      "retry": "Try again",
-      "duration": "A few minutes, depending on your connection.",
-      "detail": "Show the detail",
-      "failed": "Installation failed",
-      "phase": {
-        "starting": "Starting…",
-        "venv": "Creating the isolated environment…",
-        "fetching": "Fetching {{pkg}}…",
-        "installing": "Installing packages…",
-        "finalizing": "Finishing up…",
-        "done": "Environment ready."
+    "facts": {
+      "sound": {
+        "title": "Identified by sound",
+        "text": "The file's audio fingerprint, not the video title."
       },
-      "log": "Show the installation log",
-      "bodyBundled": "yt-dlp to fetch the audio, beets to file and tag it. Everything ships with the app — its own Python, its own packages — and installs into a corner that belongs to Sonarche alone. Nothing already on your machine is touched.",
-      "durationBundled": "A few seconds — it is all here already, nothing to download."
+      "free": {
+        "title": "Two minutes, and free",
+        "text": "An AcoustID account and an application to register."
+      },
+      "guessed": {
+        "title": "Without a key, guessed tags",
+        "text": "Your tracks arrive flagged as such, to review later."
+      }
     },
-    "acoustid": {
-      "title": "The AcoustID key",
-      "done": "Key saved",
-      "recommended": "Strongly recommended",
-      "skipped": "Skipped",
-      "body": "Without a key, Sonarche reads the video title and guesses: your tracks land marked \"Guessed tags\". With one, it listens to the file, computes its fingerprint and asks AcoustID — the track is identified, artist, album and year included. It's free, and it takes two minutes.",
+    "skip": "Skip, no key",
+    "steps": {
+      "title": "Get your AcoustID key",
+      "lead": "Two pages to open on acoustid.org, then paste the key here. It's free.",
       "account": {
-        "label": "Create an AcoustID account",
-        "hint": "You can sign in with an account you already have."
+        "title": "Create an AcoustID account",
+        "text": "Or sign in with an existing one.",
+        "open": "Open acoustid.org to create an account"
       },
       "application": {
-        "label": "Register an application",
-        "hint": "Name it whatever you like — the key shows up right after."
+        "title": "Register an application",
+        "text": "Name it anything: the key shows right after.",
+        "open": "Open acoustid.org to register an application"
       },
-      "open": "Open",
-      "fieldLabel": "AcoustID API key",
-      "placeholder": "Paste your key here",
-      "check": "Check",
-      "checking": "Checking…",
-      "rejected": {
-        "invalidKey": "AcoustID doesn't recognise this key. Check that you copied the application's key, not the account's.",
-        "empty": "The field is empty."
-      },
-      "unreachable": "Could not reach AcoustID. Check your connection and try again.",
-      "skip": "Continue without — tracks will be tagged by guesswork",
-      "replace": "Paste a new key to replace this one"
+      "paste": {
+        "title": "Paste the application key",
+        "text": "The application's key, not the account's."
+      }
+    },
+    "open": "Open",
+    "field": {
+      "label": "AcoustID API key",
+      "placeholder": "Paste your key here"
+    },
+    "verify": "Check the key",
+    "verifying": "Checking…",
+    "verifyingLine": "Checking with AcoustID…",
+    "verified": {
+      "title": "Key saved",
+      "lead": "Every track you add will be identified by its fingerprint: artist, album, year.",
+      "line": "Checked with AcoustID."
+    },
+    "rejected": {
+      "title": "This key isn't recognised",
+      "lead": "Make sure you copied the application key, not the account key, then try again.",
+      "invalidKey": "AcoustID doesn't recognise this key.",
+      "empty": "The field is empty."
+    },
+    "unreachable": "Could not reach AcoustID. Check your connection and try again.",
+    "saved": {
+      "title": "Your AcoustID key is already saved",
+      "lead": "Sonarche keeps identifying your tracks by sound. Nothing to do here, unless you want to change it.",
+      "card": "AcoustID key",
+      "status": "Saved",
+      "change": "Change key",
+      "see": "See my AcoustID key"
+    }
+  },
+  "scene": {
+    "label": {
+      "waiting": "Waiting",
+      "installing": "Installing",
+      "ready": "Ready",
+      "interrupted": "Interrupted",
+      "identifying": "Identifying",
+      "verifying": "Checking"
+    },
+    "caption": {
+      "waiting": "The Ark is waiting for its engine.",
+      "loading": "Loading aboard…",
+      "afloat": "The Ark is afloat.",
+      "stranded": "A crate was left on the quay.",
+      "guessing": "For now, the Ark guesses.",
+      "learning": "It's learning to listen.",
+      "verifying": "Checking with AcoustID…",
+      "listening": "It recognises every track by ear.",
+      "stillListening": "It still recognises your tracks.",
+      "unknownKey": "That key doesn't ring a bell."
     }
   }
 }

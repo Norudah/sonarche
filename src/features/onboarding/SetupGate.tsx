@@ -56,8 +56,7 @@ export function SetupGate({ children, welcome }: { children: ReactNode; welcome:
           acoustidConfigured={onboarding.data?.acoustidConfigured ?? false}
           onRecheckPython={() => status.refetch()}
           isCheckingPython={status.isFetching}
-          onFinish={() => complete.mutate()}
-          isFinishing={complete.isPending}
+          onEnter={() => complete.mutate()}
         />
       ) : (
         children

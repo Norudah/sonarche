@@ -59,11 +59,6 @@ describe("buildSetupSteps", () => {
     expect(stateOf(steps, "engine")).toBe("actionRequired");
   });
 
-  it("reports a passed-over optional step as skipped, not as open", () => {
-    const steps = buildSetupSteps({ env: env(), acoustidConfigured: false, skipped: ["acoustid"] });
-    expect(stateOf(steps, "acoustid")).toBe("skipped");
-  });
-
   it("knows nothing before the environment answers", () => {
     const steps = buildSetupSteps({ env: null, acoustidConfigured: true });
     expect(stateOf(steps, "python")).toBe("actionRequired");

@@ -5,7 +5,7 @@ import { installPhase, namedPackageCount } from "@/features/onboarding/installPh
 
 export type EngineStatus = "idle" | "installing" | "done" | "error";
 
-const ENGINE_STAGES = ["venv", "packages", "finalize"] as const;
+export const ENGINE_STAGES = ["venv", "packages", "finalize"] as const;
 
 /** What the line under the card says while the install runs. */
 type LiveLine = { kind: "venv" } | { kind: "package"; pkg: string } | { kind: "packages" } | { kind: "finalizing" };

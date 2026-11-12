@@ -12,9 +12,7 @@ type SetupStepState =
   /** The current step. */
   | "actionRequired"
   /** Blocked by an earlier blocking step. */
-  | "pending"
-  /** Optional, passed over. */
-  | "skipped";
+  | "pending";
 
 export interface SetupStep {
   id: SetupStepId;
@@ -27,8 +25,6 @@ interface SetupInput {
   /** `null` while the check is in flight. */
   env: EnvStatus | null;
   acoustidConfigured: boolean;
-  /** Session only, never persisted. */
-  skipped?: readonly SetupStepId[];
 }
 
 const BLOCKING: Record<SetupStepId, boolean> = {
@@ -54,7 +50,6 @@ function isSatisfied(id: SetupStepId, input: SetupInput): boolean {
 /** `pending` propagates from the first unsatisfied blocking step; optional
  * steps never block. */
 export function buildSetupSteps(input: SetupInput): SetupStep[] {
-  const skipped = new Set(input.skipped ?? []);
   let blocked = false;
 
   // A bundled interpreter removes the Python step entirely.
@@ -67,7 +62,6 @@ export function buildSetupSteps(input: SetupInput): SetupStep[] {
 
     if (satisfied) state = "satisfied";
     else if (blocked) state = "pending";
-    else if (skipped.has(id)) state = "skipped";
     else state = "actionRequired";
 
     if (blocking && !satisfied) blocked = true;

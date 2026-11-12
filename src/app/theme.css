@@ -131,6 +131,18 @@
 
   /* A shading rather than a tint, so it works on any surface. */
   --panel-wash: linear-gradient(to bottom, oklch(0.4 0.03 279 / 0.07), oklch(0.4 0.03 279 / 0.025) 45%, transparent);
+
+  /* The setup screen's ark scene (onboarding/scene): sky, halo, sea, dock. */
+  --setup-sky-from: oklch(0.95 0.017 279);
+  --setup-sky-to: oklch(0.975 0.008 279);
+  --setup-glow: oklch(0.9 0.06 277 / 0.55);
+  --setup-sea-from: oklch(0.9 0.045 277 / 0.92);
+  --setup-sea-to: oklch(0.97 0.012 279 / 0.96);
+  --setup-sea-back-from: oklch(0.86 0.06 277 / 0.55);
+  --setup-sea-back-to: oklch(0.95 0.02 279 / 0.4);
+  --setup-dock-line: oklch(0.86 0.016 279);
+  --setup-cradle: oklch(0.94 0.012 279);
+  --setup-cradle-edge: oklch(0.84 0.02 279);
 }
 
 /**
@@ -234,6 +246,18 @@
 
   /* Ends in transparency, over whatever carries it. */
   --panel-wash: linear-gradient(to bottom, oklch(0.72 0.035 279 / 0.14), oklch(0.72 0.035 279 / 0.05) 45%, transparent);
+
+  /* A night sea: first pass, the fine tuning belongs to the dark backlog. */
+  --setup-sky-from: oklch(0.255 0.03 279);
+  --setup-sky-to: oklch(0.215 0.024 279);
+  --setup-glow: oklch(0.45 0.12 277 / 0.35);
+  --setup-sea-from: oklch(0.36 0.07 277 / 0.92);
+  --setup-sea-to: oklch(0.24 0.03 279 / 0.96);
+  --setup-sea-back-from: oklch(0.42 0.09 277 / 0.5);
+  --setup-sea-back-to: oklch(0.3 0.04 279 / 0.4);
+  --setup-dock-line: oklch(0.42 0.03 279);
+  --setup-cradle: oklch(0.3 0.025 279);
+  --setup-cradle-edge: oklch(0.45 0.03 279);
 }
 
 /* --- Artist avatar -------------------------------------------------------- */
