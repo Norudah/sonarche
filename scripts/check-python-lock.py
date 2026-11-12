@@ -1,129 +1,110 @@
 """Guards the assumptions `sidecar/requirements.txt` rests on.
 
-The lock is installed with `--no-deps` and omits `numba`, `llvmlite` and
-`scipy` (declared by beets, never imported). This script:
+Deterministic on purpose: nothing here compares against what PyPI offers
+today, so the same commit gives the same verdict next month.
 
-1. Re-resolves `requirements.in`. A package added or dropped fails (the lock
-   is installed `--no-deps`, so a missing one is a broken install). A newer
-   transitive version only warns: PyPI moves every week, and a PR shouldn't go
-   red for a release nobody asked for.
-2. Fails if beets or its plugins import one of the dropped packages.
+1. The lock matches `requirements.in`. Regenerating it with the lock itself
+   as the starting point must reproduce the same pins; only an edited `.in`
+   (or a hand-edited lock) changes them.
+2. beets and its plugins import none of the packages left out of the lock
+   (they are installed `--no-deps`, so an import would break at runtime).
+3. `yt-dlp-ejs` is the solver version the pinned yt-dlp expects.
 
-Run after installing the lock:
+Run with the sidecar's dev venv, after `uv pip sync`:
 
-    python scripts/check-python-lock.py
+    .venv/bin/python scripts/check-python-lock.py
 """
 
 from __future__ import annotations
 
-import json
+import importlib.metadata
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
-
-from packaging.requirements import Requirement
-
-# `llvmlite` (numba's dependency) has no Intel macOS wheel past 0.45.
-EXCLUDED = {"numba", "llvmlite", "scipy"}
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-LOCK = ROOT / "sidecar" / "requirements.txt"
-DIRECT = ROOT / "sidecar" / "requirements.in"
+SIDECAR = ROOT / "sidecar"
+LOCK = SIDECAR / "requirements.txt"
+DIRECT = SIDECAR / "requirements.in"
+CONFIG = SIDECAR / "uv.toml"
 
-IMPORT_RE = re.compile(
-    r"^\s*(?:import|from)\s+(" + "|".join(sorted(EXCLUDED)) + r")\b",
-    re.MULTILINE,
-)
+# Declared by beets, never imported; kept in step with `no-emit-package`.
+EXCLUDED = ("numba", "llvmlite", "scipy")
 
-
-def normalize(name: str) -> str:
-    """PEP 503 name normalization."""
-    return re.sub(r"[-_.]+", "-", name).lower()
+IMPORT_RE = re.compile(r"^\s*(?:import|from)\s+(" + "|".join(EXCLUDED) + r")\b", re.MULTILINE)
 
 
-def read_lock(path: pathlib.Path) -> dict[str, str]:
-    """The lock as {name: version}, with markers evaluated for this platform."""
-    pins: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
-        if not line:
-            continue
-        req = Requirement(line)
-        if req.marker and not req.marker.evaluate():
-            continue
-        pins[normalize(req.name)] = str(req.specifier).lstrip("=")
-    return pins
+def pins(text: str) -> set[str]:
+    """`name==version ; marker` per requirement, hashes and comments dropped."""
+    joined = re.sub(r"\\\n", " ", text)
+    found = set()
+    for line in joined.splitlines():
+        line = line.split("#", 1)[0]
+        line = re.sub(r"--hash=\S+", "", line).strip()
+        if line:
+            found.add(re.sub(r"\s+", " ", line))
+    return found
 
 
-def resolve(path: pathlib.Path) -> dict[str, str]:
-    """What pip would install from the direct requirements, left to itself."""
-    report = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--quiet",
-            "--disable-pip-version-check",
-            "--dry-run",
-            "--ignore-installed",
-            "--report",
-            "-",
-            "-r",
-            str(path),
-        ],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=True,
-    )
-    installs = json.loads(report.stdout)["install"]
-    return {normalize(i["metadata"]["name"]): i["metadata"]["version"] for i in installs}
-
-
-def compare(locked: dict[str, str], resolved: dict[str, str]) -> tuple[list[str], list[str]]:
-    """(problems, drift): a changed package set breaks installs, a version gap doesn't."""
-    resolved = {name: version for name, version in resolved.items() if name not in EXCLUDED}
-    problems = []
-    drift = []
-    for name in sorted(resolved.keys() - locked.keys()):
-        problems.append(f"missing from the lock: {name}=={resolved[name]}")
-    for name in sorted(locked.keys() - resolved.keys()):
-        problems.append(f"in the lock, no longer resolved: {name}=={locked[name]}")
-    for name in sorted(locked.keys() & resolved.keys()):
-        if locked[name] != resolved[name]:
-            drift.append(f"{name}: lock has {locked[name]}, resolution wants {resolved[name]}")
-    return problems, drift
+def check_lock() -> list[str]:
+    uv = shutil.which("uv")
+    if uv is None:
+        return ["uv not found on PATH (https://docs.astral.sh/uv/)"]
+    with tempfile.TemporaryDirectory() as scratch:
+        regenerated = pathlib.Path(scratch) / "requirements.txt"
+        # Seeded with the lock so uv keeps its versions: only a changed `.in` moves them.
+        shutil.copyfile(LOCK, regenerated)
+        result = subprocess.run(
+            [uv, "pip", "compile", "--quiet", "--config-file", str(CONFIG), str(DIRECT), "-o", str(regenerated)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        if result.returncode != 0:
+            return [f"uv pip compile failed:\n{result.stderr.strip()}"]
+        expected = pins(regenerated.read_text(encoding="utf-8"))
+    actual = pins(LOCK.read_text(encoding="utf-8"))
+    problems = [f"missing from the lock: {pin}" for pin in sorted(expected - actual)]
+    problems += [f"in the lock, not in requirements.in: {pin}" for pin in sorted(actual - expected)]
+    return problems
 
 
 def check_imports() -> list[str]:
-    """Fail if beets has started importing what we dropped."""
     import beets
     import beetsplug
 
     problems = []
-    for package in (beets, beetsplug):
-        root = pathlib.Path(package.__file__ or "").parent
+    # `__path__`, not `__file__`: beetsplug is a namespace package, without one.
+    roots = [pathlib.Path(entry) for package in (beets, beetsplug) for entry in package.__path__]
+    for root in roots:
         for source in sorted(root.rglob("*.py")):
             for module in set(IMPORT_RE.findall(source.read_text(encoding="utf-8", errors="replace"))):
-                problems.append(f"{source.relative_to(root.parent)} imports {module}")
+                problems.append(f"{source.relative_to(root.parent)} imports {module}, which the lock leaves out")
     return problems
 
 
+def check_ejs() -> list[str]:
+    from yt_dlp.extractor.youtube.jsc._builtin.vendor import _info
+
+    expected = _info.VERSION
+    installed = importlib.metadata.version("yt-dlp-ejs")
+    if installed.split(".")[:2] != expected.split(".")[:2]:
+        return [f"yt-dlp expects yt-dlp-ejs {expected}, the lock has {installed}"]
+    return []
+
+
 def main() -> int:
-    problems, drift = compare(read_lock(LOCK), resolve(DIRECT))
-    problems += check_imports()
-    for line in drift:
-        # GitHub turns this into a warning annotation; harmless elsewhere.
-        print(f"::warning title=python lock drift::{line}")
+    problems = check_lock() + check_imports() + check_ejs()
     if not problems:
-        print("python lock: no package added or dropped, and beets still imports none of " + ", ".join(sorted(EXCLUDED)))
+        print("python lock: matches requirements.in, beets imports nothing it leaves out, ejs in step")
         return 0
     print("python lock is broken:\n", file=sys.stderr)
     for problem in problems:
         print(f"  - {problem}", file=sys.stderr)
-    print(f"\nRegenerate it — see the header of {DIRECT.relative_to(ROOT)}.", file=sys.stderr)
+    print("\nRegenerate it with `npm run deps:python` (see sidecar/requirements.in).", file=sys.stderr)
     return 1
 
 

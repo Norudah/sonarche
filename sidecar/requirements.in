@@ -8,17 +8,16 @@
 # Intel macOS bundle and kept Windows off ARM. Dropping them costs nothing and
 # gets both back.
 #
-# `scripts/check-python-lock.py` re-resolves this file on every PR into main. It
-# fails if a package was added or dropped, or if beets has started importing one
-# of the three; a newer transitive version is only a warning.
+# The lock is generated, never edited (options in `uv.toml`):
+#   npm run deps:python                         # after changing a pin here
+#   npm run deps:python -- --upgrade            # also move transitive versions
 #
-# Regenerate the lock:
-#   python -m venv /tmp/lock && /tmp/lock/bin/pip install -r sidecar/requirements.in
-#   /tmp/lock/bin/pip freeze   # then drop numba/llvmlite/scipy, keep the
-#                              # colorama line, and pin the versions below
+# `scripts/check-python-lock.py` (part of `npm run check`) fails when the lock no
+# longer matches this file. It never compares against what PyPI offers today: a
+# new upstream release is never a reason for a red check.
 
 beets==2.12.0
-yt-dlp==2026.8.19
+yt-dlp==2026.10.26
 # The challenge solver scripts yt-dlp feeds to the JS runtime. Shipping them as
 # a Python package is what keeps a download offline: the scripts vendored in the
 # yt-dlp wheel import their parser from npm, and the only other source is a
