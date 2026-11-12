@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 /** Correctness rules only; formatting belongs to prettier (`npm run format`). */
 export default tseslint.config(
   // `docs/` holds vendored design mock-ups.
-  { ignores: ["dist", "docs", "src-tauri/target"] },
+  { ignores: ["dist", "docs", "src-tauri/target", ".venv"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   // `.flat`: the top-level entry is still the eslintrc shape.

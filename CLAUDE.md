@@ -77,6 +77,8 @@
 
 - Test high-risk business logic and observable behavior, not visuals or implementation details.
 - Colocate tests (`x.ts` + `x.test.ts`). Add a targeted regression test on bugfix.
+- `npm run check` runs every CI suite locally (`-- front|rust|sidecar` for some); CI runs the same script on PRs into `main`.
+- The Python lock is generated: change `sidecar/requirements.in`, then `npm run deps:python`. Never edit `requirements.txt` by hand.
 
 ## Git Workflow
 
