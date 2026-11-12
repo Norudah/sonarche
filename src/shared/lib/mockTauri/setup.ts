@@ -3,7 +3,8 @@
 import type { Handler } from "./types";
 import { emitMockEvent } from "./events";
 
-const apiKeys = [{ name: "acoustid", configured: false }];
+// `?returning` (below) has its key stored.
+const apiKeys = [{ name: "acoustid", configured: new URLSearchParams(window.location.search).has("returning") }];
 
 /** Keys saved this session, so `reveal_api_key` has something to return. */
 const storedKeys = new Map<string, string>();

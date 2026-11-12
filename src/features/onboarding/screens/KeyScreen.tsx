@@ -1,8 +1,9 @@
 import { Button, cn, Input } from "@heroui/react";
-import { ArrowRight, AudioLines, Clock, ExternalLink, KeyRound, Tag } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowRight, AudioLines, Clock, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Tag } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useRevealAcoustidKey } from "@/features/onboarding/hooks";
 import { FactList } from "@/features/onboarding/layout/FactList";
 import { SetupActionBar, SetupPrimaryButton } from "@/features/onboarding/layout/SetupActionBar";
 import { SetupHeader } from "@/features/onboarding/layout/SetupHeader";
@@ -109,6 +110,15 @@ function KeySteps({ flow }: { flow: KeyFlow }) {
 
 function SavedKeyCard() {
   const { t } = useTranslation("onboarding");
+  const reveal = useRevealAcoustidKey();
+  // Lives here until hidden; nothing caches it.
+  const [shown, setShown] = useState<string | null>(null);
+
+  const toggle = () => {
+    if (shown !== null) return setShown(null);
+    reveal.mutate(undefined, { onSuccess: (key) => setShown(key ?? "") });
+  };
+
   return (
     <div className="mt-[26px] flex items-center gap-3.5 rounded-xl bg-surface px-4 py-3.5 shadow-sm">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent">
@@ -116,10 +126,31 @@ function SavedKeyCard() {
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <strong className="text-sm font-semibold">{t("key.saved.card")}</strong>
-        {/* Never read back: that would open the keychain prompt. */}
-        <span className="font-mono text-xs tracking-wider text-muted" aria-hidden>
-          ••••••••••••
-        </span>
+        {reveal.isError ? (
+          <span className="text-xs text-danger">{t("key.saved.revealFailed")}</span>
+        ) : (
+          <span className="flex items-center gap-1">
+            {/* The value is only read on a press: it may prompt for the keychain. */}
+            <span className="truncate font-mono text-xs tracking-wider text-muted select-text">
+              {shown ?? "••••••••••••"}
+            </span>
+            <button
+              type="button"
+              onClick={toggle}
+              disabled={reveal.isPending}
+              aria-label={shown !== null ? t("key.saved.hide") : t("key.saved.reveal")}
+              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-40"
+            >
+              {reveal.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : shown !== null ? (
+                <EyeOff className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
+            </button>
+          </span>
+        )}
       </span>
       <Verdict tone="success">{t("key.saved.status")}</Verdict>
     </div>

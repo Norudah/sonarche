@@ -7,6 +7,7 @@ import {
   getEnvStatus,
   getOnboardingState,
   type KeyCheck,
+  revealAcoustidKey,
   setOnboardingCompleted,
   setupEnv,
   storeAcoustidKey,
@@ -65,6 +66,12 @@ export function useSaveAcoustidKey() {
       if (check.valid) queryClient.invalidateQueries();
     },
   });
+}
+
+/** A mutation, not a query: reading the key may prompt for the keychain, so
+ * it waits for the user to ask. */
+export function useRevealAcoustidKey() {
+  return useMutation({ mutationFn: revealAcoustidKey });
 }
 
 export function useSetupLogs(active: boolean) {

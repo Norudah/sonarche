@@ -223,7 +223,10 @@
       "card": "AcoustID key",
       "status": "Saved",
       "change": "Change key",
-      "see": "See my AcoustID key"
+      "see": "See my AcoustID key",
+      "reveal": "Show the key",
+      "hide": "Hide the key",
+      "revealFailed": "Couldn't show the key."
     }
   },
   "scene": {

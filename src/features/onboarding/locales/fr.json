@@ -223,7 +223,10 @@
       "card": "Clé AcoustID",
       "status": "Enregistrée",
       "change": "Changer de clé",
-      "see": "Voir ma clé AcoustID"
+      "see": "Voir ma clé AcoustID",
+      "reveal": "Afficher la clé",
+      "hide": "Masquer la clé",
+      "revealFailed": "Impossible d'afficher la clé."
     }
   },
   "scene": {
