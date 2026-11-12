@@ -5,8 +5,9 @@ import { runHomeTour } from "@/app/tour/homeTourDriver";
 import { homeTourSeen, markHomeTourSeen, onHomeTourRequest } from "@/shared/lib/homeTour";
 import { closeSettings } from "@/shared/lib/settingsDialog";
 
-/** Waits out the splash (`aboard`, 2400 ms) and its cross-fade. */
-const FIRST_RUN_DELAY_MS = 3200;
+/** Waits out the setup's entrance into the app (3.7 s, see `entrance.ts`):
+ * the shell mounts under it as it starts. */
+const FIRST_RUN_DELAY_MS = 4400;
 
 /** Runs the tour on the first launch that shows the shell, and on request from Settings. */
 export function HomeTourHost() {

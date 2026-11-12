@@ -5,10 +5,6 @@
     "welcome": {
       "title": "Welcome aboard Sonarche",
       "subtitle": "Your Ark"
-    },
-    "aboard": {
-      "title": "Your Ark is ready",
-      "subtitle": "Bring your music aboard."
     }
   },
   "nav": {
@@ -25,6 +21,16 @@
   "enter": {
     "firstRun": "Enter {{app}}",
     "repair": "Back to listening"
+  },
+  "welcome": {
+    "firstRun": {
+      "title": "Welcome aboard",
+      "text": "Your library is ready for its first tracks."
+    },
+    "repair": {
+      "title": "Welcome back aboard",
+      "text": "Everything is as you left it."
+    }
   },
   "python": {
     "title": "This machine needs Python",

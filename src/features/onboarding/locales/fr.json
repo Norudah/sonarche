@@ -5,10 +5,6 @@
     "welcome": {
       "title": "Bienvenue sur Sonarche",
       "subtitle": "Votre Arche"
-    },
-    "aboard": {
-      "title": "Votre Arche est prête",
-      "subtitle": "Embarquez votre musique."
     }
   },
   "nav": {
@@ -25,6 +21,16 @@
   "enter": {
     "firstRun": "Entrer dans {{app}}",
     "repair": "Reprendre l'écoute"
+  },
+  "welcome": {
+    "firstRun": {
+      "title": "Bienvenue à bord",
+      "text": "Ta bibliothèque est prête à accueillir ses premiers morceaux."
+    },
+    "repair": {
+      "title": "Bon retour à bord",
+      "text": "Tout est comme tu l'as laissé."
+    }
   },
   "python": {
     "title": "Il faut Python sur cette machine",

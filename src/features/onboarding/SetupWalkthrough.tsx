@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import type { EnvStatus } from "@/features/onboarding/api";
+import type { EntrancePhase } from "@/features/onboarding/entrance";
+import { EntranceWelcome } from "@/features/onboarding/EntranceWelcome";
 import { SetupLayout } from "@/features/onboarding/layout/SetupLayout";
 import { SetupTopBar } from "@/features/onboarding/layout/SetupTopBar";
 import { SetupScene } from "@/features/onboarding/scene/SetupScene";
@@ -25,6 +27,8 @@ interface SetupWalkthroughProps {
   isCheckingPython: boolean;
   /** The last button: into the app. */
   onEnter: () => void;
+  /** Played over the app once `onEnter` was pressed. */
+  entrance: EntrancePhase;
 }
 
 export function SetupWalkthrough({
@@ -34,6 +38,7 @@ export function SetupWalkthrough({
   onRecheckPython,
   isCheckingPython,
   onEnter,
+  entrance,
 }: SetupWalkthroughProps) {
   const steps = buildSetupSteps({ env, acoustidConfigured });
   // Session only, like everything here but the key.
@@ -47,8 +52,9 @@ export function SetupWalkthrough({
     engine: engine.status,
     cargo: engine.progress.cargo,
     key: key.view,
-    entering: false,
+    entering: entrance !== "idle",
   });
+  const expanded = entrance === "opening" || entrance === "welcome" || entrance === "closing";
 
   const back = previousScreen(steps, screen);
   const onBack = back ? () => setScreen(back) : null;
@@ -58,7 +64,15 @@ export function SetupWalkthrough({
   };
 
   return (
-    <SetupLayout scene={<SetupScene state={scene} />} topBar={<SetupTopBar {...screenPosition(steps, screen)} />}>
+    <SetupLayout
+      scene={
+        <SetupScene state={scene} expanded={expanded}>
+          <EntranceWelcome mode={mode} visible={entrance === "welcome" || entrance === "closing"} />
+        </SetupScene>
+      }
+      topBar={<SetupTopBar {...screenPosition(steps, screen)} />}
+      leaving={entrance !== "idle"}
+    >
       {screen === "python" && (
         <PythonScreen
           mode={mode}
