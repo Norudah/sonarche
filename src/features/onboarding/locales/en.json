@@ -54,6 +54,7 @@
         "venv": "Creating the isolated environment…",
         "fetching": "Fetching {{pkg}}…",
         "installing": "Installing packages…",
+        "finalizing": "Finishing up…",
         "done": "Environment ready."
       },
       "log": "Show the installation log",

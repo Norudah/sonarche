@@ -54,6 +54,7 @@
         "venv": "Création de l'environnement isolé…",
         "fetching": "Récupération de {{pkg}}…",
         "installing": "Installation des paquets…",
+        "finalizing": "Finalisation…",
         "done": "Environnement prêt."
       },
       "log": "Voir le journal de l'installation",
