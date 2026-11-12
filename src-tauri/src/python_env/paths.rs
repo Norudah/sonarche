@@ -51,9 +51,13 @@ impl AppPaths {
         let sidecar_dir = app
             .path()
             .resolve("sidecar", tauri::path::BaseDirectory::Resource)?;
+        // One folder per architecture (see `scripts/prepare-runtime.mjs`); each
+        // slice of a universal macOS binary reads its own.
+        let runtime = format!("runtime/{}", std::env::consts::ARCH);
         let resource = |name: &str| {
+            let name = format!("{runtime}/{name}");
             app.path()
-                .resolve(name, tauri::path::BaseDirectory::Resource)
+                .resolve(&name, tauri::path::BaseDirectory::Resource)
                 .unwrap_or_else(|_| data.join(name))
         };
         let library_root = app

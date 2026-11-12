@@ -11,102 +11,69 @@ on:
         description: Tag to build and upload to (e.g. sonarche-v0.9.0)
         required: true
 
-permissions:
-  contents: write
-  pull-requests: write
+# Granted per job: only what each one needs.
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       # True only when a release was cut, not when the PR was merely updated.
       released: ${{ steps.release.outputs.releases_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      # Bumps every version file, Cargo.lock included (release-please-config.json).
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-      # In shell: in manifest mode `prs` is set and `pr` empty, and
-      # `fromJSON('')` fails the job.
-      - name: Resolve the release PR branch
-        id: pr
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
-        env:
-          PR: ${{ steps.release.outputs.pr }}
-          PRS: ${{ steps.release.outputs.prs }}
-        run: |
-          branch=$(printf '%s' "${PR:-}" | jq -r '.headBranchName // empty' 2>/dev/null || true)
-          if [ -z "$branch" ]; then
-            branch=$(printf '%s' "${PRS:-}" | jq -r '.[0].headBranchName // empty' 2>/dev/null || true)
-          fi
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@v4
-        if: ${{ steps.pr.outputs.branch != '' }}
-        with:
-          ref: ${{ steps.pr.outputs.branch }}
-
-      - name: Sync Cargo.lock on the release PR
-        if: ${{ steps.pr.outputs.branch != '' }}
-        env:
-          BRANCH: ${{ steps.pr.outputs.branch }}
-        run: |
-          cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 >/dev/null
-          if ! git diff --quiet src-tauri/Cargo.lock; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore(deps): sync Cargo.lock version" src-tauri/Cargo.lock
-            git push origin "$BRANCH"
-          fi
 
   # In this workflow: a separate one triggered by `workflow_run` would fire on
   # every release PR too.
   bundle:
     needs: release-please
     if: ${{ github.event_name == 'workflow_dispatch' || needs.release-please.outputs.released == 'true' }}
-    # One runner per architecture: the bundled Python and wheels are
-    # arch-specific, so a universal build would carry two.
+    permissions:
+      # Uploads the bundles to the release.
+      contents: write
     strategy:
       fail-fast: false
-      # Serial: each runner merges its platform into `latest.json`, and parallel
+      # Serial: each runner merges its platforms into `latest.json`, and parallel
       # runs could overwrite each other's entry.
       max-parallel: 1
       matrix:
         include:
+          # Both Macs in one universal bundle, built on Apple Silicon. tauri-action
+          # points `darwin-aarch64` and `darwin-x86_64` at it in `latest.json`.
           - runner: macos-14
-            target: aarch64-apple-darwin
-          # `macos-13` was retired; a missing label queues forever instead of failing.
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
+            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           # x64 only; Windows on ARM runs it under emulation.
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
+            rust-targets: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.runner }}
+    env:
+      TAG: ${{ inputs.tag || needs.release-please.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ env.TAG }}
 
       # `shell: bash` everywhere: Windows defaults to pwsh.
-      - name: Find the release just cut
+      - name: Read the release
         id: release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          # `release list` has no `databaseId`; the id comes from the release itself.
-          tag="${TAG:-}"
-          if [ -z "$tag" ]; then
-            tag=$(gh release list --limit 1 --json tagName,isDraft \
-                  --jq '[.[] | select(.isDraft == false)][0].tagName')
-          fi
-          release=$(gh release view "$tag" --json databaseId,body)
+          release=$(gh release view "$TAG" --json databaseId,body)
           echo "id=$(jq -r .databaseId <<<"$release")" >> "$GITHUB_OUTPUT"
           # tauri-action takes `notes` for `latest.json` from `releaseBody`, not
           # from the release; the in-app "what's new" parses this text.
@@ -116,27 +83,30 @@ jobs:
             echo 'SONARCHE_RELEASE_BODY'
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.rust-targets }}
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
 
-      # `prepare-runtime.mjs` no-ops when its `.pin` matches, so the key must
+      # `prepare-runtime.mjs` no-ops when its `.pin` stamps match, so the key must
       # change with the pins.
       - name: Cache the bundled runtime
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: src-tauri/resources
           key: runtime-${{ matrix.target }}-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
 
       - run: npm ci
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The updater signature (no paid Apple or Authenticode certificates): the app
@@ -146,17 +116,26 @@ jobs:
           releaseId: ${{ steps.release.outputs.id }}
           releaseBody: ${{ steps.release.outputs.body }}
           args: --target ${{ matrix.target }}
-          # Each runner merges its platform into the uploaded manifest.
+          # Each runner merges its platforms into the uploaded manifest.
           includeUpdaterJson: true
 
-      # Gatekeeper reports an unsealed bundle as "damaged"; fail before publishing.
-      - name: Check the macOS bundle is sealed
+      # Gatekeeper reports an unsealed bundle as "damaged"; fail before users see
+      # it. Then check the bundle really serves both Macs.
+      - name: Check the macOS bundle
         if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
-          out="src-tauri/target/${{ matrix.target }}/release/bundle"
-          codesign --verify --deep --strict --verbose=2 "$out/macos/Sonarche.app"
+          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Sonarche.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          archs=$(lipo -archs "$app/Contents/MacOS/sonarche")
+          echo "binary: $archs"
+          [[ "$archs" == *x86_64* && "$archs" == *arm64* ]]
+          for arch in aarch64 x86_64; do
+            for file in python.tar.gz wheels tools/deno tools/ffmpeg tools/fpcalc; do
+              test -e "$app/Contents/Resources/runtime/$arch/$file"
+            done
+          done
 
       # Without a `.sig` there is no `latest.json` entry, so apps never see the release.
       - name: Check the updater artifact is signed

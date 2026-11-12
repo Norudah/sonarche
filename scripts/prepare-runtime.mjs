@@ -8,8 +8,15 @@
  * - `tools/` (fpcalc, ffmpeg, deno) is fetched here rather than at runtime:
  *   an unsigned app downloading executables looks like a dropper.
  *
- * Always resolved on the target's own runner: environment markers differ per
- * platform (colorama is Windows-only).
+ * One `resources/<arch>/` folder per target architecture, named as Rust's
+ * `std::env::consts::ARCH` so the app picks its own. A universal macOS build
+ * (`--target universal-apple-darwin`) gets both, and each slice of the
+ * universal binary reads its half.
+ *
+ * The target comes from `--target`, else from the triple Tauri exports to its
+ * build hooks, else from the host. Windows still builds on Windows: pip
+ * evaluates environment markers against the interpreter running it, and
+ * colorama is Windows-only.
  */
 
 import { spawnSync } from "node:child_process";
@@ -29,6 +36,17 @@ const TRIPLES = {
   "darwin-arm64": "aarch64-apple-darwin",
   "darwin-x64": "x86_64-apple-darwin",
   "win32-x64": "x86_64-pc-windows-msvc",
+};
+
+const UNIVERSAL_MAC = "universal-apple-darwin";
+
+/** The oldest wheel tag each target accepts (pip also takes anything older and
+ * universal2). Explicit so the build host's OS version never decides which
+ * wheels a user's machine gets. */
+const WHEEL_PLATFORMS = {
+  "aarch64-apple-darwin": "macosx_11_0_arm64",
+  "x86_64-apple-darwin": "macosx_10_13_x86_64",
+  "x86_64-pc-windows-msvc": "win_amd64",
 };
 
 /** Pinned by triple and digest, checked here at build time. Both Macs share
@@ -90,6 +108,9 @@ const PYTHON_EXE = process.platform === "win32" ? ["python", "python.exe"] : ["p
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resources = path.join(root, "src-tauri", "resources");
+const scratch = path.join(root, "node_modules", ".cache", "sonarche-runtime");
+
+const archOf = (triple) => triple.split("-")[0];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: "inherit", ...options });
@@ -114,12 +135,13 @@ async function stampAs(dir, stamp) {
   await fs.writeFile(path.join(dir, ".pin"), `${stamp}\n`);
 }
 
-async function fetchInterpreter(triple) {
+/** `python.tar.gz` for `triple` into `dir`; returns the archive path. */
+async function fetchInterpreter(triple, dir) {
   const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}`;
-  const archive = path.join(resources, "python.tar.gz");
-  if ((await isCurrent(resources, stamp)) && (await exists(archive))) {
+  const archive = path.join(dir, "python.tar.gz");
+  if ((await isCurrent(dir, stamp)) && (await exists(archive))) {
     console.log(`[runtime] interpreter already at ${stamp}`);
-    return;
+    return archive;
   }
 
   const name = `cpython-${PYTHON.version}+${PYTHON.release}-${triple}-install_only.tar.gz`;
@@ -129,17 +151,32 @@ async function fetchInterpreter(triple) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`download failed: ${response.status} ${url}`);
   const bytes = Buffer.from(await response.arrayBuffer());
-  await fs.mkdir(resources, { recursive: true });
+  await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(archive, bytes);
 
   const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
   console.log(`[runtime] ${(bytes.length / 1e6).toFixed(1)} MB, sha256:${digest}…`);
-  await stampAs(resources, stamp);
+  await stampAs(dir, stamp);
+  return archive;
 }
 
-/** Resolves the wheels with the bundled interpreter itself (wheel tags bind a
- * Python version and platform). */
-async function fetchWheels(triple) {
+/** A Python the build host can run, to drive pip. Unpacked once, on demand. */
+let hostPython = null;
+async function runnablePython(hostTriple, targets) {
+  if (hostPython) return hostPython;
+  // The host's own target folder when it has one, else a cached copy.
+  const dir = targets.includes(hostTriple) ? path.join(resources, archOf(hostTriple)) : path.join(scratch, "host");
+  const archive = await fetchInterpreter(hostTriple, dir);
+  const unpacked = path.join(scratch, "python-host");
+  await fs.rm(unpacked, { recursive: true, force: true });
+  await fs.mkdir(unpacked, { recursive: true });
+  run(TAR, ["-xzf", archive, "-C", unpacked]);
+  hostPython = path.join(unpacked, ...PYTHON_EXE);
+  return hostPython;
+}
+
+/** The lock's wheels for `triple`, verified against its hashes. */
+async function fetchWheels(triple, dir, python) {
   // The requirements are part of the stamp, so a changed lock refetches.
   const requirements = path.join(root, "sidecar", "requirements.txt");
   const digest = createHash("sha256")
@@ -147,35 +184,32 @@ async function fetchWheels(triple) {
     .digest("hex")
     .slice(0, 12);
   const stamp = `${PYTHON.version}+${PYTHON.release}-${triple}-wheels-${digest}`;
-  const wheels = path.join(resources, "wheels");
+  const wheels = path.join(dir, "wheels");
   if (await isCurrent(wheels, stamp)) {
-    console.log("[runtime] wheels already current");
+    console.log(`[runtime] ${archOf(triple)} wheels already current`);
     return;
   }
 
-  const scratch = path.join(root, "node_modules", ".cache", "sonarche-runtime");
-  await fs.rm(scratch, { recursive: true, force: true });
-  await fs.mkdir(scratch, { recursive: true });
-  run(TAR, ["-xzf", path.join(resources, "python.tar.gz"), "-C", scratch]);
-
   await fs.rm(wheels, { recursive: true, force: true });
   await fs.mkdir(wheels, { recursive: true });
-  console.log("[runtime] resolving wheels");
-  run(path.join(scratch, ...PYTHON_EXE), [
+  console.log(`[runtime] resolving ${archOf(triple)} wheels`);
+  run(await python(), [
     "-m",
     "pip",
     "download",
     "--disable-pip-version-check",
     "-q",
-    // Same flags as the app's install (see python_env.rs).
+    // Same flags as the app's install (see python_env/mod.rs). The lock's
+    // hashes turn on pip's hash-checking mode.
     "--no-deps",
     "--only-binary=:all:",
+    "--platform",
+    WHEEL_PLATFORMS[triple],
     "-r",
     requirements,
     "-d",
     wheels,
   ]);
-  await fs.rm(scratch, { recursive: true, force: true });
 
   const files = (await fs.readdir(wheels)).filter((f) => f.endsWith(".whl"));
   const sizes = await Promise.all(files.map((f) => fs.stat(path.join(wheels, f)).then((s) => s.size)));
@@ -257,11 +291,11 @@ async function fetchDeno(triple, tools) {
   console.log(`[runtime] deno ${DENO.version}, ${(size / 1e6).toFixed(1)} MB`);
 }
 
-/** Populates `resources/tools/` under one shared stamp, so bumping any pin
+/** Populates `<dir>/tools/` under one shared stamp, so bumping any pin
  * rebuilds all three. */
-async function fetchTools(triple) {
+async function fetchTools(triple, dir) {
   const stamp = `fpcalc-${FPCALC.version}+ffmpeg-${FFMPEG.release}+deno-${DENO.version}-${triple}`;
-  const tools = path.join(resources, "tools");
+  const tools = path.join(dir, "tools");
   if (await isCurrent(tools, stamp)) {
     console.log(`[runtime] tools already at ${stamp}`);
     return;
@@ -275,14 +309,40 @@ async function fetchTools(triple) {
   await stampAs(tools, stamp);
 }
 
-const host = `${process.platform}-${process.arch}`;
-const triple = TRIPLES[host];
-if (!triple) {
-  console.error(`[runtime] no interpreter pinned for ${host} — see TRIPLES in this file`);
-  process.exit(1);
+/** The triples to prepare: `universal-apple-darwin` stands for both Macs. */
+function resolveTargets(hostTriple) {
+  const flag = process.argv.indexOf("--target");
+  const requested =
+    (flag !== -1 ? process.argv[flag + 1] : undefined) ?? process.env.TAURI_ENV_TARGET_TRIPLE ?? hostTriple;
+  const targets = requested === UNIVERSAL_MAC ? ["aarch64-apple-darwin", "x86_64-apple-darwin"] : [requested];
+  for (const target of targets) {
+    if (!WHEEL_PLATFORMS[target]) throw new Error(`no runtime pinned for ${target} — see TRIPLES in this file`);
+    if (target.includes("apple") !== hostTriple.includes("apple")) {
+      throw new Error(`cannot prepare ${target} on ${hostTriple}: build it on its own OS`);
+    }
+  }
+  return targets;
 }
 
-await fetchInterpreter(triple);
-await fetchWheels(triple);
-await fetchTools(triple);
+const hostTriple = TRIPLES[`${process.platform}-${process.arch}`];
+if (!hostTriple) {
+  console.error(`[runtime] no interpreter pinned for ${process.platform}-${process.arch} — see TRIPLES in this file`);
+  process.exit(1);
+}
+const targets = resolveTargets(hostTriple);
+console.log(`[runtime] preparing ${targets.join(" + ")}`);
+
+// Anything else in `resources/` would be bundled too: a previous target's
+// folder, or the flat layout from before per-arch folders.
+const keep = new Set(targets.map(archOf));
+for (const entry of await fs.readdir(resources).catch(() => [])) {
+  if (!keep.has(entry)) await fs.rm(path.join(resources, entry), { recursive: true, force: true });
+}
+
+for (const triple of targets) {
+  const dir = path.join(resources, archOf(triple));
+  await fetchInterpreter(triple, dir);
+  await fetchWheels(triple, dir, () => runnablePython(hostTriple, targets));
+  await fetchTools(triple, dir);
+}
 console.log("[runtime] ready");

@@ -73,14 +73,13 @@ you already have.
 Grab the build for your machine from the
 [latest release](https://github.com/Norudah/sonarche/releases/latest).
 
-| Machine                    | File                           |
-| -------------------------- | ------------------------------ |
-| Mac, Apple Silicon (M1–M4) | `Sonarche_x.y.z_aarch64.dmg`   |
-| Mac, Intel                 | `Sonarche_x.y.z_x64.dmg`       |
-| Windows 10/11, 64-bit      | `Sonarche_x.y.z_x64-setup.exe` |
+| Machine                      | File                           |
+| ---------------------------- | ------------------------------ |
+| Mac (Apple Silicon or Intel) | `Sonarche_x.y.z_universal.dmg` |
+| Windows 10/11, 64-bit        | `Sonarche_x.y.z_x64-setup.exe` |
 
-Not sure which Mac you have? Run `uname -m` — `arm64` is Apple Silicon,
-`x86_64` is Intel. Windows on ARM runs the x64 build under emulation.
+The Mac build is universal: one download for every Mac. Windows on ARM runs the
+x64 build under emulation.
 
 The `.tar.gz` and `.sig` files in the same release are the updater's plumbing.
 You do not need them.
