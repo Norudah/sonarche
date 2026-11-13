@@ -49,7 +49,7 @@ jobs:
         include:
           # Both Macs in one universal bundle, built on Apple Silicon. tauri-action
           # points `darwin-aarch64` and `darwin-x86_64` at it in `latest.json`.
-          - runner: macos-14
+          - runner: macos-15
             target: universal-apple-darwin
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           # x64 only; Windows on ARM runs it under emulation.

@@ -33,7 +33,7 @@ jobs:
     if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     # Part of the crate (objc2 media session, apple-native keyring) only
     # compiles on macOS.
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
