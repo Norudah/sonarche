@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.6.0](https://github.com/Norudah/sonarche/compare/sonarche-v2.5.1...sonarche-v2.6.0) (2026-11-13)
+
+
+### Features
+
+* **build:** ship one universal macOS bundle ([7501f58](https://github.com/Norudah/sonarche/commit/7501f5875830b4c09976fa123f8f7c313a7fd977))
+* **shell:** play the setup's own entrance into the app ([1891d63](https://github.com/Norudah/sonarche/commit/1891d6305611261cfdb7593b36d198c004fa4462))
+* **shell:** rebuild the setup screen in two columns around the ark ([4c2537b](https://github.com/Norudah/sonarche/commit/4c2537b2ba4fca3c5d3dc033e2d19897584a5c40))
+* **shell:** reveal the saved AcoustID key on demand ([ab26cf3](https://github.com/Norudah/sonarche/commit/ab26cf32fb75aa35d1e3b8fc481e5a60df158746))
+* **ui:** give every short dialog one clean frame ([8890ac3](https://github.com/Norudah/sonarche/commit/8890ac36d1baeb458d3fd1e355474f8b5cb4cddf))
+
+
+### Bug Fixes
+
+* **shell:** allow queued thumbnails through the CSP ([f9dc0a0](https://github.com/Norudah/sonarche/commit/f9dc0a0ad46bb48164e567691781bb553a899052))
+* **sidecar:** bump yt-dlp to 2026.10.26 and generate the lock with uv ([026c797](https://github.com/Norudah/sonarche/commit/026c797865c2b2e2bab368dc14da2eaf35276c18))
+* **ui:** put overlays, fills and edges on night-safe tokens ([bee6151](https://github.com/Norudah/sonarche/commit/bee615136ba5baf27db68ce0dff6b2623807b5b5))
+
 ## [2.5.1](https://github.com/Norudah/sonarche/compare/sonarche-v2.5.0...sonarche-v2.5.1) (2026-09-30)
 
 
