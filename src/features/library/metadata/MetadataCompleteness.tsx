@@ -38,7 +38,7 @@ export function MetadataCompleteness({
         <button
           type="button"
           onClick={onOpenAlbum}
-          className="group ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded-md text-[0.75rem] font-medium text-accent outline-none transition-colors hover:text-accent/80 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="group ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded-md text-[0.75rem] font-medium text-accent outline-none transition-colors hover:text-accent/80 focus-visible:ring-2 focus-visible:ring-accent"
         >
           {t("metadata.viewAlbum")}
           <ArrowRight className="size-3.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none" />

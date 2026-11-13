@@ -18,8 +18,22 @@
 [data-theme="light"] {
   /* Indigo, lowered from 0.58/0.21 so white on the filled button reaches 6.2:1. */
   --accent: oklch(0.505 0.185 277);
+  /* What carries white text. Same as the accent by day; split at night, where
+     text wants a lighter indigo than a filled button can take. */
+  --accent-fill: var(--accent);
   --accent-foreground: var(--snow);
   --focus: var(--accent);
+
+  /* The soft tint sits behind accent text (active filter, selected item), so
+     it's mixed from the fill: at night a tint of the lighter text indigo
+     would eat its contrast. Same values as HeroUI's by day. */
+  --accent-soft: color-mix(in oklab, var(--accent-fill) 15%, transparent);
+  --accent-soft-hover: color-mix(in oklab, var(--accent-fill) 20%, transparent);
+
+  /* HeroUI's white and near-black, brought onto the hue. They reach every
+     `--*-foreground`, so a chroma-0 snow would print grey text on indigo. */
+  --snow: oklch(0.99 0.004 279);
+  --eclipse: oklch(0.21 0.02 279);
 
   /* Paper, not white, on hue 279 like the night theme. Surfaces step down by
      0.013 while the veil's chroma thickens (0.004 → 0.008). */
@@ -30,11 +44,17 @@
   --surface-secondary: oklch(0.952 0.008 279);
   --surface-tertiary: oklch(0.937 0.009 279);
 
+  /* Dialogs, drawer, menus: by day the topmost paper is the card's. HeroUI's
+     default is a chroma-0 white. */
+  --overlay: var(--surface);
+  --field-background: var(--surface);
+
   /* Tinted ink rather than HeroUI's chroma-0 near-black; 15.5:1. */
   --foreground: oklch(0.255 0.02 279);
 
-  /* 4.7:1, just past AA; only the hue changed. */
-  --muted: oklch(0.555 0.02 279);
+  /* AA where muted text sits most: 5.4:1 on a card, 4.8:1 on the tray, 4.6:1
+     on a `default` fill. */
+  --muted: oklch(0.52 0.02 279);
 
   /* `separator` rules tables and outlines on both card and ground; `border`
      outlines fields and secondary buttons, so it's darker. */
@@ -42,12 +62,23 @@
   --border: oklch(0.875 0.013 279);
   --default: oklch(0.935 0.009 279);
 
+  /* The edge of a text field, the only thing that says "type here": 3.1:1
+     (WCAG 1.4.11). HeroUI reads it, and its hover/focus mixes derive from it. */
+  --field-border: oklch(0.66 0.015 279);
+  --field-border-width: 1px;
+  --field-shadow: 0 0 #0000;
+
   /* Darkens within the hue rather than with black. */
   --backdrop: oklch(0.3 0.035 279 / 0.42);
 
-  /* Amber, reserved for incomplete metadata; 5.0:1 on paper. Its foreground
-     flips between themes: white here (4.9:1), a dark glyph at night. */
-  --warning: oklch(0.545 0.13 70);
+  /* Veil over artwork (hover actions, crop mask), on the hue like the backdrop. */
+  --scrim: oklch(0.14 0.024 279 / 0.55);
+  --scrim-strong: oklch(0.14 0.024 279 / 0.72);
+
+  /* Amber, reserved for incomplete metadata; 5.8:1 on paper and 4.75:1 on its
+     own soft fill (the 11px counters). Its foreground flips between themes:
+     white here, a dark glyph at night. */
+  --warning: oklch(0.51 0.13 70);
   --warning-foreground: var(--snow);
 
   /* 5.1:1 with white; chroma lowered to stay under the accent. */
@@ -56,6 +87,7 @@
 
   /* Brought down to the level of the other statuses. */
   --danger: oklch(0.545 0.145 25);
+  --danger-fill: var(--danger);
   --danger-foreground: var(--snow);
 
   /* Sinks with the paper so it never ends up lighter than its surface. */
@@ -118,10 +150,14 @@
     0 0 0 1px var(--elevation-edge), 0 8px 14px -4px oklch(0.38 0.05 279 / 0.1),
     0 18px 28px -10px oklch(0.38 0.05 279 / 0.12);
 
+  /* The highest surfaces (dialogs, drawer, menus) take the top step; HeroUI's
+     own is a black shadow with no edge. */
+  --overlay-shadow: var(--elevation-xl);
+
   /* Short and close: a wide halo on white reads as a printing blur. */
   --glow-accent:
-    0 6px 14px -4px color-mix(in oklab, var(--accent) 22%, transparent),
-    0 2px 5px -2px color-mix(in oklab, var(--accent) 16%, transparent);
+    0 6px 14px -4px color-mix(in oklab, var(--accent-fill) 22%, transparent),
+    0 2px 5px -2px color-mix(in oklab, var(--accent-fill) 16%, transparent);
 
   /* Artwork gets a neutral drop shadow, no indigo glow. */
   --glow-accent-deep: var(--elevation-xl);
@@ -131,27 +167,53 @@
 
   /* A shading rather than a tint, so it works on any surface. */
   --panel-wash: linear-gradient(to bottom, oklch(0.4 0.03 279 / 0.07), oklch(0.4 0.03 279 / 0.025) 45%, transparent);
+
+  /* The setup screen's ark scene (onboarding/scene): sky, halo, sea, dock. */
+  --setup-sky-from: oklch(0.95 0.017 279);
+  --setup-sky-to: oklch(0.975 0.008 279);
+  --setup-glow: oklch(0.9 0.06 277 / 0.55);
+  --setup-sea-from: oklch(0.9 0.045 277 / 0.92);
+  --setup-sea-to: oklch(0.97 0.012 279 / 0.96);
+  --setup-sea-back-from: oklch(0.86 0.06 277 / 0.55);
+  --setup-sea-back-to: oklch(0.95 0.02 279 / 0.4);
+  --setup-dock-line: oklch(0.86 0.016 279);
+  --setup-cradle: oklch(0.94 0.012 279);
+  --setup-cradle-edge: oklch(0.84 0.02 279);
 }
 
 /**
  * Night theme: never pure black. Everything sits on hue 279, the ground has
- * value, a veil runs through every surface, and the accent goes down rather
- * than up. Must declare every light-block var (theme.test.ts).
+ * value, a veil runs through every surface, and the accent splits in two: up
+ * for text, down for fills. Must declare every light-block var (theme.test.ts).
  */
 [data-theme="dark"] {
-  /* Lower chroma, barely higher value: the lamp turned down. */
-  --accent: oklch(0.63 0.16 277);
+  /* Two indigos at night. As text (links, eyebrows, the active nav item) it
+     has to clear AA on a card, the wash and its own soft fill: 5.6:1 on a
+     card. As a fill under white text it has to go down instead: 5:1. */
+  --accent: oklch(0.68 0.15 277);
+  --accent-fill: oklch(0.55 0.17 277);
   --accent-foreground: var(--snow);
   --focus: var(--accent);
+  --accent-soft: color-mix(in oklab, var(--accent-fill) 15%, transparent);
+  --accent-soft-hover: color-mix(in oklab, var(--accent-fill) 20%, transparent);
+
+  --snow: oklch(0.99 0.004 279);
+  --eclipse: oklch(0.21 0.02 279);
 
   /* The tray sits above the ground here (below it by day): mirrored, a page
-     made only of tray turned into a black hole. */
+     made only of tray turned into a black hole. The panel takes a visible
+     step above the tray. */
   --background: oklch(0.175 0.016 279);
   --tray: oklch(0.2 0.017 279);
-  --panel: oklch(0.205 0.017 279);
+  --panel: oklch(0.215 0.018 279);
   --surface: oklch(0.235 0.018 279);
   --surface-secondary: oklch(0.265 0.019 279);
   --surface-tertiary: oklch(0.29 0.02 279);
+
+  /* Above the cards it covers, as anything raised at night. A field inside
+     sits below it, sunk into the dialog. */
+  --overlay: oklch(0.255 0.019 279);
+  --field-background: oklch(0.205 0.017 279);
 
   /* HeroUI's 0.25 separator was invisible on 0.235 cards. */
   --separator: oklch(0.285 0.02 279);
@@ -159,11 +221,19 @@
   --default: oklch(0.3 0.02 279);
   --muted: oklch(0.7 0.022 279);
 
+  /* 3.2:1 on a card. */
+  --field-border: oklch(0.55 0.025 279);
+  --field-border-width: 1px;
+  --field-shadow: 0 0 #0000;
+
   /* Ink on the hue axis; 14.5:1 on a card. */
   --foreground: oklch(0.965 0.008 279);
 
   /* Darkens within the hue; pure black would erase the veil. */
   --backdrop: oklch(0.1 0.024 279 / 0.72);
+
+  --scrim: oklch(0.14 0.024 279 / 0.55);
+  --scrim-strong: oklch(0.14 0.024 279 / 0.72);
 
   /* Amber matches the logo's (#efa831). Green and red stay under the accent. */
   --warning: oklch(0.76 0.115 65);
@@ -171,7 +241,9 @@
   --warning-foreground: var(--eclipse);
   --success: oklch(0.62 0.105 158);
   --success-foreground: var(--snow);
-  --danger: oklch(0.6 0.135 25);
+  /* Split like the accent: 5:1 as text on a card, 5:1 under white text. */
+  --danger: oklch(0.66 0.13 25);
+  --danger-fill: oklch(0.55 0.14 25);
   --danger-foreground: var(--snow);
 
   --artist-avatar-bg: oklch(0.3 0.03 279);
@@ -221,10 +293,13 @@
   --elevation-lg: 0 0 0 1px var(--elevation-edge), 0 10px 20px -5px rgb(0 0 0 / 0.6);
   --elevation-xl: 0 0 0 1px var(--elevation-edge), 0 20px 32px -8px rgb(0 0 0 / 0.65);
 
+  /* HeroUI's is a white inner hairline; ours is the indigo edge. */
+  --overlay-shadow: var(--elevation-xl);
+
   /* Narrower and weaker than by day: a contact glow, not a lamp. */
   --glow-accent:
-    0 4px 12px -4px color-mix(in oklab, var(--accent) 20%, transparent),
-    0 1px 4px -1px color-mix(in oklab, var(--accent) 13%, transparent);
+    0 4px 12px -4px color-mix(in oklab, var(--accent-fill) 20%, transparent),
+    0 1px 4px -1px color-mix(in oklab, var(--accent-fill) 13%, transparent);
 
   /* No glow under artwork at night. */
   --glow-accent-deep: var(--elevation-xl);
@@ -234,6 +309,18 @@
 
   /* Ends in transparency, over whatever carries it. */
   --panel-wash: linear-gradient(to bottom, oklch(0.72 0.035 279 / 0.14), oklch(0.72 0.035 279 / 0.05) 45%, transparent);
+
+  /* A night sea: first pass, the fine tuning belongs to the dark backlog. */
+  --setup-sky-from: oklch(0.255 0.03 279);
+  --setup-sky-to: oklch(0.215 0.024 279);
+  --setup-glow: oklch(0.45 0.12 277 / 0.35);
+  --setup-sea-from: oklch(0.36 0.07 277 / 0.92);
+  --setup-sea-to: oklch(0.24 0.03 279 / 0.96);
+  --setup-sea-back-from: oklch(0.42 0.09 277 / 0.5);
+  --setup-sea-back-to: oklch(0.3 0.04 279 / 0.4);
+  --setup-dock-line: oklch(0.42 0.03 279);
+  --setup-cradle: oklch(0.3 0.025 279);
+  --setup-cradle-edge: oklch(0.45 0.03 279);
 }
 
 /* --- Artist avatar -------------------------------------------------------- */
@@ -277,6 +364,22 @@
 
 /* --- Neutral and destructive buttons -------------------------------------- */
 
+/* Filled buttons paint with the `-fill` tokens, which hold white text at AA in
+   both themes; the hover mix is HeroUI's, rebased on them. */
+@layer components {
+  .button--primary {
+    --button-bg: var(--accent-fill);
+    --button-bg-hover: color-mix(in oklab, var(--accent-fill) 90%, var(--accent-foreground) 10%);
+    --button-bg-pressed: var(--button-bg-hover);
+  }
+
+  .button--danger {
+    --button-bg: var(--danger-fill);
+    --button-bg-hover: color-mix(in oklab, var(--danger-fill) 90%, var(--danger-foreground) 10%);
+    --button-bg-pressed: var(--button-bg-hover);
+  }
+}
+
 /* Secondary buttons get a neutral fill (no accent tint) and a `--border`
    hairline. Hover moves the fill toward the ink, which works in both themes. */
 @layer components {
@@ -288,12 +391,14 @@
     border: 1px solid var(--border);
   }
 
-  /* Tinted rather than solid; solid `danger` is kept for the full erase. */
+  /* Tinted rather than solid; solid `danger` is kept for the full erase. The
+     text leans toward the ink (darker by day, lighter at night) to hold AA on
+     its own tint: about 5:1 in both themes. */
   .button--danger-soft {
     --button-bg: var(--danger-soft);
     --button-bg-hover: var(--danger-soft-hover);
     --button-bg-pressed: var(--danger-soft-hover);
-    --button-fg: var(--danger);
+    --button-fg: color-mix(in oklab, var(--danger) 85%, var(--foreground));
     border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
   }
 
@@ -319,6 +424,19 @@
   .settings-pane .button--icon-only {
     width: 2rem;
     min-width: 0;
+  }
+}
+
+/* --- Buttons inside a short dialog ---------------------------------------- */
+
+/* One compact size for every answer in a `SimpleDialog`, with a floor so a
+   short "Vider" doesn't shrink next to "Annuler". */
+@layer components {
+  .simple-dialog .button {
+    height: 2.25rem;
+    min-width: 5.5rem;
+    padding-inline: 1rem;
+    font-size: 0.8125rem;
   }
 }
 
@@ -469,7 +587,7 @@
 
 /* One class deeper than the `all: unset` reset, so these win. */
 .sonarche-tour .driver-popover-footer .driver-popover-next-btn {
-  background-color: var(--accent);
+  background-color: var(--accent-fill);
   color: var(--accent-foreground);
 }
 .sonarche-tour .driver-popover-footer .driver-popover-next-btn:hover {
@@ -524,12 +642,12 @@
 
 .theme-tile[data-tone="dark"] {
   --tile-background: oklch(0.175 0.016 279);
-  --tile-panel: oklch(0.205 0.017 279);
+  --tile-panel: oklch(0.215 0.018 279);
   --tile-surface: oklch(0.235 0.018 279);
   --tile-separator: oklch(0.285 0.02 279);
   --tile-muted: oklch(0.35 0.02 279);
   --tile-ink: oklch(0.965 0.008 279);
-  --tile-accent: oklch(0.63 0.16 277);
+  --tile-accent: oklch(0.68 0.15 277);
 }
 
 /* `system`: both themes, split on the diagonal. */
@@ -634,6 +752,11 @@
   --color-panel: var(--panel);
   --color-tray: var(--tray);
   --color-artwork-edge: var(--artwork-edge);
+  --color-accent-fill: var(--accent-fill);
+  --color-field-border: var(--field-border);
+  --color-scrim: var(--scrim);
+  --color-scrim-strong: var(--scrim-strong);
+  --color-on-scrim: var(--snow);
 
   /* As a border for cards clipped by an `overflow-hidden` parent, which would
      cut an outside shadow. */

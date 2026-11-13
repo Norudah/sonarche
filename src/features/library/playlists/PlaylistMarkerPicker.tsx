@@ -43,7 +43,7 @@ function Cell({
       onClick={onPick}
       className={cn(
         "flex size-10 cursor-pointer items-center justify-center rounded-xl outline-none transition-colors",
-        "focus-visible:ring-2 focus-visible:ring-accent/40",
+        "focus-visible:ring-2 focus-visible:ring-accent",
         selected ? "bg-accent-soft text-accent ring-1 ring-accent/50" : "text-muted hover:bg-default/50",
       )}
     >
@@ -113,7 +113,7 @@ export function PlaylistMarkerPicker({ value, onPick, coverUrl, onAddImage }: Pl
           <button
             type="button"
             onClick={onAddImage}
-            className="flex cursor-pointer items-center gap-2 self-start rounded-xl px-2 py-1.5 text-[0.8125rem] text-muted outline-none transition-colors hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex cursor-pointer items-center gap-2 self-start rounded-xl px-2 py-1.5 text-[0.8125rem] text-muted outline-none transition-colors hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ImagePlus className="size-4 shrink-0" />
             {t("playlists.marker.noImage")}
@@ -125,7 +125,7 @@ export function PlaylistMarkerPicker({ value, onPick, coverUrl, onAddImage }: Pl
         type="button"
         disabled={value == null}
         onClick={() => onPick("")}
-        className="flex cursor-pointer items-center gap-1.5 self-start rounded-full text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-40 disabled:hover:text-muted"
+        className="flex cursor-pointer items-center gap-1.5 self-start rounded-full text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 disabled:hover:text-muted"
       >
         <RotateCcw className="size-3.5" />
         {t("playlists.marker.reset")}

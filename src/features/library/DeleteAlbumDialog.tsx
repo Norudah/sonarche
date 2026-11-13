@@ -1,5 +1,4 @@
 import { toast } from "@heroui/react";
-import { Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -51,7 +50,6 @@ export function DeleteAlbumDialog({ album, onClose }: { album: AlbumDeletion | n
       isOpen={album != null}
       onClose={onClose}
       status="danger"
-      icon={Trash2}
       title={t("deleteAlbum.title")}
       cancelLabel={t("delete.cancel")}
       confirmLabel={t("delete.confirm")}

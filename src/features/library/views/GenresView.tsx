@@ -22,7 +22,7 @@ import { PageContainer } from "@/shared/ui/PageContainer";
 const BAR_BUTTON =
   "flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-separator bg-surface/70 px-3.5 " +
   "text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-surface " +
-  "focus-visible:ring-2 focus-visible:ring-accent/40";
+  "focus-visible:ring-2 focus-visible:ring-accent";
 
 /**
  * The genres index as family cards; search also matches the genres inside

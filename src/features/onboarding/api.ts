@@ -53,3 +53,8 @@ export function checkAcoustidKey(key: string): Promise<KeyCheck> {
 export function storeAcoustidKey(key: string): Promise<unknown> {
   return invoke("set_api_key", { name: "acoustid", value: key });
 }
+
+/** The stored key itself. Opens the keychain, so only ever on a press. */
+export function revealAcoustidKey(): Promise<string | null> {
+  return invoke<string | null>("reveal_api_key", { name: "acoustid" });
+}

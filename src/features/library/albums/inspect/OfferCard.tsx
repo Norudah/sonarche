@@ -7,11 +7,11 @@ import type { LibraryTrack } from "@/features/library/api";
 /** An offer card anchored to its row. It stays until answered, not until focus moves. */
 
 const PRIMARY =
-  "cursor-pointer rounded-full bg-accent px-3 py-1.5 text-[0.75rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
+  "cursor-pointer rounded-full bg-accent-fill px-3 py-1.5 text-[0.75rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 const SECONDARY =
-  "cursor-pointer rounded-full border border-separator px-3 py-1.5 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40";
+  "cursor-pointer rounded-full border border-separator px-3 py-1.5 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent";
 const GHOST =
-  "cursor-pointer rounded-full px-2.5 py-1.5 text-[0.75rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40";
+  "cursor-pointer rounded-full px-2.5 py-1.5 text-[0.75rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent";
 
 function Eyebrow({ children }: { children: string }) {
   return <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">{children}</p>;

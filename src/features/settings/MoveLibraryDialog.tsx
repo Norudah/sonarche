@@ -1,4 +1,3 @@
-import { FolderInput } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
@@ -53,7 +52,6 @@ export function MoveLibraryDialog({
       isOpen={check != null}
       onClose={onClose}
       status="warning"
-      icon={FolderInput}
       title={t(refusal ? "files.move.refusedTitle" : "files.move.title")}
       cancelLabel={t(refusal ? "files.move.close" : "files.move.cancel")}
       confirmLabel={t("files.move.confirm")}

@@ -8,13 +8,15 @@ import { layoutIds, springs } from "@/shared/motion/tokens";
 /* Segmented control: a language has no picture, and a flag names a country. */
 const SEGMENT = "relative mt-0 flex-1 rounded-full";
 const SEGMENT_CONTENT =
-  "relative w-full justify-center px-3 py-2 text-[0.8125rem] font-medium whitespace-nowrap " +
+  "relative w-full justify-center font-medium whitespace-nowrap " +
   "transition-colors text-muted hover:text-foreground data-[selected]:text-accent";
+
+const SIZES = { md: "px-3 py-2 text-[0.8125rem]", sm: "px-2.5 py-1 text-xs" } as const;
 
 /** Endonyms, so users can find their language whatever the current one. */
 const NAMES: Record<Language, string> = { fr: "Français", en: "English" };
 
-export function LanguageChoice({ label }: { label: string }) {
+export function LanguageChoice({ label, size = "md" }: { label: string; size?: keyof typeof SIZES }) {
   const { current, choose } = useLanguage();
 
   return (
@@ -33,7 +35,7 @@ export function LanguageChoice({ label }: { label: string }) {
               className="absolute inset-0 rounded-full bg-surface shadow-xs"
             />
           )}
-          <Radio.Content className={SEGMENT_CONTENT}>{NAMES[language]}</Radio.Content>
+          <Radio.Content className={`${SEGMENT_CONTENT} ${SIZES[size]}`}>{NAMES[language]}</Radio.Content>
         </Radio.Root>
       ))}
     </RadioGroup>

@@ -53,7 +53,7 @@ export function JobToastCard({ title, fills, weights, activeIndex, line, viewLab
         <button
           type="button"
           onClick={onView}
-          className="shrink-0 cursor-pointer text-[0.75rem] font-medium text-accent outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="shrink-0 cursor-pointer text-[0.75rem] font-medium text-accent outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent"
         >
           {viewLabel}
         </button>

@@ -28,7 +28,7 @@ function CategoryButton({
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[0.8125rem] font-medium",
-        "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40",
+        "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent",
         isActive ? "text-accent" : "text-muted hover:bg-default/50 hover:text-foreground",
         className,
       )}
@@ -38,7 +38,7 @@ function CategoryButton({
         <motion.span
           layoutId={layoutIds.settingsNavIndicator}
           transition={springs.snappy}
-          className="absolute inset-0 rounded-lg bg-accent/15"
+          className="absolute inset-0 rounded-lg bg-accent-fill/15"
         />
       )}
       <Icon className="relative size-4 shrink-0" />

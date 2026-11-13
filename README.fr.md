@@ -75,14 +75,13 @@ l'import de fichiers que tu possèdes déjà.
 Récupère la version qui correspond à ta machine dans la
 [dernière release](https://github.com/Norudah/sonarche/releases/latest).
 
-| Machine                    | Fichier                        |
-| -------------------------- | ------------------------------ |
-| Mac, Apple Silicon (M1–M4) | `Sonarche_x.y.z_aarch64.dmg`   |
-| Mac, Intel                 | `Sonarche_x.y.z_x64.dmg`       |
-| Windows 10/11, 64 bits     | `Sonarche_x.y.z_x64-setup.exe` |
+| Machine                      | Fichier                        |
+| ---------------------------- | ------------------------------ |
+| Mac (Apple Silicon ou Intel) | `Sonarche_x.y.z_universal.dmg` |
+| Windows 10/11, 64 bits       | `Sonarche_x.y.z_x64-setup.exe` |
 
-Un doute sur ton Mac ? Tape `uname -m` — `arm64` c'est Apple Silicon, `x86_64`
-c'est Intel. Windows sur ARM fait tourner la version x64 en émulation.
+La version Mac est universelle : un seul téléchargement pour tous les Mac.
+Windows sur ARM fait tourner la version x64 en émulation.
 
 Les fichiers `.tar.gz` et `.sig` de la même release sont la tuyauterie du
 système de mise à jour. Tu n'en as pas besoin.

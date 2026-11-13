@@ -65,7 +65,7 @@ export function AlbumTrackRow({
       onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row row-cascade select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
-        (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
+        (isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/40")
       }
     >
       <td className={`${CELL} w-14`}>

@@ -18,7 +18,7 @@ function ArtistLink({ artist }: { artist: string }) {
   return (
     <Link
       to={artistPath(artist)}
-      className="relative rounded-sm font-medium text-foreground outline-none transition-colors duration-200 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-200 after:ease-out hover:text-accent hover:after:scale-x-100 focus-visible:ring-2 focus-visible:ring-accent/40 motion-reduce:after:transition-none"
+      className="relative rounded-sm font-medium text-foreground outline-none transition-colors duration-200 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-200 after:ease-out hover:text-accent hover:after:scale-x-100 focus-visible:ring-2 focus-visible:ring-accent motion-reduce:after:transition-none"
     >
       {artist}
     </Link>

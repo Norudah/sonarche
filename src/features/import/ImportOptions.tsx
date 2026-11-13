@@ -42,7 +42,7 @@ export function ImportOptions({
       defaultExpanded={autoExpand && report != null}
       className="border-t border-separator/60 bg-panel px-3 py-2"
     >
-      <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-1 py-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40">
+      <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-1 py-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent">
         <span className="flex items-center gap-1">
           {t("options.title")}
           <Disclosure.Indicator>

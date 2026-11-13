@@ -32,7 +32,7 @@ export function ArtistCard({ artist, style, cascade = true, onPlay, onEditImage 
       <Link
         to={artistPath(artist.name)}
         // Tells the artist page it can go back, preserving the grid's scroll.
-        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <ArtistAvatar
           imageUrl={imageUrl}

@@ -10,7 +10,7 @@ export function ArtworkPlaceholder({ className }: { className?: string }) {
         (className ? ` ${className}` : "")
       }
     >
-      <Music className="size-1/3 text-white/80" />
+      <Music className="size-1/3 text-on-scrim/80" />
     </div>
   );
 }

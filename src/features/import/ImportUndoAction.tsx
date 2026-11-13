@@ -49,7 +49,6 @@ export function ImportUndoAction({ id, name }: ImportUndoActionProps) {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         status="danger"
-        icon={Undo2}
         title={t("undo.title", { name })}
         cancelLabel={t("undo.keep")}
         confirmLabel={t("undo.confirm")}

@@ -21,7 +21,7 @@ export function HeroPlayButtons({ onPlay, onShuffle }: { onPlay: () => void; onS
         whileTap={{ scale: 0.97 }}
         whileHover={{ scale: 1.02 }}
         transition={springs.snappy}
-        className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-accent pr-5 pl-4.5 text-sm font-medium text-accent-foreground outline-none glow-accent focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-accent-fill pr-5 pl-4.5 text-sm font-medium text-accent-foreground outline-none glow-accent focus-visible:ring-2 focus-visible:ring-accent"
       >
         {/* Nudged right: a centred triangle looks left of centre. */}
         <Play className="size-4 translate-x-px fill-current" />
@@ -36,7 +36,7 @@ export function HeroPlayButtons({ onPlay, onShuffle }: { onPlay: () => void; onS
           whileTap={{ scale: 0.94 }}
           whileHover={{ scale: 1.06 }}
           transition={springs.snappy}
-          className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 ring-inset outline-none transition-colors hover:bg-accent/20 focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 ring-inset outline-none transition-colors hover:bg-accent-fill/20 focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Shuffle className="size-[1.125rem]" />
         </motion.button>

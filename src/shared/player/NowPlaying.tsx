@@ -16,7 +16,7 @@ function MaybeLink({ to, label, children }: { to: string | null | undefined; lab
     <Link
       to={to}
       aria-label={label}
-      className="rounded-sm outline-none hover:underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="rounded-sm outline-none hover:underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-accent"
     >
       {children}
     </Link>
@@ -44,7 +44,7 @@ export function NowPlaying({ current, isPlaying }: { current: PlayableTrack | nu
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={fade}
-            className="absolute inset-0 flex items-center justify-center bg-black/35"
+            className="absolute inset-0 flex items-center justify-center bg-scrim"
           >
             <Equalizer className="text-accent-foreground" />
           </motion.div>
@@ -59,7 +59,7 @@ export function NowPlaying({ current, isPlaying }: { current: PlayableTrack | nu
         <Link
           to={current.albumUrl}
           aria-label={t("goToAlbum")}
-          className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           {cover}
         </Link>

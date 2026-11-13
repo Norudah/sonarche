@@ -66,8 +66,8 @@ function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean })
             onClick={() => seek(line.time)}
             aria-label={t("lyrics.jumpTo")}
             className={
-              "w-full cursor-pointer rounded-lg px-3 py-1 text-left text-sm leading-snug outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
-              (index === active ? "bg-accent/10 font-medium text-accent" : "text-muted hover:bg-default/40")
+              "w-full cursor-pointer rounded-lg px-3 py-1 text-left text-sm leading-snug outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
+              (index === active ? "bg-accent-fill/10 font-medium text-accent" : "text-muted hover:bg-default/40")
             }
           >
             {line.text || <span className="text-muted/50">♪</span>}
@@ -109,7 +109,7 @@ function LyricsOffer({
 }
 
 const SEGMENT =
-  "relative flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "relative flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
 
 /** Follow the playhead or scroll manually: two named segments, as in
  * `ViewModeSwitch`, so the current mode is unambiguous. */

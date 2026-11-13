@@ -1,0 +1,58 @@
+name: checks
+
+# The gate before a merge into `main`: the suites of `npm run check`, one job
+# each. `develop` is deliberately unchecked; run `npm run check` locally before
+# opening the PR and this should hold no surprise.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  front:
+    # release-please's version-bump PR has nothing to check.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check.mjs front
+
+  rust:
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    # Part of the crate (objc2 media session, apple-native keyring) only
+    # compiles on macOS.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: src-tauri
+      - run: node scripts/check.mjs rust
+
+  sidecar:
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    # Linux, which nobody here develops on: catches macOS-only assumptions.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Pinned: the lock check regenerates the lock, and uv versions may format it differently.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.19"
+      - run: node scripts/check.mjs sidecar

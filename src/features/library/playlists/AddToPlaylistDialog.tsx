@@ -47,7 +47,7 @@ function PlaylistRow({
       type="button"
       disabled={alreadyHasAll || isPending}
       onClick={onPick}
-      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:hover:bg-transparent"
+      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
     >
       <PlaylistCoverMosaic
         covers={covers}
@@ -136,7 +136,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
           type="button"
           onClick={onClose}
           aria-label={t("metadata.close")}
-          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X className="size-3.5" />
         </button>
@@ -157,12 +157,12 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             placeholder={t("playlists.createPlaceholder")}
             maxLength={120}
             disabled={busy}
-            className="min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+            className="min-w-0 flex-1 rounded-xl border border-field-border bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
           <button
             type="submit"
             disabled={trimmed === "" || draftTaken || busy}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
           >
             <Plus className="size-3.5" />
             {t("playlists.createConfirm")}

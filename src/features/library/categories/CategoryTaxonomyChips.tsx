@@ -31,9 +31,9 @@ export function CategoryTaxonomyChips({
               type="button"
               onClick={() => onSelect(isActive ? "" : canonical)}
               className={
-                "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
+                "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
                 (isActive
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-accent-fill text-accent-foreground"
                   : "bg-surface-secondary text-muted hover:bg-surface-tertiary hover:text-foreground")
               }
             >

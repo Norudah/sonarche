@@ -86,7 +86,7 @@ export function ImportHistoryCard({ record }: { record: ImportRecord }) {
             aria-expanded={isOpen}
             aria-label={t(isOpen ? "recap.collapse" : "recap.expand")}
             onClick={() => setIsOpen((open) => !open)}
-            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
           >
             <motion.span initial={false} animate={{ rotate: isOpen ? 180 : 0 }} transition={springs.snappy}>
               <ChevronDown className="size-4" />

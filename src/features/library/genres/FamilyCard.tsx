@@ -43,13 +43,13 @@ interface FamilyCardProps {
 const chipClass =
   "inline-block rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] px-2.5 py-1 text-[0.75rem] " +
   "text-foreground/85 outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_20%,transparent)] " +
-  "focus-visible:ring-2 focus-visible:ring-accent/40";
+  "focus-visible:ring-2 focus-visible:ring-accent";
 
 /** Draggable: trembles (dashed under reduced motion); `touch-none` prevents scrolling. */
 const looseChipClass =
   "inline-block cursor-grab touch-none rounded-full bg-[color-mix(in_oklab,var(--tone)_12%,transparent)] px-2.5 py-1 " +
   "text-[0.75rem] text-foreground/85 outline-none select-none active:cursor-grabbing " +
-  "focus-visible:ring-2 focus-visible:ring-accent/40 " +
+  "focus-visible:ring-2 focus-visible:ring-accent " +
   "motion-reduce:outline motion-reduce:outline-1 motion-reduce:outline-dashed " +
   "motion-reduce:outline-offset-2 motion-reduce:outline-[color-mix(in_oklab,var(--tone)_45%,transparent)]";
 
@@ -103,7 +103,7 @@ export function FamilyCard({ family, label, style, arrange }: FamilyCardProps) {
             whileHover={{ scale: 1.12 }}
             whileTap={{ scale: 0.94 }}
             transition={springs.snappy}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_14%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_24%,transparent)] focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--tone)_14%,transparent)] outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--tone)_24%,transparent)] focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ArrowRight className="size-4" style={{ color: tone }} />
           </MotionLink>

@@ -62,7 +62,7 @@ export function ComposerSettings({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <KindChoice value={kind} detected={detected} onChange={onKindChange} />
 
-        <Disclosure.Trigger className="flex h-7 cursor-pointer items-center gap-3 rounded-lg px-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40">
+        <Disclosure.Trigger className="flex h-7 cursor-pointer items-center gap-3 rounded-lg px-1 text-xs font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent">
           <span className="flex items-center gap-1">
             {t("options.title")}
             <Disclosure.Indicator>

@@ -16,7 +16,7 @@ export function ChecksMenu({ queue, disabled }: { queue: TriageLine[]; disabled:
     <Popover>
       <Popover.Trigger
         aria-label={t("checks.label")}
-        className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.8125rem] text-muted outline-none transition-colors hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.8125rem] text-muted outline-none transition-colors hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
       >
         <SlidersHorizontal className="size-3.5" />
         {t("checks.label")}

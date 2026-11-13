@@ -9,7 +9,7 @@ import { springs } from "@/shared/motion/tokens";
 /* Same shape as the view-mode switch; labelled rather than icon-only. */
 const SEGMENT =
   "relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap " +
-  "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
 
 function Segment({
   layout,

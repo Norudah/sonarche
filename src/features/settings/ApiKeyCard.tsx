@@ -99,7 +99,7 @@ export function ApiKeyCard({ status }: { status: ApiKeyStatus }) {
                   onClick={() => void toggleReveal()}
                   disabled={reveal.isPending}
                   aria-label={revealed ? t("services.hide") : t("services.reveal")}
-                  className="absolute inset-y-0 right-0 flex w-9 cursor-pointer items-center justify-center rounded-r-xl text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-40"
+                  className="absolute inset-y-0 right-0 flex w-9 cursor-pointer items-center justify-center rounded-r-xl text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40"
                 >
                   {reveal.isPending ? (
                     <Loader2 className="size-3.5 animate-spin" />

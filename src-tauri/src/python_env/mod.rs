@@ -82,13 +82,15 @@ async fn deps_ok_cached(app: &AppHandle, paths: &AppPaths, venv_python: &Path) -
     }
 
     // sys.argv[1] is the requirements path. `packaging` is in the lock, so a venv
-    // without it fails the probe and is rebuilt.
+    // without it fails the probe and is rebuilt. The lock wraps each requirement
+    // over several lines of `--hash` options.
     const PROBE: &str = "\
-import importlib.metadata, sys
+import importlib.metadata, re, sys
 import yt_dlp, beets, mutagen
 from packaging.requirements import Requirement
-for line in open(sys.argv[1], encoding='utf-8'):
-    line = line.split('#', 1)[0].strip()
+text = re.sub(r'\\\\\\n', ' ', open(sys.argv[1], encoding='utf-8').read())
+for line in text.splitlines():
+    line = re.sub(r'--hash=\\S+', '', line.split('#', 1)[0]).strip()
     if not line:
         continue
     req = Requirement(line)

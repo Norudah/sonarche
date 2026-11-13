@@ -42,7 +42,7 @@ export function CandidateStrip({
           <button
             type="button"
             onClick={onSearch}
-            className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Search className="size-3.5" />
             {t("albumMetadata.cover.candidates.search")}
@@ -59,7 +59,7 @@ export function CandidateStrip({
           <button
             type="button"
             onClick={onRetry}
-            className="cursor-pointer rounded-full border border-separator px-2.5 py-1 font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="cursor-pointer rounded-full border border-separator px-2.5 py-1 font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent"
           >
             {t("albumMetadata.cover.candidates.retry")}
           </button>
@@ -75,13 +75,13 @@ export function CandidateStrip({
               onClick={() => onSelect(candidate)}
               title={candidate.types.join(", ")}
               aria-pressed={selectedId === candidate.id}
-              className={`relative size-20 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-accent/60 ${
+              className={`relative size-20 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-accent ${
                 selectedId === candidate.id ? "ring-2 ring-accent" : "ring-1 ring-artwork-edge hover:ring-accent/50"
               }`}
             >
               <img src={candidate.thumb} alt="" className="size-full object-cover" />
               {candidate.front && (
-                <span className="absolute right-1 bottom-1 rounded-full bg-black/60 px-1.5 py-px text-[0.5625rem] font-medium text-white">
+                <span className="absolute right-1 bottom-1 rounded-full bg-scrim-strong px-1.5 py-px text-[0.5625rem] font-medium text-on-scrim">
                   {t("albumMetadata.cover.candidates.front")}
                 </span>
               )}

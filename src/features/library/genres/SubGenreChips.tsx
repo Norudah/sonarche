@@ -20,9 +20,9 @@ export function SubGenreChips({ subs, selected }: SubGenreChipsProps) {
   if (subs.length === 0) return null;
 
   const chip = (isActive: boolean) =>
-    "rounded-full px-3 py-1 text-[0.8125rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
+    "rounded-full px-3 py-1 text-[0.8125rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
     (isActive
-      ? "bg-accent text-accent-foreground"
+      ? "bg-accent-fill text-accent-foreground"
       : "bg-surface-secondary text-muted hover:bg-surface-tertiary hover:text-foreground");
 
   return (

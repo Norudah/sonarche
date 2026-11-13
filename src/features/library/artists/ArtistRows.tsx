@@ -32,7 +32,7 @@ export function ArtistRows({ artists, animationKey = "", onPlay, onEditImage }: 
           <Link
             to={artistPath(artist.name)}
             aria-label={artist.name}
-            className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
 
           <ArtistAvatar imageUrl={images.data?.get(artist.name) ?? null} className="size-10 shrink-0" />

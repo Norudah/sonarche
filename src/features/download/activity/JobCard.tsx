@@ -152,7 +152,7 @@ function JobCardImpl({
             {href ? (
               <Link
                 to={href}
-                className="rounded-sm underline-offset-2 outline-none hover:text-accent hover:underline focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="rounded-sm underline-offset-2 outline-none hover:text-accent hover:underline focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {title}
               </Link>
@@ -216,7 +216,7 @@ function JobCardImpl({
               type="button"
               onClick={() => onCancel(job.id)}
               disabled={isCancelling}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40"
             >
               <Square className="size-3.5" />
               {t("queue.cancel")}
@@ -252,7 +252,7 @@ function JobCardImpl({
             aria-expanded={isOpen}
             aria-label={isOpen ? t("activity.collapse") : t("activity.expand")}
             onClick={() => setIsOpen((open) => !open)}
-            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
           >
             <motion.span initial={false} animate={{ rotate: isOpen ? 180 : 0 }} transition={springs.snappy}>
               <ChevronDown className="size-4" />

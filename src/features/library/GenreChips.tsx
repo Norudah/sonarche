@@ -7,7 +7,7 @@ import { springs } from "@/shared/motion/tokens";
 const MotionLink = motion.create(Link);
 
 const CHIP =
-  "rounded-full border border-separator bg-surface/70 px-2.5 py-1 text-[0.6875rem] text-foreground outline-none transition-colors hover:border-accent/40 hover:bg-surface hover:text-accent focus-visible:ring-2 focus-visible:ring-accent/40";
+  "rounded-full border border-separator bg-surface/70 px-2.5 py-1 text-[0.6875rem] text-foreground outline-none transition-colors hover:border-accent/40 hover:bg-surface hover:text-accent focus-visible:ring-2 focus-visible:ring-accent";
 
 /** Genre chips on the hero's meta line, each linking to its genre page;
  * genres without a family (see `genreFamilyIndex`) are plain labels. */

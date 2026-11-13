@@ -38,7 +38,7 @@ export function TracklistRow({
             type="button"
             onClick={onOpenOffer}
             aria-label={t("albumMetadata.offers.pending", { count: 1 })}
-            className="size-2 cursor-pointer rounded-full bg-accent outline-none ring-offset-2 transition-transform hover:scale-125 focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="size-2 cursor-pointer rounded-full bg-accent outline-none ring-offset-2 transition-transform hover:scale-125 focus-visible:ring-2 focus-visible:ring-accent"
           />
         )}
       </div>

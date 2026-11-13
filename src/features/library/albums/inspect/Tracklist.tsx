@@ -14,7 +14,7 @@ import { springs } from "@/shared/motion/tokens";
 
 const CAPTION = "text-[0.625rem] font-semibold tracking-wider text-muted uppercase";
 const BULK_PILL =
-  "flex size-7 cursor-pointer items-center justify-center rounded-full border border-separator bg-surface text-muted outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
+  "flex size-7 cursor-pointer items-center justify-center rounded-full border border-separator bg-surface text-muted outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 
 /** Editable tracks. The album artist is shown above the Artist column to make
  * the difference with track artists obvious. */
@@ -85,7 +85,7 @@ export function Tracklist({
             <button
               type="button"
               onClick={() => onOpenOffer(offers[0])}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[0.75rem] font-medium text-accent outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[0.75rem] font-medium text-accent outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent"
             >
               <span className="size-1.5 rounded-full bg-accent" />
               {t("albumMetadata.offers.pending", { count: offers.length })}
@@ -138,7 +138,7 @@ export function Tracklist({
               <button
                 type="button"
                 onClick={onClearFilter}
-                className="ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 font-medium outline-none transition-colors hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 font-medium outline-none transition-colors hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <X className="size-3" />
                 {t("albumMetadata.tracks.clearFilter")}

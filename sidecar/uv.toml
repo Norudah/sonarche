@@ -1,0 +1,14 @@
+# How `requirements.txt` is generated from `requirements.in`. Read only through
+# `--config-file` (`npm run deps:python`, `scripts/check-python-lock.py`), so it
+# never applies to other uv commands.
+
+[pip]
+# One lock for every platform, with environment markers (colorama is Windows-only).
+universal = true
+python-version = "3.13"
+# pip enters hash-checking mode on its own: a wheel that isn't the one PyPI
+# published fails the install, in the app and in CI alike.
+generate-hashes = true
+# Declared by beets, never imported (see requirements.in).
+no-emit-package = ["numba", "llvmlite", "scipy"]
+custom-compile-command = "npm run deps:python"

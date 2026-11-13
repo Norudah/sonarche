@@ -3,7 +3,8 @@
 import type { Handler } from "./types";
 import { emitMockEvent } from "./events";
 
-const apiKeys = [{ name: "acoustid", configured: false }];
+// `?returning` (below) has its key stored.
+const apiKeys = [{ name: "acoustid", configured: new URLSearchParams(window.location.search).has("returning") }];
 
 /** Keys saved this session, so `reveal_api_key` has something to return. */
 const storedKeys = new Map<string, string>();
@@ -39,8 +40,9 @@ const MOCK_RELEASE_BODY = `## [0.9.0](https://github.com/Norudah/sonarche/compar
 * **shell:** keep the app's name on the Windows window ([f9d5943](https://github.com/Norudah/sonarche/commit/f9d59430))
 `;
 
-/** `?setup=python` (no interpreter) or `?setup=engine` (no venv); pair with
- * `?onboarding=1` to bypass the completion flag. */
+/** `?setup=python` (no interpreter), `?setup=engine` (no venv) or `?setup=key`
+ * (engine in place, never onboarded); pair with `?onboarding=1` to bypass the
+ * completion flag. `?setupFail` makes the install run out of disk space. */
 const requestedSetup = new URLSearchParams(window.location.search).get("setup");
 
 const env = {
@@ -67,16 +69,29 @@ const SETUP_SCRIPT = [
   "Collecting yt-dlp==2026.7.4 (from -r requirements.txt (line 2))",
   "Collecting mutagen==1.47.0 (from -r requirements.txt (line 3))",
   "Installing collected packages: mutagen, yt-dlp, beets",
+  "Successfully installed beets-2.12.0 mutagen-1.47.0 yt-dlp-2026.7.4",
   "Environment ready.",
 ];
 
+const FAILING_SCRIPT = [
+  ...SETUP_SCRIPT.slice(0, 5),
+  "ERROR: Could not install packages due to an OSError: [Errno 28] No space left on device",
+];
+
 function runMockSetup(): Promise<unknown> {
-  return new Promise((resolve) => {
+  const failing = new URLSearchParams(window.location.search).has("setupFail");
+  const script = failing ? FAILING_SCRIPT : SETUP_SCRIPT;
+  return new Promise((resolve, reject) => {
     let index = 0;
     const timer = window.setInterval(() => {
-      emitMockEvent("setup:log", SETUP_SCRIPT[index]);
+      emitMockEvent("setup:log", script[index]);
       index += 1;
-      if (index >= SETUP_SCRIPT.length) {
+      if (failing && index >= script.length) {
+        window.clearInterval(timer);
+        reject("setup failed: pip install failed (exit exit status: 1)");
+        return;
+      }
+      if (index >= script.length) {
         window.clearInterval(timer);
         env.venvOk = true;
         env.depsOk = true;

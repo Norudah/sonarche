@@ -14,7 +14,7 @@ const ACTIONS_COLUMN = `${ACTIONS_ROW} min-w-[4.5rem]`;
 
 /* Same round icon button as the album tracklist. */
 const ACTION =
-  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40";
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent";
 
 function CopySourceItem({ url }: { url: string }) {
   const { t } = useTranslation("download");

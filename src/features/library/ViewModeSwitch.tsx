@@ -8,7 +8,7 @@ import { layoutIds, springs } from "@/shared/motion/tokens";
 
 /* The composer's segmented control, at filter-bar size. */
 const SEGMENT =
-  "relative flex items-center rounded-full px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "relative flex items-center rounded-full px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
 
 function Segment({ mode, current, children }: { mode: ViewMode; current: ViewMode; children: ReactNode }) {
   const [params] = useSearchParams();

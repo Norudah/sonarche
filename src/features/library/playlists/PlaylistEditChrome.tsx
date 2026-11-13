@@ -23,7 +23,7 @@ export function EditDialogHeader({
         type="button"
         onClick={onClose}
         aria-label={t("metadata.close")}
-        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
       >
         <X className="size-3.5" />
       </button>
@@ -36,7 +36,7 @@ export const EDIT_DIALOG_BODY = "flex min-h-0 flex-1 flex-col gap-5 overflow-y-a
 export const EDIT_DIALOG_FOOTER = "flex shrink-0 items-center gap-2 border-t border-separator px-6 py-3.5";
 
 export const EDIT_DIALOG_QUIET_BUTTON =
-  "cursor-pointer rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
+  "cursor-pointer rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 
 export const EDIT_DIALOG_CONFIRM_BUTTON =
-  "flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-4 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45";
+  "flex cursor-pointer items-center gap-2 rounded-xl bg-accent-fill px-4 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";

@@ -9,7 +9,7 @@ import { layoutIds, springs } from "@/shared/motion/tokens";
 /* The composer's segmented control, at topbar height. */
 const SEGMENT =
   "relative flex h-full cursor-pointer items-center rounded-full px-3 text-[0.8125rem] font-medium " +
-  "whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
 
 function Segment({
   active,

@@ -64,7 +64,7 @@ export function PlaylistTrackRow({
       onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
-        (isDragging ? "[&>td]:bg-default/70" : isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
+        (isDragging ? "[&>td]:bg-default/70" : isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/40")
       }
     >
       <td className={`${CELL} w-8 px-1`}>
@@ -73,7 +73,7 @@ export function PlaylistTrackRow({
             type="button"
             aria-label={t("playlists.dragToReorder")}
             {...dragHandleProps}
-            className="flex size-6 cursor-grab touch-none items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-60 hover:opacity-100! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 active:cursor-grabbing"
+            className="flex size-6 cursor-grab touch-none items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-60 hover:opacity-100! focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent active:cursor-grabbing"
           >
             <GripVertical className="size-4" />
           </button>

@@ -2,8 +2,8 @@ import { CATEGORY_TAXONOMY } from "@/features/library/categories/categories";
 import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel";
 
 const CHIP =
-  "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
-const CHIP_ON = "bg-accent text-accent-foreground";
+  "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
+const CHIP_ON = "bg-accent-fill text-accent-foreground";
 const CHIP_OFF = "bg-surface text-muted hover:bg-surface-tertiary hover:text-foreground";
 
 /** Category picker for downloads and imports. "None" is its own chip. Lives

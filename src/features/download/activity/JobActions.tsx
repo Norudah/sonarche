@@ -39,7 +39,7 @@ function PanelAction({
         "flex w-fit cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted transition-colors outline-none " +
         (danger
           ? "hover:bg-danger-soft hover:text-danger focus-visible:ring-2 focus-visible:ring-danger/40"
-          : "hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40")
+          : "hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent")
       }
     >
       <Icon className="size-3.5" />
@@ -223,7 +223,6 @@ export function JobActions({ job, canUndo }: { job: DownloadJob; canUndo: boolea
         isOpen={open === "undo"}
         onClose={() => setOpen(null)}
         status="danger"
-        icon={Undo2}
         title={t("actions.undo.title", { name })}
         cancelLabel={t("actions.undo.keep")}
         confirmLabel={t("actions.undo.confirm")}

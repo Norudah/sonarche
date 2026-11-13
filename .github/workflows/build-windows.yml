@@ -11,6 +11,9 @@ on:
   push:
     branches: ["windows/**"]
 
+permissions:
+  contents: read
+
 concurrency:
   group: build-windows-${{ github.ref }}
   cancel-in-progress: true
@@ -19,20 +22,22 @@ jobs:
   bundle:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
 
       - name: Cache the bundled runtime
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: src-tauri/resources
           key: runtime-x86_64-pc-windows-msvc-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
@@ -40,7 +45,7 @@ jobs:
       - run: npm ci
 
       # No `releaseId`: build only, nothing uploaded.
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           # Required because `createUpdaterArtifacts` is on.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -61,7 +66,7 @@ jobs:
 
       # Fail on a missing installer. One-week retention: ~200 MB against a 500 MB
       # private-repo quota.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sonarche-windows-x64
           path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe

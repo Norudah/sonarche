@@ -8,7 +8,7 @@ export function SettingsSearchField({ value, onChange }: { value: string; onChan
   const { t } = useTranslation("settings");
 
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-separator bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-accent/40">
+    <label className="flex items-center gap-2 rounded-lg border border-field-border bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-accent">
       <Search className="size-3.5 shrink-0 text-muted/70" aria-hidden />
       <input
         type="search"
@@ -43,7 +43,7 @@ export function SettingsSearchResults({
           key={entry.key}
           type="button"
           onClick={() => onPick(entry)}
-          className="cursor-pointer rounded-lg px-3 py-1.5 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="cursor-pointer rounded-lg px-3 py-1.5 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
         >
           <span className="block line-clamp-2 text-[0.8125rem] leading-snug font-medium text-foreground">
             {entry.name}

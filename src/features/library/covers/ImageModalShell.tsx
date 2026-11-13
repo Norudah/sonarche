@@ -48,7 +48,7 @@ export function ImageModalShell({
                   type="button"
                   onClick={onClose}
                   aria-label={t("metadata.close")}
-                  className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+                  className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -65,7 +65,7 @@ export function ImageModalShell({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="cursor-pointer rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+                  className="cursor-pointer rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {t("albumMetadata.cover.cancel")}
                 </button>
@@ -73,7 +73,7 @@ export function ImageModalShell({
                   type="button"
                   disabled={confirm.disabled}
                   onClick={confirm.onConfirm}
-                  className="flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
+                  className="flex cursor-pointer items-center gap-2 rounded-full bg-accent-fill px-4 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
                 >
                   {confirm.isPending && <Spinner size="sm" />}
                   {confirm.label}

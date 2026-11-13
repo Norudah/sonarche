@@ -1,5 +1,4 @@
 import { Button, toast } from "@heroui/react";
-import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -35,7 +34,6 @@ export function ReinstallRow() {
         isOpen={asking}
         onClose={() => setAsking(false)}
         status="warning"
-        icon={RotateCcw}
         title={t("advanced.reinstall.dialogTitle")}
         cancelLabel={t("advanced.reinstall.cancel")}
         confirmLabel={t("advanced.reinstall.confirm")}

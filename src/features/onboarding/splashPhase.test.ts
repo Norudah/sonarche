@@ -10,10 +10,10 @@ describe("phaseFor", () => {
     expect(phaseFor("checking", "ready", WELCOME)).toBe("welcome");
   });
 
-  /** The one that has to be different: this person just spent a minute
-   * installing an engine, and "welcome" would ignore what they did. */
-  it("sends off someone who has just finished the walkthrough", () => {
-    expect(phaseFor("onboarding", "ready", WELCOME)).toBe("aboard");
+  /** The setup plays its own entrance into the app; a splash on top would
+   * greet the same person twice. */
+  it("leaves the way out of the walkthrough to the walkthrough", () => {
+    expect(phaseFor("onboarding", "ready", WELCOME)).toBeNull();
   });
 
   it("says nothing in front of the walkthrough", () => {
@@ -31,9 +31,8 @@ describe("phaseFor", () => {
   });
 
   describe("with the welcome switched off", () => {
-    it("drops both beats, not just the one seen at every launch", () => {
+    it("drops the greeting", () => {
       expect(phaseFor("checking", "ready", false)).toBeNull();
-      expect(phaseFor("onboarding", "ready", false)).toBeNull();
     });
 
     /** The setting only affects the greeting, not the wait. */

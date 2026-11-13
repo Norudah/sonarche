@@ -1,5 +1,4 @@
 import { Switch } from "@heroui/react";
-import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -34,7 +33,6 @@ export function RematchConfirmDialog({
       isOpen={isOpen}
       onClose={onClose}
       status="warning"
-      icon={Sparkles}
       title={t("albumMetadata.rematch.confirmTitle")}
       cancelLabel={t("metadata.cancel")}
       confirmLabel={t("albums.rematch")}

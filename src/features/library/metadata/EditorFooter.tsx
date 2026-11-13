@@ -64,7 +64,7 @@ export function DismissButton({ onPress }: { onPress: () => void }) {
       type="button"
       onClick={onPress}
       aria-label={t("metadata.close")}
-      className="ml-auto shrink-0 cursor-pointer rounded-full p-1 text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="ml-auto shrink-0 cursor-pointer rounded-full p-1 text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
     >
       <Check className="size-3.5" />
     </button>
