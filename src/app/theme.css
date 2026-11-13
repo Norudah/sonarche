@@ -346,6 +346,19 @@
   }
 }
 
+/* --- Buttons inside a short dialog ---------------------------------------- */
+
+/* One compact size for every answer in a `SimpleDialog`, with a floor so a
+   short "Vider" doesn't shrink next to "Annuler". */
+@layer components {
+  .simple-dialog .button {
+    height: 2.25rem;
+    min-width: 5.5rem;
+    padding-inline: 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
 /* --- Destructive menu items ----------------------------------------------- */
 
 /* HeroUI only reddens the `label` slot; colour the whole item instead. */

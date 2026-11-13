@@ -223,7 +223,6 @@ export function JobActions({ job, canUndo }: { job: DownloadJob; canUndo: boolea
         isOpen={open === "undo"}
         onClose={() => setOpen(null)}
         status="danger"
-        icon={Undo2}
         title={t("actions.undo.title", { name })}
         cancelLabel={t("actions.undo.keep")}
         confirmLabel={t("actions.undo.confirm")}

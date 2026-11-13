@@ -1,4 +1,3 @@
-import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -38,7 +37,6 @@ export function DeleteTrackDialog({
       isOpen={track != null}
       onClose={onClose}
       status="danger"
-      icon={Trash2}
       title={t("delete.title")}
       cancelLabel={t("delete.cancel")}
       confirmLabel={t("delete.confirm")}

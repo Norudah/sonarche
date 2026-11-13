@@ -1,4 +1,3 @@
-import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -30,7 +29,6 @@ export function ExitGuardDialog({
       isOpen={pendingFields > 0}
       onClose={onKeepEditing}
       status="warning"
-      icon={TriangleAlert}
       title={t("albumMetadata.guard.title")}
       cancelLabel={t("albumMetadata.guard.keepEditing")}
       alternative={{ label: t("albumMetadata.guard.discard"), onPress: onDiscard, isDanger: true }}

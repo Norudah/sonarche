@@ -1,7 +1,9 @@
-import { AlertDialog, Button, Input, Label, TextField } from "@heroui/react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Button, Input, Label, TextField } from "@heroui/react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { SimpleDialog } from "@/shared/ui/SimpleDialog";
 
 /**
  * Confirmation for every danger-zone erase, by typing the app's name rather
@@ -43,55 +45,46 @@ export function EraseDialog({
   };
 
   return (
-    <AlertDialog
+    <SimpleDialog
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) close();
+      onClose={close}
+      title={title}
+      isDismissable={!isPending}
+      onSubmit={() => {
+        if (armed && !isPending) onConfirm();
       }}
+      actions={
+        <>
+          <Button variant="secondary" onPress={close} isDisabled={isPending}>
+            {t("danger.cancel")}
+          </Button>
+          <Button type="submit" variant="danger" isDisabled={!armed || isPending}>
+            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {confirmLabel}
+          </Button>
+        </>
+      }
     >
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog className="rounded-2xl">
-            <AlertDialog.Icon status="danger" className="rounded-xl">
-              <ShieldAlert className="size-5" />
-            </AlertDialog.Icon>
-            <AlertDialog.Header>
-              <AlertDialog.Heading className="text-lg font-semibold tracking-tight">{title}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body className="text-sm leading-relaxed text-muted">
-              <p>{intro}</p>
+      <p>{intro}</p>
 
-              <ul className="mt-3 list-disc space-y-1 pl-5">
-                {items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+      <ul className="mt-3 list-disc space-y-1 pl-5">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
 
-              {note && <p className="mt-3">{note}</p>}
+      {note && <p className="mt-3">{note}</p>}
 
-              <TextField value={typed} onChange={setTyped} className="mt-4 flex flex-col" isDisabled={isPending}>
-                <Label className="text-sm font-medium text-foreground">{t("danger.prompt", { phrase: PHRASE })}</Label>
-                <Input
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder={PHRASE}
-                  className="mt-1.5 h-10 w-full rounded-xl font-mono"
-                />
-              </TextField>
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button variant="secondary" onPress={close} isDisabled={isPending}>
-                {t("danger.cancel")}
-              </Button>
-              <Button variant="danger" onPress={onConfirm} isDisabled={!armed || isPending}>
-                {isPending && <Loader2 className="size-4 animate-spin" />}
-                {confirmLabel}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      <TextField value={typed} onChange={setTyped} className="mt-5 flex flex-col" isDisabled={isPending}>
+        <Label className="text-[0.8125rem] font-medium text-foreground">{t("danger.prompt", { phrase: PHRASE })}</Label>
+        <Input
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder={PHRASE}
+          className="mt-1.5 h-10 w-full rounded-xl font-mono"
+        />
+      </TextField>
+    </SimpleDialog>
   );
 }

@@ -1,4 +1,3 @@
-import { ListX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useDeletePlaylist } from "@/features/library/playlists/hooks";
@@ -27,7 +26,6 @@ export function DeletePlaylistDialog({ playlist, onClose, onDeleted }: DeletePla
       isOpen={playlist != null}
       onClose={onClose}
       status="danger"
-      icon={ListX}
       title={t("playlists.delete.title", { name: playlist?.name ?? "" })}
       cancelLabel={t("playlists.cancel")}
       confirmLabel={t("playlists.delete.confirm")}

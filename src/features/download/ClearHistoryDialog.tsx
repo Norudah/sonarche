@@ -1,4 +1,3 @@
-import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useClearJobHistory } from "@/features/download/hooks";
@@ -42,7 +41,6 @@ export function ClearHistoryDialog({ isOpen, onClose, downloads, imports, onClea
       isOpen={isOpen}
       onClose={onClose}
       status="danger"
-      icon={Trash2}
       title={t("queue.clearHistoryTitle")}
       cancelLabel={t("queue.clearHistoryCancel")}
       confirmLabel={t("queue.clearHistoryConfirm")}
