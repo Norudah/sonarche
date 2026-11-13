@@ -14,7 +14,7 @@ import { useLibrary } from "@/features/library/hooks";
 const MAX_ROWS = 50;
 
 const INPUT =
-  "min-w-0 flex-1 rounded-xl border border-field-border bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent";
+  "min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface MoveToAlbumDialogProps {
   /** A track or a whole record; null = closed. */

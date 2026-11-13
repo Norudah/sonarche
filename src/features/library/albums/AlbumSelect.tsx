@@ -18,7 +18,7 @@ export interface AlbumTarget {
 const MAX_ROWS = 30;
 
 const INPUT =
-  "rounded-xl border border-field-border bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
+  "rounded-xl border border-separator bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
 
 function Row({ album, onPick }: { album: Album; onPick: () => void }) {
   const { t } = useTranslation("library");

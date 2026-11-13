@@ -143,7 +143,7 @@ function EditForm({
             placeholder={t("playlists.namePlaceholder")}
             maxLength={120}
             disabled={isPending}
-            className="w-full rounded-xl border border-field-border bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="w-full rounded-xl border border-separator bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
           {/* Reserved height, so the dialog doesn't grow when the error appears. */}
           <p className="min-h-4 text-[0.75rem] text-danger">{taken ? t("playlists.duplicateName") : ""}</p>

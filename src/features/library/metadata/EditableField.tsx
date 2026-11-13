@@ -85,7 +85,7 @@ export function EditableField({
             ? "border-dashed border-muted/35 bg-surface placeholder:text-muted/60"
             : showMissing
               ? "border-dashed border-warning/45 bg-warning-soft placeholder:text-warning"
-              : "border-field-border bg-surface"
+              : "border-separator bg-surface"
         } ${isModified ? "border-l-accent!" : ""}`}
       />
     </div>

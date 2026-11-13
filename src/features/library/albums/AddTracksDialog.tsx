@@ -125,7 +125,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("move.addTracksSearchPlaceholder")}
-            className="w-full min-w-0 rounded-xl border border-field-border bg-transparent py-1.5 pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="w-full min-w-0 rounded-xl border border-separator bg-transparent py-1.5 pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
         </div>
       </div>

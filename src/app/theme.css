@@ -62,11 +62,10 @@
   --border: oklch(0.875 0.013 279);
   --default: oklch(0.935 0.009 279);
 
-  /* The edge of a text field, the only thing that says "type here": 3.1:1
-     (WCAG 1.4.11). HeroUI reads it, and its hover/focus mixes derive from it. */
-  --field-border: oklch(0.66 0.015 279);
-  --field-border-width: 1px;
-  --field-shadow: 0 0 #0000;
+  /* HeroUI fields keep no border (a border would also rule the prefix of an
+     input group, the composer's link icon); their edge is the tinted ring of
+     the lowest elevation, as quiet as the hand-made fields' separator. */
+  --field-shadow: var(--elevation-xs);
 
   /* Darkens within the hue rather than with black. */
   --backdrop: oklch(0.3 0.035 279 / 0.42);
@@ -221,10 +220,7 @@
   --default: oklch(0.3 0.02 279);
   --muted: oklch(0.7 0.022 279);
 
-  /* 3.2:1 on a card. */
-  --field-border: oklch(0.55 0.025 279);
-  --field-border-width: 1px;
-  --field-shadow: 0 0 #0000;
+  --field-shadow: var(--elevation-xs);
 
   /* Ink on the hue axis; 14.5:1 on a card. */
   --foreground: oklch(0.965 0.008 279);
@@ -753,7 +749,6 @@
   --color-tray: var(--tray);
   --color-artwork-edge: var(--artwork-edge);
   --color-accent-fill: var(--accent-fill);
-  --color-field-border: var(--field-border);
   --color-scrim: var(--scrim);
   --color-scrim-strong: var(--scrim-strong);
   --color-on-scrim: var(--snow);

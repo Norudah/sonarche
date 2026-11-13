@@ -38,7 +38,7 @@ export function toForcedAlbum(destination: Destination): ForcedAlbum | null {
 }
 
 const FIELD =
-  "w-full rounded-xl border border-field-border bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
+  "w-full rounded-xl border border-separator bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
 
 /* Same pill as KindChoice, with its own layout id. */
 const SEGMENT = "relative mt-0 rounded-full";
