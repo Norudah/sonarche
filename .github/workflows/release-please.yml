@@ -26,7 +26,7 @@ jobs:
       tag: ${{ steps.release.outputs.tag_name }}
     steps:
       # Bumps every version file, Cargo.lock included (release-please-config.json).
-      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
           config-file: release-please-config.json
@@ -61,7 +61,7 @@ jobs:
     env:
       TAG: ${{ inputs.tag || needs.release-please.outputs.tag }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.TAG }}
 
@@ -83,7 +83,7 @@ jobs:
             echo 'SONARCHE_RELEASE_BODY'
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -99,14 +99,14 @@ jobs:
       # `prepare-runtime.mjs` no-ops when its `.pin` stamps match, so the key must
       # change with the pins.
       - name: Cache the bundled runtime
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: src-tauri/resources
           key: runtime-${{ matrix.target }}-${{ hashFiles('scripts/prepare-runtime.mjs', 'sidecar/requirements.txt') }}
 
       - run: npm ci
 
-      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
+      - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The updater signature (no paid Apple or Authenticode certificates): the app
