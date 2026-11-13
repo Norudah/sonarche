@@ -26,7 +26,7 @@ function CandidateRow({ track, checked, onToggle }: { track: LibraryTrack; check
     <button
       type="button"
       onClick={onToggle}
-      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent"
+      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
     >
       <span
         aria-hidden

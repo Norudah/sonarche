@@ -9,7 +9,7 @@ import { GENRE_MISSING, GENRE_OFF_TREE } from "@/features/library/tracks/triage"
 
 /** Amber for correction filters, indigo for browsing (the decade). */
 const TONE = {
-  browse: "bg-accent-fill text-accent-foreground",
+  browse: "bg-accent-soft font-medium text-accent",
   fix: "bg-warning-soft font-medium text-warning",
 } as const;
 

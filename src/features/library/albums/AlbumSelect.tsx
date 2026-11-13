@@ -26,7 +26,7 @@ function Row({ album, onPick }: { album: Album; onPick: () => void }) {
     <button
       type="button"
       onClick={onPick}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent"
+      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
     >
       <span className="size-9 shrink-0 overflow-hidden rounded-md ring-1 ring-artwork-edge">
         <AlbumCover artUrl={album.artUrl} className="size-full" loading="lazy" />
@@ -77,7 +77,7 @@ export function AlbumSelect({
           type="button"
           onClick={() => onChange(null)}
           aria-label={t("albumSelect.clear")}
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X className="size-3.5" />
         </button>

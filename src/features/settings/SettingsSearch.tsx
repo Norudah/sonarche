@@ -8,7 +8,7 @@ export function SettingsSearchField({ value, onChange }: { value: string; onChan
   const { t } = useTranslation("settings");
 
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-separator bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-accent">
+    <label className="flex h-9 items-center gap-2 rounded-full bg-surface-secondary px-3 transition-colors hover:bg-surface-tertiary focus-within:ring-2 focus-within:ring-accent">
       <Search className="size-3.5 shrink-0 text-muted/70" aria-hidden />
       <input
         type="search"

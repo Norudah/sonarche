@@ -12,7 +12,7 @@ export function FactList({ facts }: { facts: readonly Fact[] }) {
     <ul className="mt-7 flex flex-col gap-4">
       {facts.map(({ icon: Icon, title, text }) => (
         <li key={title} className="flex items-center gap-3.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
             <Icon className="size-[18px]" />
           </span>
           <span className="flex min-w-0 flex-col gap-px">

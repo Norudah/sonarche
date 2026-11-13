@@ -81,7 +81,7 @@ export function ImageSourceBar({
   usePasteShortcut(active && !busy, () => void adoptClipboard());
 
   const chip =
-    "flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
+    "flex cursor-pointer items-center gap-2 rounded-xl border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 
   return (
     <section className="flex flex-col gap-2">
@@ -135,7 +135,7 @@ export function ImageSourceBar({
           <button
             type="submit"
             disabled={draft.trim() === "" || busy}
-            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-default/60 px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
+            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-default/60 px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
           >
             {isFetching && <Spinner size="sm" />}
             {t("imageUrl.fetch")}

@@ -31,7 +31,7 @@ function AlbumRow({ album, disabled, onPick }: { album: Album; disabled: boolean
       type="button"
       disabled={disabled}
       onClick={onPick}
-      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
+      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
     >
       <AlbumCover artUrl={album.artUrl} loading="lazy" className="size-10 shrink-0 rounded-md" />
       <span className="min-w-0 flex-1">
@@ -80,7 +80,7 @@ function ConfirmStep({
 
   return (
     <div className="flex flex-col px-6 pb-5">
-      <div className="flex items-center gap-3 rounded-xl bg-default/40 p-3">
+      <div className="flex items-center gap-3 rounded-xl bg-tray px-3.5 py-3">
         <AlbumCover artUrl={target.artUrl} className="size-12 shrink-0 rounded-md" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">{target.title}</p>
@@ -237,7 +237,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             <button
               type="button"
               onClick={() => setStep({ kind: "create" })}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
             >
               <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-separator text-muted">
                 <Library className="size-4" />

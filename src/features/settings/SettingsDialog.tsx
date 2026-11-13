@@ -24,7 +24,7 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
           <Modal.Dialog className="flex h-[82vh] max-h-[46rem] w-[94vw] max-w-[64rem] flex-row! overflow-hidden rounded-2xl p-0!">
             <SettingsNav current={category} />
 
-            <div className="relative flex min-w-0 flex-1 flex-col bg-surface">
+            <div className="relative flex min-w-0 flex-1 flex-col bg-background">
               {/* Narrow: the close button sits beside the scrolling strip, not over it. */}
               <div className="flex items-center border-b border-separator bg-panel md:hidden">
                 <SettingsNavStrip current={category} />

@@ -33,7 +33,7 @@ export function CategoryTaxonomyChips({
               className={
                 "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
                 (isActive
-                  ? "bg-accent-fill text-accent-foreground"
+                  ? "bg-accent-soft font-medium text-accent"
                   : "bg-surface-secondary text-muted hover:bg-surface-tertiary hover:text-foreground")
               }
             >

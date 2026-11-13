@@ -62,7 +62,7 @@ function TagState({ recap, alignDoor }: { recap: ImportRecap; alignDoor: boolean
   const clean = rows.every((row) => row.count === 0);
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-default/50 px-3.5 py-3">
+    <div className="flex flex-col gap-2 rounded-xl bg-tray px-3.5 py-3">
       <p className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("recap.tagState")}</p>
 
       {clean ? (

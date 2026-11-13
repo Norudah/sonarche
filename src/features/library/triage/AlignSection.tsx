@@ -112,7 +112,7 @@ export function AlignSection() {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{t("align.heading")}</h2>
-      <div className="rounded-xl border border-separator/60 bg-surface px-4 py-3">
+      <div className="rounded-xl bg-surface px-4 py-3 shadow-sm">
         {!running && plan === null && result === null && (
           <div className="flex items-center gap-4">
             <Glyph />

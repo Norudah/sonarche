@@ -32,16 +32,12 @@ export function useSettingHighlight(settingKey: string | undefined) {
   return { ref, isLit };
 }
 
-export const FLASH = "ring-2 ring-accent/60 ring-offset-2 ring-offset-surface";
+export const FLASH = "ring-2 ring-accent/60 ring-offset-2 ring-offset-background";
 
 /** Several settings as ruled rows. A control that fits beside a name is a
  * row; one that needs its own surface is a `SettingCard`. */
 export function SettingsPanel({ children }: { children: ReactNode }) {
-  return (
-    <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-surface">
-      {children}
-    </div>
-  );
+  return <div className="divide-y divide-separator overflow-hidden rounded-xl bg-surface shadow-sm">{children}</div>;
 }
 
 interface SettingRowProps {

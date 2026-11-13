@@ -97,7 +97,7 @@ export function CommonFields({
               {t("metadata.help.artistPair.artist")}
             </p>
             {values.albumartist.trim() !== "" && (
-              <div className="flex flex-col gap-1 rounded-lg border border-separator bg-panel px-3 py-2">
+              <div className="flex flex-col gap-1 rounded-xl bg-tray px-3.5 py-3">
                 <span className="text-[0.6875rem] text-muted/80">{t("metadata.help.artistPair.exampleLabel")}</span>
                 <span className="text-[0.75rem] leading-snug text-foreground">
                   {t("metadata.help.artistPair.example", { artist: values.albumartist })}

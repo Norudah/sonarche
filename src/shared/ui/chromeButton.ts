@@ -5,7 +5,7 @@ const BASE =
 
 /** Idle · active · the lens colour. */
 const TONES = {
-  idle: "text-muted hover:bg-default/60 hover:text-foreground",
+  idle: "text-muted hover:bg-default/50 hover:text-foreground",
   accent: "bg-accent-fill/15 text-accent",
   warning: "bg-warning-soft text-warning",
 } as const;

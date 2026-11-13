@@ -54,7 +54,7 @@ function NavItem({
       className={({ isActive }) =>
         cn(
           "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-          isActive ? "text-accent" : "text-muted hover:bg-default/40",
+          isActive ? "text-accent" : "text-muted hover:bg-default/50",
         )
       }
     >
@@ -171,7 +171,7 @@ function PlaylistsNav() {
           onClick={() => setCreating(true)}
           aria-label={tLibrary("playlists.create")}
           title={tLibrary("playlists.create")}
-          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted/70 outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex size-6 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Plus className="size-3.5" />
         </button>

@@ -12,7 +12,7 @@ export function SettingCard({ settingKey, children }: { settingKey?: string; chi
     <div
       ref={ref}
       data-setting={settingKey}
-      className={cn("rounded-xl border border-separator bg-surface p-4 transition-shadow", isLit && FLASH)}
+      className={cn("rounded-xl bg-surface p-4 shadow-sm transition-shadow", isLit && FLASH)}
     >
       {children}
     </div>

@@ -18,7 +18,7 @@ export function SetupActionBar({ onBack, secondary, primary }: SetupActionBarPro
   const { t } = useTranslation("onboarding");
 
   return (
-    <div className="mt-3 flex min-h-[42px] shrink-0 items-center gap-3.5 pt-4">
+    <div className="mt-3 flex min-h-10 shrink-0 items-center gap-3.5 pt-4">
       {onBack && (
         <Button
           variant="secondary"
@@ -65,7 +65,7 @@ export function SetupPrimaryButton({
       form={form}
       onPress={onPress}
       isDisabled={isPending || isDisabled}
-      className="h-[42px] min-w-[184px] rounded-xl px-4 font-semibold glow-accent disabled:shadow-none"
+      className="h-10 min-w-[184px] px-5 glow-accent disabled:shadow-none"
     >
       {isPending ? <Loader2 className="size-4 animate-spin" /> : Icon && <Icon className="size-4" />}
       {children}

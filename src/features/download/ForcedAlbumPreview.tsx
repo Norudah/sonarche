@@ -18,7 +18,7 @@ export function ForcedAlbumPreview({ isOn }: { isOn: boolean }) {
 
   return (
     // `w-fit` keeps the two stacks close enough to compare.
-    <div className="flex w-fit items-stretch gap-5 rounded-xl bg-default/40 px-3.5 py-2.5">
+    <div className="flex w-fit items-stretch gap-5 rounded-xl bg-tray px-3.5 py-3">
       <figure className={`flex flex-col gap-1.5 transition-opacity ${isOn ? "opacity-45" : ""}`}>
         <figcaption className="text-[0.625rem] font-medium tracking-wide text-muted uppercase">
           {t("options.destination.without")}

@@ -34,7 +34,7 @@ export function LibraryLocationCard() {
         {location.isPending ? (
           <Spinner size="sm" aria-label={t("loading")} />
         ) : (
-          <div className="flex items-center gap-2.5 rounded-lg border border-separator bg-default/40 px-3 py-2">
+          <div className="flex items-center gap-2.5 rounded-xl bg-tray px-3.5 py-3">
             <Folder className="size-3.5 shrink-0 text-muted" />
             <p className="min-w-0 flex-1 truncate font-mono text-[0.75rem]" title={location.data?.path}>
               {location.data?.path}

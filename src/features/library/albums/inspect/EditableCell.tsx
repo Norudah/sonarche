@@ -56,7 +56,7 @@ export function EditableCell({
       onFocus={() => setIsActive(true)}
       onClick={() => setIsActive(true)}
       // The pointer signals the cell is editable.
-      className={`${box} cursor-pointer truncate border border-transparent hover:bg-default/60 ${
+      className={`${box} cursor-pointer truncate border border-transparent hover:bg-default/50 ${
         isEmpty && missingLabel
           ? "border-dashed border-warning/40 bg-warning-soft text-[0.75rem] text-warning"
           : isEmpty

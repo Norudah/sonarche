@@ -40,7 +40,7 @@ function PanelAction({
         "flex w-fit cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted transition-colors outline-none " +
         (danger
           ? "hover:bg-danger-soft hover:text-danger focus-visible:ring-2 focus-visible:ring-danger/40"
-          : "hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent")
+          : "hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent")
       }
     >
       <Icon className="size-3.5" />

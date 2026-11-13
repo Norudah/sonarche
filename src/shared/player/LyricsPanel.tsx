@@ -67,7 +67,7 @@ function TimedLyrics({ lines, follow }: { lines: LyricLine[]; follow: boolean })
             aria-label={t("lyrics.jumpTo")}
             className={
               "w-full cursor-pointer rounded-lg px-3 py-1 text-left text-sm leading-snug outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
-              (index === active ? "bg-accent-fill/10 font-medium text-accent" : "text-muted hover:bg-default/40")
+              (index === active ? "bg-accent-fill/10 font-medium text-accent" : "text-muted hover:bg-default/50")
             }
           >
             {line.text || <span className="text-muted/50">♪</span>}

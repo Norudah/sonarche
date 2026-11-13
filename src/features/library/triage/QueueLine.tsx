@@ -24,8 +24,8 @@ const PILL_LABEL: Partial<Record<DoorKey, ParseKeys<"metadata">>> = {
   genreOffTree: "queue.genreOffTree",
 };
 
-/* A card background, not just a border: invisible on light, needed on dark. */
-const ROW = "flex items-center gap-4 rounded-xl border border-separator/60 bg-surface px-4 py-3";
+/* A placed card, like a job: the elevation edge holds it at night. */
+const ROW = "flex items-center gap-4 rounded-xl bg-surface px-4 py-3 shadow-sm";
 
 /** One glyph per kind of defect, so rows are recognisable before being read. */
 const ICONS: Record<TriageLine["key"], LucideIcon> = {
@@ -89,7 +89,7 @@ function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending
         event.stopPropagation();
         onAccept();
       }}
-      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted opacity-0 transition group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted opacity-0 transition group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-45"
     >
       <Check className="size-3.5" />
       {t("accept.action")}

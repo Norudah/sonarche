@@ -505,8 +505,8 @@
     margin-left: 0.5rem;
     padding-inline: 0.625rem;
     font-size: 0.75rem;
-    /* HeroUI's base radius (8px). */
-    border-radius: var(--radius);
+    /* Round like every compact inline action (stop, accept, undo). */
+    border-radius: calc(infinity * 1px);
   }
 }
 

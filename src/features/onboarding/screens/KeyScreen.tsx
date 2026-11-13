@@ -25,7 +25,7 @@ function OpenButton({ label, onPress }: { label: string; onPress: () => void }) 
       size="sm"
       onPress={onPress}
       aria-label={label}
-      className="h-[30px] shrink-0 rounded-[9px] bg-surface px-2.5 shadow-xs hover:bg-panel"
+      className="shrink-0 bg-surface px-2.5 shadow-xs hover:bg-panel"
     >
       {t("key.open")}
       <ExternalLink className="size-3" />
@@ -84,7 +84,7 @@ function KeySteps({ flow }: { flow: KeyFlow }) {
               aria-invalid={view === "rejected" || undefined}
               disabled={view === "verifying"}
               className={cn(
-                "h-10 w-full rounded-[10px] font-mono text-[0.8125rem]",
+                "h-10 w-full rounded-xl font-mono text-[0.8125rem]",
                 view === "rejected" && "ring-1 ring-danger",
               )}
             />
@@ -121,7 +121,7 @@ function SavedKeyCard() {
 
   return (
     <div className="mt-[26px] flex items-center gap-3.5 rounded-xl bg-surface px-4 py-3.5 shadow-sm">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
         <KeyRound className="size-[18px]" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -139,7 +139,7 @@ function SavedKeyCard() {
               onClick={toggle}
               disabled={reveal.isPending}
               aria-label={shown !== null ? t("key.saved.hide") : t("key.saved.reveal")}
-              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40"
+              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors outline-none hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
             >
               {reveal.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />

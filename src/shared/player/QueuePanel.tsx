@@ -29,7 +29,7 @@ function QueueRow({ track, isCurrent, isPlaying, onJump }: QueueRowProps) {
       onClick={onJump}
       className={
         "flex h-12 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
-        (isCurrent ? "bg-accent-fill/10" : "hover:bg-default/40")
+        (isCurrent ? "bg-accent-fill/10" : "hover:bg-default/50")
       }
     >
       <TrackThumb artUrl={track.artUrl} size="size-9" radius="rounded-md" />

@@ -42,7 +42,7 @@ export function CandidateStrip({
           <button
             type="button"
             onClick={onSearch}
-            className="flex cursor-pointer items-center gap-2 rounded-full border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-separator px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Search className="size-3.5" />
             {t("albumMetadata.cover.candidates.search")}
@@ -59,7 +59,7 @@ export function CandidateStrip({
           <button
             type="button"
             onClick={onRetry}
-            className="cursor-pointer rounded-full border border-separator px-2.5 py-1 font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="cursor-pointer rounded-full border border-separator px-2.5 py-1 font-medium text-foreground outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent"
           >
             {t("albumMetadata.cover.candidates.retry")}
           </button>

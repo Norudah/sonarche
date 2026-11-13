@@ -28,7 +28,7 @@ export function FolderPicker({ folder, phase, onChoose }: FolderPickerProps) {
           onClick={onChoose}
           disabled={busy}
           aria-label={t("chooseLabel")}
-          className="group/field flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 text-left transition-colors outline-none hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-60"
+          className="group/field flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 text-left transition-colors outline-none hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45"
         >
           {/* The folder icon turns accent once a path is chosen, like the composer's link icon. */}
           <Swap swapKey={folder != null ? "chosen" : "idle"} mode="cross" className="flex">

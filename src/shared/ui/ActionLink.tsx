@@ -17,7 +17,7 @@ const BASE =
   "group/action inline-flex shrink-0 items-center gap-1.5 rounded-sm text-[0.8125rem] font-medium " +
   "underline-offset-4 outline-none transition-colors focus-visible:underline";
 
-const DISABLED = "disabled:pointer-events-none disabled:opacity-40";
+const DISABLED = "disabled:pointer-events-none disabled:opacity-45";
 
 interface ActionContentProps {
   /** Before the label; lifts on hover. */

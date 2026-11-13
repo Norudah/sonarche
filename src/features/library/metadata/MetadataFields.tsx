@@ -102,7 +102,7 @@ export function MetadataFields({ track, live, draft, originOf, onChange, onRever
 
       {track.bonusSource && (
         // Adopted bonus track: show its real origin.
-        <p className="rounded-xl bg-default/40 px-3.5 py-2.5 text-[0.75rem] text-muted">
+        <p className="rounded-xl bg-tray px-3.5 py-3 text-[0.75rem] text-muted">
           {t("metadata.bonusFrom", { source: track.bonusSource })}
         </p>
       )}

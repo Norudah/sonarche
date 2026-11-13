@@ -97,7 +97,7 @@ export function RematchButton({
       type="button"
       disabled={isDisabled}
       onClick={onPress}
-      className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-55`}
+      className={`${HERO_BUTTON_SECONDARY} group/rematch shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-45`}
     >
       {isRunning ? (
         <Loader2 className="size-4 animate-spin text-accent" />

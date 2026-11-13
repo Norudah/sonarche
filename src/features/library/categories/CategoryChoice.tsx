@@ -3,7 +3,7 @@ import { useCategoryLabel } from "@/features/library/categories/useCategoryLabel
 
 const CHIP =
   "cursor-pointer rounded-full px-2.5 py-1 text-[0.75rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
-const CHIP_ON = "bg-accent-fill text-accent-foreground";
+const CHIP_ON = "bg-accent-soft font-medium text-accent";
 const CHIP_OFF = "bg-surface text-muted hover:bg-surface-tertiary hover:text-foreground";
 
 /** Category picker for downloads and imports. "None" is its own chip. Lives
@@ -27,7 +27,7 @@ export function CategoryChoice({
   const labelOf = useCategoryLabel();
 
   return (
-    <fieldset disabled={isDisabled} className="flex flex-col gap-2.5 disabled:opacity-50">
+    <fieldset disabled={isDisabled} className="flex flex-col gap-2.5 disabled:opacity-45">
       <div className="flex flex-col gap-0.5">
         <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{label}</legend>
         <p className="max-w-prose text-xs leading-relaxed text-muted">{hint}</p>

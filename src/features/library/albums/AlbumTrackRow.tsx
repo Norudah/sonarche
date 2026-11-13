@@ -65,7 +65,7 @@ export function AlbumTrackRow({
       onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row row-cascade select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
-        (isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/40")
+        (isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/50")
       }
     >
       <td className={`${CELL} w-14`}>
@@ -108,7 +108,7 @@ export function AlbumTrackRow({
       <td className={`${CELL} w-[16%]`}>
         <span
           className={
-            "inline-block max-w-full truncate rounded-md px-2 py-0.5 text-[0.6875rem] " +
+            "inline-block max-w-full truncate rounded-full px-2 py-0.5 align-middle text-[0.6875rem] " +
             (track.genre ? "bg-default/70 text-foreground" : "bg-warning-soft text-warning")
           }
         >

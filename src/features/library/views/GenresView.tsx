@@ -12,17 +12,12 @@ import { useChipDrag } from "@/features/library/genres/useChipDrag";
 import { useClassifyGenre, useGenreOverrides } from "@/features/library/genres/useClassifyGenre";
 import { EmptyLibrary } from "@/features/library/EmptyLibrary";
 import { ExplorerBar } from "@/features/library/ExplorerBar";
+import { barPill } from "@/features/library/barPill";
 import { useFamilyLabel } from "@/features/library/genres/useFamilyLabel";
 import { useLibrary } from "@/features/library/hooks";
 import { LoadError, LoadingSpinner } from "@/features/library/views/LoadStates";
 import { NoResults } from "@/shared/ui/EmptyState";
 import { PageContainer } from "@/shared/ui/PageContainer";
-
-/** Bar-height rectangular button. */
-const BAR_BUTTON =
-  "flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-separator bg-surface/70 px-3.5 " +
-  "text-[0.8125rem] font-medium text-foreground outline-none transition-colors hover:bg-surface " +
-  "focus-visible:ring-2 focus-visible:ring-accent";
 
 /**
  * The genres index as family cards; search also matches the genres inside
@@ -84,7 +79,7 @@ export function GenresView() {
           }
         >
           <p className="text-[0.8125rem] text-muted">{t("genres.arrange.hint")}</p>
-          <button type="button" onClick={() => setArranging(false)} className={`${BAR_BUTTON} ml-auto`}>
+          <button type="button" onClick={() => setArranging(false)} className={`${barPill(false)} ml-auto font-medium`}>
             <Check className="size-4 text-muted" />
             {t("genres.arrange.done")}
           </button>
@@ -97,7 +92,7 @@ export function GenresView() {
           total={families.filter((family) => family.key !== FAMILY_NONE).length}
         >
           {families.length > 0 && (
-            <button type="button" onClick={() => setArranging(true)} className={BAR_BUTTON}>
+            <button type="button" onClick={() => setArranging(true)} className={`${barPill(false)} font-medium`}>
               <FolderInput className="size-4 text-muted" />
               {t("genres.arrange.enter")}
             </button>

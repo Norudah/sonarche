@@ -14,7 +14,7 @@ import { springs } from "@/shared/motion/tokens";
 
 const CAPTION = "text-[0.625rem] font-semibold tracking-wider text-muted uppercase";
 const BULK_PILL =
-  "flex size-7 cursor-pointer items-center justify-center rounded-full border border-separator bg-surface text-muted outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
+  "flex size-7 cursor-pointer items-center justify-center rounded-full border border-separator bg-surface text-muted outline-none transition-colors hover:bg-default/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 
 /** Editable tracks. The album artist is shown above the Artist column to make
  * the difference with track artists obvious. */

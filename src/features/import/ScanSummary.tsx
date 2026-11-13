@@ -55,7 +55,7 @@ function AlreadyImported({ previous }: { previous: PreviousImport }) {
   const when = new Intl.DateTimeFormat(i18n.language, { dateStyle: "long" }).format(previous.finishedAt);
 
   return (
-    <div className="flex gap-2.5 rounded-xl bg-surface-secondary px-3.5 py-3 text-[0.8125rem]">
+    <div className="flex gap-2.5 rounded-xl bg-tray px-3.5 py-3 text-[0.8125rem]">
       <History className="mt-0.5 size-4 shrink-0 text-muted" />
       <div className="flex flex-col gap-0.5">
         <p className="font-medium">{t(previous.cancelled ? "again.stopped" : "again.done", { when })}</p>

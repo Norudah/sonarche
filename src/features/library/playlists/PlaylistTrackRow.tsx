@@ -64,7 +64,7 @@ export function PlaylistTrackRow({
       onDoubleClick={rowPlayHandler(onPlay)}
       className={
         "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
-        (isDragging ? "[&>td]:bg-default/70" : isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/40")
+        (isDragging ? "[&>td]:bg-default/70" : isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/50")
       }
     >
       <td className={`${CELL} w-8 px-1`}>

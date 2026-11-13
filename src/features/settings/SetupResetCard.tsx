@@ -31,7 +31,7 @@ export function SetupResetCard() {
       <div className="flex flex-col gap-3">
         <SettingCardHeader title={t("developer.resetSetup.name")} description={t("developer.resetSetup.why")} />
 
-        <div className="flex flex-col gap-2 rounded-lg border border-separator/60 bg-default/30 p-3">
+        <div className="flex flex-col gap-2 rounded-xl bg-tray px-3.5 py-3">
           {SETUP_RESET_TARGET_NAMES.map((name) => (
             <Checkbox key={name} isSelected={selected.has(name)} onChange={(on) => toggle(name, on)}>
               <Checkbox.Content className="items-center gap-2.5">

@@ -9,7 +9,7 @@ import type { LibraryTrack } from "@/features/library/api";
 const PRIMARY =
   "cursor-pointer rounded-full bg-accent-fill px-3 py-1.5 text-[0.75rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
 const SECONDARY =
-  "cursor-pointer rounded-full border border-separator px-3 py-1.5 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent";
+  "cursor-pointer rounded-full border border-separator px-3 py-1.5 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent";
 const GHOST =
   "cursor-pointer rounded-full px-2.5 py-1.5 text-[0.75rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent";
 
@@ -157,7 +157,7 @@ export function OfferCard({
   const title = tracks.find((track) => track.id === offer.trackId)?.title ?? "";
 
   return (
-    <div className="flex w-[21rem] flex-col gap-2.5 rounded-2xl bg-surface p-4 shadow-xl ring-1 ring-separator">
+    <div className="flex w-[21rem] flex-col gap-2.5 rounded-2xl bg-surface p-4 shadow-xl">
       {offer.kind === "genre" ? (
         <GenreBody
           offer={offer}

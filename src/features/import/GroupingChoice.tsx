@@ -60,7 +60,7 @@ export function GroupingChoice({
   const suggested = report != null && isSuggestionNotable(report);
 
   return (
-    <fieldset disabled={isDisabled} className="flex flex-col gap-2.5 disabled:opacity-50">
+    <fieldset disabled={isDisabled} className="flex flex-col gap-2.5 disabled:opacity-45">
       <div className="flex flex-col gap-0.5">
         <legend className="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
           {t("grouping.label")}
@@ -82,7 +82,7 @@ export function GroupingChoice({
       </RadioGroup>
 
       {/* Keyed on the answer so the text swaps visibly. */}
-      <Swap swapKey={value} mode="cross" className="flex flex-col gap-0.5 rounded-xl bg-default/40 px-3 py-2.5">
+      <Swap swapKey={value} mode="cross" className="flex flex-col gap-0.5 rounded-xl bg-tray px-3.5 py-3">
         <p className="text-[0.8125rem] font-medium text-accent">{t(`grouping.${value}Answer`)}</p>
         <p className="max-w-prose text-[0.8125rem] leading-relaxed">{t(`grouping.${value}Why`)}</p>
         <p className="max-w-prose text-xs leading-relaxed text-muted italic">{t(`grouping.${value}For`)}</p>

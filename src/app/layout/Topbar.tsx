@@ -15,9 +15,11 @@ export function Topbar() {
   return (
     <div
       data-tauri-drag-region={isMacOS ? true : undefined}
-      className="flex h-12 shrink-0 items-center justify-between border-b border-separator bg-surface px-4"
+      className="flex h-12 shrink-0 items-center justify-between border-b border-separator bg-surface pr-6 pl-8"
     >
-      {/* The slot renders even without a lens, keeping the right group pinned. */}
+      {/* Edges on the page column (`PageContainer` px-8): the lens starts on it,
+          the icon glyphs end on it. The slot renders even without a lens,
+          keeping the right group pinned. */}
       <span className="flex items-center">{hasLens && <InspectSwitch />}</span>
       <span data-tour="chrome" className="flex items-center gap-0.5">
         <GuideButton />

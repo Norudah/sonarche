@@ -6,7 +6,7 @@ import { FavoriteButton } from "@/features/library/playlists/FavoriteButton";
 
 // Round like the app's other icon buttons; `shrink-0` keeps them round.
 const ACTION =
-  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 focus-visible:ring-2 focus-visible:ring-accent";
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/50 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface RowActionsProps {
   onEdit: () => void;

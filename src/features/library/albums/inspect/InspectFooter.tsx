@@ -112,7 +112,7 @@ export function InspectFooter({
               type="button"
               disabled={isCancellingRematch}
               onClick={onCancelRematch}
-              className={`${HERO_BUTTON_SECONDARY} shrink-0 cursor-pointer text-danger disabled:cursor-default disabled:opacity-55`}
+              className={`${HERO_BUTTON_SECONDARY} shrink-0 cursor-pointer text-danger disabled:cursor-default disabled:opacity-45`}
             >
               {isCancellingRematch ? t("albumMetadata.rematch.stopping") : t("albumMetadata.rematch.stop")}
             </button>
