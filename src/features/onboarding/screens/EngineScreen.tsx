@@ -62,7 +62,7 @@ function InstallLog({ logs, finished }: { logs: readonly string[]; finished: boo
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((shown) => !shown)}
-        className="flex min-h-7 cursor-pointer items-center gap-1.5 self-start rounded-sm text-[0.78125rem] font-medium text-muted transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex min-h-7 cursor-pointer items-center gap-1.5 self-start rounded-sm text-[0.78125rem] font-medium text-muted transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
       >
         <motion.span initial={false} animate={{ rotate: open ? 180 : 0 }} transition={springs.snappy}>
           <ChevronDown className="size-3.5" />

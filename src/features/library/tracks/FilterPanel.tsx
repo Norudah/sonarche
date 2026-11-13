@@ -9,7 +9,7 @@ import { GENRE_MISSING, GENRE_OFF_TREE } from "@/features/library/tracks/triage"
 
 /** Amber for correction filters, indigo for browsing (the decade). */
 const TONE = {
-  browse: "bg-accent text-accent-foreground",
+  browse: "bg-accent-fill text-accent-foreground",
   fix: "bg-warning-soft font-medium text-warning",
 } as const;
 
@@ -30,7 +30,7 @@ function ToggleChip({
       aria-pressed={isActive}
       onClick={onPress}
       className={
-        "cursor-pointer rounded-full px-3 py-1 text-[0.8125rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
+        "cursor-pointer rounded-full px-3 py-1 text-[0.8125rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
         (isActive ? TONE[tone] : "bg-surface-secondary text-muted hover:bg-surface-tertiary hover:text-foreground")
       }
     >

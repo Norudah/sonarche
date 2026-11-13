@@ -67,7 +67,7 @@ export function InspectFooter({
               <button
                 type="button"
                 onClick={onSave}
-                className="ml-auto shrink-0 cursor-pointer text-[0.8125rem] font-medium text-danger outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="ml-auto shrink-0 cursor-pointer text-[0.8125rem] font-medium text-danger outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {t("albumMetadata.retry")}
               </button>

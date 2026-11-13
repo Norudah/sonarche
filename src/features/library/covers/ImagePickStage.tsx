@@ -40,7 +40,7 @@ export function ImagePickStage({
       <button
         type="button"
         onClick={onPick}
-        className={`flex flex-col items-center justify-center gap-2.5 ${round ? "rounded-full" : "rounded-xl"} border border-dashed text-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 ${
+        className={`flex flex-col items-center justify-center gap-2.5 ${round ? "rounded-full" : "rounded-xl"} border border-dashed text-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
           isDropTarget
             ? "border-accent bg-accent-soft text-accent"
             : "border-separator hover:border-accent/50 hover:text-foreground"

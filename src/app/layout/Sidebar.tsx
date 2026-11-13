@@ -65,7 +65,7 @@ function NavItem({
             <motion.span
               layoutId={layoutIds.navIndicator}
               transition={springs.snappy}
-              className="absolute inset-0 rounded-lg bg-accent/15"
+              className="absolute inset-0 rounded-lg bg-accent-fill/15"
             />
           )}
           {glyph ? (
@@ -171,7 +171,7 @@ function PlaylistsNav() {
           onClick={() => setCreating(true)}
           aria-label={tLibrary("playlists.create")}
           title={tLibrary("playlists.create")}
-          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted/70 outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted/70 outline-none transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Plus className="size-3.5" />
         </button>

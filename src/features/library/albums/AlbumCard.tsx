@@ -28,7 +28,7 @@ export function AlbumCard({ album, style, cascade = true, onPlay, onEdit }: Albu
     <div style={style} className={`group/card relative${cascade ? " cascade-item" : ""}`}>
       <Link
         to={albumPath(album.artist, album.title)}
-        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">
           <AlbumCover artUrl={album.artUrl} className="size-full" loading="lazy" />

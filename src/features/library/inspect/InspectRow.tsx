@@ -45,7 +45,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
 
   // Zebra by position, not `nth-child`: windowing spacers would flip the parity.
   const rowTone = isCurrent
-    ? "bg-accent/10 text-accent"
+    ? "bg-accent-fill/10 text-accent"
     : `${index % 2 === 1 ? "bg-surface-secondary/40 " : ""}group-hover/row:bg-default/50`;
 
   const has = (door: DoorKey) => flags.includes(door);
@@ -133,7 +133,7 @@ export function InspectRow({ track, index, flags, insideAlbum = false, onPlay, o
           onClick={onEdit}
           aria-label={t("metadata.editMetadata")}
           title={t("metadata.editMetadata")}
-          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-5 cursor-pointer items-center justify-center rounded text-muted opacity-0 outline-none transition-opacity group-hover/row:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Pencil className="size-3" />
         </button>

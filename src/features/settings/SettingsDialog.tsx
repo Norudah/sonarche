@@ -15,7 +15,7 @@ function CloseButton({ label, className }: { label: string; className: string })
       aria-label={label}
       className={cn(
         "size-8 cursor-pointer items-center justify-center rounded-lg text-muted outline-none",
-        "transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40",
+        "transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
     >

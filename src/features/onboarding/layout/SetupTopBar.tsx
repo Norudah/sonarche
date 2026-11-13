@@ -19,7 +19,7 @@ export function SetupTopBar({ n, total }: { n: number; total: number }) {
               className={cn(
                 "h-1.5 rounded-full transition-[width,background-color] duration-300 ease-out",
                 index + 1 === n ? "w-4 bg-accent" : "w-1.5",
-                index + 1 < n && "bg-accent/45",
+                index + 1 < n && "bg-accent-fill/45",
                 index + 1 > n && "bg-muted/30",
               )}
             />

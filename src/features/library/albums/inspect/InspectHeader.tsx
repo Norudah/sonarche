@@ -31,15 +31,15 @@ export function InspectHeader({
         type="button"
         onClick={onOpenCover}
         aria-label={t("albumMetadata.cover.title")}
-        className="group relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none ring-1 ring-artwork-edge focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="group relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none ring-1 ring-artwork-edge focus-visible:ring-2 focus-visible:ring-accent"
       >
         {album.artUrl ? (
           <img src={album.artUrl} alt="" className="size-full object-cover" />
         ) : (
           <ArtworkPlaceholder className="size-full" />
         )}
-        <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-          <ImagePlus className="size-4 text-white" />
+        <span className="absolute inset-0 flex items-center justify-center bg-scrim opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <ImagePlus className="size-4 text-on-scrim" />
         </span>
       </button>
       {artistImage && (
@@ -62,7 +62,7 @@ export function InspectHeader({
         type="button"
         onClick={onClose}
         aria-label={t("metadata.close")}
-        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
       >
         <X className="size-4" />
       </button>

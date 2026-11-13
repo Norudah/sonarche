@@ -59,7 +59,7 @@ export function UrlComposer({ onSubmit, isPending, resetToken }: UrlComposerProp
 
         {/* Shadow at rest, lifted with an accent ring on focus. */}
         <form
-          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent/40"
+          className="flex flex-col overflow-hidden rounded-2xl bg-surface shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-accent"
           onSubmit={(event) => {
             event.preventDefault();
             if (canSubmit)

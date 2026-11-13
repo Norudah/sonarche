@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 
 /* `inline-flex` + baseline nudge, so it can also end a sentence. */
 const TRIGGER =
-  "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40";
+  "inline-flex size-4 shrink-0 items-center justify-center rounded-full align-[-0.2em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
 
 export function FieldHelp({ label, text, delay = 200 }: { label: string; text: ReactNode; delay?: number }) {
   return (

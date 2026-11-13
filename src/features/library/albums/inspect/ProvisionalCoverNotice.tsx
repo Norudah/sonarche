@@ -14,7 +14,7 @@ export function ProvisionalCoverNotice({ onReplace }: { onReplace: () => void })
       <button
         type="button"
         onClick={onReplace}
-        className="self-start cursor-pointer rounded-full border border-warning/40 px-2.5 py-1 font-medium outline-none transition-colors hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="self-start cursor-pointer rounded-full border border-warning/40 px-2.5 py-1 font-medium outline-none transition-colors hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-accent"
       >
         {t("albumMetadata.cover.title")}
       </button>

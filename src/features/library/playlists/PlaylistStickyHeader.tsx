@@ -59,7 +59,7 @@ export function PlaylistStickyHeader({
           whileTap={{ scale: 0.94 }}
           whileHover={{ scale: 1.05 }}
           transition={springs.snappy}
-          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent-fill text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Play className="size-4 fill-current" />
         </motion.button>

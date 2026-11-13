@@ -18,7 +18,7 @@ export interface AlbumTarget {
 const MAX_ROWS = 30;
 
 const INPUT =
-  "rounded-xl border border-separator bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
+  "rounded-xl border border-field-border bg-surface px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25";
 
 function Row({ album, onPick }: { album: Album; onPick: () => void }) {
   const { t } = useTranslation("library");
@@ -26,7 +26,7 @@ function Row({ album, onPick }: { album: Album; onPick: () => void }) {
     <button
       type="button"
       onClick={onPick}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent"
     >
       <span className="size-9 shrink-0 overflow-hidden rounded-md ring-1 ring-artwork-edge">
         <AlbumCover artUrl={album.artUrl} className="size-full" loading="lazy" />
@@ -77,7 +77,7 @@ export function AlbumSelect({
           type="button"
           onClick={() => onChange(null)}
           aria-label={t("albumSelect.clear")}
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X className="size-3.5" />
         </button>

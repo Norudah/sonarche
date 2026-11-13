@@ -25,13 +25,13 @@ function CandidateRow({ track, checked, onToggle }: { track: LibraryTrack; check
     <button
       type="button"
       onClick={onToggle}
-      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="group/row flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent"
     >
       <span
         aria-hidden
         className={
           "flex size-4.5 shrink-0 items-center justify-center rounded-md border transition-colors " +
-          (checked ? "border-accent bg-accent text-accent-foreground" : "border-separator bg-transparent")
+          (checked ? "border-accent bg-accent-fill text-accent-foreground" : "border-separator bg-transparent")
         }
       >
         {checked && <Check className="size-3" strokeWidth={3} />}
@@ -111,7 +111,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
           type="button"
           onClick={onClose}
           aria-label={t("metadata.close")}
-          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X className="size-3.5" />
         </button>
@@ -125,7 +125,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("move.addTracksSearchPlaceholder")}
-            className="w-full min-w-0 rounded-xl border border-separator bg-transparent py-1.5 pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+            className="w-full min-w-0 rounded-xl border border-field-border bg-transparent py-1.5 pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
         </div>
       </div>
@@ -179,7 +179,7 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             type="button"
             disabled={selection.length === 0 || isPending}
             onClick={confirm}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
           >
             <FolderInput className="size-3.5" />
             {/* No count when nothing is selected. */}

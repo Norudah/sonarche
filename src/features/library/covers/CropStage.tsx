@@ -148,14 +148,14 @@ export function CropStage({
             aria-label={label}
             onKeyDown={onKeyDown}
             className={`absolute ${round ? "rounded-full" : "rounded-lg"} ring-2 outline-none focus-visible:ring-accent ${
-              fits ? "ring-white/90" : "ring-warning"
+              fits ? "ring-on-scrim/90" : "ring-warning"
             } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
             style={{
               width: stage.side,
               height: stage.side,
               left: stage.left,
               top: stage.top,
-              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.55)",
+              boxShadow: "0 0 0 9999px var(--scrim)",
             }}
           />
         </div>

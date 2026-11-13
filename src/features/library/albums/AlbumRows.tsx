@@ -33,7 +33,7 @@ export function AlbumRows({ albums, animationKey = "", onPlay, onEdit }: AlbumRo
           <Link
             to={albumPath(album.artist, album.title)}
             aria-label={album.title}
-            className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
 
           <AlbumCover artUrl={album.artUrl} className="size-10 shrink-0 rounded-md" loading="lazy" />

@@ -89,7 +89,7 @@ function AcceptButton({ onAccept, isPending }: { onAccept: () => void; isPending
         event.stopPropagation();
         onAccept();
       }}
-      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted opacity-0 transition group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-muted opacity-0 transition group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
     >
       <Check className="size-3.5" />
       {t("accept.action")}
@@ -128,7 +128,7 @@ export function QueueLine({
       <Link
         to={line.doors[0].to}
         style={style}
-        className={`${ROW} group/line cascade-item outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-accent/40`}
+        className={`${ROW} group/line cascade-item outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-accent`}
       >
         <Glyph line={line} />
         {label}
@@ -154,7 +154,7 @@ export function QueueLine({
               key={door.key}
               to={door.to}
               // The pill carries the number, so it's amber like the counts.
-              className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="group/door flex items-center gap-1 rounded-full bg-warning-soft px-3 py-1 text-[0.8125rem] font-medium text-warning tabular-nums outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-accent"
             >
               {pill && t(pill, { count: door.count })}
               <ChevronRight className="size-3.5 transition-transform group-hover/door:translate-x-0.5" />

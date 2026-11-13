@@ -29,7 +29,7 @@ export function PlaylistCard({ playlist, displayName, covers, trackCount, style,
     <div style={style} className="group/card cascade-item relative">
       <Link
         to={playlistPath(playlist.id)}
-        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <div className="relative aspect-square overflow-hidden rounded-xl shadow-sm ring-1 ring-separator/60 transition-shadow group-hover/card:shadow-lg">
           <PlaylistCoverMosaic
@@ -52,7 +52,7 @@ export function PlaylistCard({ playlist, displayName, covers, trackCount, style,
             whileTap={{ scale: 0.92 }}
             whileHover={{ scale: 1.06 }}
             transition={springs.snappy}
-            className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent-fill text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Play className="size-4 fill-current" />
           </motion.button>

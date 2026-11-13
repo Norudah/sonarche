@@ -36,7 +36,7 @@ export function SortableColumn({
         onClick={() => onSort(column)}
         aria-label={t("sort.byColumn", { column: label })}
         className={
-          "inline-flex cursor-pointer items-center gap-1 rounded uppercase outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 " +
+          "inline-flex cursor-pointer items-center gap-1 rounded uppercase outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent " +
           (right ? "flex-row-reverse " : "") +
           (isActive ? "text-accent" : "hover:text-foreground")
         }

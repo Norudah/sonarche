@@ -34,11 +34,11 @@ export function MetadataArtwork({
           type="button"
           onClick={onEdit}
           aria-label={editLabel}
-          className="group relative block cursor-pointer overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="group relative block cursor-pointer overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           {picture}
-          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-            <ImagePlus className="size-5 text-white" />
+          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-scrim opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <ImagePlus className="size-5 text-on-scrim" />
           </span>
         </button>
       ) : (

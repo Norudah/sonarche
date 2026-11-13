@@ -87,7 +87,7 @@ export function CompletionCard({
                       },
                 )
               }
-              className="group flex w-fit cursor-pointer items-center gap-1 rounded-md text-left text-[0.75rem] font-medium text-accent outline-none transition-colors hover:text-accent/80 focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="group flex w-fit cursor-pointer items-center gap-1 rounded-md text-left text-[0.75rem] font-medium text-accent outline-none transition-colors hover:text-accent/80 focus-visible:ring-2 focus-visible:ring-accent"
             >
               {t("albumMetadata.completion.showIncomplete", { count: incompleteIds.length })}
               <ArrowRight className="size-3 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none" />
@@ -109,7 +109,7 @@ export function CompletionCard({
                 key={gap.field}
                 type="button"
                 onClick={() => onFilter(isOn ? null : { id: gap.field, label, trackIds: gap.trackIds })}
-                className={`cursor-pointer rounded-full border px-2.5 py-1 text-[0.75rem] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                className={`cursor-pointer rounded-full border px-2.5 py-1 text-[0.75rem] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
                   isOn
                     ? "border-warning bg-warning text-warning-foreground"
                     : "border-warning/35 bg-warning-soft text-warning hover:border-warning/60"

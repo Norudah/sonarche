@@ -89,27 +89,27 @@ function EditForm({
         onClick={onEditImage}
         aria-label={t("playlists.edit.changeImage")}
         aria-expanded={isPickingImage}
-        className={`group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${isPickingImage ? "ring-2 ring-accent ring-offset-2 ring-offset-overlay" : ""}`}
+        className={`group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent ${isPickingImage ? "ring-2 ring-accent ring-offset-2 ring-offset-overlay" : ""}`}
       >
         <PlaylistCoverMosaic
           covers={playlistCovers(tracks)}
           customUrl={playlist.coverUrl}
           className="size-full ring-1 ring-artwork-edge"
         />
-        <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-          <ImagePlus className="size-4 text-white" />
+        <span className="absolute inset-0 flex items-center justify-center bg-scrim opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <ImagePlus className="size-4 text-on-scrim" />
         </span>
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-center gap-3 rounded-lg bg-accent/15 px-3 py-1.5 text-sm font-medium text-accent">
+        <div className="flex items-center gap-3 rounded-lg bg-accent-fill/15 px-3 py-1.5 text-sm font-medium text-accent">
           <PlaylistGlyph marker={resolveMarker({ ...playlist, marker })} className="size-4" />
           <span className="min-w-0 truncate">{trimmed || t("playlists.namePlaceholder")}</span>
         </div>
         <button
           type="button"
           onClick={onEditImage}
-          className="cursor-pointer self-start rounded text-[0.75rem] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="cursor-pointer self-start rounded text-[0.75rem] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           {t("playlists.edit.changeImage")}
         </button>
@@ -143,7 +143,7 @@ function EditForm({
             placeholder={t("playlists.namePlaceholder")}
             maxLength={120}
             disabled={isPending}
-            className="w-full rounded-xl border border-separator bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+            className="w-full rounded-xl border border-field-border bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
           {/* Reserved height, so the dialog doesn't grow when the error appears. */}
           <p className="min-h-4 text-[0.75rem] text-danger">{taken ? t("playlists.duplicateName") : ""}</p>

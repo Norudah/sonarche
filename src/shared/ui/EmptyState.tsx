@@ -21,8 +21,8 @@ function EmptySleeve({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <span className="relative flex size-12 items-center justify-center">
       {/* Tinted: white tiles would vanish on the tray. */}
-      <span className="absolute inset-0 -rotate-6 rounded-xl bg-accent/10" />
-      <span className="absolute inset-0 rotate-3 rounded-xl bg-accent/20" />
+      <span className="absolute inset-0 -rotate-6 rounded-xl bg-accent-fill/10" />
+      <span className="absolute inset-0 rotate-3 rounded-xl bg-accent-fill/20" />
       <span className="relative flex size-12 items-center justify-center rounded-xl bg-surface shadow-sm">
         <Icon className="size-5 text-accent" />
       </span>

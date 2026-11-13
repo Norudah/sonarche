@@ -15,7 +15,7 @@ export type StageState =
   | "error";
 
 const BADGE: Record<StageState, string> = {
-  done: "bg-accent text-accent-foreground",
+  done: "bg-accent-fill text-accent-foreground",
   active: "bg-surface text-accent ring-2 ring-accent",
   busy: "bg-surface text-accent ring-2 ring-accent",
   pending: "bg-default text-muted",
@@ -68,7 +68,7 @@ function Stage({ number, state, title, text, action }: StageProps) {
         "relative flex items-start gap-3.5",
         // The thread between badges, kept 6px off each (the busy ring overhangs).
         "after:absolute after:top-[34px] after:bottom-[calc(6px-var(--stage-gap))] after:left-[13.5px] after:w-px last:after:hidden",
-        state === "done" ? "after:bg-accent/35" : "after:bg-separator",
+        state === "done" ? "after:bg-accent-fill/35" : "after:bg-separator",
       )}
     >
       <Badge state={state} number={number} />

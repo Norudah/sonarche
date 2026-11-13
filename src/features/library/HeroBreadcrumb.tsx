@@ -31,14 +31,14 @@ export function HeroBreadcrumb({ up, upLabel, current, label, actions }: HeroBre
             type="button"
             onClick={() => navigate(-1)}
             aria-label={t("back")}
-            className="-ml-1.5 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="-ml-1.5 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ChevronLeft className="size-4" />
           </button>
         )}
         <Link
           to={up}
-          className="shrink-0 rounded-sm font-medium text-accent outline-none transition-colors hover:text-accent-hover focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="shrink-0 rounded-sm font-medium text-accent outline-none transition-colors hover:text-accent-hover focus-visible:ring-2 focus-visible:ring-accent"
         >
           {upLabel}
         </Link>

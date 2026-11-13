@@ -27,7 +27,7 @@ export function AcceptedNotice({
           type="button"
           disabled={isPending}
           onClick={() => onUndo(target)}
-          className="flex cursor-pointer items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1 text-xs text-muted outline-none transition-colors hover:bg-surface-tertiary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1 text-xs text-muted outline-none transition-colors hover:bg-surface-tertiary hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           {t(`queue.${target.check}`)}
           <span className="tabular-nums">{target.ids.length}</span>

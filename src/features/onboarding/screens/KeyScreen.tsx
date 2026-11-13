@@ -139,7 +139,7 @@ function SavedKeyCard() {
               onClick={toggle}
               disabled={reveal.isPending}
               aria-label={shown !== null ? t("key.saved.hide") : t("key.saved.reveal")}
-              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-40"
+              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors outline-none hover:bg-default/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40"
             >
               {reveal.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />

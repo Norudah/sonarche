@@ -35,7 +35,7 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
   };
 
   return (
-    <div className="flex h-9 w-56 items-center gap-2 rounded-full bg-surface-secondary px-3 transition-colors hover:bg-surface-tertiary focus-within:bg-surface focus-within:ring-2 focus-within:ring-accent/30">
+    <div className="flex h-9 w-56 items-center gap-2 rounded-full bg-surface-secondary px-3 transition-colors hover:bg-surface-tertiary focus-within:bg-surface focus-within:ring-2 focus-within:ring-accent">
       <Search className="size-4 shrink-0 text-muted" />
       <input
         type="text"

@@ -59,7 +59,7 @@ export function EditableField({
             type="button"
             onClick={onRevert}
             title={t("albumMetadata.changes.revert", { value: origin || t("metadata.emptyValue") })}
-            className="ml-auto flex min-w-0 max-w-36 shrink cursor-pointer items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[0.6875rem] text-accent outline-none transition-colors hover:brightness-95 focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="ml-auto flex min-w-0 max-w-36 shrink cursor-pointer items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[0.6875rem] text-accent outline-none transition-colors hover:brightness-95 focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Undo2 className="size-3 shrink-0" />
             <span className="truncate">{origin || t("metadata.emptyValue")}</span>
@@ -85,7 +85,7 @@ export function EditableField({
             ? "border-dashed border-muted/35 bg-surface placeholder:text-muted/60"
             : showMissing
               ? "border-dashed border-warning/45 bg-warning-soft placeholder:text-warning"
-              : "border-separator bg-surface"
+              : "border-field-border bg-surface"
         } ${isModified ? "border-l-accent!" : ""}`}
       />
     </div>

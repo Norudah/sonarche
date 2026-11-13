@@ -36,7 +36,7 @@ export function SplashScreen({ phase }: { phase: SplashPhase }) {
         <div
           aria-hidden
           className={cn(
-            "absolute size-32 rounded-full bg-accent/25 blur-3xl",
+            "absolute size-32 rounded-full bg-accent-fill/25 blur-3xl",
             waiting ? "animate-splash-halo" : "animate-splash-bloom",
           )}
         />

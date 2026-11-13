@@ -27,7 +27,7 @@ export function PrimaryButton({
       whileTap={{ scale: isInert ? 1 : 0.96 }}
       whileHover={{ scale: isInert ? 1 : 1.03 }}
       transition={springs.snappy}
-      className={`flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-accent px-5 text-sm font-medium text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default ${
+      className={`flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-accent-fill px-5 text-sm font-medium text-accent-foreground glow-accent outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default ${
         isDisabled && !isPending ? "disabled:opacity-45 disabled:shadow-none" : "disabled:opacity-70"
       }`}
     >

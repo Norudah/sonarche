@@ -39,7 +39,7 @@ export function RecropButton({
       type="button"
       disabled={disabled || isLoading}
       onClick={() => void adopt()}
-      className="flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-separator px-3 py-1 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-default disabled:opacity-45"
+      className="flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-separator px-3 py-1 text-[0.75rem] font-medium text-foreground outline-none transition-colors hover:bg-default/60 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
     >
       {isLoading ? <Spinner size="sm" /> : <Crop className="size-3.5 text-muted" />}
       {t("imageSource.recrop")}

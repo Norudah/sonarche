@@ -67,7 +67,7 @@ export function TrackRow({
       className={
         "group/row select-none [&>td]:transition-colors [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg " +
         (cascade ? "row-cascade " : "") +
-        (isCurrent ? "[&>td]:bg-accent/10" : "hover:[&>td]:bg-default/40")
+        (isCurrent ? "[&>td]:bg-accent-fill/10" : "hover:[&>td]:bg-default/40")
       }
     >
       <td className={`${CELL} w-14`}>

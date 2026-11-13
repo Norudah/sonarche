@@ -35,7 +35,7 @@ export function TriageChips({ chips, countLabel }: TriageChipsProps) {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("triage.clearFilter", { filter: chip.label })}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent/40 ${CHIP_TONE[chip.tone ?? "filter"]}`}
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[0.8125rem] font-medium outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-accent ${CHIP_TONE[chip.tone ?? "filter"]}`}
         >
           {chip.label}
           <X className="size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />
