@@ -356,6 +356,11 @@
   .button--icon-only {
     border-radius: calc(infinity * 1px);
   }
+
+  /* Every modal at 16px, HeroUI's own is 24. */
+  .modal__dialog {
+    border-radius: var(--radius-2xl);
+  }
 }
 
 /* --- Neutral and destructive buttons -------------------------------------- */
@@ -425,10 +430,11 @@
 
 /* --- Buttons inside a short dialog ---------------------------------------- */
 
-/* One compact size for every answer in a `SimpleDialog`, with a floor so a
-   short "Vider" doesn't shrink next to "Annuler". */
+/* One compact size for every answer in a dialog (`Dialog`), with a floor so
+   a short "Vider" doesn't shrink next to "Annuler". Icon-only buttons keep
+   their own square. */
 @layer components {
-  .simple-dialog .button {
+  .dialog-frame .button:not(.button--icon-only) {
     height: 2.25rem;
     min-width: 5.5rem;
     padding-inline: 1rem;

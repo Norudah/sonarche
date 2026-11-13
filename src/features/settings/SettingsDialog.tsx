@@ -1,28 +1,10 @@
-import { cn, Modal } from "@heroui/react";
-import { X } from "lucide-react";
+import { Modal } from "@heroui/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SettingsNav, SettingsNavStrip } from "@/features/settings/SettingsNav";
 import { closeSettings, useSettingsDialog } from "@/shared/lib/settingsDialog";
-
-/** Rendered in both layouts, shown in one. */
-function CloseButton({ label, className }: { label: string; className: string }) {
-  return (
-    <button
-      type="button"
-      onClick={closeSettings}
-      aria-label={label}
-      className={cn(
-        "size-8 cursor-pointer items-center justify-center rounded-lg text-muted outline-none",
-        "transition-colors hover:bg-default/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent",
-        className,
-      )}
-    >
-      <X className="size-4" />
-    </button>
-  );
-}
+import { CloseButton } from "@/shared/ui/CloseButton";
 
 /** Settings as a dialog over the running app: three ways out, nothing to
  * return to. The only modal with a backdrop blur, since it covers the whole app. */
@@ -46,11 +28,15 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
               {/* Narrow: the close button sits beside the scrolling strip, not over it. */}
               <div className="flex items-center border-b border-separator bg-panel md:hidden">
                 <SettingsNavStrip current={category} />
-                <CloseButton label={t("close")} className="mr-2 ml-1 shrink-0" />
+                <CloseButton label={t("close")} onPress={closeSettings} className="mr-2 ml-1" />
               </div>
 
               {/* Wide: floats in the gutter. */}
-              <CloseButton label={t("close")} className="absolute top-4 right-4 z-10 hidden md:flex" />
+              <CloseButton
+                label={t("close")}
+                onPress={closeSettings}
+                className="absolute top-4 right-4 z-10 hidden md:flex"
+              />
 
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {/* Bounded reading column. `settings-pane` scopes button sizing (theme.css). */}

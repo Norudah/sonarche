@@ -1,7 +1,9 @@
-import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/** Header shared by the edit form and the image pane beside it. */
+import { CloseButton } from "@/shared/ui/CloseButton";
+
+/** Header shared by the edit form and the image pane beside it: the same
+ * anatomy as `Dialog.Header`, kept apart because the two panes each carry one. */
 export function EditDialogHeader({
   title,
   subtitle,
@@ -14,29 +16,18 @@ export function EditDialogHeader({
   const { t } = useTranslation("library");
 
   return (
-    <header className="flex shrink-0 items-center gap-3 border-b border-separator px-6 py-4">
+    <header className="flex shrink-0 items-start gap-3 px-6 pt-5 pb-4">
       <div className="min-w-0 flex-1">
-        <h2 className="text-[0.9375rem] font-semibold tracking-tight text-foreground">{title}</h2>
-        <p className="mt-0.5 truncate text-[0.75rem] text-muted">{subtitle}</p>
+        <h2 className="text-[1.0625rem] leading-snug font-semibold tracking-tight text-balance text-foreground">
+          {title}
+        </h2>
+        <p className="mt-0.5 truncate text-xs text-muted">{subtitle}</p>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t("metadata.close")}
-        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        <X className="size-3.5" />
-      </button>
+      <CloseButton label={t("metadata.close")} onPress={onClose} className="-mt-0.5 -mr-1.5" />
     </header>
   );
 }
 
-export const EDIT_DIALOG_BODY = "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-5";
+export const EDIT_DIALOG_BODY = "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 pb-5";
 
-export const EDIT_DIALOG_FOOTER = "flex shrink-0 items-center gap-2 border-t border-separator px-6 py-3.5";
-
-export const EDIT_DIALOG_QUIET_BUTTON =
-  "cursor-pointer rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
-
-export const EDIT_DIALOG_CONFIRM_BUTTON =
-  "flex cursor-pointer items-center gap-2 rounded-xl bg-accent-fill px-4 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45";
+export const EDIT_DIALOG_FOOTER = "flex shrink-0 items-center gap-2 border-t border-separator px-6 py-4";

@@ -1,4 +1,4 @@
-import { Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,7 +16,6 @@ import { useRemovePlaylistCover, useSetPlaylistCover } from "@/features/library/
 import {
   EditDialogHeader,
   EDIT_DIALOG_BODY,
-  EDIT_DIALOG_CONFIRM_BUTTON,
   EDIT_DIALOG_FOOTER,
 } from "@/features/library/playlists/PlaylistEditChrome";
 import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverMosaic";
@@ -163,21 +162,16 @@ export function PlaylistImageStep({
 
       <footer className={EDIT_DIALOG_FOOTER}>
         {playlist.coverUrl != null && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={removeCurrent}
-            className="flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium text-danger outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-danger/40 disabled:cursor-default disabled:opacity-45"
-          >
+          <Button variant="ghost" isDisabled={isPending} onPress={removeCurrent} className="-ml-3 text-danger">
             {remove.isPending && <Spinner size="sm" />}
             {t("playlists.image.remove")}
-          </button>
+          </Button>
         )}
         <div className="flex-1" />
-        <button type="button" disabled={!canConfirm} onClick={confirm} className={EDIT_DIALOG_CONFIRM_BUTTON}>
+        <Button variant="primary" isDisabled={!canConfirm} onPress={confirm}>
           {replace.isPending && <Spinner size="sm" />}
           {t("playlists.image.replace")}
-        </button>
+        </Button>
       </footer>
     </div>
   );

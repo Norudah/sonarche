@@ -1,5 +1,5 @@
-import { Modal } from "@heroui/react";
-import { ChevronLeft, FolderInput, Library, Plus, Search, X } from "lucide-react";
+import { Button } from "@heroui/react";
+import { ChevronLeft, FolderInput, Library, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,12 +9,13 @@ import { alreadyOn, moveInto, proposeCollection, suggestedArtist } from "@/featu
 import { useMoveWithUndo } from "@/features/library/albums/useMoveWithUndo";
 import type { LibraryTrack, MoveSpec } from "@/features/library/api";
 import { useLibrary } from "@/features/library/hooks";
+import { Dialog } from "@/shared/ui/Dialog";
 
 /** Search-driven: the list stops here and asks for a narrower search. */
 const MAX_ROWS = 50;
 
 const INPUT =
-  "min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent";
+  "h-9 min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface MoveToAlbumDialogProps {
   /** A track or a whole record; null = closed. */
@@ -113,23 +114,14 @@ function ConfirmStep({
       )}
 
       <div className="mt-4 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[0.8125rem] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
+        <Button variant="ghost" onPress={onBack} className="-ml-3 text-muted">
           <ChevronLeft className="size-3.5" />
           {t("back")}
-        </button>
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={confirm}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
-        >
+        </Button>
+        <Button variant="primary" isDisabled={isPending} onPress={confirm}>
           <FolderInput className="size-3.5" />
           {t("move.confirm", { count: tracks.length })}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -184,22 +176,14 @@ function CreateStep({ tracks, onBack, onClose }: { tracks: LibraryTrack[]; onBac
       <p className="mt-2 text-[0.75rem] leading-relaxed text-muted">{t("move.newHint")}</p>
 
       <div className="mt-4 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[0.8125rem] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
+        <Button variant="ghost" onPress={onBack} className="-ml-3 text-muted">
           <ChevronLeft className="size-3.5" />
           {t("back")}
-        </button>
-        <button
-          type="submit"
-          disabled={!ready || isPending}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
-        >
+        </Button>
+        <Button type="submit" variant="primary" isDisabled={!ready || isPending}>
           <Plus className="size-3.5" />
           {t("move.createConfirm", { count: tracks.length })}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -221,23 +205,12 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   const overflow = Math.max(0, albums.length - MAX_ROWS);
 
   return (
-    <div className="flex max-h-[inherit] flex-col">
-      <header className="flex shrink-0 items-start gap-3 px-6 pt-5 pb-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[0.9375rem] font-semibold tracking-tight text-foreground">
-            {step.kind === "create" ? t("move.newCollection") : t("move.title")}
-          </h2>
-          <p className="mt-0.5 truncate text-[0.75rem] text-muted">{t("trackCount", { count: tracks.length })}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("metadata.close")}
-          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <X className="size-3.5" />
-        </button>
-      </header>
+    <>
+      <Dialog.Header
+        title={step.kind === "create" ? t("move.newCollection") : t("move.title")}
+        subtitle={t("trackCount", { count: tracks.length })}
+        close={{ label: t("metadata.close"), onPress: onClose }}
+      />
 
       {step.kind === "confirm" && (
         <ConfirmStep tracks={tracks} target={step.target} onBack={() => setStep({ kind: "pick" })} onClose={onClose} />
@@ -260,7 +233,7 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
+          <Dialog.Body className="px-3.5 pb-4">
             <button
               type="button"
               onClick={() => setStep({ kind: "create" })}
@@ -295,10 +268,10 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
                 )}
               </>
             )}
-          </div>
+          </Dialog.Body>
         </>
       )}
-    </div>
+    </>
   );
 }
 
@@ -306,19 +279,8 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
  * and the record's kind may change. */
 export function MoveToAlbumDialog({ tracks, onClose }: MoveToAlbumDialogProps) {
   return (
-    <Modal
-      isOpen={tracks != null}
-      onOpenChange={(nowOpen) => {
-        if (!nowOpen) onClose();
-      }}
-    >
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[80vh] w-[28rem] max-w-[95vw] rounded-2xl p-0!">
-            {tracks != null && <PickerBody tracks={tracks} onClose={onClose} />}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog isOpen={tracks != null} onClose={onClose}>
+      {tracks != null && <PickerBody tracks={tracks} onClose={onClose} />}
+    </Dialog>
   );
 }

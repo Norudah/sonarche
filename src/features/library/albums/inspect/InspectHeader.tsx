@@ -1,10 +1,11 @@
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { Album } from "@/features/library/albums/albums";
 import { ArtistImageButton } from "@/features/library/artists/ArtistImageButton";
 import { ArtworkPlaceholder } from "@/features/library/metadata/ArtworkPlaceholder";
 import { PendingBadge } from "@/features/library/metadata/PendingBadge";
+import { CloseButton } from "@/shared/ui/CloseButton";
 
 interface InspectHeaderProps {
   album: Album;
@@ -46,10 +47,10 @@ export function InspectHeader({
         <ArtistImageButton imageUrl={artistImage.url} label={t("artists.image.title")} onClick={onOpenArtistImage} />
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-[0.625rem] font-semibold tracking-wider text-accent uppercase">
+        <p className="text-[0.6875rem] font-semibold tracking-wider text-accent uppercase">
           {t("albumMetadata.eyebrow")}
         </p>
-        <h2 className="mt-0.5 truncate text-[1.0625rem] leading-tight font-semibold tracking-tight text-foreground">
+        <h2 className="mt-0.5 truncate text-xl leading-tight font-semibold tracking-tight text-foreground">
           {album.title}
           <span className="ml-2 text-[0.8125rem] font-normal text-muted">
             {t("trackCount", { count: album.tracks.length })}
@@ -58,14 +59,7 @@ export function InspectHeader({
         </h2>
       </div>
       <PendingBadge fields={pending.fields} tracks={pending.tracks} />
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t("metadata.close")}
-        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        <X className="size-4" />
-      </button>
+      <CloseButton label={t("metadata.close")} onPress={onClose} />
     </header>
   );
 }

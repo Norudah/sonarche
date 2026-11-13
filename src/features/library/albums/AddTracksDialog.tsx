@@ -1,5 +1,5 @@
-import { Modal } from "@heroui/react";
-import { Check, FolderInput, Search, X } from "lucide-react";
+import { Button } from "@heroui/react";
+import { Check, FolderInput, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +10,7 @@ import type { LibraryTrack, MoveSpec } from "@/features/library/api";
 import { useLibrary } from "@/features/library/hooks";
 import { filterTracks } from "@/features/library/tracks/filter";
 import { formatDuration } from "@/shared/lib/format";
+import { Dialog } from "@/shared/ui/Dialog";
 
 /** Search-driven: the list stops here and says so. */
 const MAX_ROWS = 60;
@@ -99,23 +100,12 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
   };
 
   return (
-    <div className="flex max-h-[inherit] flex-col">
-      <header className="flex shrink-0 items-start gap-3 px-6 pt-5 pb-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[0.9375rem] font-semibold tracking-tight text-foreground">
-            {t("move.addTracksTitle", { name: album.title })}
-          </h2>
-          <p className="mt-0.5 truncate text-[0.75rem] text-muted">{t("move.addTracksSubtitle")}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("metadata.close")}
-          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <X className="size-3.5" />
-        </button>
-      </header>
+    <>
+      <Dialog.Header
+        title={t("move.addTracksTitle", { name: album.title })}
+        subtitle={t("move.addTracksSubtitle")}
+        close={{ label: t("metadata.close"), onPress: onClose }}
+      />
 
       <div className="shrink-0 px-6 pb-3">
         <div className="relative">
@@ -125,12 +115,12 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("move.addTracksSearchPlaceholder")}
-            className="w-full min-w-0 rounded-xl border border-separator bg-transparent py-1.5 pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="h-9 w-full min-w-0 rounded-xl border border-separator bg-transparent pr-3 pl-8 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-3">
+      <Dialog.Body className="px-3.5 pb-3">
         {candidates.length === 0 ? (
           <p className="px-2.5 py-3 text-center text-[0.8125rem] text-muted">{t("move.addTracksEmpty")}</p>
         ) : (
@@ -150,9 +140,9 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
             )}
           </>
         )}
-      </div>
+      </Dialog.Body>
 
-      <footer className="shrink-0 border-t border-separator px-6 py-3">
+      <footer className="shrink-0 border-t border-separator px-6 py-4">
         {!alreadyCollection && selection.length > 0 && (
           <label className="mb-2.5 flex cursor-pointer items-start gap-2.5">
             <input
@@ -175,19 +165,14 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
           <p className="min-w-0 text-[0.75rem] text-muted">
             {selection.length > 0 ? t("move.selectedCount", { count: selection.length }) : t("move.selectHint")}
           </p>
-          <button
-            type="button"
-            disabled={selection.length === 0 || isPending}
-            onClick={confirm}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
-          >
+          <Button variant="primary" isDisabled={selection.length === 0 || isPending} onPress={confirm}>
             <FolderInput className="size-3.5" />
             {/* No count when nothing is selected. */}
             {selection.length > 0 ? t("move.confirm", { count: selection.length }) : t("move.confirmEmpty")}
-          </button>
+          </Button>
         </div>
       </footer>
-    </div>
+    </>
   );
 }
 
@@ -195,19 +180,8 @@ function PickerBody({ album, onClose }: { album: Album; onClose: () => void }) {
  * becomes the record's order. */
 export function AddTracksDialog({ album, onClose }: AddTracksDialogProps) {
   return (
-    <Modal
-      isOpen={album != null}
-      onOpenChange={(nowOpen) => {
-        if (!nowOpen) onClose();
-      }}
-    >
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[80vh] w-[30rem] max-w-[95vw] rounded-2xl p-0!">
-            {album != null && <PickerBody album={album} onClose={onClose} />}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog isOpen={album != null} onClose={onClose}>
+      {album != null && <PickerBody album={album} onClose={onClose} />}
+    </Dialog>
   );
 }

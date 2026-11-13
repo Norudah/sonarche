@@ -1,5 +1,5 @@
-import { Modal, toast } from "@heroui/react";
-import { Check, Loader2, Plus, X } from "lucide-react";
+import { Button, toast } from "@heroui/react";
+import { Check, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +16,7 @@ import {
   tracksById,
 } from "@/features/library/playlists/playlists";
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
+import { Dialog } from "@/shared/ui/Dialog";
 
 interface AddToPlaylistDialogProps {
   /** A track or a whole album; null = closed. */
@@ -126,21 +127,12 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
   };
 
   return (
-    <div className="flex max-h-[inherit] flex-col">
-      <header className="flex shrink-0 items-start gap-3 px-6 pt-5 pb-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[0.9375rem] font-semibold tracking-tight text-foreground">{t("playlists.addTo")}</h2>
-          <p className="mt-0.5 truncate text-[0.75rem] text-muted">{t("trackCount", { count: itemIds.length })}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("metadata.close")}
-          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-default/60 text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <X className="size-3.5" />
-        </button>
-      </header>
+    <>
+      <Dialog.Header
+        title={t("playlists.addTo")}
+        subtitle={t("trackCount", { count: itemIds.length })}
+        close={{ label: t("metadata.close"), onPress: onClose }}
+      />
 
       <div className="shrink-0 px-6 pb-3">
         <form
@@ -157,22 +149,18 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             placeholder={t("playlists.createPlaceholder")}
             maxLength={120}
             disabled={busy}
-            className="min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 py-1.5 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
+            className="h-9 min-w-0 flex-1 rounded-xl border border-separator bg-transparent px-3 text-[0.8125rem] outline-none placeholder:text-muted/70 focus:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent"
           />
-          <button
-            type="submit"
-            disabled={trimmed === "" || draftTaken || busy}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-accent-fill px-3.5 py-1.5 text-[0.8125rem] font-medium text-accent-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-45"
-          >
+          <Button type="submit" variant="primary" isDisabled={trimmed === "" || draftTaken || busy}>
             <Plus className="size-3.5" />
             {t("playlists.createConfirm")}
-          </button>
+          </Button>
         </form>
         {/* Reserved height so the list doesn't jump. */}
         <p className="mt-1 min-h-4 text-[0.75rem] text-danger">{draftTaken ? t("playlists.duplicateName") : ""}</p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
+      <Dialog.Body className="px-3.5 pb-4">
         {rows.length === 0 ? (
           <p className="px-2.5 pb-2 text-center text-[0.8125rem] text-muted">{t("playlists.pickerEmpty")}</p>
         ) : (
@@ -193,27 +181,16 @@ function PickerBody({ tracks, onClose }: { tracks: LibraryTrack[]; onClose: () =
             );
           })
         )}
-      </div>
-    </div>
+      </Dialog.Body>
+    </>
   );
 }
 
 /** A picker: one click files the tracks. Creating a playlist is inline at the top. */
 export function AddToPlaylistDialog({ tracks, onClose }: AddToPlaylistDialogProps) {
   return (
-    <Modal
-      isOpen={tracks != null}
-      onOpenChange={(nowOpen) => {
-        if (!nowOpen) onClose();
-      }}
-    >
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[80vh] w-[28rem] max-w-[95vw] rounded-2xl p-0!">
-            {tracks != null && <PickerBody tracks={tracks} onClose={onClose} />}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog isOpen={tracks != null} onClose={onClose}>
+      {tracks != null && <PickerBody tracks={tracks} onClose={onClose} />}
+    </Dialog>
   );
 }

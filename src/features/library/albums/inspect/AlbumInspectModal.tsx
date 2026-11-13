@@ -245,9 +245,9 @@ export function AlbumInspectModal({ album, onClose }: { album: Album | null; onC
       }}
     >
       {/* Escape is handled by the body's document listener. */}
-      <Modal.Backdrop isKeyboardDismissDisabled>
+      <Modal.Backdrop className="backdrop-blur-[3px]" isKeyboardDismissDisabled>
         <Modal.Container>
-          <Modal.Dialog className="flex h-[94vh] max-h-[58rem] w-[97vw] max-w-[80rem] flex-col overflow-hidden p-0!">
+          <Modal.Dialog className="flex h-[94vh] max-h-[58rem] w-[97vw] max-w-[80rem] flex-col overflow-hidden rounded-2xl p-0!">
             {album && (
               <MetadataSuggestionsProvider>
                 <InspectBody key={album.key} album={album} onClose={onClose} requestCloseRef={requestCloseRef} />

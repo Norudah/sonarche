@@ -1,4 +1,4 @@
-import { Button, Modal, toast } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { FolderInput, RotateCcw, Undo2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ import {
 } from "@/features/download/hooks";
 import { TOAST_EXPLAINED, TOAST_GLANCE } from "@/shared/toast/durations";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { Dialog } from "@/shared/ui/Dialog";
 
 /** Shared panel button; `danger` for the one that deletes music. */
 function PanelAction({
@@ -87,32 +88,21 @@ function DestinationDialog({
   const committable = destination.mode === "auto" ? modes.includes("auto") : forced != null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(nowOpen) => {
-        if (!nowOpen) onClose();
-      }}
-    >
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[85vh] w-[34rem] max-w-[95vw] overflow-y-auto rounded-2xl">
-            <div className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-              <div className="text-[0.8125rem] leading-relaxed text-muted">{hint}</div>
-              <DestinationChoice value={destination} kind={job.kind} onChange={setDestination} modes={modes} />
-              <div className="mt-1 flex justify-end gap-2">
-                <Button variant="secondary" onPress={onClose} isDisabled={isPending}>
-                  {t("actions.cancel")}
-                </Button>
-                <Button variant="primary" onPress={() => onConfirm(forced)} isDisabled={!committable || isPending}>
-                  {confirmLabel}
-                </Button>
-              </div>
-            </div>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog isOpen={isOpen} onClose={onClose} size="lg">
+      <Dialog.Header title={title} />
+      <Dialog.Body className="flex flex-col gap-3">
+        <div className="text-[0.8125rem] leading-relaxed text-muted">{hint}</div>
+        <DestinationChoice value={destination} kind={job.kind} onChange={setDestination} modes={modes} />
+      </Dialog.Body>
+      <Dialog.Footer>
+        <Button variant="secondary" onPress={onClose} isDisabled={isPending}>
+          {t("actions.cancel")}
+        </Button>
+        <Button variant="primary" onPress={() => onConfirm(forced)} isDisabled={!committable || isPending}>
+          {confirmLabel}
+        </Button>
+      </Dialog.Footer>
+    </Dialog>
   );
 }
 

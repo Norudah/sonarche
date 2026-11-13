@@ -1,6 +1,8 @@
 import { Modal } from "@heroui/react";
 import type { FormEvent, ReactNode } from "react";
 
+import { Dialog } from "@/shared/ui/Dialog";
+
 /**
  * The frame of every short dialog (confirm, name, erase): a title, a few
  * lines, then the answers. No icon: the title asks the question and the
@@ -44,38 +46,24 @@ export function SimpleDialog({
         </Modal.Heading>
         <div className="mt-2 text-sm leading-relaxed text-pretty text-muted">{children}</div>
       </div>
-      <footer className="flex items-center gap-2 px-6 pb-5">
-        {startAction}
-        <div className="ml-auto flex items-center gap-2">{actions}</div>
-      </footer>
+      <Dialog.Footer start={startAction}>{actions}</Dialog.Footer>
     </>
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open && isDismissable) onClose();
-      }}
-    >
-      <Modal.Backdrop className="backdrop-blur-[3px]" isDismissable={isDismissable}>
-        <Modal.Container>
-          <Modal.Dialog role={role} className="simple-dialog w-[26rem] max-w-[92vw] rounded-2xl p-0!">
-            {onSubmit ? (
-              <form
-                onSubmit={(event: FormEvent) => {
-                  event.preventDefault();
-                  onSubmit();
-                }}
-              >
-                {content}
-              </form>
-            ) : (
-              content
-            )}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog isOpen={isOpen} onClose={onClose} size="sm" isDismissable={isDismissable} role={role}>
+      {onSubmit ? (
+        <form
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+        >
+          {content}
+        </form>
+      ) : (
+        content
+      )}
+    </Dialog>
   );
 }

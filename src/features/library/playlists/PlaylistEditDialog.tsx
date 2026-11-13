@@ -1,4 +1,4 @@
-import { Modal, Spinner } from "@heroui/react";
+import { Button, Modal, Spinner } from "@heroui/react";
 import { ImagePlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
@@ -11,9 +11,7 @@ import { resolveMarker } from "@/features/library/playlists/marker";
 import {
   EditDialogHeader,
   EDIT_DIALOG_BODY,
-  EDIT_DIALOG_CONFIRM_BUTTON,
   EDIT_DIALOG_FOOTER,
-  EDIT_DIALOG_QUIET_BUTTON,
 } from "@/features/library/playlists/PlaylistEditChrome";
 import { PlaylistCoverMosaic } from "@/features/library/playlists/PlaylistCoverMosaic";
 import { PlaylistGlyph } from "@/features/library/playlists/PlaylistGlyph";
@@ -166,13 +164,13 @@ function EditForm({
       <footer className={EDIT_DIALOG_FOOTER}>
         {failed && <p className="text-[0.75rem] text-danger">{t("playlists.edit.failed")}</p>}
         <div className="flex-1" />
-        <button type="button" onClick={onClose} disabled={isPending} className={EDIT_DIALOG_QUIET_BUTTON}>
+        <Button variant="secondary" onPress={onClose} isDisabled={isPending}>
           {t("playlists.cancel")}
-        </button>
-        <button type="submit" disabled={!canSave} className={EDIT_DIALOG_CONFIRM_BUTTON}>
+        </Button>
+        <Button type="submit" variant="primary" isDisabled={!canSave}>
           {isPending && <Spinner size="sm" />}
           {t("playlists.edit.save")}
-        </button>
+        </Button>
       </footer>
     </form>
   );
@@ -198,10 +196,10 @@ export function PlaylistEditDialog({ isOpen, ...rest }: PlaylistEditDialogProps)
         if (!nowOpen) close();
       }}
     >
-      <Modal.Backdrop>
+      <Modal.Backdrop className="backdrop-blur-[3px]">
         {/* Thin padding so both panes fit at 1080px. */}
         <Modal.Container className="sm:px-6!">
-          <Modal.Dialog className="w-auto! max-w-full overflow-visible! bg-transparent! p-0! shadow-none!">
+          <Modal.Dialog className="dialog-frame w-auto! max-w-full overflow-visible! bg-transparent! p-0! shadow-none!">
             <div
               className="flex items-start"
               // Escape closes the topmost pane first.

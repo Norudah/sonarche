@@ -1,10 +1,9 @@
-import { Button } from "@heroui/react";
-import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { LibraryTrack } from "@/features/library/api";
 import { MetadataArtwork } from "@/features/library/metadata/MetadataArtwork";
 import { PendingBadge } from "@/features/library/metadata/PendingBadge";
+import { CloseButton } from "@/shared/ui/CloseButton";
 
 function useSubtitle(track: LibraryTrack): string {
   const { t } = useTranslation("library");
@@ -49,16 +48,7 @@ export function MetadataHeader({
           <PendingBadge fields={pendingFields} />
         </div>
       </div>
-      <Button
-        isIconOnly
-        variant="tertiary"
-        size="sm"
-        onPress={onClose}
-        aria-label={t("metadata.close")}
-        className="absolute top-4 right-4 rounded-full bg-default/60 text-muted transition-colors hover:bg-default hover:text-foreground"
-      >
-        <X className="size-4" />
-      </Button>
+      <CloseButton label={t("metadata.close")} onPress={onClose} className="absolute top-4 right-4" />
     </header>
   );
 }
